@@ -1,4 +1,6 @@
 venv/
 log/
 cert/
+__pycache__/
 config.ini
+secret.ini

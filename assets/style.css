@@ -1,0 +1,21 @@
+/* 기본 글꼴 & 여백 커스터마이즈 */
+body { font-family: 'Segoe UI', sans-serif; }
+
+.card-header {
+  background-color: #f8f9fa;
+  font-weight: 600;
+}
+
+a.nav-link {
+  font-size: 1rem;
+}
+
+a.nav-link:hover {
+  color: #ffc107 !important;   /* 노란색 호버 */
+}
+
+/* Heatmap graph 위·아래 여백 축소 */
+.js-plotly-plot .main-svg {
+  margin-top: -20px;
+  margin-bottom: -20px;
+}
