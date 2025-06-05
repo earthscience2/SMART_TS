@@ -11,85 +11,77 @@ CMD_LOGIN, CMD_GET_PROJECTS = "login", "get_project_list"
 SECRET_DEFAULT = Path("secret.ini")                # USER / PW=...
 _RE_KV = re.compile(r"^\s*([A-Za-z_]+)\s*=\s*(.+?)\s*$")
 
-# ─── CSV 경로 (콘크리트 DB) ────────────────────────────────
-CSV_PATH = Path("concrete.csv")
+# ─── CSV 기반 콘크리트 DB ──────────────────────────────────────────────
+CSV_PATH   = Path("concrete.csv")
+_COLS      = ["concrete_id", "name", "shape", "dims", "aux", "created"]
 
-# ─── secret.ini → (USER, PW) ──────────────────────────────
-def _load_secret(path: Path = SECRET_DEFAULT) -> tuple[str, str]:
-    if not path.exists():
-        raise FileNotFoundError(f"secret.ini not found: {path}")
-    user = pw = None
-    for line in path.read_text(encoding="utf-8").splitlines():
-        m = _RE_KV.match(line)
-        if not m:
-            continue
-        k, v = m[1].upper(), m[2].strip()
-        if k == "USER":
-            user = v
-        elif k in ("PW", "PASSWORD"):
-            pw = v
-    if not user or not pw:
-        raise RuntimeError("secret.ini must contain USER and PW")
-    return user, pw
-
-# ─── ITS TCP 연결 헬퍼 ─────────────────────────────────────
-def _connect() -> tcp_client.TCPClient:
-    config.config_load()
-    c = tcp_client.TCPClient(config.SERVER_IP, config.SERVER_PORT,
-                             config.ITS_NUM, config.certfile)
-    threading.Thread(target=c.receive_messages, daemon=True).start()
-    time.sleep(1)
-    return c
-
-# ─── (예시) ITS 프로젝트 리스트 가져오기 ──────────────────
-def get_project_list(secret_path: Path | str = SECRET_DEFAULT,
-                     as_dataframe: bool = True):
-    uid, pw = _load_secret(Path(secret_path))
-    cli = _connect()
-    try:
-        cli.set_user_password(uid, pw)
-        if cli.message(CMD_LOGIN).get("result") != "Success":
-            raise RuntimeError("login failed")
-        res = cli.message(CMD_GET_PROJECTS)
-        if res.get("result") != "Success":
-            raise RuntimeError("get_project_list failed")
-        data = res["data"]
-        return pd.DataFrame(data) if as_dataframe else data
-    finally:
-        cli.close()
-
-# ─── CSV 기반 콘크리트 DB CRUD ────────────────────────────
-_cols = ["concrete_id", "name", "shape", "dims", "aux", "created"]
 
 def _load_df() -> pd.DataFrame:
     if CSV_PATH.exists():
         return pd.read_csv(CSV_PATH, dtype=str)
-    return pd.DataFrame(columns=_cols)
+    return pd.DataFrame(columns=_COLS)
+
 
 def _save_df(df: pd.DataFrame) -> None:
     CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(CSV_PATH, index=False, encoding="utf-8")
 
+
+# ─── public CRUD API ──────────────────────────────────────────────────
 def load_all() -> pd.DataFrame:
+    """CSV 전체 로드"""
     return _load_df()
 
-def add_concrete(name: str, shape: str, dims: Dict) -> None:
+
+def save_all(df: pd.DataFrame) -> None:
+    """CSV 전체 덮어쓰기 저장(외부에서 직접 수정 후 호출)"""
+    _save_df(df)
+
+
+def add_concrete(name: str, shape: str, dims: Dict,
+                 aux: Dict | None = None) -> str:
+    """새 콘크리트 행 추가 → ID 반환"""
     df = _load_df()
-    new_row = {
-        "concrete_id": f"C{len(df)+1:03d}",
+    cid = f"C{len(df) + 1:03d}"
+    row = {
+        "concrete_id": cid,
         "name": name,
         "shape": shape,
         "dims": json.dumps(dims, ensure_ascii=False),
-        "aux": json.dumps({"origin": "0,0,0", "dir": "+X+Y"}, ensure_ascii=False),
-        "created": pd.Timestamp.utcnow().isoformat(timespec="seconds") + "Z"
+        "aux":  json.dumps(aux or {"origin": "0,0,0",
+                                   "gravity_vec": "0,0,-1"}, ensure_ascii=False),
+        "created": pd.Timestamp.utcnow().isoformat(timespec="seconds") + "Z",
     }
-    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+    df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+    _save_df(df)
+    return cid
+
+
+def update_concrete(cid: str, name: str, shape: str,
+                    dims: Dict, aux: Dict) -> None:
+    """ID 행을 찾아 모든 필드 업데이트"""
+    df = _load_df()
+    m  = df["concrete_id"] == cid
+    if not m.any():
+        raise ValueError("concrete_id not found")
+    df.loc[m, ["name", "shape"]] = name, shape
+    df.loc[m, "dims"] = json.dumps(dims, ensure_ascii=False)
+    df.loc[m, "aux"]  = json.dumps(aux,  ensure_ascii=False)
     _save_df(df)
 
-def update_dims(concrete_id: str, new_dims: Dict) -> None:
+
+def delete_concrete(cid: str) -> None:
+    """ID 행 삭제"""
     df = _load_df()
-    mask = df["concrete_id"] == concrete_id
-    if not mask.any():
+    df = df[df["concrete_id"] != cid].reset_index(drop=True)
+    _save_df(df)
+    
+def update_concrete(concrete_id, name, shape, dims, aux):
+    df = _load_df()
+    m  = df["concrete_id"] == concrete_id
+    if not m.any():
         raise ValueError("ID not found")
-    df.loc[mask, "dims"] = json.dumps(new_dims, ensure_ascii=False)
+    df.loc[m, ["name","shape"]] = [name, shape]
+    df.loc[m, "dims"] = json.dumps(dims, ensure_ascii=False)
+    df.loc[m, "aux"]  = json.dumps(aux,  ensure_ascii=False)
     _save_df(df)

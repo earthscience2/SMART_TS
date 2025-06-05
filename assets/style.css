@@ -1,21 +1,48 @@
-/* 기본 글꼴 & 여백 커스터마이즈 */
-body { font-family: 'Segoe UI', sans-serif; }
-
-.card-header {
-  background-color: #f8f9fa;
+/* DataTable 기본 글꼴 & 굵기 */
+.dash-table-container .dash-header div {
   font-weight: 600;
+  background: #f1f3f5;          /* 은은한 헤더 배경 */
 }
 
-a.nav-link {
-  font-size: 1rem;
+/* 버튼 통일: 살짝 둥글게 + 그림자 */
+button.btn {
+  border-radius: 6px !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,.08);
 }
 
-a.nav-link:hover {
-  color: #ffc107 !important;   /* 노란색 호버 */
+/* 카드/그래프 주변 여백 조정 */
+.card, .js-plotly-plot {
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
 }
 
-/* Heatmap graph 위·아래 여백 축소 */
-.js-plotly-plot .main-svg {
-  margin-top: -20px;
-  margin-bottom: -20px;
+/* ‘+ 추가’ 버튼 배경 강조 */
+#btn-add {
+  background-color: #198754;    /* Bootstrap success 색 */
+}
+#btn-add:hover {
+  background-color: #157347;
+}
+
+/* DataTable 행 줄무늬 & 마우스 오버 */
+.dash-table-container .dash-cell {
+  border-bottom: 1px solid #e9ecef !important;
+}
+.dash-table-container .dash-cell:nth-child(even) {
+  background: #fafbfc;
+}
+.dash-table-container .dash-row:hover .dash-cell {
+  background: #eef2ff !important;
+}
+
+/* 버튼 살짝 둥글게 + 그림자 */
+button.btn {
+  border-radius: 6px !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,.08);
+}
+
+/* 3-D 그래프 영역 테두리 & 그림자 */
+#viewer {
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
 }

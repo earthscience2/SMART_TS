@@ -2,7 +2,7 @@ from dash import html, dcc, register_page
 import dash_bootstrap_components as dbc
 import pandas as pd
 
-register_page(__name__, path="/manage")
+register_page(__name__, path="/sensor")
 
 dummy = pd.DataFrame({
     "concrete_id": ["C001", "C002"],

@@ -6,8 +6,12 @@ from dash import html, dcc, page_container
 import dash_bootstrap_components as dbc
 
 # multipage 활성화
-app = dash.Dash(__name__, use_pages=True,
-                external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = dash.Dash(
+    __name__,
+    use_pages=True,
+    suppress_callback_exceptions=True,   # ← 추가
+    external_stylesheets=[dbc.themes.BOOTSTRAP],
+)
 app.title = "Concrete Dashboard"
 
 # 공통 레이아웃
@@ -16,8 +20,8 @@ app.layout = dbc.Container(fluid=True, children=[
         brand="Concrete MONITOR", color="dark", dark=True, className="mb-4",
         children=[
             dbc.NavItem(dcc.Link("Home", href="/", className="nav-link")),
-            dbc.NavItem(dcc.Link("Sensor Analysis", href="/analysis", className="nav-link")),
-            dbc.NavItem(dcc.Link("Manage DB", href="/manage", className="nav-link")),
+            dbc.NavItem(dcc.Link("concrete", href="/concrete", className="nav-link")),
+            dbc.NavItem(dcc.Link("sensor", href="/sensor", className="nav-link")),
         ],
     ),
     dbc.Card(className="shadow-sm p-4", children=[

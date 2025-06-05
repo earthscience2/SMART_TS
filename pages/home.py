@@ -13,8 +13,8 @@ layout = html.Div([
         dbc.Col(dbc.Card([
             dbc.CardHeader("빠른 시작"),
             dbc.ListGroup([
-                dbc.ListGroupItem(dcc.Link("센서 분석 페이지 →", href="/analysis")),
-                dbc.ListGroupItem(dcc.Link("DB 관리 페이지 →", href="/manage")),
+                dbc.ListGroupItem(dcc.Link("콘크리트 추가 페이지 →", href="/concrete")),
+                dbc.ListGroupItem(dcc.Link("센서 추가 페이지 →", href="/sensor")),
             ])
         ], className="h-100"), md=4),
     ], className="g-4")
