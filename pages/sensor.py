@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
 # pages/sensor.py
-"""Dash page for managing sensors attached to selected concrete elements.
+"""Dash 페이지: 콘크리트 요소에 부착된 센서를 관리
 
 * 왼쪽에서 콘크리트를 선택 → 해당 콘크리트의 센서 리스트 표시
 * 센서 추가/수정/삭제 기능
-* 우측 3D 뷰: 콘크리트 구조 + 센서 위치(붉은 점) 표시, 기본적으로 모든 센서 표시
-  → 선택된 센서는 강조 표시(크기 및 색상)
+* 우측 3D 뷰: 콘크리트 구조 + 센서 위치(파란 점) 표시 → 선택된 센서는 빨간 점으로 강조
 * [변경] 센서 위치 입력: 세 개 필드 → 한 필드("[x,y,z]")로 통합
-* [변경] `msg` Alert 제거 → add/edit 전용 Alert(`add-sensor-alert`, `edit-sensor-alert`) 사용
-* [변경] 센서를 클릭할 때마다 이전에 그 센서에서 보던 시점을 저장하고, 
-           해당 센서를 다시 선택할 때 저장된 시점을 복원하도록 수정
+* [변경] msg Alert 제거 → add/edit 전용 Alert(`add-sensor-alert`, `edit-sensor-alert`) 사용
+* [변경] 카메라 시점을 실시간으로 저장하되, 콘크리트 변경 시 및 센서 선택 시에는 강제로 고정되지 않도록 수정
+* [변경] 콘크리트를 바꿀 때마다 해당 모델을 제대로 그리도록 수정
+* [변경] 카메라 저장 시 Toast 알림 표시 (디버깅용)
+* [추가] 모든 센서마다 수직 보조선(Vertical Line)을 그려서 높이(z) 비교 용이하도록 함
+* [추가] 각 센서 위치에서 X축/Y축 투영 보조선을 그리되, 보조선 범위를 폴리곤 내부로 한정
+* [추가] 보조선을 켜고 끌 수 있는 토글 스위치를 추가
+* [수정] 센서 수정 모달에서 나머지 센서도 함께 표시하고, 빨간 점 크기를 조정
+* [수정] 센서 수정 시 이름(ID)도 수정할 수 있도록 변경
+* [수정] 센서 수정 후 테이블이 즉시 갱신되도록 개선
+* [수정] 수정 모달 및 미리보기에도 보조선 표시/숨김 기능 추가
+* [추가] 센서 추가/수정 시 기존 ID 중복 검사 및 중복 시 Alert 띄움
 """
 
 from __future__ import annotations
@@ -20,7 +28,7 @@ import pandas as pd
 import dash  # dash.no_update 사용을 위해 import
 import plotly.graph_objects as go
 from dash import (
-    html, dcc, Input, Output, State, ctx,
+    html, dcc, Input, Output, State,
     dash_table, register_page, callback
 )
 import dash_bootstrap_components as dbc
@@ -44,11 +52,10 @@ def make_concrete_fig(nodes: list[list[float]], h: float) -> go.Figure:
     x1, y1 = x0, y0
     z1 = np.full(len(nodes), h)
 
-    # 꼭짓점 벡터
+    # Mesh3d (바닥+상단+측면)
     verts_x = np.concatenate([x0, x1])
     verts_y = np.concatenate([y0, y1])
     verts_z = np.concatenate([z0, z1])
-
     n = len(nodes)
     faces = []
     # 바닥면 삼각형
@@ -98,43 +105,81 @@ def make_concrete_fig(nodes: list[list[float]], h: float) -> go.Figure:
     return fig
 
 
-def overlay_sensor(fig: go.Figure, sensor_xyz: list[float], selected: bool = False) -> go.Figure:
+def get_polygon_intersections_x(y: float, nodes: list[list[float]]) -> list[float]:
     """
-    이미 만들어진 콘크리트 3D(fig)에 센서 위치를 추가.
-    selected=True일 때는 강조(빨간, 크게) 표시, 아니면 파란색 반투명.
-    sensor_xyz: [x, y, z]
+    폴리곤 노드 리스트와, y 고정값을 받으면,
+    폴리곤의 각 엣지와 수평선 y=k 가 만나는 x 좌표들을 계산하여 반환.
     """
-    x, y, z = sensor_xyz
-    if selected:
-        fig.add_trace(go.Scatter3d(
-            x=[x], y=[y], z=[z],
-            mode="markers",
-            marker=dict(size=8, color="red"),
-            name="Selected Sensor",
-            hoverinfo="skip"
-        ))
-    else:
-        fig.add_trace(go.Scatter3d(
-            x=[x], y=[y], z=[z],
-            mode="markers",
-            marker=dict(size=4, color="blue", opacity=0.6),
-            name="Sensor",
-            hoverinfo="skip"
-        ))
-    return fig
+    intersections = []
+    n = len(nodes)
+    for i in range(n):
+        x1, y1 = nodes[i]
+        x2, y2 = nodes[(i + 1) % n]
+        # y 선이 엣지의 y 범위 안에 있는지 확인
+        if (y1 <= y < y2) or (y2 <= y < y1):
+            if y2 != y1:
+                t = (y - y1) / (y2 - y1)
+                xi = x1 + t * (x2 - x1)
+                intersections.append(xi)
+    return intersections
+
+
+def get_polygon_intersections_y(x: float, nodes: list[list[float]]) -> list[float]:
+    """
+    폴리곤 노드 리스트와, x 고정값을 받으면,
+    폴리곤의 각 엣지와 수직선 x=k 가 만나는 y 좌표들을 계산하여 반환.
+    """
+    intersections = []
+    n = len(nodes)
+    for i in range(n):
+        x1, y1 = nodes[i]
+        x2, y2 = nodes[(i + 1) % n]
+        # x 선이 엣지의 x 범위 안에 있는지 확인
+        if (x1 <= x < x2) or (x2 <= x < x1):
+            if x2 != x1:
+                t = (x - x1) / (x2 - x1)
+                yi = y1 + t * (y2 - y1)
+                intersections.append(yi)
+    return intersections
 
 
 # ────────────────────────────── 레이아웃 ────────────────────────────
 layout = dbc.Container(
     fluid=True,
     children=[
-        # ── (★) 각 센서별 카메라 정보를 저장하기 위한 Store
-        dcc.Store(id="camera-store", data={}),  # 초기값: 빈 dict
+        # ── (★) 카메라 정보를 저장하기 위한 Store
+        dcc.Store(id="camera-store", data=None),
+
+        # ── (★) 보조선 토글 상태를 저장하기 위한 Store(메인 뷰)
+        dcc.Store(id="helper-toggle-store", data=True),
+
+        # ── (★) 카메라 저장 시 알림을 띄우기 위한 Toast (디버깅용)
+        dbc.Toast(
+            id="camera-toast",
+            header="카메라 저장됨",
+            is_open=False,
+            duration=2000,
+            icon="info",
+            style={"position": "fixed", "top": 10, "right": 10, "width": "300px"},
+            children="",
+        ),
+
+        # ── (★) 메인 뷰 보조선 토글 스위치 ───────────────────────────
+        dbc.Row(
+            dbc.Col(
+                dbc.Switch(
+                    id="toggle-lines",
+                    label="보조선 표시",
+                    value=True,
+                    style={"marginBottom": "10px"},
+                ),
+                width=3,
+            )
+        ),
 
         # 상단: 콘크리트 선택 → 센서 테이블 + 버튼
         dbc.Row(
             [
-                # ── 콘크리트 선택 + 센서 리스트 영역 ─────────────────────────
                 dbc.Col(
                     [
                         html.H6("콘크리트 선택"),
@@ -156,17 +201,19 @@ layout = dbc.Container(
                             [
                                 dbc.Button("+ 추가", id="btn-sensor-add", color="success", className="mt-2"),
                                 dbc.Button("수정", id="btn-sensor-edit", color="secondary", className="mt-2", disabled=True),
-                                dbc.Button("삭제", id="btn-sensor-del", color="danger", className="mt-2", disabled=True),
+                                dbc.Button("삭제", id="btn-sensor-del",  color="danger", className="mt-2", disabled=True),
                             ],
                             size="sm",
                             vertical=True,
                             className="w-100",
                         ),
-                        dcc.ConfirmDialog(id="confirm-del-sensor", message="선택한 센서를 정말 삭제하시겠습니까?"),
+                        dcc.ConfirmDialog(
+                            id="confirm-del-sensor",
+                            message="선택한 센서를 정말 삭제하시겠습니까?"
+                        ),
                     ],
                     md=3,
                 ),
-                # ── 3D 뷰 영역 ─────────────────────────────────────────────────
                 dbc.Col(
                     [
                         html.H6(id="sensor-title", className="mb-2"),
@@ -199,7 +246,7 @@ layout = dbc.Container(
                 ),
                 dbc.ModalFooter(
                     [
-                        dbc.Button("미리보기", id="add-sensor-build", color="info", className="me-auto"),
+                        dbc.Button("새로고침", id="add-sensor-build", color="info", className="me-auto"),
                         dbc.Button("저장", id="add-sensor-save", color="primary"),
                         dbc.Button("닫기", id="add-sensor-close", color="secondary"),
                     ]
@@ -219,14 +266,30 @@ layout = dbc.Container(
                         dcc.Store(id="edit-sensor-concrete-id"),
                         dcc.Store(id="edit-sensor-id-store"),
                         dbc.Alert(id="edit-sensor-alert", is_open=False, duration=3000, color="danger"),
-                        dbc.Input(id="edit-sensor-id", disabled=True, className="mb-2"),
+                        # 센서 ID(이제 수정 가능)
+                        dbc.Input(id="edit-sensor-id", placeholder="Sensor ID", className="mb-2"),
+                        # 좌표 입력 필드
                         dbc.Input(id="edit-sensor-coords", placeholder="센서 좌표 [x, y, z] (예: [1, 1, 0])", className="mb-2"),
+                        # (★) 수정 모달 보조선 토글 스위치
+                        dbc.Row(
+                            dbc.Col(
+                                dbc.Switch(
+                                    id="edit-toggle-lines",
+                                    label="모달 내 보조선 표시",
+                                    value=True,
+                                    style={"marginBottom": "10px"},
+                                ),
+                                width=4,
+                            ),
+                            className="mb-2",
+                        ),
+                        # 센서 수정 3D 뷰(미리보기 영역)
                         dcc.Graph(id="edit-sensor-preview", style={"height": "45vh"}, className="border"),
                     ]
                 ),
                 dbc.ModalFooter(
                     [
-                        dbc.Button("미리보기", id="edit-sensor-build", color="info", className="me-auto"),
+                        dbc.Button("새로고침", id="edit-sensor-build", color="info", className="me-auto"),
                         dbc.Button("저장", id="edit-sensor-save", color="primary"),
                         dbc.Button("닫기", id="edit-sensor-close", color="secondary"),
                     ]
@@ -237,16 +300,16 @@ layout = dbc.Container(
 )
 
 
-# ───────────────────── ① 페이지 초기화 ──────────────────────
+# ───────────────────── ① 콘크리트 목록 초기화 ─────────────────────
 @callback(
     Output("ddl-concrete", "options"),
     Output("ddl-concrete", "value"),
-    Input("ddl-concrete", "id"),  # 페이지 로드 시 한 번 트리거
+    Input("ddl-concrete", "value"),
     prevent_initial_call=False,
 )
-def init_dropdown(_):
+def init_dropdown(selected_value):
     """
-    페이지 로드 시 concrete 목록을 Dropdown 옵션으로 설정.
+    페이지 로드 또는 값이 None일 때 콘크리트 목록을 Dropdown 옵션으로 설정.
     """
     df_conc = api_concrete.load_all()
     options = [
@@ -255,188 +318,318 @@ def init_dropdown(_):
     ]
     if not options:
         return [], None
-    return options, options[0]["value"]
+
+    # 초기 로드 시(= selected_value가 None일 때)만 첫 번째 옵션을 기본값으로 지정
+    if selected_value is None:
+        return options, options[0]["value"]
+    # 사용자가 이미 선택한 값이 있으면 그대로 유지
+    return options, selected_value
 
 
-# ───────────────────── ② 센서 테이블 로드 ────────────────────
-@callback(
-    Output("tbl-sensor", "data"),
-    Output("tbl-sensor", "columns"),
-    Output("tbl-sensor", "selected_rows"),
-    Input("ddl-concrete", "value"),
-    Input("tbl-sensor", "data_timestamp"),
-    prevent_initial_call=False,
-)
-def refresh_sensor_table(selected_conc, _):
-    """
-    선택된 concrete_id에 속한 센서들만 테이블에 표시.
-    """
-    if not selected_conc:
-        return [], [], []
-    df_sensor = api_sensor.load_all_sensors()
-    df_sensor = df_sensor[df_sensor["concrete_id"] == selected_conc].copy()
-
-    data = []
-    for _, row in df_sensor.iterrows():
-        try:
-            dims = ast.literal_eval(row["dims"])
-            xyz = dims.get("nodes", [])
-            pos_str = f"({xyz[0]:.2f}, {xyz[1]:.2f}, {xyz[2]:.2f})"
-        except Exception:
-            pos_str = "파싱 오류"
-        data.append({"sensor_id": row["sensor_id"], "position": pos_str})
-
-    columns = [
-        {"name": "Sensor ID", "id": "sensor_id"},
-        {"name": "위치 (x,y,z)", "id": "position"},
-    ]
-    sel = [0] if data else []
-    return data, columns, sel
-
-
-# ───────────────────── ③ 카메라 정보 저장 콜백 ────────────────────
-@callback(
-    Output("camera-store", "data"),
-    Input("viewer-sensor", "relayoutData"),
-    State("camera-store", "data"),
-    State("tbl-sensor", "selected_rows"),
-    State("tbl-sensor", "data"),
-    prevent_initial_call=True,
-)
-def capture_camera(relayout, cam_store, selected_rows, tbl_data):
-    """
-    사용자가 3D 뷰를 마우스로 돌리거나 확대/축소할 때,
-    relayoutData에 'scene.camera.eye.x' 등의 키가 들어온다.
-    이 정보를 현재 선택된 센서 ID를 키로 해서 camera-store에 저장.
-    """
-    if not relayout:
-        raise PreventUpdate
-
-    # 현재 선택된 센서 ID가 있어야 저장할 수 있음
-    if not (selected_rows and tbl_data):
-        return cam_store
-
-    sel_sensor_id = pd.DataFrame(tbl_data).iloc[selected_rows[0]]["sensor_id"]
-
-    # 이전에 저장된 카메라 정보를 가져오고, 없으면 빈 구조 생성
-    prev_camera = cam_store.get(sel_sensor_id, {})
-    eye = prev_camera.get("eye", {}).copy()
-    center = prev_camera.get("center", {}).copy()
-    up = prev_camera.get("up", {}).copy()
-
-    updated = False
-    for k, v in relayout.items():
-        if k.startswith("scene.camera.eye."):
-            comp = k.split(".")[-1]  # 'x' or 'y' or 'z'
-            eye[comp] = v
-            updated = True
-        if k.startswith("scene.camera.center."):
-            comp = k.split(".")[-1]
-            center[comp] = v
-            updated = True
-        if k.startswith("scene.camera.up."):
-            comp = k.split(".")[-1]
-            up[comp] = v
-            updated = True
-
-    if updated:
-        cam_store[sel_sensor_id] = {"eye": eye, "center": center, "up": up}
-        return cam_store
-
-    return cam_store
-
-
-# ───────────────────── ④ 콘크리트/센서 선택 시 3D 뷰 갱신 ─────────
+# ───────────────────── ② 콘크리트 선택 콜백 ─────────────────────
 @callback(
     Output("viewer-sensor", "figure"),
     Output("sensor-title", "children"),
+    Output("tbl-sensor", "data"),
+    Output("tbl-sensor", "columns"),
+    Output("tbl-sensor", "selected_rows"),
     Output("btn-sensor-edit", "disabled"),
-    Output("btn-sensor-del",  "disabled"),
-    Input("tbl-sensor", "selected_rows"),
-    State("tbl-sensor", "data"),
-    State("ddl-concrete", "value"),
-    State("viewer-sensor", "figure"),  # 이전에 렌더링된 figure
-    State("camera-store", "data"),     # 센서별로 저장된 카메라 정보 딕셔너리
+    Output("btn-sensor-del", "disabled"),
+
+    Input("ddl-concrete", "value"),
+    Input("toggle-lines", "value"),            # 메인 뷰 보조선 토글
+    Input("tbl-sensor", "data_timestamp"),     # ← 추가: data_timestamp가 바뀌면 콜백 재실행
+    State("camera-store", "data"),
+    prevent_initial_call=True,
 )
-def show_sensor_3d(selected_rows, tbl_data, selected_conc, prev_fig, cam_store):
+def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
     """
-    1) 선택된 콘크리트 3D 뷰
-    2) 해당 콘크리트 전체 센서 위치 표시 (파란 점)
-    3) 선택된 센서는 빨간 점(크게) 강조
-
-    → 현재 선택된 센서 ID를 보고, cam_store에서 저장된 카메라 정보를
-       가져와서 뷰를 그릴 때 항상 적용
-    → 콘크리트 메쉬는 prev_fig에서 가져오지 않고, 매번 make_concrete_fig으로 새로 생성
-       (카메라는 cam_store에만 의존)
+    콘크리트를 선택하거나
+    tbl-sensor.data_timestamp이 갱신될 때(수정/삭제 후) 자동으로 호출되어
+    - 새 3D 메쉬 + 센서 그리기
+    - 센서 리스트(테이블) 갱신
+    - 첫 번째 센서 강조 등 수행
     """
-    # 콘크리트를 선택하지 않았거나 불러올 수 없으면 빈 Figure 반환
     if not selected_conc:
-        return go.Figure(), "", True, True
+        return go.Figure(), "", [], [], [], True, True
 
+    # ────────────────────────────────────────────────────────
+    # 1) 콘크리트 정보 로드
     try:
         conc_row = api_concrete.load_all().query("concrete_id == @selected_conc").iloc[0]
         conc_dims = ast.literal_eval(conc_row["dims"])
         conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
     except Exception:
-        return go.Figure(), "콘크리트 정보를 불러올 수 없음", True, True
+        return go.Figure(), "콘크리트 정보를 불러올 수 없음", [], [], [], True, True
 
-    # ① 새 콘크리트 메쉬 생성
-    fig_conc = make_concrete_fig(conc_nodes, conc_h)
+    # 2) 기본 메쉬 생성
+    fig = make_concrete_fig(conc_nodes, conc_h)
 
-    # ② 현재 선택된 센서 ID
-    sel_sensor_id = None
-    if selected_rows and tbl_data:
-        sel_sensor_id = pd.DataFrame(tbl_data).iloc[selected_rows[0]]["sensor_id"]
+    # 3) 센서 데이터 로드
+    df_sensor = api_sensor.load_all_sensors()
+    df_sensor = df_sensor[df_sensor["concrete_id"] == selected_conc].copy()
 
-    # ③ cam_store에 해당 센서 ID로 저장된 카메라 정보가 있으면 적용
-    if sel_sensor_id and isinstance(cam_store, dict):
-        cam = cam_store.get(sel_sensor_id)
-        if isinstance(cam, dict) and "eye" in cam:
-            fig_conc.update_layout(scene_camera=cam)
+    xs, ys, zs = [], [], []
+    sensor_ids = []
+    colors, sizes = [], []
+    table_data = []
 
-    # ④ 모든 센서 좌표 불러와서 파란 점으로 표시
-    df_all = api_sensor.load_all_sensors()
-    df_this = df_all[df_all["concrete_id"] == selected_conc]
-    all_xyz = []
-    for _, row in df_this.iterrows():
+    for idx, row in df_sensor.iterrows():
         try:
             dims = ast.literal_eval(row["dims"])
-            coord = dims.get("nodes", [])
-            all_xyz.append((row["sensor_id"], [float(coord[0]), float(coord[1]), float(coord[2])]))
+            x, y, z = float(dims["nodes"][0]), float(dims["nodes"][1]), float(dims["nodes"][2])
+            pos_str = f"({x:.2f}, {y:.2f}, {z:.2f})"
         except Exception:
-            continue
+            x = y = z = 0.0
+            pos_str = "파싱 오류"
+        xs.append(x); ys.append(y); zs.append(z)
+        sensor_ids.append(row["sensor_id"])
+        colors.append("blue")
+        sizes.append(8)
+        table_data.append({"sensor_id": row["sensor_id"], "position": pos_str})
 
-    for s_id, xyz in all_xyz:
-        fig_conc = overlay_sensor(fig_conc, xyz, selected=False)
+    # 4) 첫 번째 센서 강조
+    selected_indices = []
+    if sensor_ids:
+        colors[0] = "red"
+        sizes[0] = 12
+        selected_indices = [0]
 
-    # 기본 타이틀
+    # 5) Sensors trace 추가 (점)
+    fig.add_trace(go.Scatter3d(
+        x=xs, y=ys, z=zs,
+        mode="markers",
+        marker=dict(size=sizes, color=colors, opacity=0.8),
+        customdata=sensor_ids,
+        hoverinfo="skip",
+        name="Sensors",
+    ))
+
+    # 6) 보조선(show_lines=True일 때만)
+    if show_lines:
+        for x, y, z in zip(xs, ys, zs):
+            # (a) 수직 보조선
+            fig.add_trace(go.Scatter3d(
+                x=[x, x],
+                y=[y, y],
+                z=[0, z],
+                mode="lines",
+                line=dict(color="gray", width=2, dash="dash"),
+                hoverinfo="skip",
+                showlegend=False,
+            ))
+            # (b) XY 평면 내 X축 투영
+            x_ints = get_polygon_intersections_x(y, conc_nodes)
+            if x_ints:
+                left_candidates = [xi for xi in x_ints if xi < x]
+                right_candidates = [xi for xi in x_ints if xi > x]
+                x_min_bound = max(left_candidates) if left_candidates else x
+                x_max_bound = min(right_candidates) if right_candidates else x
+                fig.add_trace(go.Scatter3d(
+                    x=[x_min_bound, x_max_bound],
+                    y=[y, y],
+                    z=[0, 0],
+                    mode="lines",
+                    line=dict(color="gray", width=2, dash="dash"),
+                    hoverinfo="skip",
+                    showlegend=False,
+                ))
+            # (c) XY 평면 내 Y축 투영
+            y_ints = get_polygon_intersections_y(x, conc_nodes)
+            if y_ints:
+                down_candidates = [yi for yi in y_ints if yi < y]
+                up_candidates = [yi for yi in y_ints if yi > y]
+                y_min_bound = max(down_candidates) if down_candidates else y
+                y_max_bound = min(up_candidates) if up_candidates else y
+                fig.add_trace(go.Scatter3d(
+                    x=[x, x],
+                    y=[y_min_bound, y_max_bound],
+                    z=[0, 0],
+                    mode="lines",
+                    line=dict(color="gray", width=2, dash="dash"),
+                    hoverinfo="skip",
+                    showlegend=False,
+                ))
+
+    # 7) 카메라 시점 유지
+    if isinstance(cam_store, dict) and "eye" in cam_store:
+        fig.update_layout(scene_camera=cam_store)
+
+    # 8) 테이블 컬럼 정의
+    columns = [
+        {"name": "Sensor ID", "id": "sensor_id"},
+        {"name": "위치 (x,y,z)", "id": "position"},
+    ]
+
     title = f"{selected_conc} · 센서 전체"
+    edit_disabled = False if selected_indices else True
+    del_disabled = False if selected_indices else True
 
-    # ⑤ 선택된 센서가 있으면 빨간 점 강조
-    if sel_sensor_id:
-        matched = [xyz for sid, xyz in all_xyz if sid == sel_sensor_id]
-        if matched:
-            fig_conc = overlay_sensor(fig_conc, matched[0], selected=True)
-            title = f"{selected_conc} · 센서 {sel_sensor_id} 선택됨"
-            return fig_conc, title, False, False
-
-    # 선택된 센서가 없으면 “편집/삭제” 버튼 비활성화
-    return fig_conc, title, True, True
+    return fig, title, table_data, columns, selected_indices, edit_disabled, del_disabled
 
 
-# ───────────────────── ⑥ 추가/삭제/수정 콜백 등 나머지는 기존 로직 유지 ─────────────────────
+# ───────────────────── ③ 센서 선택 콜백 ─────────────────────
+@callback(
+    Output("viewer-sensor", "figure", allow_duplicate=True),
+    Output("sensor-title", "children", allow_duplicate=True),
+    Output("btn-sensor-edit", "disabled", allow_duplicate=True),
+    Output("btn-sensor-del", "disabled", allow_duplicate=True),
 
-# ───────────────────── ⑦ 추가 모달 토글 ─────────────────────
+    Input("tbl-sensor", "selected_rows"),
+    State("tbl-sensor", "data"),
+    State("viewer-sensor", "figure"),
+    State("camera-store", "data"),
+    prevent_initial_call=True,
+)
+def on_sensor_select(selected_rows, tbl_data, current_fig, cam_store):
+    """
+    DataTable에서 센서를 선택할 때:
+    - 이전 Figure(current_fig)에서 camera를 유지
+    - 'Sensors' trace의 marker.color/size만 업데이트하여 선택된 인덱스만 빨간색/크기 12로 변경
+    """
+    if not current_fig or not tbl_data:
+        raise PreventUpdate
+
+    fig = go.Figure(current_fig)
+
+    # 1) camera-store가 있으면 덮어쓰기 (항상 카메라 최신 유지)
+    if isinstance(cam_store, dict) and "eye" in cam_store:
+        fig.update_layout(scene_camera=cam_store)
+
+    # 2) 'Sensors' trace 찾기
+    sensor_trace = None
+    for tr in fig.data:
+        if tr.name == "Sensors" and isinstance(tr.marker.color, (list, tuple)):
+            sensor_trace = tr
+            break
+
+    if sensor_trace is None:
+        raise PreventUpdate
+
+    # 3) 색상/크기 모두 파란/8로 초기화
+    n_points = len(sensor_trace.x)
+    new_colors = ["blue"] * n_points
+    new_sizes = [8] * n_points
+
+    # 4) 선택된 인덱스만 빨간/12로 설정
+    if selected_rows:
+        sel_idx = selected_rows[0]
+        if 0 <= sel_idx < n_points:
+            new_colors[sel_idx] = "red"
+            new_sizes[sel_idx] = 12   # ← 선택된 센서를 크기 12로 강조
+            edit_disabled = False
+            del_disabled = False
+            sel_id = sensor_trace.customdata[sel_idx]
+            base_title = fig.layout.title.text if (fig.layout and fig.layout.title) else ""
+            base_conc = base_title.split("·")[0].strip() if base_title else ""
+            title = f"{base_conc} · 센서 {sel_id} 선택됨"
+        else:
+            edit_disabled = True
+            del_disabled = True
+            base_title = fig.layout.title.text if (fig.layout and fig.layout.title) else ""
+            title = base_title
+    else:
+        edit_disabled = True
+        del_disabled = True
+        base_title = fig.layout.title.text if (fig.layout and fig.layout.title) else ""
+        title = base_title
+
+    # 5) trace 업데이트
+    sensor_trace.marker.color = new_colors
+    sensor_trace.marker.size = new_sizes
+
+    return fig, title, edit_disabled, del_disabled
+
+
+# ───────────────────── ④ 카메라 정보 저장 콜백 ────────────────────
+@callback(
+    Output("camera-store", "data"),
+    Output("camera-toast", "is_open"),
+    Output("camera-toast", "children"),
+    Input("viewer-sensor", "relayoutData"),
+    State("camera-store", "data"),
+    prevent_initial_call=True,
+)
+def capture_camera(relayout, cam_store):
+    """
+    사용자가 3D 뷰를 회전/줌/패닝할 때 relayoutData에
+      1) 'scene.camera.eye.x', 'scene.camera.eye.y', 'scene.camera.eye.z', 
+         'scene.camera.center.x', ... 등의 키가 개별적으로 올 때
+      2) 또는 'scene.camera': { 'eye': {...}, 'center': {...}, 'up': {...} } 형태로 올 때
+    두 경우를 모두 감지하여 camera-store에 저장.
+    """
+
+    # 0) relayout이 없다면 아예 업데이트 할 필요 없음
+    if not relayout:
+        raise PreventUpdate
+
+    # 1) relayoutData에 'scene.camera' 전체 오브젝트가 있는지 먼저 확인
+    try:
+        if "scene.camera" in relayout and isinstance(relayout["scene.camera"], dict):
+            cam_obj = relayout["scene.camera"]
+            camera = cam_store.copy() if isinstance(cam_store, dict) else {}
+            eye = cam_obj.get("eye", camera.get("eye", {}))
+            center = cam_obj.get("center", camera.get("center", {}))
+            up = cam_obj.get("up", camera.get("up", {}))
+            new_camera = {"eye": eye, "center": center, "up": up}
+            debug_msg = "scene.camera 객체 전체로부터 시점 저장됨"
+            return new_camera, True, debug_msg
+    except Exception as e:
+        err = f"카메라 전체 객체 파싱 오류: {e}"
+        return cam_store, True, err
+
+    # 2) 개별 키 형태인지 확인
+    camera_keys = [k for k in relayout.keys() if k.startswith("scene.camera.")]
+    if not camera_keys:
+        raise PreventUpdate
+
+    try:
+        camera = cam_store.copy() if isinstance(cam_store, dict) else {}
+        eye = camera.get("eye", {}).copy()
+        center = camera.get("center", {}).copy()
+        up = camera.get("up", {}).copy()
+        updated = False
+
+        for k, v in relayout.items():
+            if k.startswith("scene.camera.eye."):
+                comp = k.split(".")[-1]
+                eye[comp] = v
+                updated = True
+            elif k.startswith("scene.camera.center."):
+                comp = k.split(".")[-1]
+                center[comp] = v
+                updated = True
+            elif k.startswith("scene.camera.up."):
+                comp = k.split(".")[-1]
+                up[comp] = v
+                updated = True
+
+        if not updated:
+            raise PreventUpdate
+
+        new_camera = {"eye": eye, "center": center, "up": up}
+        changed = [(k, relayout[k]) for k in relayout.keys() if k.startswith("scene.camera.")]
+        debug_msg = "카메라 변경 감지:\n" + "\n".join(f"{k}: {v}" for k, v in changed)
+        return new_camera, True, debug_msg
+
+    except PreventUpdate:
+        raise
+    except Exception as e:
+        err = f"카메라 저장 중 오류: {e}"
+        return cam_store, True, err
+
+
+# ───────────────────── ⑤ 추가 모달 토글 콜백 ─────────────────────
 @callback(
     Output("modal-sensor-add", "is_open"),
     Input("btn-sensor-add",   "n_clicks"),
     Input("add-sensor-close", "n_clicks"),
     Input("add-sensor-save",  "n_clicks"),
-    State("modal-sensor-add","is_open"),
+    State("modal-sensor-add", "is_open"),
     prevent_initial_call=True,
 )
 def toggle_add_modal(b_add, b_close, b_save, is_open):
-    trig = ctx.triggered_id
+    trig = dash.callback_context.triggered_id
     if trig == "btn-sensor-add":
         return True
     if trig in ("add-sensor-close", "add-sensor-save"):
@@ -444,7 +637,7 @@ def toggle_add_modal(b_add, b_close, b_save, is_open):
     return is_open
 
 
-# ───────────────────── ⑧ 추가 미리보기 ─────────────────────
+# ───────────────────── ⑥ 추가 미리보기 콜백 ─────────────────────
 @callback(
     Output("add-sensor-preview", "figure"),
     Output("add-sensor-alert",   "children"),
@@ -453,17 +646,33 @@ def toggle_add_modal(b_add, b_close, b_save, is_open):
     State("ddl-concrete",     "value"),
     State("add-sensor-id",    "value"),
     State("add-sensor-coords","value"),
+    State("toggle-lines",     "value"),   # ← 메인 뷰 보조선 토글 상태
     prevent_initial_call=True,
 )
-def add_sensor_preview(_, conc_id, sensor_id, coords_txt):
+def add_sensor_preview(_, conc_id, sensor_id, coords_txt, show_lines):
+    """
+    센서 추가 모달에서:
+    1) 콘크리트 + 기존 센서(파란 점) + 보조선(show_lines=True인 경우)
+    2) 새로 추가할 센서를 파란 점(크기 6)으로 미리보기
+    3) 이미 존재하는 ID가 입력되면 Alert 반환
+    """
+    # 콘크리트, 센서 ID, 좌표 입력 검사
     if not conc_id:
         return dash.no_update, "콘크리트를 먼저 선택하세요", True
     if not sensor_id:
         return dash.no_update, "센서 ID를 입력하세요", True
+
+    # (추가) 동일 콘크리트 내 기존 센서 ID 리스트 조회
+    df_sensor_full = api_sensor.load_all_sensors()
+    df_same = df_sensor_full[df_sensor_full["concrete_id"] == conc_id]
+    existing_ids = df_same["sensor_id"].tolist()
+    if sensor_id in existing_ids:
+        return dash.no_update, f"이미 존재하는 Sensor ID: {sensor_id}", True
+
     if not coords_txt:
         return dash.no_update, "좌표를 입력하세요 (예: [1,1,0])", True
 
-    # 콘크리트 뷰 생성
+    # 1) 콘크리트 정보 로드 & 기본 Mesh 그리기
     try:
         conc_row = api_concrete.load_all().query("concrete_id == @conc_id").iloc[0]
         conc_dims = ast.literal_eval(conc_row["dims"])
@@ -472,7 +681,74 @@ def add_sensor_preview(_, conc_id, sensor_id, coords_txt):
     except Exception:
         return go.Figure(), "콘크리트 정보를 불러올 수 없음", True
 
-    # 좌표 파싱
+    # 2) 현재 콘크리트에 속한 기존 센서 정보를 모두 가져와서 그리기 (파란 점, 크기 4)
+    all_xs, all_ys, all_zs = [], [], []
+    for idx, row in df_same.iterrows():
+        try:
+            dims = ast.literal_eval(row["dims"])
+            x_s, y_s, z_s = float(dims["nodes"][0]), float(dims["nodes"][1]), float(dims["nodes"][2])
+        except Exception:
+            x_s, y_s, z_s = 0.0, 0.0, 0.0
+        all_xs.append(x_s); all_ys.append(y_s); all_zs.append(z_s)
+
+    # (1) 파란 점으로 기존 센서 모두 그리기 (크기 4)
+    fig_conc.add_trace(go.Scatter3d(
+        x=all_xs, y=all_ys, z=all_zs,
+        mode="markers",
+        marker=dict(size=4, color="blue", opacity=0.8),
+        hoverinfo="skip",
+        name="Existing Sensors",
+    ))
+
+    # (2) show_lines=True일 때만 보조선을 그리기
+    if show_lines:
+        for x_s, y_s, z_s in zip(all_xs, all_ys, all_zs):
+            # ── (a) 수직 보조선: (x_s, y_s, 0) → (x_s, y_s, z_s)
+            fig_conc.add_trace(go.Scatter3d(
+                x=[x_s, x_s],
+                y=[y_s, y_s],
+                z=[0, z_s],
+                mode="lines",
+                line=dict(color="gray", width=2, dash="dash"),
+                hoverinfo="skip",
+                showlegend=False,
+            ))
+
+            # ── (b) XY 평면 X축 투영 (y=y_s, z=0)
+            x_ints = get_polygon_intersections_x(y_s, conc_nodes)
+            if x_ints:
+                left_candidates = [xi for xi in x_ints if xi < x_s]
+                right_candidates = [xi for xi in x_ints if xi > x_s]
+                x_min_bound = max(left_candidates) if left_candidates else x_s
+                x_max_bound = min(right_candidates) if right_candidates else x_s
+                fig_conc.add_trace(go.Scatter3d(
+                    x=[x_min_bound, x_max_bound],
+                    y=[y_s, y_s],
+                    z=[0, 0],
+                    mode="lines",
+                    line=dict(color="gray", width=2, dash="dash"),
+                    hoverinfo="skip",
+                    showlegend=False,
+                ))
+
+            # ── (c) XY 평면 Y축 투영 (x=x_s, z=0)
+            y_ints = get_polygon_intersections_y(x_s, conc_nodes)
+            if y_ints:
+                down_candidates = [yi for yi in y_ints if yi < y_s]
+                up_candidates = [yi for yi in y_ints if yi > y_s]
+                y_min_bound = max(down_candidates) if down_candidates else y_s
+                y_max_bound = min(up_candidates) if up_candidates else y_s
+                fig_conc.add_trace(go.Scatter3d(
+                    x=[x_s, x_s],
+                    y=[y_min_bound, y_max_bound],
+                    z=[0, 0],
+                    mode="lines",
+                    line=dict(color="gray", width=2, dash="dash"),
+                    hoverinfo="skip",
+                    showlegend=False,
+                ))
+
+    # 3) coords_txt 파싱 → 새로 추가할 센서 좌표
     try:
         xyz = ast.literal_eval(coords_txt)
         if not (isinstance(xyz, (list, tuple)) and len(xyz) == 3):
@@ -481,12 +757,19 @@ def add_sensor_preview(_, conc_id, sensor_id, coords_txt):
     except Exception:
         return dash.no_update, "좌표 형식이 잘못되었습니다 (예: [1,1,0])", True
 
-    # 센서 파란 점으로 미리보기
-    fig_conc = overlay_sensor(fig_conc, xyz, selected=False)
+    # 4) 새로 추가할 센서를 파란 점(크기 6)으로 표시
+    fig_conc.add_trace(go.Scatter3d(
+        x=[xyz[0]], y=[xyz[1]], z=[xyz[2]],
+        mode="markers",
+        marker=dict(size=6, color="yellow", opacity=0.6),
+        name="Preview New Sensor",
+        hoverinfo="skip",
+    ))
+
     return fig_conc, "", False
 
 
-# ───────────────────── ⑨ 추가 저장 ────────────────────────
+# ───────────────────── ⑦ 추가 저장 콜백 ─────────────────────
 @callback(
     Output("tbl-sensor", "data_timestamp", allow_duplicate=True),
     Output("add-sensor-alert", "children", allow_duplicate=True),
@@ -499,8 +782,23 @@ def add_sensor_preview(_, conc_id, sensor_id, coords_txt):
     prevent_initial_call=True,
 )
 def add_sensor_save(_, conc_id, sensor_id, coords_txt):
+    """
+    센서 추가 시:
+    1) 콘크리트를 선택했는지, ID와 좌표를 입력했는지 확인
+    2) 동일 콘크리트 내에 이미 같은 ID가 있으면 Alert 반환 후 저장 중단
+    3) ID/좌표 형식 모두 정상일 경우 api_sensor.add_sensor 호출
+    4) 성공하면 data_timestamp를 갱신 → 메인 뷰 테이블 재로딩
+    """
     if not (conc_id and sensor_id):
         return dash.no_update, "콘크리트 및 센서 ID를 입력하세요", "danger", True
+
+    # (추가) 동일 콘크리트 내 기존 센서 ID 리스트 조회
+    df_sensor_full = api_sensor.load_all_sensors()
+    df_same = df_sensor_full[df_sensor_full["concrete_id"] == conc_id]
+    existing_ids = df_same["sensor_id"].tolist()
+    if sensor_id in existing_ids:
+        return dash.no_update, f"이미 존재하는 Sensor ID: {sensor_id}", "danger", True
+
     if not coords_txt:
         return dash.no_update, "좌표를 입력하세요 (예: [1,1,0])", "danger", True
 
@@ -513,16 +811,17 @@ def add_sensor_save(_, conc_id, sensor_id, coords_txt):
     except Exception:
         return dash.no_update, "좌표 형식이 잘못되었습니다 (예: [1,1,0])", "danger", True
 
-    # 센서 추가
+    # 실제 추가
     try:
         api_sensor.add_sensor(conc_id, sensor_id, {"nodes": xyz})
     except Exception as e:
         return dash.no_update, f"추가 실패: {e}", "danger", True
 
+    # data_timestamp를 업데이트해서 테이블 갱신 트리거
     return pd.Timestamp.utcnow().value, "추가 완료", "success", True
 
 
-# ───────────────────── ⑩ 삭제 컨펌 토글 ───────────────────
+# ───────────────────── ⑧ 삭제 컨펌 토글 콜백 ───────────────────
 @callback(
     Output("confirm-del-sensor", "displayed"),
     Input("btn-sensor-del", "n_clicks"),
@@ -557,7 +856,7 @@ def delete_sensor_confirm(_click, sel, tbl_data, conc_id):
     return pd.Timestamp.utcnow().value, f"{sensor_id} 삭제 완료", "warning", True
 
 
-# ───────────────────── ⑪ 수정 모달 토글 ───────────────────
+# ───────────────────── ⑨ 수정 모달 토글 콜백 ───────────────────
 @callback(
     Output("modal-sensor-edit", "is_open"),
     Output("edit-sensor-concrete-id", "data"),
@@ -570,24 +869,34 @@ def delete_sensor_confirm(_click, sel, tbl_data, conc_id):
     prevent_initial_call=True,
 )
 def toggle_edit_modal(b_open, b_close, b_save, sel, tbl_data, conc_id):
-    trig = ctx.triggered_id
+    trig = dash.callback_context.triggered_id
+    # "수정" 버튼을 누르면, 선택된 센서 정보(콘크리트ID + 센서ID)를 저장 후 모달 열기
     if trig == "btn-sensor-edit" and sel and conc_id:
         row = pd.DataFrame(tbl_data).iloc[sel[0]]
         return True, conc_id, row["sensor_id"]
     return False, dash.no_update, dash.no_update
 
 
-# ───────────────────── ⑫ 수정 모달 필드 채우기 ───────────────
+# ───────────────────── ⑩ 수정 모달 필드 채우기 콜백 ─────────────────────
 @callback(
     Output("edit-sensor-id", "value"),
     Output("edit-sensor-coords", "value"),
-    Output("edit-sensor-preview","figure"),
-    Output("edit-sensor-alert","children"),
-    Output("edit-sensor-alert","is_open"),
-    Input("modal-sensor-edit","is_open"),
-    State("edit-sensor-concrete-id","data"), State("edit-sensor-id-store","data"),
+    Output("edit-sensor-preview", "figure"),
+    Output("edit-sensor-alert", "children"),
+    Output("edit-sensor-alert", "is_open"),
+    Input("modal-sensor-edit", "is_open"),
+    State("edit-sensor-concrete-id", "data"),
+    State("edit-sensor-id-store", "data"),
+    State("edit-toggle-lines", "value"),      # ← 모달 내 보조선 토글 스위치 상태
 )
-def fill_edit_sensor(opened, conc_id, sensor_id):
+def fill_edit_sensor(opened, conc_id, sensor_id, show_lines):
+    """
+    수정 모달이 열릴 때:
+    1) 콘크리트 + 모든 센서를 먼저 그리고
+    2) show_lines=True 면 보조선을 그리고
+    3) 해당 센서만 빨간 점(크기 6)으로 강조
+    4) edit-sensor-id, edit-sensor-coords 필드에 값을 채움
+    """
     if not opened or not (conc_id and sensor_id):
         raise PreventUpdate
 
@@ -600,92 +909,291 @@ def fill_edit_sensor(opened, conc_id, sensor_id):
     except Exception:
         fig_conc = go.Figure()
 
-    # 2) 센서 정보 로드
+    # 2) 현재 콘크리트에 속한 모든 센서 정보를 가져와서 그리기 (파란 점, 크기 4)
     df_sensor_full = api_sensor.load_all_sensors()
-    df_row = df_sensor_full[
-        (df_sensor_full["concrete_id"] == conc_id) &
-        (df_sensor_full["sensor_id"]    == sensor_id)
-    ]
-    if df_row.empty:
-        return sensor_id, "", fig_conc, "", False
+    df_same = df_sensor_full[df_sensor_full["concrete_id"] == conc_id].copy()
 
-    try:
-        dims_sensor = ast.literal_eval(df_row.iloc[0]["dims"])
-        x, y, z = dims_sensor["nodes"]
+    all_xs, all_ys, all_zs = [], [], []
+    all_ids = []
+    for idx, row in df_same.iterrows():
+        try:
+            dims = ast.literal_eval(row["dims"])
+            x_s, y_s, z_s = float(dims["nodes"][0]), float(dims["nodes"][1]), float(dims["nodes"][2])
+        except Exception:
+            x_s, y_s, z_s = 0.0, 0.0, 0.0
+        all_xs.append(x_s); all_ys.append(y_s); all_zs.append(z_s)
+        all_ids.append(row["sensor_id"])
+
+    # 모든 센서를 파란 점(크기 4)으로 추가
+    fig_conc.add_trace(go.Scatter3d(
+        x=all_xs, y=all_ys, z=all_zs,
+        mode="markers",
+        marker=dict(size=4, color="blue", opacity=0.8),
+        customdata=all_ids,
+        hoverinfo="skip",
+        name="All Sensors (for edit)",
+    ))
+
+    # 3) 보조선(show_lines=True 일 때만)
+    if show_lines:
+        for x_s, y_s, z_s in zip(all_xs, all_ys, all_zs):
+            # ① 수직 보조선
+            fig_conc.add_trace(go.Scatter3d(
+                x=[x_s, x_s],
+                y=[y_s, y_s],
+                z=[0, z_s],
+                mode="lines",
+                line=dict(color="gray", width=2, dash="dash"),
+                hoverinfo="skip",
+                showlegend=False,
+            ))
+            # ② XY 평면 X축 투영
+            x_ints = get_polygon_intersections_x(y_s, conc_nodes)
+            if x_ints:
+                left_candidates = [xi for xi in x_ints if xi < x_s]
+                right_candidates = [xi for xi in x_ints if xi > x_s]
+                if left_candidates:
+                    x_min_bound = max(left_candidates)
+                else:
+                    x_min_bound = x_s
+                if right_candidates:
+                    x_max_bound = min(right_candidates)
+                else:
+                    x_max_bound = x_s
+                fig_conc.add_trace(go.Scatter3d(
+                    x=[x_min_bound, x_max_bound],
+                    y=[y_s, y_s],
+                    z=[0, 0],
+                    mode="lines",
+                    line=dict(color="gray", width=2, dash="dash"),
+                    hoverinfo="skip",
+                    showlegend=False,
+                ))
+            # ③ XY 평면 Y축 투영
+            y_ints = get_polygon_intersections_y(x_s, conc_nodes)
+            if y_ints:
+                down_candidates = [yi for yi in y_ints if yi < y_s]
+                up_candidates = [yi for yi in y_ints if yi > y_s]
+                if down_candidates:
+                    y_min_bound = max(down_candidates)
+                else:
+                    y_min_bound = y_s
+                if up_candidates:
+                    y_max_bound = min(up_candidates)
+                else:
+                    y_max_bound = y_s
+                fig_conc.add_trace(go.Scatter3d(
+                    x=[x_s, x_s],
+                    y=[y_min_bound, y_max_bound],
+                    z=[0, 0],
+                    mode="lines",
+                    line=dict(color="gray", width=2, dash="dash"),
+                    hoverinfo="skip",
+                    showlegend=False,
+                ))
+
+    # 4) 수정 대상 센서만 빨간 점(크기 6)으로 강조
+    matching = df_same[df_same["sensor_id"] == sensor_id]
+    coords_txt = ""
+    if not matching.empty:
+        dims_sensor = ast.literal_eval(matching.iloc[0]["dims"])
+        x, y, z = float(dims_sensor["nodes"][0]), float(dims_sensor["nodes"][1]), float(dims_sensor["nodes"][2])
         coords_txt = f"[{x}, {y}, {z}]"
-        fig_all = overlay_sensor(fig_conc, [x, y, z], selected=True)
-    except Exception:
-        coords_txt = ""
-        fig_all = fig_conc
+        fig_conc.add_trace(go.Scatter3d(
+            x=[x], y=[y], z=[z],
+            mode="markers",
+            marker=dict(size=6, color="red"),  # ← 빨간 점의 크기 6
+            name="Selected Sensor (for edit)",
+            hoverinfo="skip",
+        ))
 
-    return sensor_id, coords_txt, fig_all, "", False
+    # * 센서 ID 필드에는 기존 sensor_id 값을 채워서 보여줌 (이제 수정 가능)
+    return sensor_id, coords_txt, fig_conc, "", False
 
 
-# ───────────────────── ⑬ 수정 미리보기 ─────────────────────
+# ───────────────────── ⑪ 수정 미리보기 콜백 ─────────────────────
 @callback(
-    Output("edit-sensor-preview","figure",    allow_duplicate=True),
-    Output("edit-sensor-alert",   "children",  allow_duplicate=True),
-    Output("edit-sensor-alert",   "is_open",   allow_duplicate=True),
-    Input("edit-sensor-build","n_clicks"),
-    State("edit-sensor-coords","value"),
-    State("edit-sensor-concrete-id","data"),
-    State("edit-sensor-id-store","data"),
+    Output("edit-sensor-preview", "figure", allow_duplicate=True),
+    Output("edit-sensor-alert", "children", allow_duplicate=True),
+    Output("edit-sensor-alert", "is_open", allow_duplicate=True),
+    Input("edit-sensor-build", "n_clicks"),           # “새로고침” 버튼 클릭
+    Input("edit-toggle-lines", "value"),              # 모달 내 보조선 스위치 값
+    State("edit-sensor-coords", "value"),             # 수정할 좌표
+    State("edit-sensor-concrete-id", "data"),         # 현재 콘크리트 ID
+    State("edit-sensor-id-store", "data"),            # 수정 중인 센서 ID
+    State("edit-sensor-id", "value"),                 # 수정된 ID
     prevent_initial_call=True,
 )
-def edit_sensor_preview(_, coords_txt, conc_id, sensor_id):
-    # 1) 콘크리트 피겨 로드
+def edit_sensor_preview(n_clicks, show_lines, coords_txt, conc_id, sensor_id, new_sensor_id):
+    """
+    수정 모달에서:
+    - '새로고침' 버튼(n_clicks) OR
+    - '모달 내 보조선 표시' 스위치(show_lines)
+    둘 중 하나가 변경되면 실행됩니다.
+
+    1) 콘크리트 + (수정 대상 제외) 나머지 센서를 파란 점으로 그림
+    2) show_lines=True 면 보조선을 그림
+    3) 입력된 coords_txt로 수정된 센서를 빨간 점으로 그림
+    4) new_sensor_id가 기존 다른 센서와 중복되면 Alert 표시
+    """
+    # 1) 콘크리트 정보 로드 & 기본 Mesh 그리기
     try:
         conc_row = api_concrete.load_all().query("concrete_id == @conc_id").iloc[0]
         conc_dims = ast.literal_eval(conc_row["dims"])
         conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
         fig_conc = make_concrete_fig(conc_nodes, conc_h)
     except Exception:
+        # 콘크리트 정보 로드 실패 시 빈 Figure와 에러 토스트 반환
         return dash.no_update, "콘크리트 정보를 불러올 수 없음", True
 
-    # 2) 좌표 파싱
+    # 2) 수정 중인 센서를 제외한 "나머지 센서들"을 파란 점으로 먼저 그리기
+    df_sensor_full = api_sensor.load_all_sensors()
+    df_same = df_sensor_full[df_sensor_full["concrete_id"] == conc_id].copy()
+
+    for idx, row in df_same.iterrows():
+        sid = row["sensor_id"]
+        # (★) 수정 대상 sensor_id는 제외하고 그린다
+        if sid == sensor_id:
+            continue
+
+        try:
+            dims = ast.literal_eval(row["dims"])
+            x_s, y_s, z_s = float(dims["nodes"][0]), float(dims["nodes"][1]), float(dims["nodes"][2])
+        except Exception:
+            x_s, y_s, z_s = 0.0, 0.0, 0.0
+
+        fig_conc.add_trace(go.Scatter3d(
+            x=[x_s], y=[y_s], z=[z_s],
+            mode="markers",
+            marker=dict(size=4, color="blue"),  # 비수정 센서: 파란 점 (크기 4)
+            hoverinfo="skip",
+            showlegend=False,
+        ))
+
+    # 3) show_lines=True일 때만 보조선을 그린다
+    if show_lines:
+        for idx, row in df_same.iterrows():
+            try:
+                dims = ast.literal_eval(row["dims"])
+                x_s, y_s, z_s = float(dims["nodes"][0]), float(dims["nodes"][1]), float(dims["nodes"][2])
+            except Exception:
+                x_s, y_s, z_s = 0.0, 0.0, 0.0
+
+            # (a) 수직 보조선: (x_s, y_s, 0) → (x_s, y_s, z_s)
+            fig_conc.add_trace(go.Scatter3d(
+                x=[x_s, x_s],
+                y=[y_s, y_s],
+                z=[0, z_s],
+                mode="lines",
+                line=dict(color="gray", width=2, dash="dash"),
+                hoverinfo="skip",
+                showlegend=False,
+            ))
+
+            # (b) XY 평면 내 X축 투영 (y=y_s, z=0)
+            x_ints = get_polygon_intersections_x(y_s, conc_nodes)
+            if x_ints:
+                left_candidates = [xi for xi in x_ints if xi < x_s]
+                right_candidates = [xi for xi in x_ints if xi > x_s]
+                x_min_bound = max(left_candidates) if left_candidates else x_s
+                x_max_bound = min(right_candidates) if right_candidates else x_s
+                fig_conc.add_trace(go.Scatter3d(
+                    x=[x_min_bound, x_max_bound],
+                    y=[y_s, y_s],
+                    z=[0, 0],
+                    mode="lines",
+                    line=dict(color="gray", width=2, dash="dash"),
+                    hoverinfo="skip",
+                    showlegend=False,
+                ))
+
+            # (c) XY 평면 내 Y축 투영 (x=x_s, z=0)
+            y_ints = get_polygon_intersections_y(x_s, conc_nodes)
+            if y_ints:
+                down_candidates = [yi for yi in y_ints if yi < y_s]
+                up_candidates = [yi for yi in y_ints if yi > y_s]
+                y_min_bound = max(down_candidates) if down_candidates else y_s
+                y_max_bound = min(up_candidates) if up_candidates else y_s
+                fig_conc.add_trace(go.Scatter3d(
+                    x=[x_s, x_s],
+                    y=[y_min_bound, y_max_bound],
+                    z=[0, 0],
+                    mode="lines",
+                    line=dict(color="gray", width=2, dash="dash"),
+                    hoverinfo="skip",
+                    showlegend=False,
+                ))
+
+    # 4) new_sensor_id가 기존 다른 센서 목록과 중복되는지 검사
+    existing_ids = df_same["sensor_id"].tolist()
+    # 자기 자신(sensor_id) 제외
+    other_ids = [sid for sid in existing_ids if sid != sensor_id]
+    if new_sensor_id:
+        if new_sensor_id in other_ids:
+            return dash.no_update, f"이미 존재하는 Sensor ID: {new_sensor_id}", True
+
+    # 5) coords_txt(수정할 좌표) 파싱
     if not coords_txt:
         return dash.no_update, "좌표를 입력하세요 (예: [1,1,0])", True
-
     try:
         xyz = ast.literal_eval(coords_txt)
         if not (isinstance(xyz, (list, tuple)) and len(xyz) == 3):
             raise ValueError
-        xyz = [float(x) for x in xyz]
+        x_new, y_new, z_new = [float(v) for v in xyz]
     except Exception:
         return dash.no_update, "좌표 형식이 잘못되었습니다 (예: [1,1,0])", True
 
-    # 3) 파란 점으로 모든 센서 표시 후, 빨간 점으로 해당 센서 강조
-    fig_conc = make_concrete_fig(conc_nodes, conc_h)
-    df_all = api_sensor.load_all_sensors()
-    df_this = df_all[df_all["concrete_id"] == conc_id]
-    for _, row in df_this.iterrows():
-        try:
-            dims = ast.literal_eval(row["dims"])
-            coord = dims.get("nodes", [])
-            fig_conc = overlay_sensor(fig_conc, coord, selected=False)
-        except Exception:
-            continue
+    # 6) 수정된 센서를 빨간 점(크기 6)으로 표시
+    fig_conc.add_trace(go.Scatter3d(
+        x=[x_new], y=[y_new], z=[z_new],
+        mode="markers",
+        marker=dict(size=6, color="red"),  # 수정된 센서: 빨간 점 (크기 6)
+        name="Preview Edited Sensor",
+        hoverinfo="skip",
+    ))
 
-    fig_conc = overlay_sensor(fig_conc, xyz, selected=True)
     return fig_conc, "", False
 
 
-# ───────────────────── ⑭ 수정 저장 ────────────────────────
+# ───────────────────── ⑫ 수정 저장 콜백 ────────────────────────
 @callback(
-    Output("tbl-sensor","data_timestamp", allow_duplicate=True),
-    Output("edit-sensor-alert","children",    allow_duplicate=True),
-    Output("edit-sensor-alert","color",       allow_duplicate=True),
-    Output("edit-sensor-alert","is_open",     allow_duplicate=True),
-    Input("edit-sensor-save","n_clicks"),
-    State("edit-sensor-concrete-id","data"), State("edit-sensor-id-store","data"),
-    State("edit-sensor-coords","value"),
+    Output("tbl-sensor", "data_timestamp", allow_duplicate=True),
+    Output("edit-sensor-alert", "children", allow_duplicate=True),
+    Output("edit-sensor-alert", "color", allow_duplicate=True),
+    Output("edit-sensor-alert", "is_open", allow_duplicate=True),
+    Input("edit-sensor-save", "n_clicks"),
+    State("edit-sensor-concrete-id", "data"),
+    State("edit-sensor-id-store", "data"),
+    State("edit-sensor-id", "value"),        # ← 새로운 센서 ID (수정 가능)
+    State("edit-sensor-coords", "value"),    # 수정된 좌표
     prevent_initial_call=True,
 )
-def edit_sensor_save(_, conc_id, sensor_id, coords_txt):
-    if not (conc_id and sensor_id):
+def edit_sensor_save(_, conc_id, old_sensor_id, new_sensor_id, coords_txt):
+    """
+    수정 버튼 클릭 시:
+    1) 콘크리트를 선택했는지, ID와 좌표를 입력했는지 확인
+    2) 동일 콘크리트 내에 이미 같은 ID가 있으면 Alert 반환 후 저장 중단
+    3) new_sensor_id가 old_sensor_id와 다른지 확인
+       - 다르면 기존 센서 삭제 후 새로운 ID로 같은 좌표를 추가
+       - 같으면 api_sensor.update_sensor로 좌표만 업데이트
+    4) 성공 시 data_timestamp를 반환하여 테이블을 갱신 트리거
+    """
+    if not (conc_id and old_sensor_id):
         return dash.no_update, "데이터 로드 실패", "danger", True
+    if not new_sensor_id:
+        return dash.no_update, "센서 ID를 입력하세요", "danger", True
     if not coords_txt:
         return dash.no_update, "좌표를 입력하세요 (예: [1,1,0])", "danger", True
+
+    # (추가) 동일 콘크리트 내 기존 센서 ID 리스트 조회
+    df_sensor_full = api_sensor.load_all_sensors()
+    df_same = df_sensor_full[df_sensor_full["concrete_id"] == conc_id]
+    existing_ids = df_same["sensor_id"].tolist()
+    # 자기 자신(old_sensor_id) 제외한 ID 목록
+    other_ids = [sid for sid in existing_ids if sid != old_sensor_id]
+
+    if new_sensor_id in other_ids:
+        return dash.no_update, f"이미 존재하는 Sensor ID: {new_sensor_id}", "danger", True
 
     # 좌표 파싱
     try:
@@ -696,9 +1204,24 @@ def edit_sensor_save(_, conc_id, sensor_id, coords_txt):
     except Exception:
         return dash.no_update, "좌표 형식이 잘못되었습니다 (예: [1,1,0])", "danger", True
 
-    try:
-        api_sensor.update_sensor(conc_id, sensor_id, {"nodes": xyz})
-    except Exception as e:
-        return dash.no_update, f"수정 실패: {e}", "danger", True
+    # (1) ID가 변경되었는지 확인
+    if new_sensor_id and (new_sensor_id != old_sensor_id):
+        # a) 기존 센서 삭제
+        try:
+            api_sensor.delete_sensor(conc_id, old_sensor_id)
+        except Exception as e:
+            return dash.no_update, f"기존 센서 삭제 실패: {e}", "danger", True
+        # b) 새로운 ID로 동일한 좌표 추가
+        try:
+            api_sensor.add_sensor(conc_id, new_sensor_id, {"nodes": xyz})
+        except Exception as e:
+            return dash.no_update, f"새 센서 추가 실패: {e}", "danger", True
+    else:
+        # ID가 같다면, 좌표만 업데이트
+        try:
+            api_sensor.update_sensor(conc_id, old_sensor_id, {"nodes": xyz})
+        except Exception as e:
+            return dash.no_update, f"위치 업데이트 실패: {e}", "danger", True
 
-    return pd.Timestamp.utcnow().value, f"{sensor_id} 수정 완료", "success", True
+    # 수정 완료 후 테이블 갱신 트리거
+    return pd.Timestamp.utcnow().value, f"{new_sensor_id or old_sensor_id} 수정 완료", "success", True

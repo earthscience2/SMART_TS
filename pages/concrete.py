@@ -4,13 +4,14 @@
 
 변경 사항
 ────────
-* 형상 선택(drop‑down) 제거.
+* 형상 선택(drop-down) 제거.
 * 사용자가 평면상의 노드 목록과 높이(H)를 직접 입력하도록 UI 전면 개편.
 * origin, gravity_vec 옵션 삭제.
 * JSON 대신 `ast.literal_eval` 로 파싱하여 Python 리터럴 형식의 dims 처리.
 * CSV 스키마 변경 → `dims = {"nodes": [[x,y], ...], "h": 높이}` (Python dict 문자열).
 * `make_fig` : 임의 다각형을 높이 H 만큼 압출(extrude)하여 3-D 메쉬·Edge 생성.
 * API 시그니처 : `api.add_concrete(name, dims)` / `api.update_concrete(cid, name, dims, {})`.
+* 왼쪽 DataTable 아래에 “추가/수정/삭제” 버튼 그룹을 배치(센서 페이지와 동일한 형태).
 """
 from __future__ import annotations
 
@@ -82,27 +83,38 @@ def make_fig(nodes: list[list[float]], h: float) -> go.Figure:
     return fig
 
 # ────────────────────────────── 레이아웃 ────────────────────────────
-layout = dbc.Container(fluid=True, children=[
+layout = dbc.Container(
+    fluid=True, 
+    children=[
     # 좌측 목록 + 우측 3-D 뷰
     dbc.Row([
         dbc.Col([
             dash_table.DataTable(
-                id="tbl", page_size=20, row_selectable="single",
-                style_table={"overflowY": "auto", "height": "75vh"},
+                id="tbl",
+                page_size=20,
+                row_selectable="single",
+                style_table={"overflowY": "auto", "height": "65vh"},
                 style_cell={"whiteSpace": "nowrap", "textAlign": "center"},
                 style_header={"backgroundColor": "#f1f3f5", "fontWeight": 600},
             ),
-            dbc.Button("+ 추가", id="btn-add", color="success", className="mt-2 w-100"),
+            dbc.ButtonGroup(
+                [
+                    dbc.Button("+ 추가", id="btn-add", color="success", className="mt-2"),
+                    dbc.Button("수정", id="btn-edit", color="secondary", className="mt-2", disabled=True),
+                    dbc.Button("삭제", id="btn-del",  color="danger", className="mt-2", disabled=True),
+                ],
+                size="sm",
+                vertical=True,
+                className="w-100",
+            )
         ], md=3),
+
         dbc.Col([
             dbc.Row([
                 dbc.Col(html.H5(id="sel-title"), align="center"),
-                dbc.Col(dbc.ButtonGroup([
-                    dbc.Button("수정", id="btn-edit", color="secondary", disabled=True),
-                    dbc.Button("삭제", id="btn-del",  color="danger",    disabled=True),
-                ], size="sm"), width="auto"),
+                # 오른쪽 상단 버튼 그룹 제거(이 부분이 삭제됨)
             ], className="mb-1 g-2"),
-            dcc.Graph(id="viewer", style={"height": "70vh"}),
+            dcc.Graph(id="viewer", style={"height": "80vh"}),
         ], md=9),
     ], className="g-3"),
 
@@ -117,8 +129,18 @@ layout = dbc.Container(fluid=True, children=[
             dbc.Input(id="add-name", placeholder="이름", className="mb-2"),
             dbc.Alert(id="add-alert", is_open=False, duration=3000, color="danger"),
             dbc.Row([
-                dbc.Col(dbc.Textarea(id="add-nodes", placeholder="노드 목록 (예: [(1,0),(1,1),(0,1),(0,0)])", rows=3), width=12),
-                dbc.Col(dbc.Input(id="add-h", placeholder="높이 H", type="number"), width=12)
+                dbc.Col(
+                    dbc.Textarea(
+                        id="add-nodes",
+                        placeholder="노드 목록 (예: [(1,0),(1,1),(0,1),(0,0)])",
+                        rows=3
+                    ),
+                    width=12
+                ),
+                dbc.Col(
+                    dbc.Input(id="add-h", placeholder="높이 H", type="number"),
+                    width=12
+                )
             ], className="mb-2"),
             dcc.Graph(id="add-preview", style={"height": "45vh"}, className="border"),
         ]),
@@ -137,13 +159,19 @@ layout = dbc.Container(fluid=True, children=[
             dbc.Input(id="edit-name", className="mb-2"),
             dbc.Alert(id="edit-alert", is_open=False, duration=3000, color="danger"),
             dbc.Row([
-                dbc.Col(dbc.Textarea(id="edit-nodes", rows=3), width=12),
-                dbc.Col(dbc.Input(id="edit-h", type="number"), width=12)
+                dbc.Col(
+                    dbc.Textarea(id="edit-nodes", rows=3),
+                    width=12
+                ),
+                dbc.Col(
+                    dbc.Input(id="edit-h", type="number"),
+                    width=12
+                )
             ], className="mb-2"),
             dcc.Graph(id="edit-preview", style={"height": "45vh"}, className="border"),
         ]),
         dbc.ModalFooter([
-            dbc.Button("미리보기", id="edit-build", color="info", className="me-autò"),
+            dbc.Button("미리보기", id="edit-build", color="info", className="me-auto"),
             dbc.Button("저장",     id="edit-save",  color="primary"),
             dbc.Button("닫기",     id="edit-close", color="secondary"),
         ]),
@@ -152,35 +180,48 @@ layout = dbc.Container(fluid=True, children=[
 
 # ───────────────────── ① 테이블 로드 ──────────────────────
 @callback(
-    Output("tbl", "data"), Output("tbl", "columns"), Output("tbl", "selected_rows"),
-    Input("init", "n_intervals"), Input("tbl", "data_timestamp"),
+    Output("tbl", "data"),
+    Output("tbl", "columns"),
+    Output("tbl", "selected_rows"),
+    Input("init", "n_intervals"),
+    Input("tbl", "data_timestamp"),
     prevent_initial_call=False
 )
 def refresh_table(_, __):
     df = api.load_all()
-    cols = [{"name": "ID", "id": "concrete_id"},
-            {"name": "이름", "id": "name"}]
-    return df.to_dict("records"), cols, ([0] if not df.empty else [])
+    cols = [
+        {"name": "ID",   "id": "concrete_id"},
+        {"name": "이름", "id": "name"}
+    ]
+    # 테이블이 비어있지 않으면 첫 번째 행을 기본 선택
+    sel = [0] if not df.empty else []
+    return df.to_dict("records"), cols, sel
 
 # ───────────────────── ② 행 선택 → 3-D ────────────────────
 @callback(
-    Output("viewer", "figure"), Output("sel-title", "children"),
-    Output("btn-edit", "disabled"), Output("btn-del", "disabled"),
-    Input("tbl", "selected_rows"), State("tbl", "data")
+    Output("viewer", "figure"),
+    Output("sel-title", "children"),
+    Output("btn-edit", "disabled"),
+    Output("btn-del", "disabled"),
+    Input("tbl", "selected_rows"),
+    State("tbl", "data"),
+    prevent_initial_call=True
 )
 def show_selected(sel, data):
     if not sel:
         return go.Figure(), "", True, True
+
     row = pd.DataFrame(data).iloc[sel[0]]
     try:
         dims = ast.literal_eval(row["dims"])
     except Exception:
         raise PreventUpdate
+
     nodes, h = dims.get("nodes"), dims.get("h")
     title = f"{row['concrete_id']} · {row['name']}"
     return make_fig(nodes, h), title, False, False
 
-# ───────────────────── ③ 추가-모달 토글 ───────────────────
+# ───────────────────── ③ 추가-모달 토글 ─────────────────────
 @callback(
     Output("modal-add", "is_open"),
     Input("btn-add",   "n_clicks"),
@@ -200,9 +241,11 @@ def toggle_add_modal(b_add, b_close, b_save, is_open):
 # ───────────────────── ④ 추가-미리보기 ─────────────────────
 @callback(
     Output("add-preview", "figure"),
-    Output("add-alert",   "children"), Output("add-alert", "is_open"),
+    Output("add-alert",   "children"),
+    Output("add-alert",   "is_open"),
     Input("add-build", "n_clicks"),
-    State("add-nodes","value"), State("add-h","value"),
+    State("add-nodes","value"),
+    State("add-h","value"),
     prevent_initial_call=True,
 )
 def add_preview(_, nodes_txt, h):
@@ -210,20 +253,27 @@ def add_preview(_, nodes_txt, h):
         return dash.no_update, "노드 목록을 입력하세요", True
     try:
         nodes = ast.literal_eval(nodes_txt)
-        if not isinstance(nodes, list) or not all(isinstance(pt, (list, tuple)) and len(pt)==2 for pt in nodes):
+        if not isinstance(nodes, list) or not all(
+            isinstance(pt, (list, tuple)) and len(pt)==2 for pt in nodes
+        ):
             raise ValueError
     except Exception:
         return dash.no_update, "노드 형식이 잘못되었습니다", True
     if h is None:
         return dash.no_update, "높이를 입력하세요", True
+
     return make_fig(nodes, float(h)), "", False
 
 # ───────────────────── ⑤ 추가-저장 ────────────────────────
 @callback(
-    Output("msg","children", allow_duplicate=True), Output("msg","color", allow_duplicate=True),
-    Output("msg","is_open", allow_duplicate=True),  Output("tbl","data_timestamp", allow_duplicate=True),
+    Output("msg","children",           allow_duplicate=True),
+    Output("msg","color",              allow_duplicate=True),
+    Output("msg","is_open",            allow_duplicate=True),
+    Output("tbl","data_timestamp",     allow_duplicate=True),
     Input("add-save","n_clicks"),
-    State("add-name","value"),  State("add-nodes","value"), State("add-h","value"),
+    State("add-name","value"),
+    State("add-nodes","value"),
+    State("add-h","value"),
     prevent_initial_call=True,
 )
 def add_save(_, name, nodes_txt, h):
@@ -233,10 +283,14 @@ def add_save(_, name, nodes_txt, h):
         nodes = ast.literal_eval(nodes_txt)
     except Exception:
         return "노드 형식이 잘못되었습니다", "danger", True, dash.no_update
-    if not isinstance(nodes, list) or not all(isinstance(pt, (list, tuple)) and len(pt)==2 for pt in nodes):
+
+    if not isinstance(nodes, list) or not all(
+        isinstance(pt, (list, tuple)) and len(pt)==2 for pt in nodes
+    ):
         return "노드 형식이 잘못되었습니다", "danger", True, dash.no_update
     if h is None:
         return "높이를 입력하세요", "danger", True, dash.no_update
+
     dims = {"nodes": nodes, "h": float(h)}
     api.add_concrete(name, dims)
     return "추가 완료", "success", True, pd.Timestamp.utcnow().value
@@ -253,16 +307,18 @@ def ask_delete(n, sel):
 
 @callback(
     Output("tbl", "data_timestamp", allow_duplicate=True),
-    Output("msg", "children",       allow_duplicate=True),
-    Output("msg", "color",          allow_duplicate=True),
-    Output("msg", "is_open",        allow_duplicate=True),
+    Output("msg", "children",         allow_duplicate=True),
+    Output("msg", "color",            allow_duplicate=True),
+    Output("msg", "is_open",          allow_duplicate=True),
     Input("confirm-del", "submit_n_clicks"),
-    State("tbl", "selected_rows"), State("tbl", "data"),
+    State("tbl", "selected_rows"),
+    State("tbl", "data"),
     prevent_initial_call=True,
 )
 def delete_row(_, sel, data):
     if not sel:
         raise PreventUpdate
+
     cid = data[sel[0]]["concrete_id"]
     api.delete_concrete(cid)
     return pd.Timestamp.utcnow().value, f"{cid} 삭제 완료", "warning", True
@@ -274,7 +330,8 @@ def delete_row(_, sel, data):
     Input("btn-edit", "n_clicks"),
     Input("edit-close", "n_clicks"),
     Input("edit-save",  "n_clicks"),
-    State("tbl", "selected_rows"), State("tbl", "data"),
+    State("tbl", "selected_rows"),
+    State("tbl", "data"),
     prevent_initial_call=True,
 )
 def open_edit(b_open, b_close, b_save, sel, data):
@@ -286,14 +343,17 @@ def open_edit(b_open, b_close, b_save, sel, data):
 # ───────────────────── ⑧ 수정-모달 필드 채우기 ───────────────
 @callback(
     Output("edit-name",  "value"),
-    Output("edit-nodes","value"), Output("edit-h","value"),
+    Output("edit-nodes","value"),
+    Output("edit-h","value"),
     Output("edit-preview","figure"),
     Input("modal-edit","is_open"),
     State("edit-id","data"),
+    prevent_initial_call=True,
 )
 def fill_edit(opened, cid):
     if not opened or not cid:
         raise PreventUpdate
+
     row   = api.load_all().query("concrete_id == @cid").iloc[0]
     dims  = ast.literal_eval(row["dims"])
     nodes, h = dims.get("nodes"), dims.get("h")
@@ -303,9 +363,11 @@ def fill_edit(opened, cid):
 # ───────────────────── ⑨ 수정-미리보기 ─────────────────────
 @callback(
     Output("edit-preview","figure", allow_duplicate=True),
-    Output("edit-alert",  "children"), Output("edit-alert","is_open"),
+    Output("edit-alert",  "children"),
+    Output("edit-alert","is_open"),
     Input("edit-build","n_clicks"),
-    State("edit-nodes","value"), State("edit-h","value"),
+    State("edit-nodes","value"),
+    State("edit-h","value"),
     prevent_initial_call=True,
 )
 def edit_preview(_, nodes_txt, h):
@@ -315,33 +377,45 @@ def edit_preview(_, nodes_txt, h):
         nodes = ast.literal_eval(nodes_txt)
     except Exception:
         return dash.no_update, "노드 형식이 잘못되었습니다", True
-    if not isinstance(nodes, list) or not all(isinstance(pt, (list, tuple)) and len(pt)==2 for pt in nodes):
+
+    if not isinstance(nodes, list) or not all(
+        isinstance(pt, (list, tuple)) and len(pt)==2 for pt in nodes
+    ):
         return dash.no_update, "노드 형식이 잘못되었습니다", True
     if h is None:
         return dash.no_update, "높이를 입력하세요", True
+
     return make_fig(nodes, float(h)), "", False
 
 # ───────────────────── ⑩ 수정-저장 ────────────────────────
 @callback(
-    Output("tbl","data_timestamp", allow_duplicate=True),
-    Output("msg","children",       allow_duplicate=True),
-    Output("msg","color",          allow_duplicate=True),
-    Output("msg","is_open",        allow_duplicate=True),
-    Input("edit-save","n_clicks"), State("edit-id","data"),
-    State("edit-name","value"), State("edit-nodes","value"), State("edit-h","value"),
+    Output("tbl","data_timestamp",     allow_duplicate=True),
+    Output("msg","children",           allow_duplicate=True),
+    Output("msg","color",              allow_duplicate=True),
+    Output("msg","is_open",            allow_duplicate=True),
+    Input("edit-save","n_clicks"),
+    State("edit-id","data"),
+    State("edit-name","value"),
+    State("edit-nodes","value"),
+    State("edit-h","value"),
     prevent_initial_call=True,
 )
 def save_edit(_, cid, name, nodes_txt, h):
     if not cid or not (name and nodes_txt):
         return dash.no_update, "입력 누락!", "danger", True
+
     try:
         nodes = ast.literal_eval(nodes_txt)
     except Exception:
         return dash.no_update, "노드 형식이 잘못되었습니다", "danger", True
-    if not isinstance(nodes, list) or not all(isinstance(pt, (list, tuple)) and len(pt)==2 for pt in nodes):
+
+    if not isinstance(nodes, list) or not all(
+        isinstance(pt, (list, tuple)) and len(pt)==2 for pt in nodes
+    ):
         return dash.no_update, "노드 형식이 잘못되었습니다", "danger", True
     if h is None:
         return dash.no_update, "높이를 입력하세요", "danger", True
+
     dims = {"nodes": nodes, "h": float(h)}
     api.update_concrete(cid, name, dims)
     return pd.Timestamp.utcnow().value, f"{cid} 수정 완료", "success", True

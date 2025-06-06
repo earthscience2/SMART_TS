@@ -1,71 +1,95 @@
-from __future__ import annotations
-import json
-from pathlib import Path
-from typing import Dict
+# api_concrete.py
 import pandas as pd
+import os
+import csv
+from datetime import datetime
 
-# ─── CSV 기반 콘크리트 DB ──────────────────────────────────────────────
-CSV_PATH   = Path("concrete.csv")
-_COLS      = ["concrete_id", "name", "dims", "created"]
+# ──────────────────────────────────────────────────────────────────────────────
+# 설정: CSV 파일 경로
+# ──────────────────────────────────────────────────────────────────────────────
+DATA_DIR = "data"
+CONCRETE_CSV = os.path.join(DATA_DIR, "concrete.csv")
 
+# 필요한 폴더가 없으면 생성
+os.makedirs(DATA_DIR, exist_ok=True)
 
-def _load_df() -> pd.DataFrame:
-    if CSV_PATH.exists():
-        return pd.read_csv(CSV_PATH, dtype=str)
-    return pd.DataFrame(columns=_COLS)
-
-
-def _save_df(df: pd.DataFrame) -> None:
-    CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(CSV_PATH, index=False, encoding="utf-8")
-
-
-# ─── public CRUD API ──────────────────────────────────────────────────
-
+# ──────────────────────────────────────────────────────────────────────────────
+# 1) load_all(): 콘크리트 메타데이터 전체 로드
+# ──────────────────────────────────────────────────────────────────────────────
 def load_all() -> pd.DataFrame:
-    """CSV 전체 로드"""
-    return _load_df()
-
-
-def save_all(df: pd.DataFrame) -> None:
-    """CSV 전체 덮어쓰기 저장 (외부에서 직접 수정 후 호출)"""
-    _save_df(df)
-
-
-def add_concrete(name: str, dims: Dict) -> str:
     """
-    새 콘크리트 행 추가 → 생성된 ID 반환
-    dims: {"nodes": [[x,y], ...], "h": 높이}
+    concrete.csv 파일을 읽어 DataFrame으로 반환.
+    컬럼: ["concrete_id","name","dims","created"]
+    파일이 없으면 빈 DataFrame 반환.
     """
-    df = _load_df()
-    cid = f"C{len(df) + 1:03d}"
-    row = {
-        "concrete_id": cid,
-        "name": name,
-        "dims": json.dumps(dims, ensure_ascii=False),
-        "created": pd.Timestamp.utcnow().isoformat(timespec="seconds") + "Z",
-    }
-    df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
-    _save_df(df)
-    return cid
+    if not os.path.isfile(CONCRETE_CSV):
+        # 파일이 없으면 빈 DataFrame with columns 반환
+        return pd.DataFrame(columns=["concrete_id", "name", "dims", "created"])
 
+    df = pd.read_csv(CONCRETE_CSV, dtype=str)
+    # 기존 CSV가 column 순서가 다를 수 있으니 항상 통일
+    expected_cols = ["concrete_id", "name", "dims", "created"]
+    df = df[expected_cols]
+    return df
 
-def update_concrete(concrete_id: str, name: str, dims: Dict) -> None:
+# ──────────────────────────────────────────────────────────────────────────────
+# 2) add_concrete(name, dims): 새로운 콘크리트 추가
+# ──────────────────────────────────────────────────────────────────────────────
+def add_concrete(name: str, dims: dict):
     """
-    기존 ID 행을 찾아 name + dims 필드만 업데이트
-    dims: {"nodes": [[x,y], ...], "h": 높이}
+    새로운 concrete_id를 자동 생성(예: C001 → C002 → ...)
+    - name: 콘크리트 이름 (문자열)
+    - dims: Python dict, 예: {"nodes": [[1,1],[1,2],[2,2],[2,1]], "h":0.5}
+    CSV에 한 줄 추가 후 저장.
     """
-    df = _load_df()
-    m  = df["concrete_id"] == concrete_id
-    if not m.any():
-        raise ValueError(f"콘크리트 ID '{concrete_id}'를 찾을 수 없습니다.")
-    df.loc[m, ["name"]] = name
-    df.loc[m, "dims"]   = json.dumps(dims, ensure_ascii=False)
-    _save_df(df)
+    df = load_all()
+    # 새로운 ID 생성: 기존에 가장 큰 숫자 + 1
+    if df.empty:
+        new_id = "C001"
+    else:
+        # "C" 제거한 뒤 숫자로 변환 → 최대값 + 1
+        existing = df["concrete_id"].apply(lambda x: int(x.strip().lstrip("C")))
+        max_num = existing.max()
+        new_id = f"C{max_num+1:03d}"
 
+    now_iso = datetime.utcnow().isoformat() + "Z"
+    dims_str = str(dims).replace("'", '"')  # JSON처럼 double quote로 맞추기
+    new_row = {"concrete_id": new_id, "name": name, "dims": dims_str, "created": now_iso}
 
-def delete_concrete(concrete_id: str) -> None:
-    """해당 콘크리트 ID 행을 삭제"""
-    df = _load_df()
-    df = df[df["concrete_id"] != concrete_id].reset_index(drop=True)
-    _save_df(df)
+    df = df.append(new_row, ignore_index=True)
+    df.to_csv(CONCRETE_CSV, index=False, quoting=csv.QUOTE_NONNUMERIC)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 3) update_concrete(concrete_id, name, dims): 기존 콘크리트 수정
+# ──────────────────────────────────────────────────────────────────────────────
+def update_concrete(concrete_id: str, name: str, dims: dict):
+    """
+    주어진 concrete_id 행을 찾아 name, dims를 수정 후 저장.
+    created 컬럼은 변경하지 않음.
+    """
+    df = load_all()
+    if df.empty or concrete_id not in df["concrete_id"].values:
+        raise ValueError(f"존재하지 않는 Concrete ID: {concrete_id}")
+
+    # dims를 문자열로 변경
+    dims_str = str(dims).replace("'", '"')
+    # 해당 행의 name, dims 값 바꿈
+    df.loc[df["concrete_id"] == concrete_id, "name"] = name
+    df.loc[df["concrete_id"] == concrete_id, "dims"] = dims_str
+
+    # 저장
+    df.to_csv(CONCRETE_CSV, index=False, quoting=csv.QUOTE_NONNUMERIC)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 4) delete_concrete(concrete_id): 콘크리트 삭제 (행 하나 삭제)
+# ──────────────────────────────────────────────────────────────────────────────
+def delete_concrete(concrete_id: str):
+    """
+    주어진 concrete_id 행을 삭제 후 CSV 저장.
+    """
+    df = load_all()
+    if df.empty or concrete_id not in df["concrete_id"].values:
+        raise ValueError(f"존재하지 않는 Concrete ID: {concrete_id}")
+
+    df = df[df["concrete_id"] != concrete_id]
+    df.to_csv(CONCRETE_CSV, index=False, quoting=csv.QUOTE_NONNUMERIC)
