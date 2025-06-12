@@ -46,3 +46,21 @@ button.btn {
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0,0,0,.06);
 }
+
+/* assets/custom.css */
+.project-card {
+  /* 카드 기본 스타일 */
+  width: 100px;
+  height: 100px;
+  background-color: #f0f8ff;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 8px rgba(135, 206, 250, 0.4);
+}
+
+.project-card:hover {
+  /* 마우스 올릴 때 확대 & 그림자 강조 */
+  transform: scale(1.05);
+  box-shadow: 0 6px 12px rgba(135, 206, 250, 0.6);
+}

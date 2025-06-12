@@ -1,0 +1,4 @@
+user_id,user_pw,user_name,user_email,user_phone,user_role,user_company,active,created_at,updated_at
+admin,admin,admin,admin@smartcs.com,010-1234-5678,admin,smartcs,true,2025-06-05T10:54:02+00:00Z,2025-06-05T10:54:02+00:00Z
+heegu,12345,희구,heegu@smartcs.com,010-1234-5678,user,smartcs,true,2025-06-05T10:54:02+00:00Z,2025-06-05T10:54:02+00:00Z
+heeje,12345,희제,heeje@smartcs.com,010-1234-5678,user,smartcs,false,2025-06-05T10:54:02+00:00Z,2025-06-05T10:54:02+00:00Z

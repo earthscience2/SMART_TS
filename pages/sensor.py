@@ -191,9 +191,9 @@ layout = dbc.Container(
                         html.H6("센서 리스트", className="mt-3"),
                         dash_table.DataTable(
                             id="tbl-sensor",
-                            page_size=20,
+                            page_size=10,
                             row_selectable="single",
-                            style_table={"overflowY": "auto", "height": "50vh"},
+                            style_table={"overflowY": "auto", "height": "45vh"},
                             style_cell={"whiteSpace": "nowrap", "textAlign": "center"},
                             style_header={"backgroundColor": "#f1f3f5", "fontWeight": 600},
                         ),
@@ -313,7 +313,7 @@ def init_dropdown(selected_value):
     """
     df_conc = api_concrete.load_all()
     options = [
-        {"label": f"{row['concrete_id']} · {row['name']}", "value": row["concrete_id"]}
+        {"label": f"{row['name']}", "value": row["concrete_pk"]}
         for _, row in df_conc.iterrows()
     ]
     if not options:
@@ -356,7 +356,7 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
     # ────────────────────────────────────────────────────────
     # 1) 콘크리트 정보 로드
     try:
-        conc_row = api_concrete.load_all().query("concrete_id == @selected_conc").iloc[0]
+        conc_row = api_concrete.load_all().query("concrete_pk == @selected_conc").iloc[0]
         conc_dims = ast.literal_eval(conc_row["dims"])
         conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
     except Exception:
@@ -367,7 +367,7 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
 
     # 3) 센서 데이터 로드
     df_sensor = api_sensor.load_all_sensors()
-    df_sensor = df_sensor[df_sensor["concrete_id"] == selected_conc].copy()
+    df_sensor = df_sensor[df_sensor["concrete_pk"] == selected_conc].copy()
 
     xs, ys, zs = [], [], []
     sensor_ids = []
@@ -383,10 +383,10 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
             x = y = z = 0.0
             pos_str = "파싱 오류"
         xs.append(x); ys.append(y); zs.append(z)
-        sensor_ids.append(row["sensor_id"])
+        sensor_ids.append(row["sensor_pk"])
         colors.append("blue")
         sizes.append(8)
-        table_data.append({"sensor_id": row["sensor_id"], "position": pos_str})
+        table_data.append({"name": row["name"], "position": pos_str})
 
     # 4) 첫 번째 센서 강조
     selected_indices = []
@@ -457,7 +457,7 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
 
     # 8) 테이블 컬럼 정의
     columns = [
-        {"name": "Sensor ID", "id": "sensor_id"},
+        {"name": "name", "id": "name"},
         {"name": "위치 (x,y,z)", "id": "position"},
     ]
 
@@ -542,10 +542,9 @@ def on_sensor_select(selected_rows, tbl_data, current_fig, cam_store):
 
 
 # ───────────────────── ④ 카메라 정보 저장 콜백 ────────────────────
+# ───────────────────── ④ 카메라 정보 저장 콜백 (알림 비활성화 버전) ────────────────────
 @callback(
     Output("camera-store", "data"),
-    Output("camera-toast", "is_open"),
-    Output("camera-toast", "children"),
     Input("viewer-sensor", "relayoutData"),
     State("camera-store", "data"),
     prevent_initial_call=True,
@@ -559,7 +558,7 @@ def capture_camera(relayout, cam_store):
     두 경우를 모두 감지하여 camera-store에 저장.
     """
 
-    # 0) relayout이 없다면 아예 업데이트 할 필요 없음
+    # 0) relayout이 없다면 업데이트할 필요 없음
     if not relayout:
         raise PreventUpdate
 
@@ -567,16 +566,14 @@ def capture_camera(relayout, cam_store):
     try:
         if "scene.camera" in relayout and isinstance(relayout["scene.camera"], dict):
             cam_obj = relayout["scene.camera"]
-            camera = cam_store.copy() if isinstance(cam_store, dict) else {}
-            eye = cam_obj.get("eye", camera.get("eye", {}))
-            center = cam_obj.get("center", camera.get("center", {}))
-            up = cam_obj.get("up", camera.get("up", {}))
+            eye = cam_obj.get("eye", {})
+            center = cam_obj.get("center", {})
+            up = cam_obj.get("up", {})
             new_camera = {"eye": eye, "center": center, "up": up}
-            debug_msg = "scene.camera 객체 전체로부터 시점 저장됨"
-            return new_camera, True, debug_msg
-    except Exception as e:
-        err = f"카메라 전체 객체 파싱 오류: {e}"
-        return cam_store, True, err
+            return new_camera
+    except Exception:
+        # 파싱 에러가 나면 기존 cam_store 유지
+        return cam_store
 
     # 2) 개별 키 형태인지 확인
     camera_keys = [k for k in relayout.keys() if k.startswith("scene.camera.")]
@@ -608,15 +605,14 @@ def capture_camera(relayout, cam_store):
             raise PreventUpdate
 
         new_camera = {"eye": eye, "center": center, "up": up}
-        changed = [(k, relayout[k]) for k in relayout.keys() if k.startswith("scene.camera.")]
-        debug_msg = "카메라 변경 감지:\n" + "\n".join(f"{k}: {v}" for k, v in changed)
-        return new_camera, True, debug_msg
+        return new_camera
 
     except PreventUpdate:
         raise
-    except Exception as e:
-        err = f"카메라 저장 중 오류: {e}"
-        return cam_store, True, err
+    except Exception:
+        # 어떤 오류가 나더라도 기존 cam_store 유지
+        return cam_store
+
 
 
 # ───────────────────── ⑤ 추가 모달 토글 콜백 ─────────────────────
@@ -649,7 +645,7 @@ def toggle_add_modal(b_add, b_close, b_save, is_open):
     State("toggle-lines",     "value"),   # ← 메인 뷰 보조선 토글 상태
     prevent_initial_call=True,
 )
-def add_sensor_preview(_, conc_id, sensor_id, coords_txt, show_lines):
+def add_sensor_preview(_, conc_pk, sensor_pk, coords_txt, show_lines):
     """
     센서 추가 모달에서:
     1) 콘크리트 + 기존 센서(파란 점) + 보조선(show_lines=True인 경우)
@@ -657,24 +653,24 @@ def add_sensor_preview(_, conc_id, sensor_id, coords_txt, show_lines):
     3) 이미 존재하는 ID가 입력되면 Alert 반환
     """
     # 콘크리트, 센서 ID, 좌표 입력 검사
-    if not conc_id:
+    if not conc_pk:
         return dash.no_update, "콘크리트를 먼저 선택하세요", True
-    if not sensor_id:
+    if not sensor_pk:
         return dash.no_update, "센서 ID를 입력하세요", True
 
     # (추가) 동일 콘크리트 내 기존 센서 ID 리스트 조회
     df_sensor_full = api_sensor.load_all_sensors()
-    df_same = df_sensor_full[df_sensor_full["concrete_id"] == conc_id]
-    existing_ids = df_same["sensor_id"].tolist()
-    if sensor_id in existing_ids:
-        return dash.no_update, f"이미 존재하는 Sensor ID: {sensor_id}", True
+    df_same = df_sensor_full[df_sensor_full["concrete_pk"] == conc_pk]
+    existing_ids = df_same["sensor_pk"].tolist()
+    if sensor_pk in existing_ids:
+        return dash.no_update, f"이미 존재하는 Sensor ID: {sensor_pk}", True
 
     if not coords_txt:
         return dash.no_update, "좌표를 입력하세요 (예: [1,1,0])", True
 
     # 1) 콘크리트 정보 로드 & 기본 Mesh 그리기
     try:
-        conc_row = api_concrete.load_all().query("concrete_id == @conc_id").iloc[0]
+        conc_row = api_concrete.load_all().query("concrete_pk == @conc_pk").iloc[0]
         conc_dims = ast.literal_eval(conc_row["dims"])
         conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
         fig_conc = make_concrete_fig(conc_nodes, conc_h)
@@ -781,7 +777,7 @@ def add_sensor_preview(_, conc_id, sensor_id, coords_txt, show_lines):
     State("add-sensor-coords","value"),
     prevent_initial_call=True,
 )
-def add_sensor_save(_, conc_id, sensor_id, coords_txt):
+def add_sensor_save(_, conc_pk, sensor_pk, coords_txt):
     """
     센서 추가 시:
     1) 콘크리트를 선택했는지, ID와 좌표를 입력했는지 확인
@@ -789,15 +785,15 @@ def add_sensor_save(_, conc_id, sensor_id, coords_txt):
     3) ID/좌표 형식 모두 정상일 경우 api_sensor.add_sensor 호출
     4) 성공하면 data_timestamp를 갱신 → 메인 뷰 테이블 재로딩
     """
-    if not (conc_id and sensor_id):
+    if not (conc_pk and sensor_pk):
         return dash.no_update, "콘크리트 및 센서 ID를 입력하세요", "danger", True
 
     # (추가) 동일 콘크리트 내 기존 센서 ID 리스트 조회
     df_sensor_full = api_sensor.load_all_sensors()
-    df_same = df_sensor_full[df_sensor_full["concrete_id"] == conc_id]
-    existing_ids = df_same["sensor_id"].tolist()
-    if sensor_id in existing_ids:
-        return dash.no_update, f"이미 존재하는 Sensor ID: {sensor_id}", "danger", True
+    df_same = df_sensor_full[df_sensor_full["concrete_pk"] == conc_pk]
+    existing_ids = df_same["sensor_pk"].tolist()
+    if sensor_pk in existing_ids:
+        return dash.no_update, f"이미 존재하는 Sensor ID: {sensor_pk}", "danger", True
 
     if not coords_txt:
         return dash.no_update, "좌표를 입력하세요 (예: [1,1,0])", "danger", True
@@ -813,7 +809,7 @@ def add_sensor_save(_, conc_id, sensor_id, coords_txt):
 
     # 실제 추가
     try:
-        api_sensor.add_sensor(conc_id, sensor_id, {"nodes": xyz})
+        api_sensor.add_sensor(conc_pk, sensor_pk, {"nodes": xyz})
     except Exception as e:
         return dash.no_update, f"추가 실패: {e}", "danger", True
 
@@ -842,18 +838,18 @@ def ask_delete_sensor(n, sel):
     State("ddl-concrete", "value"),
     prevent_initial_call=True,
 )
-def delete_sensor_confirm(_click, sel, tbl_data, conc_id):
-    if not (sel and conc_id):
+def delete_sensor_confirm(_click, sel, tbl_data, conc_pk):
+    if not (sel and conc_pk):
         raise PreventUpdate
 
     row = pd.DataFrame(tbl_data).iloc[sel[0]]
-    sensor_id = row["sensor_id"]
+    sensor_pk = row["sensor_pk"]
     try:
-        api_sensor.delete_sensor(conc_id, sensor_id)
+        api_sensor.delete_sensor(conc_pk, sensor_pk)
     except Exception as e:
         return dash.no_update, f"삭제 실패: {e}", "danger", True
 
-    return pd.Timestamp.utcnow().value, f"{sensor_id} 삭제 완료", "warning", True
+    return pd.Timestamp.utcnow().value, f"{sensor_pk} 삭제 완료", "warning", True
 
 
 # ───────────────────── ⑨ 수정 모달 토글 콜백 ───────────────────
@@ -868,12 +864,12 @@ def delete_sensor_confirm(_click, sel, tbl_data, conc_id):
     State("ddl-concrete", "value"),
     prevent_initial_call=True,
 )
-def toggle_edit_modal(b_open, b_close, b_save, sel, tbl_data, conc_id):
+def toggle_edit_modal(b_open, b_close, b_save, sel, tbl_data, conc_pk):
     trig = dash.callback_context.triggered_id
     # "수정" 버튼을 누르면, 선택된 센서 정보(콘크리트ID + 센서ID)를 저장 후 모달 열기
-    if trig == "btn-sensor-edit" and sel and conc_id:
+    if trig == "btn-sensor-edit" and sel and conc_pk:
         row = pd.DataFrame(tbl_data).iloc[sel[0]]
-        return True, conc_id, row["sensor_id"]
+        return True, conc_pk, row["sensor_pk"]
     return False, dash.no_update, dash.no_update
 
 
@@ -889,7 +885,7 @@ def toggle_edit_modal(b_open, b_close, b_save, sel, tbl_data, conc_id):
     State("edit-sensor-id-store", "data"),
     State("edit-toggle-lines", "value"),      # ← 모달 내 보조선 토글 스위치 상태
 )
-def fill_edit_sensor(opened, conc_id, sensor_id, show_lines):
+def fill_edit_sensor(opened, conc_pk, sensor_pk, show_lines):
     """
     수정 모달이 열릴 때:
     1) 콘크리트 + 모든 센서를 먼저 그리고
@@ -897,12 +893,12 @@ def fill_edit_sensor(opened, conc_id, sensor_id, show_lines):
     3) 해당 센서만 빨간 점(크기 6)으로 강조
     4) edit-sensor-id, edit-sensor-coords 필드에 값을 채움
     """
-    if not opened or not (conc_id and sensor_id):
+    if not opened or not (conc_pk and sensor_pk):
         raise PreventUpdate
 
     # 1) 콘크리트 정보 로드
     try:
-        conc_row = api_concrete.load_all().query("concrete_id == @conc_id").iloc[0]
+        conc_row = api_concrete.load_all().query("concrete_pk == @conc_pk").iloc[0]
         conc_dims = ast.literal_eval(conc_row["dims"])
         conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
         fig_conc = make_concrete_fig(conc_nodes, conc_h)
@@ -911,7 +907,7 @@ def fill_edit_sensor(opened, conc_id, sensor_id, show_lines):
 
     # 2) 현재 콘크리트에 속한 모든 센서 정보를 가져와서 그리기 (파란 점, 크기 4)
     df_sensor_full = api_sensor.load_all_sensors()
-    df_same = df_sensor_full[df_sensor_full["concrete_id"] == conc_id].copy()
+    df_same = df_sensor_full[df_sensor_full["concrete_pk"] == conc_pk].copy()
 
     all_xs, all_ys, all_zs = [], [], []
     all_ids = []
@@ -922,7 +918,7 @@ def fill_edit_sensor(opened, conc_id, sensor_id, show_lines):
         except Exception:
             x_s, y_s, z_s = 0.0, 0.0, 0.0
         all_xs.append(x_s); all_ys.append(y_s); all_zs.append(z_s)
-        all_ids.append(row["sensor_id"])
+        all_ids.append(row["sensor_pk"])
 
     # 모든 센서를 파란 점(크기 4)으로 추가
     fig_conc.add_trace(go.Scatter3d(
@@ -993,7 +989,7 @@ def fill_edit_sensor(opened, conc_id, sensor_id, show_lines):
                 ))
 
     # 4) 수정 대상 센서만 빨간 점(크기 6)으로 강조
-    matching = df_same[df_same["sensor_id"] == sensor_id]
+    matching = df_same[df_same["sensor_pk"] == sensor_pk]
     coords_txt = ""
     if not matching.empty:
         dims_sensor = ast.literal_eval(matching.iloc[0]["dims"])
@@ -1008,7 +1004,7 @@ def fill_edit_sensor(opened, conc_id, sensor_id, show_lines):
         ))
 
     # * 센서 ID 필드에는 기존 sensor_id 값을 채워서 보여줌 (이제 수정 가능)
-    return sensor_id, coords_txt, fig_conc, "", False
+    return sensor_pk, coords_txt, fig_conc, "", False
 
 
 # ───────────────────── ⑪ 수정 미리보기 콜백 ─────────────────────
@@ -1024,7 +1020,7 @@ def fill_edit_sensor(opened, conc_id, sensor_id, show_lines):
     State("edit-sensor-id", "value"),                 # 수정된 ID
     prevent_initial_call=True,
 )
-def edit_sensor_preview(n_clicks, show_lines, coords_txt, conc_id, sensor_id, new_sensor_id):
+def edit_sensor_preview(n_clicks, show_lines, coords_txt, conc_pk, sensor_pk, new_sensor_id):
     """
     수정 모달에서:
     - '새로고침' 버튼(n_clicks) OR
@@ -1038,7 +1034,7 @@ def edit_sensor_preview(n_clicks, show_lines, coords_txt, conc_id, sensor_id, ne
     """
     # 1) 콘크리트 정보 로드 & 기본 Mesh 그리기
     try:
-        conc_row = api_concrete.load_all().query("concrete_id == @conc_id").iloc[0]
+        conc_row = api_concrete.load_all().query("concrete_pk == @conc_pk").iloc[0]
         conc_dims = ast.literal_eval(conc_row["dims"])
         conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
         fig_conc = make_concrete_fig(conc_nodes, conc_h)
@@ -1048,12 +1044,12 @@ def edit_sensor_preview(n_clicks, show_lines, coords_txt, conc_id, sensor_id, ne
 
     # 2) 수정 중인 센서를 제외한 "나머지 센서들"을 파란 점으로 먼저 그리기
     df_sensor_full = api_sensor.load_all_sensors()
-    df_same = df_sensor_full[df_sensor_full["concrete_id"] == conc_id].copy()
+    df_same = df_sensor_full[df_sensor_full["concrete_pk"] == conc_pk].copy()
 
     for idx, row in df_same.iterrows():
-        sid = row["sensor_id"]
+        sid = row["sensor_pk"]
         # (★) 수정 대상 sensor_id는 제외하고 그린다
-        if sid == sensor_id:
+        if sid == sensor_pk:
             continue
 
         try:
@@ -1125,9 +1121,9 @@ def edit_sensor_preview(n_clicks, show_lines, coords_txt, conc_id, sensor_id, ne
                 ))
 
     # 4) new_sensor_id가 기존 다른 센서 목록과 중복되는지 검사
-    existing_ids = df_same["sensor_id"].tolist()
-    # 자기 자신(sensor_id) 제외
-    other_ids = [sid for sid in existing_ids if sid != sensor_id]
+    existing_ids = df_same["sensor_pk"].tolist()
+    # 자기 자신(sensor_pk) 제외
+    other_ids = [sid for sid in existing_ids if sid != sensor_pk]
     if new_sensor_id:
         if new_sensor_id in other_ids:
             return dash.no_update, f"이미 존재하는 Sensor ID: {new_sensor_id}", True
@@ -1168,7 +1164,7 @@ def edit_sensor_preview(n_clicks, show_lines, coords_txt, conc_id, sensor_id, ne
     State("edit-sensor-coords", "value"),    # 수정된 좌표
     prevent_initial_call=True,
 )
-def edit_sensor_save(_, conc_id, old_sensor_id, new_sensor_id, coords_txt):
+def edit_sensor_save(_, conc_pk, old_sensor_pk, new_sensor_pk, coords_txt):
     """
     수정 버튼 클릭 시:
     1) 콘크리트를 선택했는지, ID와 좌표를 입력했는지 확인
@@ -1178,22 +1174,22 @@ def edit_sensor_save(_, conc_id, old_sensor_id, new_sensor_id, coords_txt):
        - 같으면 api_sensor.update_sensor로 좌표만 업데이트
     4) 성공 시 data_timestamp를 반환하여 테이블을 갱신 트리거
     """
-    if not (conc_id and old_sensor_id):
+    if not (conc_pk and old_sensor_pk):
         return dash.no_update, "데이터 로드 실패", "danger", True
-    if not new_sensor_id:
+    if not new_sensor_pk:
         return dash.no_update, "센서 ID를 입력하세요", "danger", True
     if not coords_txt:
         return dash.no_update, "좌표를 입력하세요 (예: [1,1,0])", "danger", True
 
     # (추가) 동일 콘크리트 내 기존 센서 ID 리스트 조회
     df_sensor_full = api_sensor.load_all_sensors()
-    df_same = df_sensor_full[df_sensor_full["concrete_id"] == conc_id]
-    existing_ids = df_same["sensor_id"].tolist()
-    # 자기 자신(old_sensor_id) 제외한 ID 목록
-    other_ids = [sid for sid in existing_ids if sid != old_sensor_id]
+    df_same = df_sensor_full[df_sensor_full["concrete_pk"] == conc_pk]
+    existing_ids = df_same["sensor_pk"].tolist()
+    # 자기 자신(old_sensor_pk) 제외한 ID 목록
+    other_ids = [sid for sid in existing_ids if sid != old_sensor_pk]
 
-    if new_sensor_id in other_ids:
-        return dash.no_update, f"이미 존재하는 Sensor ID: {new_sensor_id}", "danger", True
+    if new_sensor_pk in other_ids:
+        return dash.no_update, f"이미 존재하는 Sensor ID: {new_sensor_pk}", "danger", True
 
     # 좌표 파싱
     try:
@@ -1205,23 +1201,23 @@ def edit_sensor_save(_, conc_id, old_sensor_id, new_sensor_id, coords_txt):
         return dash.no_update, "좌표 형식이 잘못되었습니다 (예: [1,1,0])", "danger", True
 
     # (1) ID가 변경되었는지 확인
-    if new_sensor_id and (new_sensor_id != old_sensor_id):
+    if new_sensor_pk and (new_sensor_pk != old_sensor_pk):
         # a) 기존 센서 삭제
         try:
-            api_sensor.delete_sensor(conc_id, old_sensor_id)
+            api_sensor.delete_sensor(conc_pk, old_sensor_pk)
         except Exception as e:
             return dash.no_update, f"기존 센서 삭제 실패: {e}", "danger", True
         # b) 새로운 ID로 동일한 좌표 추가
         try:
-            api_sensor.add_sensor(conc_id, new_sensor_id, {"nodes": xyz})
+            api_sensor.add_sensor(conc_pk, new_sensor_pk, {"nodes": xyz})
         except Exception as e:
             return dash.no_update, f"새 센서 추가 실패: {e}", "danger", True
     else:
         # ID가 같다면, 좌표만 업데이트
         try:
-            api_sensor.update_sensor(conc_id, old_sensor_id, {"nodes": xyz})
+            api_sensor.update_sensor(conc_pk, old_sensor_pk, {"nodes": xyz})
         except Exception as e:
             return dash.no_update, f"위치 업데이트 실패: {e}", "danger", True
 
     # 수정 완료 후 테이블 갱신 트리거
-    return pd.Timestamp.utcnow().value, f"{new_sensor_id or old_sensor_id} 수정 완료", "success", True
+    return pd.Timestamp.utcnow().value, f"{new_sensor_pk or old_sensor_pk} 수정 완료", "success", True
