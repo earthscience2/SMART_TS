@@ -7,7 +7,7 @@ import logging
 from ITS_CLI import config, tcp_client
 
 # 0) 로거 설정
-LOG_PATH = '/log/auto_sensor.log'
+LOG_PATH = 'log/auto_sensor.log'
 logging.basicConfig(
     filename=LOG_PATH,
     level=logging.INFO,
