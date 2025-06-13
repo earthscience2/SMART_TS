@@ -97,6 +97,7 @@ def generate_calculix_inp(nodes, elements, node_temperatures, output_path):
     
 def make_inp(concrete, sensor_data_list, latest_csv):
     plan_points = json.loads(concrete['dims'])['nodes']
+    plan_points_dict = {i+1: tuple(pt) for i, pt in enumerate(plan_points)}
     thickness = float(json.loads(concrete['dims'])['h'])
     element_size = float(concrete['con_unit'])
 
@@ -120,17 +121,9 @@ def make_inp(concrete, sensor_data_list, latest_csv):
 
             if sensor_count == len(sensors):
                 print(time, sensors)
-                plan_points = {
-                    1: (0, 0),
-                    2: (10, 0),
-                    3: (10, 10),
-                    4: (5, 10),
-                    5: (5, 5),
-                    6: (0, 5)
-                }
 
                 #============ 여기부터 inp 생성 주요 코드 ============
-                polygon = Polygon([plan_points[i] for i in plan_points])
+                polygon = Polygon([plan_points_dict[i] for i in plan_points_dict])
                 nodes = {}
                 node_id = 1
                 z_levels = np.arange(0, thickness + 1e-3, element_size)

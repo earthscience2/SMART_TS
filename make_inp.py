@@ -8,35 +8,37 @@ Created on Tue Jun  3 16:54:24 2025
 import numpy as np
 from shapely.geometry import Polygon, Point
 from scipy.interpolate import RBFInterpolator
+import matplotlib.pyplot as plt
 
-def make_inp_all(sensor_list):
-
-def make_inp(sensor_id):
-
-    
 # 1. Define geometry input
 plan_points = {
-    1: (0, 0),
-    2: (10, 0),
-    3: (10, 10),
-    4: (5, 10),
-    5: (5, 5),
-    6: (0, 5)
+    1: (1, 1),
+    2: (2, 1),
+    3: (2, 2),
+    4: (1, 2),
+
 }
-thickness = 3.0
-element_size = 1.0
+thickness = 0.5
+element_size = 0.1
+
+
 
 # 2. Sensor data: sensor_id, x, y, z, temperature
 sensors = [
-    (1, 3, 2, 1.0, 50.5),
-    (2, 6, 2, 1.5, 40.6),
-    (3, 9, 2, 1.0, 70.0),
-    (4, 9, 7, 1.5, 65.0),
+    (1, 1.0, 1.0, 0.0, 29.8696),
+    (2, 6.0, 2, 1.5, 40.6),
+    (3, 9.0, 2, 1.0, 70.0),
+    (4, 9.0, 7, 1.5, 65.0),
     (5, 7, 7, 0.5, 80.0)
 ]
-
 # 3. Create 3D mesh inside polygon volume
 polygon = Polygon([plan_points[i] for i in plan_points])
+x, y = polygon.exterior.xy
+
+plt.plot(x, y)
+plt.fill(x, y, alpha=0.3)
+plt.axis('equal')
+plt.show()
 nodes = {}
 node_id = 1
 z_levels = np.arange(0, thickness + 1e-3, element_size)
