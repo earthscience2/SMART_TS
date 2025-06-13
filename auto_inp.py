@@ -13,13 +13,33 @@ def get_files(path):
 
 def get_latest_csv(path):
     # 해당 폴더 내 YYYYMMDDHH.csv 형식의 파일 중 가장 최근 파일명 반환
-    files = [f for f in os.listdir(path) if f.endswith('.csv') and len(f) == 14]
+    files = [f for f in os.listdir(path) if f.endswith('.inp') and len(f) == 14]
     if not files:
         return None
     # 파일명에서 날짜시간 부분만 추출해서 정렬
     files_sorted = sorted(files, key=lambda x: x[:10], reverse=True)
     # 확장자 제외한 파일명만 반환
     return os.path.splitext(files_sorted[0])[0]
+
+def get_concrete_pk_by_sensor(sensor_pk):
+    sensor_df = api_db.get_sensors_data(sensor_pk=sensor_pk)
+    if not sensor_df.empty:
+        # sensor_pk에 해당하는 row의 concrete_pk 반환
+        return sensor_df.iloc[0]['concrete_pk']
+    else:
+        return None
+    
+def get_concrete_dict(concrete_pk):
+    concrete_df = api_db.get_concrete_data(concrete_pk=concrete_pk)
+    if not concrete_df.empty:
+        return concrete_df.iloc[0].to_dict()
+    else:
+        return None
+    
+def make_inp(sensor_pk, time):
+    concrete_pk = get_concrete_pk_by_sensor(sensor_pk)
+    concrete_dict = get_concrete_dict(concrete_pk)
+    print(concrete_dict)
 
 # 센서 데이터 자동 저장 및 업데이트
 def auto_inp():
@@ -35,14 +55,14 @@ def auto_inp():
                 sensor_data_df = api_db.get_sensor_data(sensor_pk=sensor['sensor_pk'], start=None, end=None)
                 sensor_data_list = (sensor_data_df.to_dict(orient='records'))[:-1]
                 for dd in sensor_data_list:
-                    print(dd)
+                    make_inp(sensor['sensor_pk'], dd['time'])
             else:
                 print(f'{sensor["sensor_pk"]} 폴더에 파일이 있습니다.')
                 latest_csv = get_latest_csv(f'inp/{sensor["sensor_pk"]}')
                 sensor_data_df = api_db.get_sensor_data(sensor_pk=sensor['sensor_pk'], start=latest_csv, end=None)
                 sensor_data_list = (sensor_data_df.to_dict(orient='records'))[:-1]
                 for dd in sensor_data_list:
-                    print(dd)
+                    make_inp(sensor['sensor_pk'], dd['time'])
 
         else:
             os.makedirs(f'inp/{sensor["sensor_pk"]}', exist_ok=True)
@@ -50,6 +70,6 @@ def auto_inp():
             sensor_data_df = api_db.get_sensor_data(sensor_pk=sensor['sensor_pk'], start=None, end=None)
             sensor_data_list = (sensor_data_df.to_dict(orient='records'))[:-1]
             for dd in sensor_data_list:
-                print(dd)
+                make_inp(sensor['sensor_pk'], dd['time'])
 
 auto_inp()
