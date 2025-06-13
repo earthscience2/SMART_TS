@@ -43,7 +43,7 @@ def get_prev_hour_str():
     return prev_hour.strftime('%Y%m%d%H')
 
 def get_hourly_time_list(start_time=None):
-    end_dt = get_prev_hour_str()
+    end_dt = datetime.strptime(get_prev_hour_str(), '%Y%m%d%H')  # 문자열 → datetime
     if start_time is None:
         start_dt = end_dt - timedelta(days=30)
     else:
