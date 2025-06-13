@@ -1,6 +1,7 @@
 import api_db
 import os
 from datetime import datetime, timedelta
+import json
 
 def get_subfolders(path):
     # path 경로에 있는 하위 폴더(디렉토리)만 리스트로 반환
@@ -58,12 +59,8 @@ def get_hourly_time_list(start_time=None):
 
     
 def make_inp(concrete, sensor_data_list, latest_csv):
-    print(concrete)
-    print(concrete['dims'])
-    print(type(concrete['dims']))
-
-    plan_points = concrete['dims']['nodes']
-    thickness = concrete['dims']['h']
+    plan_points = json.loads(concrete['dims'])['nodes']
+    thickness = json.loads(concrete['dims'])['h']
     element_size = concrete['con_uni']
 
     start_time = latest_csv
