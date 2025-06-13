@@ -61,7 +61,7 @@ def get_hourly_time_list(start_time=None):
 def make_inp(concrete, sensor_data_list, latest_csv):
     plan_points = json.loads(concrete['dims'])['nodes']
     thickness = json.loads(concrete['dims'])['h']
-    element_size = concrete['con_uni']
+    element_size = concrete['con_unit']
 
     start_time = latest_csv
     time_list = get_hourly_time_list(start_time)
