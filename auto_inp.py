@@ -190,57 +190,53 @@ def make_inp(concrete, sensor_data_list, latest_csv):
                     temp = float(df_time.iloc[0]['temperature'])
                     sensors.append((num, position[0], position[1], position[2], temp))
                     num += 1
-            logger.debug(f"Time={time}, collected {len(sensors)}/{sensor_count} sensors")
 
-            if len(sensors) != sensor_count:
-                logger.warning(f"Skipping time {time}: incomplete sensor data")
-                continue
+            if len(sensors) == sensor_count and len(sensors) > 0:
+                # epsilon 계산 및 보간
+                coords = np.array([[x, y, z] for _, x, y, z, _ in sensors])
+                temps  = np.array([t for *_, t in sensors])
+                epsilon = compute_epsilon(coords, temps)
+                if epsilon is None:
+                    logger.error(f"Skipping interpolation at time={time} due to epsilon error")
+                    continue
 
-            # epsilon 계산 및 보간
-            coords = np.array([[x, y, z] for _, x, y, z, _ in sensors])
-            temps  = np.array([t for *_, t in sensors])
-            epsilon = compute_epsilon(coords, temps)
-            if epsilon is None:
-                logger.error(f"Skipping interpolation at time={time} due to epsilon error")
-                continue
+                # 도메인 내 노드 생성
+                polygon = Polygon(plan_points)
+                nodes = {}
+                node_id = 1
+                z_levels = np.arange(0, thickness + 1e-3, element_size)
+                x_range = np.arange(min([p[0] for p in plan_points]), max([p[0] for p in plan_points]) + element_size, element_size)
+                y_range = np.arange(min([p[1] for p in plan_points]), max([p[1] for p in plan_points]) + element_size, element_size)
+                for z in z_levels:
+                    for x in x_range:
+                        for y in y_range:
+                            if polygon.contains(Point(x, y)):
+                                nodes[node_id] = (x, y, z)
+                                node_id += 1
 
-            # 도메인 내 노드 생성
-            polygon = Polygon(plan_points)
-            nodes = {}
-            node_id = 1
-            z_levels = np.arange(0, thickness + 1e-3, element_size)
-            x_range = np.arange(min([p[0] for p in plan_points]), max([p[0] for p in plan_points]) + element_size, element_size)
-            y_range = np.arange(min([p[1] for p in plan_points]), max([p[1] for p in plan_points]) + element_size, element_size)
-            for z in z_levels:
-                for x in x_range:
-                    for y in y_range:
-                        if polygon.contains(Point(x, y)):
-                            nodes[node_id] = (x, y, z)
-                            node_id += 1
-
-            # 요소 생성
-            coord_to_node = {v: k for k, v in nodes.items()}
-            elements = {}
-            eid = 1
-            xs = sorted({c[0] for c in coord_to_node})
-            ys = sorted({c[1] for c in coord_to_node})
-            zs = sorted({c[2] for c in coord_to_node})
-            for x in xs[:-1]:
-                for y in ys[:-1]:
-                    for z in zs[:-1]:
-                        try:
-                            n000 = coord_to_node[(x, y, z)]
-                            n100 = coord_to_node[(x+element_size, y, z)]
-                            n110 = coord_to_node[(x+element_size, y+element_size, z)]
-                            n010 = coord_to_node[(x, y+element_size, z)]
-                            n001 = coord_to_node[(x, y, z+element_size)]
-                            n101 = coord_to_node[(x+element_size, y, z+element_size)]
-                            n111 = coord_to_node[(x+element_size, y+element_size, z+element_size)]
-                            n011 = coord_to_node[(x, y+element_size, z+element_size)]
-                            elements[eid] = [n000, n100, n110, n010, n001, n101, n111, n011]
-                            eid += 1
-                        except KeyError:
-                            continue
+                # 요소 생성
+                coord_to_node = {v: k for k, v in nodes.items()}
+                elements = {}
+                eid = 1
+                xs = sorted({c[0] for c in coord_to_node})
+                ys = sorted({c[1] for c in coord_to_node})
+                zs = sorted({c[2] for c in coord_to_node})
+                for x in xs[:-1]:
+                    for y in ys[:-1]:
+                        for z in zs[:-1]:
+                            try:
+                                n000 = coord_to_node[(x, y, z)]
+                                n100 = coord_to_node[(x+element_size, y, z)]
+                                n110 = coord_to_node[(x+element_size, y+element_size, z)]
+                                n010 = coord_to_node[(x, y+element_size, z)]
+                                n001 = coord_to_node[(x, y, z+element_size)]
+                                n101 = coord_to_node[(x+element_size, y, z+element_size)]
+                                n111 = coord_to_node[(x+element_size, y+element_size, z+element_size)]
+                                n011 = coord_to_node[(x, y+element_size, z+element_size)]
+                                elements[eid] = [n000, n100, n110, n010, n001, n101, n111, n011]
+                                eid += 1
+                            except KeyError:
+                                continue
 
             # 보간 실행
             interpolator = RBFInterpolator(coords, temps, kernel='gaussian', epsilon=epsilon)
@@ -258,6 +254,7 @@ def make_inp(concrete, sensor_data_list, latest_csv):
 
 # 5) 전체 실행 함수
 def auto_inp():
+    print("auto_inp started")
     logger.info("auto_inp started")
     try:
         concrete_list = api_db.get_concrete_data().to_dict(orient='records')
