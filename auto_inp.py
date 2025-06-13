@@ -5,6 +5,7 @@ import json
 from scipy.interpolate import RBFInterpolator
 from shapely.geometry import Polygon, Point
 import numpy as np
+from scipy.spatial.distance import pdist, squareform
 
 def get_subfolders(path):
     # path 경로에 있는 하위 폴더(디렉토리)만 리스트로 반환
@@ -94,15 +95,28 @@ def generate_calculix_inp(nodes, elements, node_temperatures, output_path):
         f.write("*END STEP\n")
 
     print(f'{output_path} 파일 생성 완료')
+
+def compute_epsilon(sensor_coords, sensor_temps, alpha=1.0):
+    N = sensor_coords.shape[0]
+    d_prime = np.zeros((N, N))
+    for i in range(N):
+        for j in range(i + 1, N):
+            spatial = np.linalg.norm(sensor_coords[i] - sensor_coords[j])
+            temp_diff = abs(sensor_temps[i] - sensor_temps[j])
+            d = np.sqrt(spatial**2 + alpha * temp_diff**2)
+            d_prime[i, j] = d_prime[j, i] = d
+
+    # 자기 자신 제외
+    np.fill_diagonal(d_prime, np.inf)
+    nn_distances = np.min(d_prime, axis=1)
+
+    mean_nn = np.mean(nn_distances)
+    return 1.0 / mean_nn
     
 def make_inp(concrete, sensor_data_list, latest_csv):
     plan_points = json.loads(concrete['dims'])['nodes']
-    print(plan_points)
-    plan_points_dict = {i+1: tuple(pt) for i, pt in enumerate(plan_points)}
-    print(plan_points_dict)
     thickness = float(json.loads(concrete['dims'])['h'])
     element_size = float(concrete['con_unit'])
-
     start_time = latest_csv
     time_list = get_hourly_time_list(start_time)
     sensor_count = len(sensor_data_list)
@@ -122,10 +136,15 @@ def make_inp(concrete, sensor_data_list, latest_csv):
                     temp = None
 
             if sensor_count == len(sensors):
-                print(time, thickness, element_size, plan_points_dict, sensors)
+                print(time, thickness, element_size, sensors)
+
+                sensor_coords_e = np.array([[x, y, z] for _, x, y, z, _ in sensors])
+                sensor_temps_e  = np.array([temp for _, x, y, z, temp in sensors])
+                epsilon = compute_epsilon(sensor_coords_e, sensor_temps_e)
+                print(epsilon)
 
                 #============ 여기부터 inp 생성 주요 코드 ============
-                polygon = Polygon([plan_points_dict[i] for i in plan_points_dict])
+                polygon = Polygon(plan_points)
                 nodes = {}
                 node_id = 1
                 z_levels = np.arange(0, thickness + 1e-3, element_size)
@@ -144,7 +163,8 @@ def make_inp(concrete, sensor_data_list, latest_csv):
                 sensor_temps = np.array([t for *_, t in sensors])
                 node_ids = list(nodes.keys())
                 node_coords = np.array([nodes[nid] for nid in node_ids])
-                interpolator = RBFInterpolator(sensor_coords, sensor_temps)
+
+                interpolator = RBFInterpolator(sensor_coords, sensor_temps, kernel='gaussian', epsilon=epsilon)
                 interp_temps = interpolator(node_coords)
                 node_temp_map = dict(zip(node_ids, interp_temps))
 
