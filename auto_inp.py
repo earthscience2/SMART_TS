@@ -238,15 +238,15 @@ def make_inp(concrete, sensor_data_list, latest_csv):
                             except KeyError:
                                 continue
 
-            # 보간 실행
-            interpolator = RBFInterpolator(coords, temps, kernel='gaussian', epsilon=epsilon)
-            interp_vals = interpolator(np.array([nodes[i] for i in sorted(nodes)]))
-            node_temp_map = dict(zip(sorted(nodes), interp_vals))
+                # 보간 실행
+                interpolator = RBFInterpolator(coords, temps, kernel='gaussian', epsilon=epsilon)
+                interp_vals = interpolator(np.array([nodes[i] for i in sorted(nodes)]))
+                node_temp_map = dict(zip(sorted(nodes), interp_vals))
 
-            time_dt = datetime.strptime(time, '%Y-%m-%d %H:%M:%S')
-            ts_str = time_dt.strftime('%Y%m%d%H')
-            final_path = f"inp/{cpk}/{ts_str}.inp"
-            generate_calculix_inp(nodes, elements, node_temp_map, final_path)
+                time_dt = datetime.strptime(time, '%Y-%m-%d %H:%M:%S')
+                ts_str = time_dt.strftime('%Y%m%d%H')
+                final_path = f"inp/{cpk}/{ts_str}.inp"
+                generate_calculix_inp(nodes, elements, node_temp_map, final_path)
 
         logger.info(f"make_inp completed for concrete_pk={cpk}")
     except Exception as e:
