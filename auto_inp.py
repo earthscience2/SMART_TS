@@ -1,5 +1,6 @@
 import api_db
 import os
+from datetime import datetime, timedelta
 
 def get_subfolders(path):
     # path 경로에 있는 하위 폴더(디렉토리)만 리스트로 반환
@@ -36,10 +37,36 @@ def get_concrete_dict(concrete_pk):
     else:
         return None
     
-def make_inp(sensor_pk, time):
-    concrete_pk = get_concrete_pk_by_sensor(sensor_pk)
-    concrete_dict = get_concrete_dict(concrete_pk)
-    print(concrete_dict)
+def get_prev_hour_str():
+    prev_hour = datetime.now() - timedelta(hours=1)
+    return prev_hour.strftime('%Y%m%d%H')
+
+def get_hourly_time_list(start_time=None):
+    end_dt = get_prev_hour_str()
+    if start_time is None:
+        start_dt = end_dt - timedelta(days=30)
+    else:
+        start_dt = datetime.strptime(start_time, '%Y%m%d%H')
+
+    # 1시간 단위로 슬라이싱
+    time_list = []
+    cur = start_dt
+    while cur <= end_dt:
+        time_list.append(cur.strftime('%Y-%m-%d %H:%M:%S'))
+        cur += timedelta(hours=1)
+    return time_list
+
+    
+def make_inp(concrete, sensor_data_list, latest_csv):
+
+    plan_points = concrete['dims']['nodes']
+    thickness = concrete['dims']['h']
+    element_size = concrete['con_uni']
+
+    start_time = latest_csv
+    time_list = get_hourly_time_list(start_time)
+    print(plan_points, thickness, element_size, time_list)
+
 
 # 센서 데이터 자동 저장 및 업데이트
 def auto_inp():
@@ -54,21 +81,24 @@ def auto_inp():
                 print(f'{concrete["concrete_pk"]} 폴더에 파일이 없습니다.')
                 sensors_data_df = api_db.get_sensors_data(concrete_pk=concrete["concrete_pk"])
                 sensors_data_list = (sensors_data_df.to_dict(orient='records'))
-                for dd in sensors_data_list:
-                    make_inp(dd['sensor_pk'], dd['dims'])
+                latest_csv = get_latest_csv(f'inp/{concrete["concrete_pk"]}')
+                print(latest_csv)
+                make_inp(concrete, sensors_data_list, latest_csv)
             else:
                 print(f'{concrete["concrete_pk"]} 폴더에 파일이 있습니다.')
                 sensors_data_df = api_db.get_sensors_data(concrete_pk=concrete["concrete_pk"])
                 sensors_data_list = (sensors_data_df.to_dict(orient='records'))
-                for dd in sensors_data_list:
-                    make_inp(dd['sensor_pk'], dd['dims'])
+                latest_csv = get_latest_csv(f'inp/{concrete["concrete_pk"]}')
+                print(latest_csv)
+                make_inp(concrete, sensors_data_list, latest_csv)
 
         else:
             os.makedirs(f'inp/{concrete["concrete_pk"]}', exist_ok=True)
             print(f'{concrete["concrete_pk"]} 폴더를 생성했습니다.')
             sensors_data_df = api_db.get_sensors_data(concrete_pk=concrete["concrete_pk"])
             sensors_data_list = (sensors_data_df.to_dict(orient='records'))
-            for dd in sensors_data_list:
-                make_inp(dd['sensor_pk'], dd['dims'])
+            latest_csv = get_latest_csv(f'inp/{concrete["concrete_pk"]}')
+            print(latest_csv)
+            make_inp(concrete, sensors_data_list, latest_csv)
 
 auto_inp()
