@@ -92,6 +92,8 @@ def generate_calculix_inp(nodes, elements, node_temperatures, output_path):
         f.write("*NODE FILE, NSET=ALLNODES\nU\n")
         f.write("*EL FILE, ELSET=SolidSet\nS\n")
         f.write("*END STEP\n")
+        
+    print(f'{output_path} 파일 생성 완료')
     
 def make_inp(concrete, sensor_data_list, latest_csv):
     plan_points = json.loads(concrete['dims'])['nodes']
@@ -104,13 +106,15 @@ def make_inp(concrete, sensor_data_list, latest_csv):
     if sensor_count != 0:
         for time in time_list:
             sensors = []
+            num = 1
             for sensor in sensor_data_list:
                 sensor_data_df = api_db.get_sensor_data_by_time(sensor_pk=sensor['sensor_pk'], time=time)
                 position = json.loads(sensor['dims'])['nodes']
                 if not sensor_data_df.empty:
                     row_dict = sensor_data_df.iloc[0].to_dict()
                     temp = row_dict['temperature']
-                    sensors.append((0, position[0], position[1], position[2], float(temp)))
+                    sensors.append((num, position[0], position[1], position[2], float(temp)))
+                    num += 1
                 else:
                     temp = None
 
