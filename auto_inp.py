@@ -122,7 +122,7 @@ def make_inp(concrete, sensor_data_list, latest_csv):
                     temp = None
 
             if sensor_count == len(sensors):
-                print(time, plan_points_dict, sensors)
+                print(time, thickness, element_size, plan_points_dict, sensors)
 
                 #============ 여기부터 inp 생성 주요 코드 ============
                 polygon = Polygon([plan_points_dict[i] for i in plan_points_dict])
