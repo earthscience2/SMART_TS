@@ -133,6 +133,32 @@ def get_sensor_data(sensor_pk: str = None,
 
     return pd.read_sql(stmt, con=engine, params=params)
 
+def get_sensor_data_by_time(sensor_pk: str = None,
+                            time: str    = None) -> pd.DataFrame:
+    # 1) 날짜 계산
+    if time:
+        dt_time = parse_ymdh(time)
+
+    if not (time):
+        return None
+
+    # 2) 쿼리 조합
+    sql = """
+    SELECT *
+      FROM sensor_data
+     WHERE time = :time
+    """
+    params = {
+        "time": format_sql_datetime(dt_time),
+    }
+
+    if sensor_pk:
+        sql += " AND sensor_pk = :sensor_pk"
+        params["sensor_pk"] = sensor_pk
+
+    stmt = text(sql)
+
+    return pd.read_sql(stmt, con=engine, params=params)
 
 # 테스트
 """
