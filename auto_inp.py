@@ -58,7 +58,9 @@ def get_hourly_time_list(start_time=None):
 
     
 def make_inp(concrete, sensor_data_list, latest_csv):
-
+    print(concrete)
+    print(concrete['dims'])
+    
     plan_points = concrete['dims']['nodes']
     thickness = concrete['dims']['h']
     element_size = concrete['con_uni']
