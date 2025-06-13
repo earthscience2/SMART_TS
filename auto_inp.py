@@ -92,7 +92,7 @@ def generate_calculix_inp(nodes, elements, node_temperatures, output_path):
         f.write("*NODE FILE, NSET=ALLNODES\nU\n")
         f.write("*EL FILE, ELSET=SolidSet\nS\n")
         f.write("*END STEP\n")
-        
+
     print(f'{output_path} 파일 생성 완료')
     
 def make_inp(concrete, sensor_data_list, latest_csv):
@@ -119,6 +119,8 @@ def make_inp(concrete, sensor_data_list, latest_csv):
                     temp = None
 
             if sensor_count == len(sensors):
+                print(time, sensors)
+
                 #============ 여기부터 inp 생성 주요 코드 ============
                 polygon = Polygon(plan_points)
                 nodes = {}
