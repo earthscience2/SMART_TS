@@ -136,9 +136,6 @@ def get_sensor_data(sensor_pk: str = None,
 def get_sensor_data_by_time(sensor_pk: str = None,
                             time: str    = None) -> pd.DataFrame:
     # 1) 날짜 계산
-    if time:
-        dt_time = parse_ymdh(time)
-
     if not (time):
         return None
 
@@ -149,7 +146,7 @@ def get_sensor_data_by_time(sensor_pk: str = None,
      WHERE time = :time
     """
     params = {
-        "time": format_sql_datetime(dt_time),
+        "time": time,
     }
 
     if sensor_pk:

@@ -69,7 +69,6 @@ def make_inp(concrete, sensor_data_list, latest_csv):
     for time in time_list:
         sensors = []
         for sensor in sensor_data_list:
-            time = datetime.strptime(time, '%Y-%m-%d %H:%M:%S')
             sensor_data_df = api_db.get_sensor_data_by_time(sensor_pk=sensor['sensor_pk'], time=time)
             position = json.loads(sensor['dims'])['nodes']
             if not sensor_data_df.empty:
