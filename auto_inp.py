@@ -120,9 +120,17 @@ def make_inp(concrete, sensor_data_list, latest_csv):
 
             if sensor_count == len(sensors):
                 print(time, sensors)
+                plan_points = {
+                    1: (0, 0),
+                    2: (10, 0),
+                    3: (10, 10),
+                    4: (5, 10),
+                    5: (5, 5),
+                    6: (0, 5)
+                }
 
                 #============ 여기부터 inp 생성 주요 코드 ============
-                polygon = Polygon(plan_points)
+                polygon = Polygon([plan_points[i] for i in plan_points])
                 nodes = {}
                 node_id = 1
                 z_levels = np.arange(0, thickness + 1e-3, element_size)
