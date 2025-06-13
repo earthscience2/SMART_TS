@@ -17,9 +17,11 @@ DB_CONFIG = {
     'charset':  'utf8mb4',
 }
 
+# 1) 연결 설정
 def get_connection():
     return pymysql.connect(**DB_CONFIG)
 
+# 2) 프로젝트 조회
 def get_project_data(project_pk=None, user_company_pk=None):
     sql = "SELECT * FROM project"
     conditions = []
@@ -43,6 +45,7 @@ def get_project_data(project_pk=None, user_company_pk=None):
 
     return df
 
+# 3) 콘크리트 조회
 def get_concrete_data(concrete_pk=None, project_pk=None):
     sql = "SELECT * FROM concrete"
     conditions = []
@@ -65,6 +68,7 @@ def get_concrete_data(concrete_pk=None, project_pk=None):
 
     return df
 
+# 4) 센서 조회
 def get_sensors_data(sensor_pk=None, concrete_pk=None, device_id=None, channel=None, d_type=None):
     sql = "SELECT * FROM sensor"
     conditions = []
@@ -104,26 +108,7 @@ def format_sql_datetime(dt: datetime) -> str:
     """SQL DATETIME 문자열 포맷."""
     return dt.strftime('%Y-%m-%d %H:%M:%S')
 
-def get_sensor_data(sensor_pk=None, start=None, end=None):
-    """
-    sensor_pk, start, end 값이 주어지면 그에 맞는 행을
-    """
-    sql = "SELECT * FROM sensor_data"
-    conditions = []
-    params = []
-    if sensor_pk:
-        conditions.append("sensor_pk = %s")
-        params.append(sensor_pk)
-    if start:
-        conditions.append("time >= %s")
-        params.append(start)
-    if end:
-        conditions.append("time <= %s")
-        params.append(end)
-    if conditions:
-        sql += " WHERE " + " AND ".join(conditions)
-    sql += " ORDER BY time ASC"
-
+# 5) 센서 데이터 조회
 def get_sensor_data(sensor_pk: str = None,
                     start: str  = None,
                     end: str    = None) -> pd.DataFrame:
@@ -177,4 +162,11 @@ def get_sensor_data(sensor_pk: str = None,
 
     finally:
         conn.close()
+
+get_project_data()
+get_project_data(project_pk="P000001")
+get_concrete_data(concrete_pk="C000001")
+get_sensors_data()
+get_sensor_data(sensor_pk="S000001", start="2025061220", end="2025061310")
+
 

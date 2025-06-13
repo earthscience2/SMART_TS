@@ -1,12 +1,22 @@
 import pymysql
 from datetime import datetime, timedelta
 import pandas as pd
-import os
-import glob
 import threading
 import time
+import logging
 from ITS_CLI import config, tcp_client
 
+# 0) 로거 설정
+LOG_PATH = '/log/auto_sensor.log'
+logging.basicConfig(
+    filename=LOG_PATH,
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+
+# 센서 데이터 조회 및 추출
 def export_sensor_data(deviceid, channel, sd_start=None):
     # --- 1) ITS 로그인 및 연결 설정 ---
     user_id = 'cbk4689'
@@ -22,34 +32,30 @@ def export_sensor_data(deviceid, channel, sd_start=None):
     ITS_CLIENT.set_user_password(user_id, user_pass)
     res = ITS_CLIENT.message('login')
     if res.get('result') != 'Success':
-        print(f"[ERROR] 로그인 실패: {res.get('msg')}")
+        logger.error(f"ITS 로그인 실패: {res.get('msg')}")
         return
-    print("[OK] ITS 로그인 성공")
+    logger.info("ITS 로그인 성공")
 
     result = ITS_CLIENT.message_getdata(
         'query_device_channel_data',
         start_date=sd_start,
         end_date=None,
         projectid=None,
-        structureid = None,
+        structureid=None,
         deviceid=deviceid,
         channel=channel
     )
 
     df = pd.DataFrame(result)
     if df.empty:
-        print(f"[INFO] {deviceid} // {channel} 신규 데이터 없음.")
+        logger.info(f"{deviceid}/{channel} 신규 데이터 없음.")
         return
 
     df['time'] = pd.to_datetime(df['time'])
-    if df.empty:
-        print(f"[INFO] {deviceid} // {channel} 필터 후 데이터 없음.")
-        return
-    
-    # --- 추가: temperature 범위 필터링 (–20 < temp < 80) ---
+    # temperature 필터
     df = df[(df['temperature'] > -20) & (df['temperature'] < 80)]
     if df.empty:
-        print(f"[INFO] {deviceid} // {channel} 온도 필터 후 데이터 없음.")
+        logger.info(f"{deviceid}/{channel} 필터 후 데이터 없음.")
         return
 
     df['hour'] = df['time'].dt.floor('h')
@@ -61,74 +67,49 @@ def export_sensor_data(deviceid, channel, sd_start=None):
         .rename(columns={'hour': 'time'})
     )
 
-    agg['date'] = agg['time'].dt.date
-    unique_dates = sorted(agg['date'].unique())
-
+    logger.info(f"{deviceid}/{channel} 데이터 {len(agg)}개 집계 완료")
     return agg
 
-
+# 센서 데이터 자동 저장 및 업데이트
 def auto_sensor_data():
-    # 1) DB 연결 설정
     conn = pymysql.connect(
-        host='localhost',
-        port=3306,
-        user='root',
-        password='smart001!',
-        database='ITS_TS',
-        charset='utf8mb4'
+        host='localhost', port=3306,
+        user='root', password='smart001!',
+        database='ITS_TS', charset='utf8mb4'
     )
 
     try:
-        # 2) sensor 기본 정보 조회
-        sql_sensors = """
-        SELECT
-        sensor_pk,
-        device_id,
-        channel,
-        d_type
-        FROM sensor;
-        """
-        df_sensors = pd.read_sql(sql_sensors, conn)
+        df_sensors = pd.read_sql("SELECT sensor_pk,device_id,channel,d_type FROM sensor;", conn)
         records = df_sensors.to_dict(orient='records')
 
-        # 3) cursor로 최신 시간 조회
         with conn.cursor() as cursor:
             for rec in records:
                 sensor_pk = rec['sensor_pk']
-
-                # sensor_data에서 해당 센서의 최대(time) 조회
                 cursor.execute(
                     "SELECT MAX(`time`) FROM `sensor_data` WHERE `sensor_pk` = %s",
                     (sensor_pk,)
                 )
-                result = cursor.fetchone()
-                last_time = result[0]  # 없으면 None
+                last_time = cursor.fetchone()[0]
 
-                if last_time is not None:
-                    # 문자열로 읽혔을 경우 datetime으로 변환
+                if last_time:
                     if isinstance(last_time, str):
                         last_time = datetime.strptime(last_time, '%Y-%m-%d %H:%M:%S')
-
-                    # 1시간 전 시각 계산
                     prev_hour = last_time - timedelta(hours=1)
-                    formatted = prev_hour.strftime('%Y%m%d%H')
+                    sd_start = prev_hour.strftime('%Y%m%d%H')
                 else:
-                    formatted = None
+                    sd_start = None
 
-                print(f"{sensor_pk} → {formatted}")
+                logger.info(f"{sensor_pk} 기준 start_date={sd_start}")
 
-                fillter_db = export_sensor_data(rec['device_id'], rec['channel'], formatted)
-                if fillter_db is None or fillter_db.empty:
+                agg = export_sensor_data(rec['device_id'], rec['channel'], sd_start)
+                if agg is None or agg.empty:
                     continue
 
-                # 3-3) agg된 행을 하나씩 INSERT or UPDATE
-                for row in fillter_db.to_dict(orient='records'):
+                # INSERT/UPDATE
+                for row in agg.to_dict(orient='records'):
                     ts = row['time'].strftime('%Y-%m-%d %H:%M:%S')
-                    hmd = row.get('humidity', None)
-                    sv  = row.get('sv', None)
-                    tmp = row.get('temperature', None)
+                    hmd, sv, tmp = row['humidity'], row['sv'], row['temperature']
 
-                    # 존재 여부 체크
                     cursor.execute(
                         "SELECT COUNT(*) FROM sensor_data WHERE sensor_pk=%s AND time=%s",
                         (sensor_pk, ts)
@@ -136,32 +117,27 @@ def auto_sensor_data():
                     exists = cursor.fetchone()[0] > 0
 
                     if exists:
-                        # 업데이트
                         cursor.execute("""
                             UPDATE sensor_data
                             SET humidity=%s, sv=%s, temperature=%s, updated_at=NOW()
                             WHERE sensor_pk=%s AND time=%s
                         """, (hmd, sv, tmp, sensor_pk, ts))
+                        logger.info(f"UPDATED {sensor_pk} @ {ts}: hmd={hmd}, sv={sv}, tmp={tmp}")
                     else:
-                        # 삽입
                         cursor.execute("""
                             INSERT INTO sensor_data
                               (sensor_pk, time, humidity, sv, temperature, created_at, updated_at)
                             VALUES (%s, %s, %s, %s, %s, NOW(), NOW())
                         """, (sensor_pk, ts, hmd, sv, tmp))
+                        logger.info(f"INSERTED {sensor_pk} @ {ts}: hmd={hmd}, sv={sv}, tmp={tmp}")
 
-                # 변경사항 커밋
                 conn.commit()
-
+    except Exception as e:
+        logger.error(f"auto_sensor_data 오류: {e}")
     finally:
         conn.close()
 
-
 if __name__ == '__main__':
     while True:
-        try:
-            auto_sensor_data()
-        except Exception as e:
-            print(f"[ERROR] auto_sensor_data 실행 중 오류: {e}")
-        # 30분 (1,800초) 대기
+        auto_sensor_data()
         time.sleep(1800)
