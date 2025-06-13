@@ -192,7 +192,8 @@ def make_inp(concrete, sensor_data_list, latest_csv):
                                 eid += 1
                             except KeyError:
                                 continue
-                time_YYYYMMDDHH = time.strftime('%Y%m%d%H')
+                time_dt = datetime.strptime(time, '%Y-%m-%d %H:%M:%S')
+                time_YYYYMMDDHH = time_dt.strftime('%Y%m%d%H')
                 final_path = f"inp/{concrete['concrete_pk']}/{time_YYYYMMDDHH}.inp"
                 generate_calculix_inp(nodes, elements, node_temp_map, final_path)
 
