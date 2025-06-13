@@ -97,7 +97,9 @@ def generate_calculix_inp(nodes, elements, node_temperatures, output_path):
     
 def make_inp(concrete, sensor_data_list, latest_csv):
     plan_points = json.loads(concrete['dims'])['nodes']
+    print(plan_points)
     plan_points_dict = {i+1: tuple(pt) for i, pt in enumerate(plan_points)}
+    print(plan_points_dict)
     thickness = float(json.loads(concrete['dims'])['h'])
     element_size = float(concrete['con_unit'])
 
