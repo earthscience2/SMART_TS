@@ -65,24 +65,21 @@ def make_inp(concrete, sensor_data_list, latest_csv):
 
     start_time = latest_csv
     time_list = get_hourly_time_list(start_time)
-
+    sensor_count = len(sensor_data_list)
     for time in time_list:
         sensors = []
+
         for sensor in sensor_data_list:
             sensor_data_df = api_db.get_sensor_data_by_time(sensor_pk=sensor['sensor_pk'], time=time)
             position = json.loads(sensor['dims'])['nodes']
             if not sensor_data_df.empty:
                 row_dict = sensor_data_df.iloc[0].to_dict()
                 temp = row_dict['temperature']
+                sensors.append((0, position[0], position[1], position[2], float(temp)))
             else:
                 temp = None
-
-            sensors.append((0, position[0], position[1], position[2], float(temp)))
-        
-        has_none_temp = any(s[-1] is None for s in sensors)
-        if has_none_temp:
-            continue
-        else:
+                
+        if sensor_count == len(sensors):
             print(plan_points, thickness, element_size, time, sensors)
 
 
