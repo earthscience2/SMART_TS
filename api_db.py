@@ -135,9 +135,11 @@ def get_sensor_data(sensor_pk: str = None,
 
 
 # 테스트
+"""
 if __name__ == "__main__":
     print(get_project_data())
     print(get_project_data(project_pk="P000001"))
     print(get_concrete_data(concrete_pk="C000001"))
     print(get_sensors_data())
     print(get_sensor_data(sensor_pk="S000001", start="2025061220", end="2025061310"))
+"""
