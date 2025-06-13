@@ -11,13 +11,7 @@ from scipy.interpolate import RBFInterpolator
 import matplotlib.pyplot as plt
 
 # 1. Define geometry input
-plan_points = {
-    1: (1, 1),
-    2: (2, 1),
-    3: (2, 2),
-    4: (1, 2),
-
-}
+plan_points = [[0, 0], [0, 2], [2, 2], [2, 0]]
 thickness = 0.5
 element_size = 0.1
 
@@ -31,14 +25,9 @@ sensors = [
     (4, 9.0, 7, 1.5, 65.0),
     (5, 7, 7, 0.5, 80.0)
 ]
+lan_points_dict = {i+1: tuple(pt) for i, pt in enumerate(plan_points)}
 # 3. Create 3D mesh inside polygon volume
-polygon = Polygon([plan_points[i] for i in plan_points])
-x, y = polygon.exterior.xy
-
-plt.plot(x, y)
-plt.fill(x, y, alpha=0.3)
-plt.axis('equal')
-plt.show()
+polygon = Polygon([lan_points_dict[i] for i in lan_points_dict])
 nodes = {}
 node_id = 1
 z_levels = np.arange(0, thickness + 1e-3, element_size)
