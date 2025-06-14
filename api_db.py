@@ -481,7 +481,7 @@ if __name__ == "__main__":
     print(sensor_data_time)
     
     # 5. 삭제 테스트 (실제 삭제는 주석 처리)
-    """
+    
     print("\n=== 삭제 테스트 ===")
     projects = get_project_data()
     print(projects)
@@ -494,11 +494,17 @@ if __name__ == "__main__":
     
     """
     # 프로젝트 삭제
-    delete_project_data("P000001")
+    delete_project_data("P000006")
     
     # 콘크리트 삭제
-    delete_concrete_data("C000001")
+    delete_concrete_data("C000004")
+    delete_concrete_data("C000005")
+    delete_concrete_data("C000006")
     
     # 센서 삭제
-    delete_sensor_data("S000001")
-    """
+    delete_sensor_data("S000006")
+    delete_sensor_data("S000007")
+    delete_sensor_data("S000008")
+    
+    
+    
