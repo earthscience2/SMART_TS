@@ -389,10 +389,9 @@ def format_sql_datetime(dt: datetime) -> str:
     return dt.strftime('%Y-%m-%d %H:%M:%S')
 
 
-
+"""
 # 테스트
 if __name__ == "__main__":
-    """
     # 1. 프로젝트 테스트
     print("\n=== 프로젝트 테스트 ===")
     # 프로젝트 추가
@@ -510,7 +509,7 @@ if __name__ == "__main__":
     delete_sensor_data("S000006")
     delete_sensor_data("S000007")
     delete_sensor_data("S000008")
-    """
+    
     update_project_data(
         project_pk="P000001",
         activate=1
@@ -522,5 +521,6 @@ if __name__ == "__main__":
     update_concrete_data(
         concrete_pk="C000001",
         activate=1
-    )      
+    )     
+    """ 
     

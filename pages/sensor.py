@@ -32,13 +32,11 @@ from dash import (
     dash_table, register_page, callback
 )
 import dash_bootstrap_components as dbc
-import api_sensor
-import api_concrete
-import api_db
 from dash.exceptions import PreventUpdate
 
-register_page(__name__, path="/sensor")
+import api_db
 
+register_page(__name__, path="/sensor")
 
 # ────────────────────────────── 3-D 헬퍼 ─────────────────────────────
 def make_concrete_fig(nodes: list[list[float]], h: float) -> go.Figure:
@@ -312,7 +310,7 @@ def init_dropdown(selected_value):
     """
     페이지 로드 또는 값이 None일 때 콘크리트 목록을 Dropdown 옵션으로 설정.
     """
-    df_conc = api_concrete.load_all()
+    df_conc = api_db.get_concrete_data()
     options = [
         {"label": f"{row['name']}", "value": row["concrete_pk"]}
         for _, row in df_conc.iterrows()
@@ -357,7 +355,7 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
     # ────────────────────────────────────────────────────────
     # 1) 콘크리트 정보 로드
     try:
-        conc_row = api_concrete.load_all().query("concrete_pk == @selected_conc").iloc[0]
+        conc_row = api_db.get_concrete_data().query("concrete_pk == @selected_conc").iloc[0]
         conc_dims = ast.literal_eval(conc_row["dims"])
         conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
     except Exception:
@@ -810,7 +808,7 @@ def add_sensor_save(_, conc_pk, sensor_pk, coords_txt):
 
     # 실제 추가
     try:
-        api_sensor.add_sensor(conc_pk, sensor_pk, {"nodes": xyz})
+        api_db.add_sensor_data(conc_pk, sensor_pk, {"nodes": xyz})
     except Exception as e:
         return dash.no_update, f"추가 실패: {e}", "danger", True
 
@@ -846,7 +844,7 @@ def delete_sensor_confirm(_click, sel, tbl_data, conc_pk):
     row = pd.DataFrame(tbl_data).iloc[sel[0]]
     sensor_pk = row["sensor_pk"]
     try:
-        api_sensor.delete_sensor(conc_pk, sensor_pk)
+        api_db.delete_sensor_data(sensor_pk)
     except Exception as e:
         return dash.no_update, f"삭제 실패: {e}", "danger", True
 
@@ -899,7 +897,7 @@ def fill_edit_sensor(opened, conc_pk, sensor_pk, show_lines):
 
     # 1) 콘크리트 정보 로드
     try:
-        conc_row = api_concrete.load_all().query("concrete_pk == @conc_pk").iloc[0]
+        conc_row = api_db.get_concrete_data().query("concrete_pk == @conc_pk").iloc[0]
         conc_dims = ast.literal_eval(conc_row["dims"])
         conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
         fig_conc = make_concrete_fig(conc_nodes, conc_h)
@@ -907,7 +905,7 @@ def fill_edit_sensor(opened, conc_pk, sensor_pk, show_lines):
         fig_conc = go.Figure()
 
     # 2) 현재 콘크리트에 속한 모든 센서 정보를 가져와서 그리기 (파란 점, 크기 4)
-    df_sensor_full = api_sensor.load_all_sensors()
+    df_sensor_full = api_db.get_sensors_data()
     df_same = df_sensor_full[df_sensor_full["concrete_pk"] == conc_pk].copy()
 
     all_xs, all_ys, all_zs = [], [], []
@@ -1035,7 +1033,7 @@ def edit_sensor_preview(n_clicks, show_lines, coords_txt, conc_pk, sensor_pk, ne
     """
     # 1) 콘크리트 정보 로드 & 기본 Mesh 그리기
     try:
-        conc_row = api_concrete.load_all().query("concrete_pk == @conc_pk").iloc[0]
+        conc_row = api_db.get_concrete_data().query("concrete_pk == @conc_pk").iloc[0]
         conc_dims = ast.literal_eval(conc_row["dims"])
         conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
         fig_conc = make_concrete_fig(conc_nodes, conc_h)
@@ -1044,7 +1042,7 @@ def edit_sensor_preview(n_clicks, show_lines, coords_txt, conc_pk, sensor_pk, ne
         return dash.no_update, "콘크리트 정보를 불러올 수 없음", True
 
     # 2) 수정 중인 센서를 제외한 "나머지 센서들"을 파란 점으로 먼저 그리기
-    df_sensor_full = api_sensor.load_all_sensors()
+    df_sensor_full = api_db.get_sensors_data()
     df_same = df_sensor_full[df_sensor_full["concrete_pk"] == conc_pk].copy()
 
     for idx, row in df_same.iterrows():
@@ -1183,7 +1181,7 @@ def edit_sensor_save(_, conc_pk, old_sensor_pk, new_sensor_pk, coords_txt):
         return dash.no_update, "좌표를 입력하세요 (예: [1,1,0])", "danger", True
 
     # (추가) 동일 콘크리트 내 기존 센서 ID 리스트 조회
-    df_sensor_full = api_sensor.load_all_sensors()
+    df_sensor_full = api_db.get_sensors_data()
     df_same = df_sensor_full[df_sensor_full["concrete_pk"] == conc_pk]
     existing_ids = df_same["sensor_pk"].tolist()
     # 자기 자신(old_sensor_pk) 제외한 ID 목록
@@ -1205,18 +1203,18 @@ def edit_sensor_save(_, conc_pk, old_sensor_pk, new_sensor_pk, coords_txt):
     if new_sensor_pk and (new_sensor_pk != old_sensor_pk):
         # a) 기존 센서 삭제
         try:
-            api_sensor.delete_sensor(conc_pk, old_sensor_pk)
+            api_db.delete_sensor_data(old_sensor_pk)
         except Exception as e:
             return dash.no_update, f"기존 센서 삭제 실패: {e}", "danger", True
         # b) 새로운 ID로 동일한 좌표 추가
         try:
-            api_sensor.add_sensor(conc_pk, new_sensor_pk, {"nodes": xyz})
+            api_db.add_sensor_data(conc_pk, new_sensor_pk, {"nodes": xyz})
         except Exception as e:
             return dash.no_update, f"새 센서 추가 실패: {e}", "danger", True
     else:
         # ID가 같다면, 좌표만 업데이트
         try:
-            api_sensor.update_sensor(conc_pk, old_sensor_pk, {"nodes": xyz})
+            api_db.update_sensor_data(old_sensor_pk, {"nodes": xyz})
         except Exception as e:
             return dash.no_update, f"위치 업데이트 실패: {e}", "danger", True
 

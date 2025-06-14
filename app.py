@@ -3,7 +3,6 @@
 import os
 from flask import Flask, request, redirect, make_response
 from dotenv import load_dotenv
-import api_user
 
 load_dotenv()
 
@@ -15,6 +14,7 @@ server = Flask(__name__)
 # 로그아웃 처리 라우트 (GET)
 # 반드시 Dash(app) 생성 전에 정의
 # ──────────────────────────────────────────────────────────────────────────────
+"""
 @server.route("/do_login", methods=["GET", "POST"])
 def do_login():
     if request.method == "GET":
@@ -33,6 +33,7 @@ def logout():
     resp = make_response(redirect("/"))
     resp.delete_cookie("login_token")
     return resp
+"""
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 이제 Dash 앱 생성
@@ -58,6 +59,7 @@ navbar = dbc.NavbarSimple(
         dbc.NavItem(dcc.Link("Concrete", href="/concrete", className="nav-link")),
         dbc.NavItem(dcc.Link("Sensor", href="/sensor", className="nav-link")),
         # Logout: dcc.Link + refresh=True 로 강제 풀 리프레시
+        """
         dbc.NavItem(
             dcc.Link(
                 "Logout",
@@ -67,6 +69,7 @@ navbar = dbc.NavbarSimple(
             ),
             className="ms-auto"
         ),
+        """
     ],
 )
 

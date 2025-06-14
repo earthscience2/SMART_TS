@@ -2,17 +2,9 @@ from dash import html, dcc, register_page
 import dash_bootstrap_components as dbc
 from flask import request
 import pandas as pd
-import api_user
-import api_concrete
-import api_sensor
 from datetime import datetime
-import api_db
 
-# 외부 assets/custom.css 파일에 hover 스타일 정의 필요:
-# .project-card:hover {
-#   transform: scale(1.05);
-#   box-shadow: 0 6px 12px rgba(135, 206, 250, 0.6);
-# }
+import api_db
 
 register_page(__name__, path="/", title="프로젝트 목록")
 projects_df = api_db.get_project_data()
@@ -28,6 +20,8 @@ def format_date(date_str: str) -> str:
 
 
 def layout():
+    # 로그인 토큰 확인 부분 비활성화
+    """
     token = request.cookies.get("login_token")
     if not token or not api_user.validate_token(token):
         return dcc.Location(pathname="/login", id="redirect-login")
@@ -38,19 +32,18 @@ def layout():
 
     user_role = user["user_role"]
     user_company = user["user_company"]
+    """
 
-    if user_role == "admin":
-        filtered = projects_df
-    else:
-        filtered = projects_df[projects_df["user_company_pk"] == user_company]
+    # 모든 프로젝트 표시 (필터링 없음)
+    filtered = projects_df
 
     cards = []
     # 콘크리트 및 센서 메타데이터 로드
-    df_concrete = api_concrete.load_all()
-    df_sensors = api_sensor.load_all_sensors()
+    df_concrete = api_db.get_concrete_data()
+    df_sensors = api_db.get_sensors_data()
 
     for _, row in filtered.iterrows():
-        proj_pk = row["pk"]
+        proj_pk = row["project_pk"]  # "pk" 대신 "project_pk" 사용
         # 해당 프로젝트의 콘크리트 개수
         conc_cnt = df_concrete[df_concrete["project_pk"] == str(proj_pk)].shape[0]
         # 해당 콘크리트의 sensor 개수
