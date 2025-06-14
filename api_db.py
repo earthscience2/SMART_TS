@@ -395,7 +395,6 @@ if __name__ == "__main__":
         name="테스트 프로젝트",
         activate=1
     )
-    """
     # 프로젝트 조회
     projects = get_project_data(activate=1)
     print("\n활성화된 프로젝트 목록:")
@@ -482,6 +481,17 @@ if __name__ == "__main__":
     print(sensor_data_time)
     
     # 5. 삭제 테스트 (실제 삭제는 주석 처리)
+    """
+    print("\n=== 삭제 테스트 ===")
+    projects = get_project_data()
+    print(projects)
+
+    concretes = get_concrete_data()
+    print(concretes)
+
+    sensors = get_sensors_data()
+    print(sensors)
+    
     """
     # 프로젝트 삭제
     delete_project_data("P000001")
