@@ -94,10 +94,12 @@ def update_project_data(project_pk: str, **kwargs) -> None:
         conn.commit()
 
 # 프로젝트 삭제
-def delete_project_data(project_pk: str):
+def delete_project_data(project_pk: str) -> None:
     sql = "DELETE FROM project WHERE project_pk = :project_pk"
     params = {"project_pk": project_pk}
-    return pd.read_sql(text(sql), con=engine, params=params)
+    with engine.connect() as conn:
+        conn.execute(text(sql), params)
+        conn.commit()
 
 
 # --------------------------------------------------
@@ -195,10 +197,12 @@ def update_concrete_data(concrete_pk: str, **kwargs) -> None:
         conn.commit()
 
 # 콘크리트 삭제
-def delete_concrete_data(concrete_pk: str):
+def delete_concrete_data(concrete_pk: str) -> None:
     sql = "DELETE FROM concrete WHERE concrete_pk = :concrete_pk"
     params = {"concrete_pk": concrete_pk}
-    return pd.read_sql(text(sql), con=engine, params=params)
+    with engine.connect() as conn:
+        conn.execute(text(sql), params)
+        conn.commit()
 
 
 # --------------------------------------------------
@@ -298,10 +302,12 @@ def update_sensor_data(sensor_pk: str, **kwargs) -> None:
         conn.commit()
 
 # 센서 삭제
-def delete_sensor_data(sensor_pk: str):
+def delete_sensor_data(sensor_pk: str) -> None:
     sql = "DELETE FROM sensor WHERE sensor_pk = :sensor_pk"
     params = {"sensor_pk": sensor_pk}
-    return pd.read_sql(text(sql), con=engine, params=params)
+    with engine.connect() as conn:
+        conn.execute(text(sql), params)
+        conn.commit()
 
 # --------------------------------------------------
 # 센서 데이터 DB
