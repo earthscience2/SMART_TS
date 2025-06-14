@@ -41,7 +41,7 @@ def get_project_data(project_pk: str = None,
     return pd.read_sql(stmt, con=engine, params=params)
 
 # 프로젝트 추가 
-def add_project_data(user_company_pk: str, name: str, activate: int = 0) -> pd.DataFrame:
+def add_project_data(user_company_pk: str, name: str, activate: int = 0) -> None:
     # 1) 현재 가장 큰 project_pk 가져오기
     max_pk_sql = "SELECT MAX(project_pk) as max_pk FROM project"
     max_pk_df = pd.read_sql(text(max_pk_sql), con=engine)
@@ -67,7 +67,9 @@ def add_project_data(user_company_pk: str, name: str, activate: int = 0) -> pd.D
         "name": name,
         "activate": activate
     }
-    return pd.read_sql(text(sql), con=engine, params=params)
+    with engine.connect() as conn:
+        conn.execute(text(sql), params)
+        conn.commit()
 
 # 프로젝트 업데이트
 def update_project_data(project_pk: str, **kwargs):
@@ -127,7 +129,7 @@ def get_concrete_data(concrete_pk: str = None,
 def add_concrete_data(project_pk: str, name: str, dims: dict, 
                      con_unit: float, con_e: float, 
                      con_b: float, con_n: float,
-                     activate: int) -> pd.DataFrame:
+                     activate: int) -> None:
     # 1) 현재 가장 큰 concrete_pk 가져오기
     max_pk_sql = "SELECT MAX(concrete_pk) as max_pk FROM concrete"
     max_pk_df = pd.read_sql(text(max_pk_sql), con=engine)
@@ -160,7 +162,9 @@ def add_concrete_data(project_pk: str, name: str, dims: dict,
         "activate": activate
     }
     
-    return pd.read_sql(text(sql), con=engine, params=params)
+    with engine.connect() as conn:
+        conn.execute(text(sql), params)
+        conn.commit()
 
 # 콘크리트 업데이트
 def update_concrete_data(concrete_pk: str, **kwargs):
@@ -229,7 +233,7 @@ def get_sensors_data(sensor_pk: str = None,
 
 # 센서 추가
 def add_sensor_data(concrete_pk: str, device_id: str, channel: int, 
-                   d_type: int, dims: dict) -> pd.DataFrame:
+                   d_type: int, dims: dict) -> None:
     # 1) 현재 가장 큰 sensor_pk 가져오기
     max_pk_sql = "SELECT MAX(sensor_pk) as max_pk FROM sensor"
     max_pk_df = pd.read_sql(text(max_pk_sql), con=engine)
@@ -259,7 +263,9 @@ def add_sensor_data(concrete_pk: str, device_id: str, channel: int,
         "dims": json.dumps(dims)
     }
     
-    return pd.read_sql(text(sql), con=engine, params=params)
+    with engine.connect() as conn:
+        conn.execute(text(sql), params)
+        conn.commit()
 
 # 센서 업데이트
 def update_sensor_data(sensor_pk: str, **kwargs):
