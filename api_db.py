@@ -381,6 +381,7 @@ def format_sql_datetime(dt: datetime) -> str:
 
 # 테스트
 if __name__ == "__main__":
+    """
     # 1. 프로젝트 테스트
     print("\n=== 프로젝트 테스트 ===")
     # 프로젝트 추가
@@ -389,13 +390,12 @@ if __name__ == "__main__":
         name="테스트 프로젝트",
         activate=1
     )
-    
+    """
     # 프로젝트 조회
     projects = get_project_data(activate=1)
     print("\n활성화된 프로젝트 목록:")
     print(projects)
     
-    """
     # 프로젝트 업데이트
     if not projects.empty:
         project_pk = projects.iloc[0]['project_pk']
@@ -477,7 +477,7 @@ if __name__ == "__main__":
     print(sensor_data_time)
     
     # 5. 삭제 테스트 (실제 삭제는 주석 처리)
-
+    """
     # 프로젝트 삭제
     delete_project_data("P000001")
     
