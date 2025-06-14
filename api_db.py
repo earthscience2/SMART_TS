@@ -72,7 +72,7 @@ def add_project_data(user_company_pk: str, name: str, activate: int = 0) -> None
         conn.commit()
 
 # 프로젝트 업데이트
-def update_project_data(project_pk: str, **kwargs):
+def update_project_data(project_pk: str, **kwargs) -> None:
     # 업데이트할 필드와 값만 추출
     update_fields = {k: v for k, v in kwargs.items() if v is not None}
     if not update_fields:
@@ -89,7 +89,9 @@ def update_project_data(project_pk: str, **kwargs):
     # 파라미터 설정
     params = {"project_pk": project_pk, **update_fields}
 
-    return pd.read_sql(text(sql), con=engine, params=params)
+    with engine.connect() as conn:
+        conn.execute(text(sql), params)
+        conn.commit()
 
 # 프로젝트 삭제
 def delete_project_data(project_pk: str):
@@ -167,7 +169,7 @@ def add_concrete_data(project_pk: str, name: str, dims: dict,
         conn.commit()
 
 # 콘크리트 업데이트
-def update_concrete_data(concrete_pk: str, **kwargs):
+def update_concrete_data(concrete_pk: str, **kwargs) -> None:
     # 업데이트할 필드와 값만 추출
     update_fields = {k: v for k, v in kwargs.items() if v is not None}
     if not update_fields:
@@ -188,7 +190,9 @@ def update_concrete_data(concrete_pk: str, **kwargs):
     # 파라미터 설정
     params = {"concrete_pk": concrete_pk, **update_fields}
     
-    return pd.read_sql(text(sql), con=engine, params=params)
+    with engine.connect() as conn:
+        conn.execute(text(sql), params)
+        conn.commit()
 
 # 콘크리트 삭제
 def delete_concrete_data(concrete_pk: str):
@@ -268,8 +272,7 @@ def add_sensor_data(concrete_pk: str, device_id: str, channel: int,
         conn.commit()
 
 # 센서 업데이트
-def update_sensor_data(sensor_pk: str, **kwargs):
-
+def update_sensor_data(sensor_pk: str, **kwargs) -> None:
     # 업데이트할 필드와 값만 추출
     update_fields = {k: v for k, v in kwargs.items() if v is not None}
     if not update_fields:
@@ -290,7 +293,9 @@ def update_sensor_data(sensor_pk: str, **kwargs):
     # 파라미터 설정
     params = {"sensor_pk": sensor_pk, **update_fields}
     
-    return pd.read_sql(text(sql), con=engine, params=params)
+    with engine.connect() as conn:
+        conn.execute(text(sql), params)
+        conn.commit()
 
 # 센서 삭제
 def delete_sensor_data(sensor_pk: str):
