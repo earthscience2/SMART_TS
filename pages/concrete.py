@@ -32,7 +32,7 @@ from dash.exceptions import PreventUpdate
 import api_db
 
 # 프로젝트 메타데이터 로드
-_projects_df = api_db.get_project_data()
+projects_df = api_db.get_project_data()
 
 # 페이지 등록
 register_page(__name__, path="/concrete", title="콘크리트 관리")
@@ -89,8 +89,8 @@ layout = dbc.Container(
             dbc.Col([
                 dcc.Dropdown(
                     id="project-dropdown",
-                    options=[{"label": row["name"], "value": row["pk"]} for _, row in _projects_df.iterrows()],
-                    value=_projects_df["pk"].iloc[0] if not _projects_df.empty else None,
+                    options=[{"label": row["name"], "value": row["project_pk"]} for _, row in projects_df.iterrows()],
+                    value=projects_df["project_pk"].iloc[0] if not projects_df.empty else None,
                     clearable=False,
                     className="mb-3"
                 ),
