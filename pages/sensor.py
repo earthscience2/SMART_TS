@@ -34,6 +34,7 @@ from dash import (
 import dash_bootstrap_components as dbc
 import api_sensor
 import api_concrete
+import api_db
 from dash.exceptions import PreventUpdate
 
 register_page(__name__, path="/sensor")
@@ -366,7 +367,7 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
     fig = make_concrete_fig(conc_nodes, conc_h)
 
     # 3) 센서 데이터 로드
-    df_sensor = api_sensor.load_all_sensors()
+    df_sensor = api_db.get_sensor_data()
     df_sensor = df_sensor[df_sensor["concrete_pk"] == selected_conc].copy()
 
     xs, ys, zs = [], [], []
@@ -659,7 +660,7 @@ def add_sensor_preview(_, conc_pk, sensor_pk, coords_txt, show_lines):
         return dash.no_update, "센서 ID를 입력하세요", True
 
     # (추가) 동일 콘크리트 내 기존 센서 ID 리스트 조회
-    df_sensor_full = api_sensor.load_all_sensors()
+    df_sensor_full = api_db.get_sensor_data()
     df_same = df_sensor_full[df_sensor_full["concrete_pk"] == conc_pk]
     existing_ids = df_same["sensor_pk"].tolist()
     if sensor_pk in existing_ids:
@@ -789,7 +790,7 @@ def add_sensor_save(_, conc_pk, sensor_pk, coords_txt):
         return dash.no_update, "콘크리트 및 센서 ID를 입력하세요", "danger", True
 
     # (추가) 동일 콘크리트 내 기존 센서 ID 리스트 조회
-    df_sensor_full = api_sensor.load_all_sensors()
+    df_sensor_full = api_db.get_sensor_data()
     df_same = df_sensor_full[df_sensor_full["concrete_pk"] == conc_pk]
     existing_ids = df_same["sensor_pk"].tolist()
     if sensor_pk in existing_ids:

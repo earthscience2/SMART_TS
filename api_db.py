@@ -57,9 +57,9 @@ def add_project_data(user_company_pk: str, name: str, activate: int = 0) -> pd.D
     # 3) INSERT 쿼리 실행
     sql = """
     INSERT INTO project 
-    (project_pk, user_company_pk, name, activate) 
+    (project_pk, user_company_pk, name, activate, created_at, updated_at) 
     VALUES 
-    (:project_pk, :user_company_pk, :name, :activate)
+    (:project_pk, :user_company_pk, :name, :activate, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     """
     params = {
         "project_pk": new_pk,
@@ -143,16 +143,16 @@ def add_concrete_data(project_pk: str, name: str, dims: dict,
     # 3) INSERT 쿼리 실행
     sql = """
     INSERT INTO concrete 
-    (concrete_pk, project_pk, name, dims, con_unit, con_e, con_b, con_n, activate) 
+    (concrete_pk, project_pk, name, dims, con_unit, con_e, con_b, con_n, activate, created_at, updated_at) 
     VALUES 
-    (:concrete_pk, :project_pk, :name, :dims, :con_unit, :con_e, :con_b, :con_n, :activate)
+    (:concrete_pk, :project_pk, :name, :dims, :con_unit, :con_e, :con_b, :con_n, :activate, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     """
     
     params = {
         "concrete_pk": new_pk,
         "project_pk": project_pk,
         "name": name,
-        "dims": json.dumps(dims),  # dims는 JSON 문자열로 변환
+        "dims": json.dumps(dims),
         "con_unit": con_unit,
         "con_e": con_e,
         "con_b": con_b,
@@ -245,9 +245,9 @@ def add_sensor_data(concrete_pk: str, device_id: str, channel: int,
     # 3) INSERT 쿼리 실행
     sql = """
     INSERT INTO sensor 
-    (sensor_pk, concrete_pk, device_id, channel, d_type, dims) 
+    (sensor_pk, concrete_pk, device_id, channel, d_type, dims, created_at, updated_at) 
     VALUES 
-    (:sensor_pk, :concrete_pk, :device_id, :channel, :d_type, :dims)
+    (:sensor_pk, :concrete_pk, :device_id, :channel, :d_type, :dims, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     """
     
     params = {
@@ -256,7 +256,7 @@ def add_sensor_data(concrete_pk: str, device_id: str, channel: int,
         "device_id": device_id,
         "channel": channel,
         "d_type": d_type,
-        "dims": json.dumps(dims)  # dims는 JSON 문자열로 변환
+        "dims": json.dumps(dims)
     }
     
     return pd.read_sql(text(sql), con=engine, params=params)
