@@ -6,6 +6,7 @@ import api_user
 import api_concrete
 import api_sensor
 from datetime import datetime
+import api_db
 
 # 외부 assets/custom.css 파일에 hover 스타일 정의 필요:
 # .project-card:hover {
@@ -14,7 +15,7 @@ from datetime import datetime
 # }
 
 register_page(__name__, path="/", title="프로젝트 목록")
-projects_df = pd.read_csv("data/project.csv")
+projects_df = api_db.get_project_data()
 
 
 def format_date(date_str: str) -> str:
