@@ -498,7 +498,6 @@ if __name__ == "__main__":
     sensors = get_sensors_data()
     print(sensors)
     
-    """
     # 프로젝트 삭제
     delete_project_data("P000006")
     
@@ -511,6 +510,17 @@ if __name__ == "__main__":
     delete_sensor_data("S000006")
     delete_sensor_data("S000007")
     delete_sensor_data("S000008")
-    
-    
+    """
+    update_project_data(
+        project_pk="P000001",
+        activate=1
+    )
+    update_project_data(
+        project_pk="P000002",
+        activate=1
+    )    
+    update_concrete_data(
+        concrete_pk="C000001",
+        activate=1
+    )      
     
