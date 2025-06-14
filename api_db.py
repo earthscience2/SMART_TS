@@ -467,8 +467,8 @@ if __name__ == "__main__":
     # 센서 데이터 조회 (시간 범위)
     sensor_data = get_sensor_data(
         sensor_pk="S000001",
-        start="2024061300",
-        end="2024061400"
+        start="2025061300",
+        end="2025061400"
     )
     print("\n센서 데이터 (시간 범위):")
     print(sensor_data)
@@ -476,7 +476,7 @@ if __name__ == "__main__":
     # 센서 데이터 조회 (특정 시간)
     sensor_data_time = get_sensor_data_by_time(
         sensor_pk="S000001",
-        time="2024-06-13 12:00:00"
+        time="2025-06-13 12:00:00"
     )
     print("\n센서 데이터 (특정 시간):")
     print(sensor_data_time)
