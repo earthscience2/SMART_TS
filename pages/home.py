@@ -10,8 +10,11 @@ register_page(__name__, path="/", title="프로젝트 목록")
 projects_df = api_db.get_project_data()
 
 
-def format_date(date_str: str) -> str:
-    s = date_str.rstrip("Z")
+def format_date(value):
+    if isinstance(value, pd.Timestamp):
+        return value.strftime("%Y.%m.%d")
+    # 그 외(혹시 문자열) 처리
+    s = str(value).rstrip("Z")
     try:
         dt = datetime.fromisoformat(s)
     except ValueError:
