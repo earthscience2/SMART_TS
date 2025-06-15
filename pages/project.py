@@ -297,43 +297,79 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
                 node_id = int(parts[0])
                 temp = float(parts[1])
                 temperatures[node_id] = temp
+    # 좌표/온도 배열
     x_coords = np.array([n['x'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
     y_coords = np.array([n['y'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
     z_coords = np.array([n['z'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
     temps = np.array([temperatures[k] for k in nodes.keys() if k in temperatures])
-    # 컬러바 범위 통일
     tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
-    # 3D 뷰 (컬러바 1개)
+    # 3D 뷰: Mesh3d + 와이어프레임
     fig_3d = go.Figure()
+    fig_3d.add_trace(go.Mesh3d(
+        x=x_coords, y=y_coords, z=z_coords,
+        intensity=temps, colorscale='RdBu', cmin=tmin, cmax=tmax,
+        opacity=0.4, name='Surface', showscale=True, colorbar=dict(title='Temperature (°C)')
+    ))
     fig_3d.add_trace(go.Scatter3d(
         x=x_coords, y=y_coords, z=z_coords,
-        mode='markers',
-        marker=dict(size=3, color=temps, colorscale='RdBu', cmin=tmin, cmax=tmax, showscale=True, colorbar=dict(title='Temperature (°C)')),
-        name='Nodes'))
+        mode='markers', marker=dict(size=2, color='black'), name='Wireframe'))
     fig_3d.update_layout(title=f"시간: {current_time}", scene=dict(aspectmode='data'), margin=dict(l=0, r=0, b=0, t=30), showlegend=False)
     # 단면 위치 (클릭 없으면 중앙)
     x0 = float(section_coord['x']) if section_coord and 'x' in section_coord else float(np.median(x_coords))
     y0 = float(section_coord['y']) if section_coord and 'y' in section_coord else float(np.median(y_coords))
     z0 = float(section_coord['z']) if section_coord and 'z' in section_coord else float(np.median(z_coords))
-    # X, Y, Z 단면도 (0.1m 간격, ±0.05 tolerance)
     tol = 0.05
     # X 단면 (x ≈ x0)
     mask_x = np.abs(x_coords - x0) < tol
-    fig_x = go.Figure(go.Heatmap(
-        x=y_coords[mask_x], y=z_coords[mask_x], z=temps[mask_x],
-        colorscale='RdBu', zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+    if np.any(mask_x):
+        # 2D binning (y/z)
+        yb, zb, tb = y_coords[mask_x], z_coords[mask_x], temps[mask_x]
+        if len(yb) > 3:
+            y_bins = np.linspace(yb.min(), yb.max(), 20)
+            z_bins = np.linspace(zb.min(), zb.max(), 20)
+            hist, yedges, zedges = np.histogram2d(yb, zb, bins=[y_bins, z_bins], weights=tb, normed=False)
+            counts, _, _ = np.histogram2d(yb, zb, bins=[y_bins, z_bins])
+            with np.errstate(invalid='ignore'): hist = np.divide(hist, counts, where=counts>0)
+            fig_x = go.Figure(go.Heatmap(
+                x=y_bins, y=z_bins, z=hist.T, colorscale='RdBu', zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+        else:
+            fig_x = go.Figure()
+    else:
+        fig_x = go.Figure()
     fig_x.update_layout(title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
     # Y 단면 (y ≈ y0)
     mask_y = np.abs(y_coords - y0) < tol
-    fig_y = go.Figure(go.Heatmap(
-        x=x_coords[mask_y], y=z_coords[mask_y], z=temps[mask_y],
-        colorscale='RdBu', zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+    if np.any(mask_y):
+        xb, zb, tb = x_coords[mask_y], z_coords[mask_y], temps[mask_y]
+        if len(xb) > 3:
+            x_bins = np.linspace(xb.min(), xb.max(), 20)
+            z_bins = np.linspace(zb.min(), zb.max(), 20)
+            hist, xedges, zedges = np.histogram2d(xb, zb, bins=[x_bins, z_bins], weights=tb, normed=False)
+            counts, _, _ = np.histogram2d(xb, zb, bins=[x_bins, z_bins])
+            with np.errstate(invalid='ignore'): hist = np.divide(hist, counts, where=counts>0)
+            fig_y = go.Figure(go.Heatmap(
+                x=x_bins, y=z_bins, z=hist.T, colorscale='RdBu', zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+        else:
+            fig_y = go.Figure()
+    else:
+        fig_y = go.Figure()
     fig_y.update_layout(title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
     # Z 단면 (z ≈ z0)
     mask_z = np.abs(z_coords - z0) < tol
-    fig_z = go.Figure(go.Heatmap(
-        x=x_coords[mask_z], y=y_coords[mask_z], z=temps[mask_z],
-        colorscale='RdBu', zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+    if np.any(mask_z):
+        xb, yb, tb = x_coords[mask_z], y_coords[mask_z], temps[mask_z]
+        if len(xb) > 3:
+            x_bins = np.linspace(xb.min(), xb.max(), 20)
+            y_bins = np.linspace(yb.min(), yb.max(), 20)
+            hist, xedges, yedges = np.histogram2d(xb, yb, bins=[x_bins, y_bins], weights=tb, normed=False)
+            counts, _, _ = np.histogram2d(xb, yb, bins=[x_bins, y_bins])
+            with np.errstate(invalid='ignore'): hist = np.divide(hist, counts, where=counts>0)
+            fig_z = go.Figure(go.Heatmap(
+                x=x_bins, y=y_bins, z=hist.T, colorscale='RdBu', zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+        else:
+            fig_z = go.Figure()
+    else:
+        fig_z = go.Figure()
     fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30))
     return fig_3d, fig_x, fig_y, fig_z, current_time
 
