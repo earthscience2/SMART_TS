@@ -294,58 +294,113 @@ def update_heatmap(time_idx, section_height, selected_rows, tbl_data, current_ti
     current_time = os.path.basename(current_file).split(".")[0]
     
     try:
-        # inp 파일 읽기 (예시: 간단한 3D 그리드 데이터)
+        # inp 파일 읽기
         with open(current_file, 'r') as f:
             lines = f.readlines()
         
-        # 여기서는 예시로 간단한 3D 그리드 데이터를 생성
-        x = np.linspace(0, 10, 20)
-        y = np.linspace(0, 10, 20)
-        z = np.linspace(0, 5, 10)
-        X, Y, Z = np.meshgrid(x, y, z)
+        # 노드 정보 파싱
+        nodes = {}
+        node_section = False
+        for line in lines:
+            if line.startswith('*NODE'):
+                node_section = True
+                continue
+            elif line.startswith('*'):
+                node_section = False
+                continue
+            
+            if node_section and ',' in line:
+                parts = line.strip().split(',')
+                if len(parts) >= 4:
+                    node_id = int(parts[0])
+                    x = float(parts[1])
+                    y = float(parts[2])
+                    z = float(parts[3])
+                    nodes[node_id] = {'x': x, 'y': y, 'z': z}
         
-        # 온도 데이터 생성 (예시)
-        T = np.sin(X/2) * np.cos(Y/2) * np.exp(-Z/5)
+        # 온도 정보 파싱
+        temperatures = {}
+        temp_section = False
+        for line in lines:
+            if line.startswith('*TEMPERATURE'):
+                temp_section = True
+                continue
+            elif line.startswith('*'):
+                temp_section = False
+                continue
+            
+            if temp_section and ',' in line:
+                parts = line.strip().split(',')
+                if len(parts) >= 2:
+                    node_id = int(parts[0])
+                    temp = float(parts[1])
+                    temperatures[node_id] = temp
         
-        # 단면도 높이에 해당하는 z 인덱스 계산
-        z_idx = int(section_height / 100 * (len(z) - 1))
+        # 3D 데이터 준비
+        x_coords = []
+        y_coords = []
+        z_coords = []
+        temps = []
+        
+        for node_id, node in nodes.items():
+            if node_id in temperatures:
+                x_coords.append(node['x'])
+                y_coords.append(node['y'])
+                z_coords.append(node['z'])
+                temps.append(temperatures[node_id])
+        
+        # 단면도 높이에 해당하는 z 값 계산
+        z_min = min(z_coords)
+        z_max = max(z_coords)
+        section_z = z_min + (z_max - z_min) * (section_height / 100)
         
         # 3D 히트맵 생성
         fig = go.Figure()
         
         # 전체 3D 히트맵
-        fig.add_trace(go.Volume(
-            x=X.flatten(),
-            y=Y.flatten(),
-            z=Z.flatten(),
-            value=T.flatten(),
-            isomin=-1,
-            isomax=1,
-            opacity=0.3,
-            surface_count=20,
-            colorscale='RdBu',
-            showscale=True,
+        fig.add_trace(go.Scatter3d(
+            x=x_coords,
+            y=y_coords,
+            z=z_coords,
+            mode='markers',
+            marker=dict(
+                size=5,
+                color=temps,
+                colorscale='RdBu',
+                showscale=True,
+                colorbar=dict(title='Temperature (°C)')
+            ),
+            name='3D View'
         ))
         
         # 단면도
-        fig.add_trace(go.Heatmap(
-            x=x,
-            y=y,
-            z=T[:,:,z_idx],
-            colorscale='RdBu',
-            showscale=False,
-        ))
+        section_mask = [abs(z - section_z) < 0.1 for z in z_coords]
+        if any(section_mask):
+            fig.add_trace(go.Scatter3d(
+                x=[x for i, x in enumerate(x_coords) if section_mask[i]],
+                y=[y for i, y in enumerate(y_coords) if section_mask[i]],
+                z=[z for i, z in enumerate(z_coords) if section_mask[i]],
+                mode='markers',
+                marker=dict(
+                    size=8,
+                    color=[t for i, t in enumerate(temps) if section_mask[i]],
+                    colorscale='RdBu',
+                    showscale=False
+                ),
+                name='Section View'
+            ))
         
         # 레이아웃 설정
         fig.update_layout(
             title=f"시간: {current_time}",
             scene=dict(
-                xaxis_title="X",
-                yaxis_title="Y",
-                zaxis_title="Z",
+                xaxis_title="X (m)",
+                yaxis_title="Y (m)",
+                zaxis_title="Z (m)",
                 aspectmode='data'
             ),
             margin=dict(l=0, r=0, b=0, t=30),
+            showlegend=True
         )
         
         return current_time, fig
