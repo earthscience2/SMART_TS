@@ -334,21 +334,13 @@ def init_dropdown(selected_value):
     Output("tbl-sensor", "selected_rows"),
     Output("btn-sensor-edit", "disabled"),
     Output("btn-sensor-del", "disabled"),
-
     Input("ddl-concrete", "value"),
-    Input("toggle-lines", "value"),            # 메인 뷰 보조선 토글
-    Input("tbl-sensor", "data_timestamp"),     # ← 추가: data_timestamp가 바뀌면 콜백 재실행
+    Input("toggle-lines", "value"),
+    Input("tbl-sensor", "data_timestamp"),
     State("camera-store", "data"),
     prevent_initial_call=True,
 )
 def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
-    """
-    콘크리트를 선택하거나
-    tbl-sensor.data_timestamp이 갱신될 때(수정/삭제 후) 자동으로 호출되어
-    - 새 3D 메쉬 + 센서 그리기
-    - 센서 리스트(테이블) 갱신
-    - 첫 번째 센서 강조 등 수행
-    """
     if not selected_conc:
         return go.Figure(), "", [], [], [], True, True
 
@@ -386,7 +378,7 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
         colors.append("blue")
         sizes.append(8)
         table_data.append({
-            "sensor_pk": row["sensor_pk"],    # ← 추가
+            "sensor_pk": row["sensor_pk"],   # → 데이터에는 남김
             "device_id": row["device_id"],
             "channel":   row["channel"],
             "position":  pos_str,
@@ -397,7 +389,7 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
     if sensor_ids:
         colors[0] = "red"
         sizes[0] = 12
-        selected_indices = [0]
+        selected_indices = [0] if table_data else []
 
     # 5) Sensors trace 추가 (점)
     fig.add_trace(go.Scatter3d(
@@ -461,10 +453,9 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
 
     # 8) 테이블 컬럼 정의
     columns = [
-        {"name": "sensor_pk", "id": "sensor_pk", "hidden": True},
-        {"name": "Device ID", "id": "device_id"},
-        {"name": "채널",       "id": "channel"},
-        {"name": "위치 (x,y,z)", "id": "position"},
+        {"name": "Device ID",     "id": "device_id"},
+        {"name": "채널",           "id": "channel"},
+        {"name": "위치 (x,y,z)",   "id": "position"},
     ]
 
     title         = f"{selected_conc} · 센서 전체"
