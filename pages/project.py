@@ -214,80 +214,16 @@ def on_project_change(selected_proj):
 @callback(
     Output("btn-concrete-del", "disabled", allow_duplicate=True),
     Output("btn-concrete-analyze", "disabled", allow_duplicate=True),
-    Output("time-slider", "min", allow_duplicate=True),
-    Output("time-slider", "max", allow_duplicate=True),
-    Output("time-slider", "value", allow_duplicate=True),
-    Output("time-slider", "marks", allow_duplicate=True),
-    Output("current-time-store", "data", allow_duplicate=True),
     Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
 def on_concrete_select(selected_rows, tbl_data):
     if not selected_rows:
-        return True, True, 0, 5, 0, {}, None
-    
-    # 선택된 콘크리트의 activate 상태 확인
+        return True, True
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     is_active = row["activate"] == "활성"
-    concrete_pk = row["concrete_pk"]
-    
-    # inp 파일 목록 조회
-    inp_dir = f"inp/{concrete_pk}"
-    if not os.path.exists(inp_dir):
-        return False, not is_active, 0, 5, 0, {}, None
-    
-    # inp 파일 시간 목록 생성
-    inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
-    if not inp_files:
-        return False, not is_active, 0, 5, 0, {}, None
-    
-    # 시간 범위 계산
-    times = []
-    for f in inp_files:
-        try:
-            time_str = os.path.basename(f).split(".")[0]
-            dt = datetime.strptime(time_str, "%Y%m%d%H")
-            times.append(dt)
-        except:
-            continue
-    
-    if not times:
-        return False, not is_active, 0, 5, 0, {}, None
-    
-    # 슬라이더 마크 생성
-    marks = {}
-    for i, t in enumerate(times):
-        if i % 6 == 0:  # 6시간 간격으로 마크 표시
-            marks[i] = t.strftime("%m/%d %H:00")
-    
-    return False, not is_active, 0, len(times)-1, 0, marks, times[0].strftime("%Y%m%d%H")
-
-# ───────────────────── ④ 시간 슬라이더 콜백 ─────────────────────
-@callback(
-    Output("time-slider", "marks"),
-    Output("time-slider", "max"),
-    Output("current-time-store", "data", allow_duplicate=True),
-    Input("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
-    prevent_initial_call=True,
-)
-def update_time_slider(selected_rows, tbl_data):
-    if not selected_rows:
-        raise PreventUpdate
-    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-    concrete_pk = row["concrete_pk"]
-    inp_dir = f"inp/{concrete_pk}"
-    if not os.path.exists(inp_dir):
-        raise PreventUpdate
-    inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
-    if not inp_files:
-        raise PreventUpdate
-    # 6등분
-    n = len(inp_files)
-    idxs = [round(i * (n-1)/5) for i in range(6)]
-    marks = {i: os.path.basename(inp_files[idxs[i]]).split(".")[0] for i in range(6)}
-    return marks, 5, 0
+    return False, not is_active
 
 # ───────────────────── 3D 뷰 클릭 → 단면 위치 저장 ─────────────────────
 @callback(
