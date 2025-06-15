@@ -367,49 +367,36 @@ def update_heatmap(time_idx, section_height, selected_rows, tbl_data, current_ti
         z_max = max(z_coords)
         section_z = z_min + (z_max - z_min) * (section_height / 100)
         
-        # 3D 뷰 생성
-        fig_3d = go.Figure()
-        
-        # 와이어프레임 추가
-        fig_3d.add_trace(go.Scatter3d(
-            x=x_coords,
-            y=y_coords,
-            z=z_coords,
-            mode='markers',
-            marker=dict(
-                size=3,
-                color=temps,
-                colorscale='RdBu',
-                showscale=True,
-                colorbar=dict(title='Temperature (°C)')
-            ),
-            name='Nodes'
-        ))
-        
-        # 서피스 추가
-        fig_3d.add_trace(go.Mesh3d(
-            x=x_coords,
-            y=y_coords,
-            z=z_coords,
-            colorbar_title='Temperature (°C)',
-            colorscale='RdBu',
-            intensity=temps,
-            opacity=0.3,
-            name='Surface'
-        ))
-        
-        # 3D 뷰 레이아웃 설정
-        fig_3d.update_layout(
-            title=f"시간: {current_time}",
-            scene=dict(
-                xaxis_title="X (m)",
-                yaxis_title="Y (m)",
-                zaxis_title="Z (m)",
-                aspectmode='data'
-            ),
-            margin=dict(l=0, r=0, b=0, t=30),
-            showlegend=True
+        # 1. 노드 좌표와 온도 배열 준비
+        coords = np.array([[x, y, z] for x, y, z in zip(x_coords, y_coords, z_coords)])
+        temps = np.array(temps)
+
+        # 2. 0.1m 간격으로 격자 생성
+        x_bins = np.arange(coords[:,0].min(), coords[:,0].max()+0.1, 0.1)
+        y_bins = np.arange(coords[:,1].min(), coords[:,1].max()+0.1, 0.1)
+        z_bins = np.arange(coords[:,2].min(), coords[:,2].max()+0.1, 0.1)
+
+        # 3. 각 노드를 격자에 할당
+        indices = (
+            np.digitize(coords[:,0], x_bins) - 1,
+            np.digitize(coords[:,1], y_bins) - 1,
+            np.digitize(coords[:,2], z_bins) - 1
         )
+
+        # 4. 3D 배열에 평균 온도 저장
+        grid = np.full((len(x_bins), len(y_bins), len(z_bins)), np.nan)
+        for i in range(len(coords)):
+            xi, yi, zi = indices[0][i], indices[1][i], indices[2][i]
+            if np.isnan(grid[xi, yi, zi]):
+                grid[xi, yi, zi] = temps[i]
+            else:
+                grid[xi, yi, zi] = (grid[xi, yi, zi] + temps[i]) / 2  # 평균
+
+        # 5. Plotly 3D Volume으로 시각화
+        fig_3d = go.Figure(data=go.Volume(
+            x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
+            opacity=0.2, surface_count=15, colorscale='RdBu'
+        ))
         
         # 단면도 생성
         fig_section = go.Figure()
@@ -428,7 +415,8 @@ def update_heatmap(time_idx, section_height, selected_rows, tbl_data, current_ti
                 z=section_temps,
                 colorscale='RdBu',
                 showscale=True,
-                colorbar=dict(title='Temperature (°C)')
+                colorbar=dict(title='Temperature (°C)'),
+                zsmooth='best'
             ))
         
         # 단면도 레이아웃 설정
