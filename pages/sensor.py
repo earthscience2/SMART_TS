@@ -338,6 +338,7 @@ def init_dropdown(selected_value):
     Output("tbl-sensor", "selected_rows"),
     Output("btn-sensor-edit", "disabled"),
     Output("btn-sensor-del", "disabled"),
+    Output("btn-sensor-add", "disabled"),
     Input("ddl-concrete", "value"),
     Input("toggle-lines", "value"),            
     Input("tbl-sensor", "data_timestamp"),     
@@ -346,7 +347,7 @@ def init_dropdown(selected_value):
 )
 def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
     if not selected_conc:
-        return go.Figure(), "", [], [], [], True, True
+        return go.Figure(), "", [], [], [], True, True, True
 
     # ────────────────────────────────────────────────────────
     # 1) 콘크리트 정보 로드
@@ -357,7 +358,7 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
         conc_nodes, conc_h = dims["nodes"], dims["h"]
 
     except Exception:
-        return go.Figure(), "콘크리트 정보를 불러올 수 없음", [], [], [], True, True
+        return go.Figure(), "콘크리트 정보를 불러올 수 없음", [], [], [], True, True, True
 
     # 2) 기본 메쉬 생성
     fig = make_concrete_fig(conc_nodes, conc_h)
@@ -465,12 +466,18 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
         {"name": "위치 (x,y,z)",   "id": "position"},
     ]
 
-    title         = f"{selected_conc} · 센서 전체"
-    edit_disabled = True if activate == 0 else not bool(selected_indices)
-    del_disabled  = not bool(selected_indices)
-
     title = f"{selected_conc} · 센서 전체"
-    return fig, title, table_data, columns, selected_indices, edit_disabled, del_disabled
+    
+    # activate가 0이면 모든 버튼 비활성화
+    if activate == 0:
+        return fig, title, table_data, columns, selected_indices, True, True, True
+    
+    # activate가 1이면 센서 선택 여부에 따라 버튼 활성화/비활성화
+    edit_disabled = not bool(selected_indices)
+    del_disabled = not bool(selected_indices)
+    add_disabled = False  # 추가 버튼은 항상 활성화 (activate=1일 때)
+
+    return fig, title, table_data, columns, selected_indices, edit_disabled, del_disabled, add_disabled
 
 
 # ───────────────────── ③ 센서 선택 콜백 ─────────────────────
