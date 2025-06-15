@@ -167,7 +167,7 @@ layout = dbc.Container(
     prevent_initial_call=False
 )
 def refresh_table(n, project_pk):
-    df_all = api.load_all()
+    df_all = api_db.get_concrete_data()
     if project_pk:
         df = df_all[df_all["project_pk"] == project_pk]
     else:
@@ -271,7 +271,7 @@ def add_save(_, name, nodes_txt, h):
         return "높이 필수", "danger", True, dash.no_update
     dims = {"nodes": nodes, "h": float(h)}
     # TODO: project_pk 인자를 실제 프로젝트 PK로 교체
-    api.add_concrete("", name, dims)
+    api_db.add_concrete_data("", name, dims)
     return "추가 완료", "success", True, pd.Timestamp.utcnow().value
 
 # ───────────────────── ⑥ 삭제 수행
@@ -298,7 +298,7 @@ def delete_row(_, sel, data):
     if not sel:
         raise PreventUpdate
     cid = data[sel[0]]["concrete_pk"]
-    api.delete_concrete(cid)
+    api_db.delete_concrete_data(cid)
     return pd.Timestamp.utcnow().value, f"{cid} 삭제 완료", "warning", True
 
 # ───────────────────── ⑦ 수정 모달 열기
@@ -329,7 +329,7 @@ def open_edit(b1, b2, sel, data):
 def fill_edit(opened, cid):
     if not opened or not cid:
         raise PreventUpdate
-    row = api.get_concrete(cid) or {}
+    row = api_db.get_concrete_data(cid) or {}
     dims = row.get("dims", {})
     return (
         row.get("name", ""),
@@ -386,5 +386,5 @@ def save_edit(_, cid, name, nodes_txt, h):
     if h is None:
         return dash.no_update, "높이 입력", "danger", True
     dims = {"nodes": nodes, "h": float(h)}
-    api.update_concrete(cid, name=name, dims=dims)
+    api_db.update_concrete_data(cid, name=name, dims=dims)
     return pd.Timestamp.utcnow().value, f"{cid} 수정 완료", "success", True
