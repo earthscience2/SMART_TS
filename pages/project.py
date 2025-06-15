@@ -23,6 +23,7 @@ from dash import (
 )
 import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
+from scipy.interpolate import griddata
 
 import api_db
 
@@ -311,49 +312,35 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     temps = np.array([temperatures[k] for k in nodes.keys() if k in temperatures])
     tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
 
-    # 3D 뷰 생성
-    fig_3d = go.Figure()
-    
-    # 와이어프레임 추가
-    fig_3d.add_trace(go.Scatter3d(
-        x=x_coords,
-        y=y_coords,
-        z=z_coords,
-        mode='markers',
-        marker=dict(
-            size=3,
-            color=temps,
-            colorscale='RdBu',
-            showscale=True,
-            colorbar=dict(title='Temperature (°C)')
-        ),
-        name='Nodes'
+    # 2. 정형 격자 생성
+    grid_x, grid_y, grid_z = np.mgrid[
+        x_coords.min():x_coords.max():30j,
+        y_coords.min():y_coords.max():30j,
+        z_coords.min():z_coords.max():15j
+    ]
+
+    # 3. 온도 보간
+    grid_t = griddata(np.vstack([x_coords, y_coords, z_coords]), temps, (grid_x, grid_y, grid_z), method='linear', fill_value=np.nan)
+
+    # 4. 등온면
+    fig = go.Figure()
+    fig.add_trace(go.Isosurface(
+        x=grid_x.flatten(), y=grid_y.flatten(), z=grid_z.flatten(), value=grid_t.flatten(),
+        isomin=np.nanmin(temps), isomax=np.nanmax(temps),
+        surface_count=6, colorscale='Jet', opacity=0.6,
+        caps=dict(x_show=False, y_show=False, z_show=False)
     ))
-    
-    # 서피스 추가
-    fig_3d.add_trace(go.Mesh3d(
-        x=x_coords,
-        y=y_coords,
-        z=z_coords,
-        colorbar_title='Temperature (°C)',
-        colorscale='RdBu',
-        intensity=temps,
-        opacity=0.3,
-        name='Surface'
-    ))
-    
-    # 3D 뷰 레이아웃 설정
-    fig_3d.update_layout(
-        title=f"시간: {current_time}",
-        scene=dict(
-            xaxis_title="X (m)",
-            yaxis_title="Y (m)",
-            zaxis_title="Z (m)",
-            aspectmode='data'
-        ),
-        margin=dict(l=0, r=0, b=0, t=30),
-        showlegend=True
-    )
+
+    # 5. 와이어프레임 (요소 엣지 정보 필요, 예시)
+    # for edge in element_edges:
+    #     fig.add_trace(go.Scatter3d(
+    #         x=[nodes[edge[0],0], nodes[edge[1],0]],
+    #         y=[nodes[edge[0],1], nodes[edge[1],1]],
+    #         z=[nodes[edge[0],2], nodes[edge[1],2]],
+    #         mode='lines', line=dict(color='blue', width=1), showlegend=False
+    #     ))
+
+    fig.update_layout(scene=dict(aspectmode='data'), margin=dict(l=0, r=0, b=0, t=0))
 
     # 단면 위치 (클릭 없으면 중앙)
     x0 = float(section_coord['x']) if section_coord and 'x' in section_coord else float(np.median(x_coords))
@@ -415,7 +402,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         fig_z = go.Figure()
     fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30))
 
-    return fig_3d, fig_x, fig_y, fig_z, current_time
+    return fig, fig_x, fig_y, fig_z, current_time
 
 # ───────────────────── ⑤ 분석 시작 콜백 ─────────────────────
 @callback(
