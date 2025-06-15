@@ -338,6 +338,7 @@ def init_dropdown(selected_value):
     Input("toggle-lines", "value"),            
     Input("tbl-sensor", "data_timestamp"),     
     State("camera-store", "data"),
+    State("ddl-concrete", "value"),
     prevent_initial_call=True,
 )
 def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
@@ -483,7 +484,7 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
     State("ddl-concrete", "value"),
     prevent_initial_call=True,
 )
-def on_sensor_select(selected_rows, tbl_data, current_fig, cam_store):
+def on_sensor_select(selected_rows, tbl_data, current_fig, cam_store, selected_conc):
     """
     DataTable에서 센서를 선택할 때:
     - 이전 Figure(current_fig)에서 camera를 유지
@@ -891,13 +892,7 @@ def toggle_edit_modal(b_open, b_close, b_save, sel, tbl_data, conc_pk):
     State("edit-toggle-lines", "value"),      # ← 모달 내 보조선 토글 스위치 상태
 )
 def fill_edit_sensor(opened, conc_pk, sensor_pk, show_lines):
-    """
-    수정 모달이 열릴 때:
-    1) 콘크리트 + 모든 센서를 먼저 그리고
-    2) show_lines=True 면 보조선을 그리고
-    3) 해당 센서만 빨간 점(크기 6)으로 강조
-    4) edit-sensor-id, edit-sensor-coords 필드에 값을 채움
-    """
+
     if not opened or not (conc_pk and sensor_pk):
         raise PreventUpdate
 
@@ -1009,7 +1004,7 @@ def fill_edit_sensor(opened, conc_pk, sensor_pk, show_lines):
         ))
 
     # * 센서 ID 필드에는 기존 sensor_id 값을 채워서 보여줌 (이제 수정 가능)
-    return sensor_pk, coords_txt, fig_conc, "", False
+    return coords_txt, fig_conc, "", False
 
 
 # ───────────────────── ⑪ 수정 미리보기 콜백 ─────────────────────
@@ -1025,7 +1020,7 @@ def fill_edit_sensor(opened, conc_pk, sensor_pk, show_lines):
     State("edit-sensor-id", "value"),                 # 수정된 ID
     prevent_initial_call=True,
 )
-def edit_sensor_preview(n_clicks, show_lines, coords_txt, conc_pk, sensor_pk, new_sensor_id):
+def edit_sensor_preview(n_clicks, show_lines, coords_txt, conc_pk, sensor_pk):
     """
     수정 모달에서:
     - '새로고침' 버튼(n_clicks) OR
