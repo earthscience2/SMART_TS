@@ -436,6 +436,8 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
 
 # 시간 슬라이더 마크: 처음/중간/끝만 표시
 @callback(
+    Output("time-slider", "min", allow_duplicate=True),
+    Output("time-slider", "max", allow_duplicate=True),
     Output("time-slider", "marks", allow_duplicate=True),
     Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
@@ -443,18 +445,37 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
 )
 def update_time_slider_marks(selected_rows, tbl_data):
     if not selected_rows:
-        return {0: '처음', 1: '중간', 2: '끝'}
+        return 0, 5, {}
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
     inp_dir = f"inp/{concrete_pk}"
+    if not os.path.exists(inp_dir):
+        return 0, 5, {}
     inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
     if not inp_files:
-        return {0: '처음', 1: '중간', 2: '끝'}
-    slider_min = 0
-    slider_max = len(inp_files) - 1
-    slider_marks = {i: os.path.basename(f).split('.')[0] for i, f in enumerate(inp_files)}
-    # value는 최근 파일 인덱스(기본값)
-    return slider_marks
+        return 0, 5, {}
+    # 시간 파싱
+    times = []
+    for f in inp_files:
+        try:
+            time_str = os.path.basename(f).split(".")[0]
+            dt = datetime.strptime(time_str, "%Y%m%d%H")
+            times.append(dt)
+        except:
+            continue
+    if not times:
+        return 0, 5, {}
+    # 1일(24시간) 간격으로 마크 표시
+    marks = {}
+    for i, t in enumerate(times):
+        if t.hour == 0:
+            marks[i] = t.strftime("%m/%d")
+    # 첫번째와 마지막은 항상 표시
+    if 0 not in marks:
+        marks[0] = times[0].strftime("%m/%d")
+    if (len(times)-1) not in marks:
+        marks[len(times)-1] = times[-1].strftime("%m/%d")
+    return 0, len(times)-1, marks
 
 # ───────────────────── ⑤ 분석 시작 콜백 ─────────────────────
 @callback(
