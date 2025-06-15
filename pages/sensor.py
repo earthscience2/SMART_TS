@@ -224,7 +224,16 @@ layout = dbc.Container(
                 dbc.ModalBody(
                     [
                         dbc.Alert(id="add-sensor-alert", is_open=False, duration=3000, color="danger"),
-                        dbc.Input(id="add-sensor-id", placeholder="Sensor ID (예: S001)", className="mb-2"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Device ID", className="form-label"),
+                                dbc.Input(id="add-sensor-device-id", placeholder="Device ID (예: DEVICE001)", className="mb-2"),
+                            ], width=6),
+                            dbc.Col([
+                                html.Label("Channel", className="form-label"),
+                                dbc.Input(id="add-sensor-channel", type="number", placeholder="채널 번호", className="mb-2"),
+                            ], width=6)
+                        ], className="mb-3"),
                         dbc.Input(id="add-sensor-coords", placeholder="센서 좌표 [x, y, z] (예: [1, 1, 0])", className="mb-2"),
                         dcc.Graph(id="add-sensor-preview", style={"height": "45vh"}, className="border"),
                     ]
@@ -520,7 +529,9 @@ def on_sensor_select(selected_rows, tbl_data, current_fig, cam_store, selected_c
             sel_id = sensor_trace.customdata[sel_idx]
             base_title = fig.layout.title.text if (fig.layout and fig.layout.title) else ""
             base_conc = base_title.split("·")[0].strip() if base_title else ""
-            title = f"{base_conc} · 센서 {sel_id} 선택됨"
+            # 센서 정보 가져오기
+            sensor_info = api_db.get_sensors_data(sensor_pk=sel_id).iloc[0]
+            title = f"{base_conc} · {sensor_info['device_id']} (채널: {sensor_info['channel']})"
         else:
             edit_disabled = True
             del_disabled = True
@@ -638,30 +649,33 @@ def toggle_add_modal(b_add, b_close, b_save, is_open):
     Output("add-sensor-alert",   "is_open"),
     Input("add-sensor-build", "n_clicks"),
     State("ddl-concrete",     "value"),
-    State("add-sensor-id",    "value"),
+    State("add-sensor-device-id", "value"),
+    State("add-sensor-channel", "value"),
     State("add-sensor-coords","value"),
     State("toggle-lines",     "value"),   # ← 메인 뷰 보조선 토글 상태
     prevent_initial_call=True,
 )
-def add_sensor_preview(_, conc_pk, sensor_pk, coords_txt, show_lines):
+def add_sensor_preview(_, conc_pk, device_id, channel, coords_txt, show_lines):
     """
     센서 추가 모달에서:
     1) 콘크리트 + 기존 센서(파란 점) + 보조선(show_lines=True인 경우)
     2) 새로 추가할 센서를 파란 점(크기 6)으로 미리보기
-    3) 이미 존재하는 ID가 입력되면 Alert 반환
+    3) 이미 존재하는 디바이스 ID와 채널 조합이 입력되면 Alert 반환
     """
-    # 콘크리트, 센서 ID, 좌표 입력 검사
+    # 콘크리트, 디바이스 ID, 채널, 좌표 입력 검사
     if not conc_pk:
         return dash.no_update, "콘크리트를 먼저 선택하세요", True
-    if not sensor_pk:
-        return dash.no_update, "센서 ID를 입력하세요", True
+    if not device_id:
+        return dash.no_update, "Device ID를 입력하세요", True
+    if not channel:
+        return dash.no_update, "채널 번호를 입력하세요", True
 
-    # (추가) 동일 콘크리트 내 기존 센서 ID 리스트 조회
+    # (추가) 동일 콘크리트 내 기존 센서 디바이스 ID와 채널 조합 확인
     df_sensor_full = api_db.get_sensors_data()
     df_same = df_sensor_full[df_sensor_full["concrete_pk"] == conc_pk]
-    existing_ids = df_same["sensor_pk"].tolist()
-    if sensor_pk in existing_ids:
-        return dash.no_update, f"이미 존재하는 Sensor ID: {sensor_pk}", True
+    existing_sensors = df_same[(df_same["device_id"] == device_id) & (df_same["channel"] == channel)]
+    if not existing_sensors.empty:
+        return dash.no_update, f"이미 존재하는 디바이스 ID와 채널 조합: {device_id} (채널: {channel})", True
 
     if not coords_txt:
         return dash.no_update, "좌표를 입력하세요 (예: [1,1,0])", True
@@ -771,27 +785,28 @@ def add_sensor_preview(_, conc_pk, sensor_pk, coords_txt, show_lines):
     Output("add-sensor-alert", "is_open",  allow_duplicate=True),
     Input("add-sensor-save", "n_clicks"),
     State("ddl-concrete",     "value"),
-    State("add-sensor-id",    "value"),
+    State("add-sensor-device-id", "value"),
+    State("add-sensor-channel", "value"),
     State("add-sensor-coords","value"),
     prevent_initial_call=True,
 )
-def add_sensor_save(_, conc_pk, sensor_pk, coords_txt):
+def add_sensor_save(_, conc_pk, device_id, channel, coords_txt):
     """
     센서 추가 시:
-    1) 콘크리트를 선택했는지, ID와 좌표를 입력했는지 확인
-    2) 동일 콘크리트 내에 이미 같은 ID가 있으면 Alert 반환 후 저장 중단
-    3) ID/좌표 형식 모두 정상일 경우 api_sensor.add_sensor 호출
+    1) 콘크리트를 선택했는지, 디바이스 ID와 채널, 좌표를 입력했는지 확인
+    2) 동일 콘크리트 내에 이미 같은 디바이스 ID와 채널 조합이 있으면 Alert 반환 후 저장 중단
+    3) 좌표 형식이 정상일 경우 api_sensor.add_sensor 호출
     4) 성공하면 data_timestamp를 갱신 → 메인 뷰 테이블 재로딩
     """
-    if not (conc_pk and sensor_pk):
-        return dash.no_update, "콘크리트 및 센서 ID를 입력하세요", "danger", True
+    if not (conc_pk and device_id and channel):
+        return dash.no_update, "콘크리트, 디바이스 ID, 채널을 모두 입력하세요", "danger", True
 
-    # (추가) 동일 콘크리트 내 기존 센서 ID 리스트 조회
+    # (추가) 동일 콘크리트 내 기존 센서 디바이스 ID와 채널 조합 확인
     df_sensor_full = api_db.get_sensors_data()
     df_same = df_sensor_full[df_sensor_full["concrete_pk"] == conc_pk]
-    existing_ids = df_same["sensor_pk"].tolist()
-    if sensor_pk in existing_ids:
-        return dash.no_update, f"이미 존재하는 Sensor ID: {sensor_pk}", "danger", True
+    existing_sensors = df_same[(df_same["device_id"] == device_id) & (df_same["channel"] == channel)]
+    if not existing_sensors.empty:
+        return dash.no_update, f"이미 존재하는 디바이스 ID와 채널 조합: {device_id} (채널: {channel})", "danger", True
 
     if not coords_txt:
         return dash.no_update, "좌표를 입력하세요 (예: [1,1,0])", "danger", True
@@ -807,7 +822,7 @@ def add_sensor_save(_, conc_pk, sensor_pk, coords_txt):
 
     # 실제 추가
     try:
-        api_db.add_sensors_data(conc_pk, sensor_pk, {"nodes": xyz})
+        api_db.add_sensors_data(concrete_pk=conc_pk, device_id=device_id, channel=channel, d_type=1, dims={"nodes": xyz})
     except Exception as e:
         return dash.no_update, f"추가 실패: {e}", "danger", True
 
