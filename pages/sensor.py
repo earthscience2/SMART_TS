@@ -669,7 +669,7 @@ def add_sensor_preview(_, conc_pk, sensor_pk, coords_txt, show_lines):
 
     # 1) 콘크리트 정보 로드 & 기본 Mesh 그리기
     try:
-        conc_row = api_concrete.load_all().query("concrete_pk == @conc_pk").iloc[0]
+        conc_row = api_db.get_concrete_data().query("concrete_pk == @conc_pk").iloc[0]
         conc_dims = ast.literal_eval(conc_row["dims"])
         conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
         fig_conc = make_concrete_fig(conc_nodes, conc_h)
