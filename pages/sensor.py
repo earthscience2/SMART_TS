@@ -806,7 +806,7 @@ def add_sensor_save(_, conc_pk, sensor_pk, coords_txt):
 
     # 실제 추가
     try:
-        api_db.add_sensor_data(conc_pk, sensor_pk, {"nodes": xyz})
+        api_db.add_sensors_data(conc_pk, sensor_pk, {"nodes": xyz})
     except Exception as e:
         return dash.no_update, f"추가 실패: {e}", "danger", True
 
@@ -844,7 +844,7 @@ def delete_sensor_confirm(_click, sel, tbl_data, conc_pk):
     sensor_pk = row["sensor_pk"]       # ← 이제 에러 없이 조회됨
 
     try:
-        api_db.delete_sensor_data(sensor_pk)
+        api_db.delete_sensors_data(sensor_pk)
     except Exception as e:
         return dash.no_update, f"삭제 실패: {e}", "danger", True
 
@@ -1203,18 +1203,18 @@ def edit_sensor_save(_, conc_pk, old_sensor_pk, new_sensor_pk, coords_txt):
     if new_sensor_pk and (new_sensor_pk != old_sensor_pk):
         # a) 기존 센서 삭제
         try:
-            api_db.delete_sensor_data(old_sensor_pk)
+            api_db.delete_sensors_data(old_sensor_pk)
         except Exception as e:
             return dash.no_update, f"기존 센서 삭제 실패: {e}", "danger", True
         # b) 새로운 ID로 동일한 좌표 추가
         try:
-            api_db.add_sensor_data(conc_pk, new_sensor_pk, {"nodes": xyz})
+            api_db.add_sensors_data(conc_pk, new_sensor_pk, {"nodes": xyz})
         except Exception as e:
             return dash.no_update, f"새 센서 추가 실패: {e}", "danger", True
     else:
         # ID가 같다면, 좌표만 업데이트
         try:
-            api_db.update_sensor_data(old_sensor_pk, {"nodes": xyz})
+            api_db.update_sensors_data(old_sensor_pk, {"nodes": xyz})
         except Exception as e:
             return dash.no_update, f"위치 업데이트 실패: {e}", "danger", True
 
