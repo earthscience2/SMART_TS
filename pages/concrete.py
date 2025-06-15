@@ -326,7 +326,7 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, e, b, n):
         con_e=float(e),
         con_b=float(b),
         con_n=float(n),
-        activate=0
+        activate=1
     )
 
     # 4) 성공 처리: 모달 닫기, 내부 Alert 숨기기, 테이블 갱신, 전역 알림
