@@ -255,10 +255,10 @@ def add_preview(_, nodes_txt, h):
 
 # ───────────────────── ⑤ 추가 저장
 @callback(
-    Output("add-alert",  "children"),
-    Output("add-alert",  "is_open"),
-    Output("tbl",        "data_timestamp", allow_duplicate=True),
-    Output("modal-add",  "is_open",        allow_duplicate=True),
+    Output("add-alert",  "children",        allow_duplicate=True),
+    Output("add-alert",  "is_open",          allow_duplicate=True),
+    Output("tbl",        "data_timestamp",   allow_duplicate=True),
+    Output("modal-add",  "is_open",          allow_duplicate=True),
     Input("add-save",    "n_clicks"),
     State("project-dropdown", "value"),
     State("add-name",    "value"),
@@ -287,7 +287,6 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, e, b, n):
     if n    is None:   missing.append("N 상수")
 
     if missing:
-        # 모달 안 경고만 띄우고, 모달 닫지 않음, 테이블 갱신도 하지 않음
         return f"{', '.join(missing)}을(를) 입력해주세요.", True, dash.no_update, True
 
     # 노드 파싱
@@ -297,7 +296,7 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, e, b, n):
     except Exception:
         return "노드 형식이 잘못되었습니다.", True, dash.no_update, True
 
-    # DB 저장
+    # DB 저장 (activate를 0으로 고정)
     dims = {"nodes": nodes, "h": float(h)}
     api_db.add_concrete_data(
         project_pk=project_pk,
@@ -306,10 +305,11 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, e, b, n):
         con_unit=float(unit),
         con_e=float(e),
         con_b=float(b),
-        con_n=float(n)
+        con_n=float(n),
+        activate=0
     )
 
-    # 성공 시: 모달 닫고, Alert 숨기고, 테이블 갱신
+    # 성공 시: 모달 닫기, Alert 숨기기, 테이블 갱신
     return "", False, pd.Timestamp.utcnow().value, False
 
 # ───────────────────── ⑥ 삭제 수행
