@@ -234,8 +234,8 @@ def toggle_add(b1, b2, b3, is_open):
 # ───────────────────── ④ 추가 미리보기
 @callback(
     Output("add-preview", "figure"),
-    Output("add-alert", "children"),
-    Output("add-alert", "is_open"),
+    Output("add-alert",   "children", allow_duplicate=True),
+    Output("add-alert",   "is_open",   allow_duplicate=True),
     Input("add-build", "n_clicks"),
     State("add-nodes", "value"),
     State("add-h", "value"),
