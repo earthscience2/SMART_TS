@@ -245,14 +245,23 @@ layout = dbc.Container(
             is_open=False,
             size="lg",
             children=[
-                dbc.ModalHeader("센서 수정"),
+                dbc.ModalHeader(f"센서 수정"),
                 dbc.ModalBody(
                     [
                         dcc.Store(id="edit-sensor-concrete-id"),
                         dcc.Store(id="edit-sensor-id-store"),
                         dbc.Alert(id="edit-sensor-alert", is_open=False, duration=3000, color="danger"),
-                        # 센서 ID(이제 수정 가능)
-                        #dbc.Input(id="edit-sensor-id", placeholder="Sensor ID", className="mb-2"),
+                        # 센서 정보 표시
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Device ID", className="form-label"),
+                                html.Div(id="edit-sensor-device-id", className="form-control bg-light")
+                            ], width=6),
+                            dbc.Col([
+                                html.Label("Channel", className="form-label"),
+                                html.Div(id="edit-sensor-channel", className="form-control bg-light")
+                            ], width=6)
+                        ], className="mb-3"),
                         # 좌표 입력 필드
                         dbc.Input(id="edit-sensor-coords", placeholder="센서 좌표 [x, y, z] (예: [1, 1, 0])", className="mb-2"),
                         # (★) 수정 모달 보조선 토글 스위치
@@ -870,26 +879,37 @@ def toggle_edit_modal(b_open, b_close, b_save, sel, tbl_data, conc_pk):
     Output("edit-sensor-preview", "figure"),
     Output("edit-sensor-alert", "children"),
     Output("edit-sensor-alert", "is_open"),
+    Output("edit-sensor-device-id", "children"),
+    Output("edit-sensor-channel", "children"),
     Input("modal-sensor-edit", "is_open"),
     State("edit-sensor-concrete-id", "data"),
     State("edit-sensor-id-store", "data"),
     State("edit-toggle-lines", "value"),      # ← 모달 내 보조선 토글 스위치 상태
 )
 def fill_edit_sensor(opened, conc_pk, sensor_pk, show_lines):
-
     if not opened or not (conc_pk and sensor_pk):
         raise PreventUpdate
 
-    # 1) 콘크리트 정보 로드
+    # 1) 센서 정보 로드
+    try:
+        sensor_row = api_db.get_sensors_data(sensor_pk=sensor_pk).iloc[0]
+        device_id = sensor_row["device_id"]
+        channel = sensor_row["channel"]
+        dims = ast.literal_eval(sensor_row["dims"])
+        coords_txt = f"[{dims['nodes'][0]}, {dims['nodes'][1]}, {dims['nodes'][2]}]"
+    except Exception:
+        return dash.no_update, go.Figure(), "센서 정보를 불러올 수 없음", True, "", ""
+
+    # 2) 콘크리트 정보 로드
     try:
         conc_row = api_db.get_concrete_data().query("concrete_pk == @conc_pk").iloc[0]
         conc_dims = ast.literal_eval(conc_row["dims"])
         conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
         fig_conc = make_concrete_fig(conc_nodes, conc_h)
     except Exception:
-        fig_conc = go.Figure()
+        return dash.no_update, go.Figure(), "콘크리트 정보를 불러올 수 없음", True, device_id, channel
 
-    # 2) 현재 콘크리트에 속한 모든 센서 정보를 가져와서 그리기 (파란 점, 크기 4)
+    # 3) 현재 콘크리트에 속한 모든 센서 정보를 가져와서 그리기 (파란 점, 크기 4)
     df_sensor_full = api_db.get_sensors_data()
     df_same = df_sensor_full[df_sensor_full["concrete_pk"] == conc_pk].copy()
 
@@ -914,7 +934,7 @@ def fill_edit_sensor(opened, conc_pk, sensor_pk, show_lines):
         name="All Sensors (for edit)",
     ))
 
-    # 3) 보조선(show_lines=True 일 때만)
+    # 4) 보조선(show_lines=True 일 때만)
     if show_lines:
         for x_s, y_s, z_s in zip(all_xs, all_ys, all_zs):
             # ① 수직 보조선
@@ -972,13 +992,11 @@ def fill_edit_sensor(opened, conc_pk, sensor_pk, show_lines):
                     showlegend=False,
                 ))
 
-    # 4) 수정 대상 센서만 빨간 점(크기 6)으로 강조
+    # 5) 수정 대상 센서만 빨간 점(크기 6)으로 강조
     matching = df_same[df_same["sensor_pk"] == sensor_pk]
-    coords_txt = ""
     if not matching.empty:
         dims_sensor = ast.literal_eval(matching.iloc[0]["dims"])
         x, y, z = float(dims_sensor["nodes"][0]), float(dims_sensor["nodes"][1]), float(dims_sensor["nodes"][2])
-        coords_txt = f"[{x}, {y}, {z}]"
         fig_conc.add_trace(go.Scatter3d(
             x=[x], y=[y], z=[z],
             mode="markers",
@@ -987,7 +1005,7 @@ def fill_edit_sensor(opened, conc_pk, sensor_pk, show_lines):
             hoverinfo="skip",
         ))
 
-    return coords_txt, fig_conc, "", False
+    return coords_txt, fig_conc, "", False, device_id, channel
 
 
 # ───────────────────── ⑪ 수정 미리보기 콜백 ────────────────────
@@ -1151,7 +1169,7 @@ def edit_sensor_save(n_clicks, conc_pk, old_sensor_pk, coords_txt):
         return dash.no_update, "좌표 형식이 잘못되었습니다 (예: [1,1,0])", "danger", True
 
     try:
-        api_db.update_sensors_data(old_sensor_pk, {"nodes": xyz})
+        api_db.update_sensors_data(old_sensor_pk, {"dims": {"nodes": xyz}})
     except Exception as e:
         return dash.no_update, f"위치 업데이트 실패: {e}", "danger", True
 
