@@ -122,18 +122,24 @@ layout = dbc.Container(
 
         # 추가 모달
         dbc.Modal(id="modal-add", is_open=False, size="lg", children=[
-            dbc.ModalHeader("콘크리트 추가"),
+        dbc.ModalHeader("콘크리트 추가"),
             dbc.ModalBody([
                 dbc.Input(id="add-name", placeholder="이름", className="mb-2"),
                 dbc.Alert(id="add-alert", is_open=False, duration=3000, color="danger"),
-                dbc.Textarea(id="add-nodes", placeholder="노드 목록 (예: [(1,0),(1,1),(0,1),(0,0)])", rows=3, className="mb-2"),
+                dbc.Textarea(id="add-nodes",
+                            placeholder="노드 목록 (예: [(1,0),(1,1),(0,1),(0,0)])",
+                            rows=3, className="mb-2"),
                 dbc.Input(id="add-h", placeholder="높이 H", type="number", className="mb-2"),
-                dcc.Graph(id="add-preview", style={"height": "45vh"}, className="border"),
+                # ▼ 추가된 필드
+                dbc.Input(id="add-unit", placeholder="해석 단위(con_unit, m)", type="number", className="mb-2"),
+                dbc.Input(id="add-e",    placeholder="탄성계수(con_e)",    type="number", className="mb-2"),
+                dbc.Input(id="add-b",    placeholder="베타 상수(con_b)",     type="number", className="mb-2"),
+                dbc.Input(id="add-n",    placeholder="N 상수(con_n)",       type="number", className="mb-2"),
             ]),
             dbc.ModalFooter([
                 dbc.Button("미리보기", id="add-build", color="info", className="me-auto"),
-                dbc.Button("저장", id="add-save", color="primary"),
-                dbc.Button("닫기", id="add-close", color="secondary"),
+                dbc.Button("저장",     id="add-save",  color="primary"),
+                dbc.Button("닫기",     id="add-close", color="secondary"),
             ]),
         ]),
 
@@ -248,30 +254,64 @@ def add_preview(_, nodes_txt, h):
 
 # ───────────────────── ⑤ 추가 저장
 @callback(
-    Output("msg", "children", allow_duplicate=True),
-    Output("msg", "color", allow_duplicate=True),
-    Output("msg", "is_open", allow_duplicate=True),
-    Output("tbl", "data_timestamp", allow_duplicate=True),
+    Output("msg", "children",               allow_duplicate=True),
+    Output("msg", "color",                  allow_duplicate=True),
+    Output("msg", "is_open",                allow_duplicate=True),
+    Output("tbl", "data_timestamp",         allow_duplicate=True),
     Input("add-save", "n_clicks"),
-    State("add-name", "value"),
-    State("add-nodes", "value"),
-    State("add-h", "value"),
+    State("project-dropdown", "value"),  # 프로젝트 PK
+    State("add-name",   "value"),
+    State("add-nodes",  "value"),
+    State("add-h",      "value"),
+    State("add-unit",   "value"),
+    State("add-e",      "value"),
+    State("add-b",      "value"),
+    State("add-n",      "value"),
     prevent_initial_call=True
 )
-def add_save(_, name, nodes_txt, h):
-    if not (name and nodes_txt):
-        return "이름/노드 필수", "danger", True, dash.no_update
+def add_save(_, project_pk, name, nodes_txt, h, unit, e, b, n):
+    # 필수 입력 체크
+    if not project_pk:
+        return "프로젝트 선택 필수", "danger", True, dash.no_update
+    if not name:
+        return "이름 필수", "danger", True, dash.no_update
+    if not nodes_txt:
+        return "노드 목록 필수", "danger", True, dash.no_update
+    if h    is None:
+        return "높이 H 필수", "danger", True, dash.no_update
+    if unit is None:
+        return "해석 단위 필수", "danger", True, dash.no_update
+    if e    is None:
+        return "탄성계수 필수", "danger", True, dash.no_update
+    if b    is None:
+        return "베타 상수 필수", "danger", True, dash.no_update
+    if n    is None:
+        return "N 상수 필수", "danger", True, dash.no_update
+
+    # 노드 파싱
     try:
         nodes = ast.literal_eval(nodes_txt)
+        assert isinstance(nodes, list)
     except Exception:
         return "노드 형식 오류", "danger", True, dash.no_update
-    if not isinstance(nodes, list):
-        return "노드 형식 오류", "danger", True, dash.no_update
-    if h is None:
-        return "높이 필수", "danger", True, dash.no_update
-    dims = {"nodes": nodes, "h": float(h)}
-    # TODO: project_pk 인자를 실제 프로젝트 PK로 교체
-    api_db.add_concrete_data("", name, dims)
+
+    # 타입 변환
+    dims     = {"nodes": nodes, "h": float(h)}
+    con_unit = float(unit)
+    con_e    = float(e)
+    con_b    = float(b)
+    con_n    = float(n)
+
+    # DB 저장
+    api_db.add_concrete_data(
+        project_pk=project_pk,
+        name=name,
+        dims=dims,
+        con_unit=con_unit,
+        con_e=con_e,
+        con_b=con_b,
+        con_n=con_n
+    )
     return "추가 완료", "success", True, pd.Timestamp.utcnow().value
 
 # ───────────────────── ⑥ 삭제 수행
