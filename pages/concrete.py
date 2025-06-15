@@ -135,6 +135,7 @@ layout = dbc.Container(
                 dbc.Input(id="add-e",    placeholder="탄성계수(con_e)",    type="number", className="mb-2"),
                 dbc.Input(id="add-b",    placeholder="베타 상수(con_b)",     type="number", className="mb-2"),
                 dbc.Input(id="add-n",    placeholder="N 상수(con_n)",       type="number", className="mb-2"),
+                dcc.Graph(id="add-preview", style={"height": "45vh"}, className="border"),
             ]),
             dbc.ModalFooter([
                 dbc.Button("미리보기", id="add-build", color="info", className="me-auto"),
