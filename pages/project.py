@@ -312,20 +312,21 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     temps = np.array([temperatures[k] for k in nodes.keys() if k in temperatures])
     tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
 
-    # 2. 정형 격자 생성
-    grid_x, grid_y, grid_z = np.mgrid[
-        x_coords.min():x_coords.max():30j,
-        y_coords.min():y_coords.max():30j,
-        z_coords.min():z_coords.max():15j
-    ]
-
-    # 3. 온도 보간
-    grid_t = griddata(np.vstack([x_coords, y_coords, z_coords]), temps, (grid_x, grid_y, grid_z), method='linear', fill_value=np.nan)
+    # 3D 볼륨 렌더링 뷰 (go.Volume)
+    coords = np.vstack([x_coords, y_coords, z_coords]).T
+    if len(coords) < 4:
+        fig_3d = go.Figure()
+    else:
+        fig_3d = go.Figure(data=go.Volume(
+            x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
+            opacity=0.2, surface_count=15, colorscale='RdBu',
+            colorbar=dict(title='Temperature (°C)')
+        ))
 
     # 4. 등온면
     fig = go.Figure()
     fig.add_trace(go.Isosurface(
-        x=grid_x.flatten(), y=grid_y.flatten(), z=grid_z.flatten(), value=grid_t.flatten(),
+        x=x_coords, y=y_coords, z=z_coords, value=temps,
         isomin=np.nanmin(temps), isomax=np.nanmax(temps),
         surface_count=6, colorscale='Jet', opacity=0.6,
         caps=dict(x_show=False, y_show=False, z_show=False)
