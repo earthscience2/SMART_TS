@@ -149,16 +149,22 @@ layout = dbc.Container(
             dbc.ModalHeader("콘크리트 수정"),
             dbc.ModalBody([
                 dcc.Store(id="edit-id"),
-                dbc.Input(id="edit-name", className="mb-2"),
+                dbc.Input(id="edit-name", placeholder="이름", className="mb-2"),
                 dbc.Alert(id="edit-alert", is_open=False, duration=3000, color="danger"),
-                dbc.Textarea(id="edit-nodes", rows=3, className="mb-2"),
-                dbc.Input(id="edit-h", type="number", className="mb-2"),
+                dbc.Textarea(id="edit-nodes", rows=3, placeholder="노드 목록", className="mb-2"),
+                dbc.Input(id="edit-h",    type="number", placeholder="높이 H",      className="mb-2"),
+                # ───── 여기에 추가된 필드 ─────
+                dbc.Input(id="edit-unit", type="number", placeholder="해석 단위(con_unit, m)", className="mb-2"),
+                dbc.Input(id="edit-e",    type="number", placeholder="탄성계수(con_e)",      className="mb-2"),
+                dbc.Input(id="edit-b",    type="number", placeholder="베타 상수(con_b)",       className="mb-2"),
+                dbc.Input(id="edit-n",    type="number", placeholder="N 상수(con_n)",         className="mb-2"),
+                # ────────────────────────────────
                 dcc.Graph(id="edit-preview", style={"height": "45vh"}, className="border"),
             ]),
             dbc.ModalFooter([
                 dbc.Button("미리보기", id="edit-build", color="info", className="me-auto"),
-                dbc.Button("저장", id="edit-save", color="primary"),
-                dbc.Button("닫기", id="edit-close", color="secondary"),
+                dbc.Button("저장",     id="edit-save",  color="primary"),
+                dbc.Button("닫기",     id="edit-close", color="secondary"),
             ]),
         ]),
     ]
@@ -210,10 +216,6 @@ def show_selected(sel, data):
         raise PreventUpdate
     title = f"{row['concrete_pk']} · {row['name']}"
     return make_fig(dims['nodes'], dims['h']), title, False, False
-
-# 이하 모달, 추가/수정/삭제 콜백은 기존과 동일
-# (생략 가능하지만 편의를 위해 기존 코드를 그대로 유지)
-
 
 # ───────────────────── ③ 추가 모달 토글
 @callback(
@@ -443,28 +445,81 @@ def edit_preview(_, nodes_txt, h):
 
 # ───────────────────── ⑩ 수정 저장
 @callback(
-    Output("tbl", "data_timestamp", allow_duplicate=True),
-    Output("msg", "children", allow_duplicate=True),
-    Output("msg", "color", allow_duplicate=True),
-    Output("msg", "is_open", allow_duplicate=True),
-    Input("edit-save", "n_clicks"),
-    State("edit-id", "data"),
-    State("edit-name", "value"),
-    State("edit-nodes", "value"),
-    State("edit-h", "value"),
+    Output("edit-alert",  "children",      allow_duplicate=True),
+    Output("edit-alert",  "is_open",       allow_duplicate=True),
+    Output("tbl",         "data_timestamp",allow_duplicate=True),
+    Output("modal-edit",  "is_open",       allow_duplicate=True),
+    Output("msg",         "children",      allow_duplicate=True),
+    Output("msg",         "color",         allow_duplicate=True),
+    Output("msg",         "is_open",       allow_duplicate=True),
+    Input("edit-save",    "n_clicks"),
+    State("edit-id",      "data"),
+    State("edit-name",    "value"),
+    State("edit-nodes",   "value"),
+    State("edit-h",       "value"),
+    State("edit-unit",    "value"),
+    State("edit-e",       "value"),
+    State("edit-b",       "value"),
+    State("edit-n",       "value"),
     prevent_initial_call=True
 )
-def save_edit(_, cid, name, nodes_txt, h):
-    if not (cid and name and nodes_txt):
-        return dash.no_update, "입력 누락", "danger", True
+def save_edit(n_clicks, cid, name, nodes_txt, h, unit, e, b, n):
+    if not n_clicks:
+        raise PreventUpdate
+
+    # 1) 빈값 체크
+    missing = []
+    if not cid:        missing.append("항목 선택")
+    if not name:       missing.append("이름")
+    if not nodes_txt:  missing.append("노드 목록")
+    if h    is None:   missing.append("높이 H")
+    if unit is None:   missing.append("해석 단위")
+    if e    is None:   missing.append("탄성계수")
+    if b    is None:   missing.append("베타 상수")
+    if n    is None:   missing.append("N 상수")
+    if missing:
+        return (
+            f"{', '.join(missing)}을(를) 입력해주세요.",
+            True,                  # edit-alert 열기
+            dash.no_update,        # 테이블 미갱신
+            True,                  # 모달 닫지 않음
+            "", "", False          # 전역 msg 없음
+        )
+
+    # 2) 노드 파싱
     try:
         nodes = ast.literal_eval(nodes_txt)
+        assert isinstance(nodes, list)
     except Exception:
-        return dash.no_update, "노드 형식 오류", "danger", True
-    if not isinstance(nodes, list):
-        return dash.no_update, "노드 형식 오류", "danger", True
-    if h is None:
-        return dash.no_update, "높이 입력", "danger", True
+        return (
+            "노드 형식이 잘못되었습니다.",
+            True,
+            dash.no_update,
+            True,
+            "", "", False
+        )
+
+    # 3) DB 업데이트 (activate=0 고정)
     dims = {"nodes": nodes, "h": float(h)}
-    api_db.update_concrete_data(cid, name=name, dims=dims)
-    return pd.Timestamp.utcnow().value, f"{cid} 수정 완료", "success", True
+    api_db.update_concrete_data(
+        cid,
+        name=name.strip(),
+        dims=dims,
+        con_unit=float(unit),
+        con_e=float(e),
+        con_b=float(b),
+        con_n=float(n),
+        activate=0
+    )
+
+    # 4) 성공 처리
+    return (
+        "",                             # edit-alert 비우기
+        False,                          # edit-alert 닫기
+        pd.Timestamp.utcnow().value,   # 테이블 갱신
+        False,                          # 모달 닫기
+        "수정했습니다.",                 # 전역 msg
+        "success",                      # 전역 msg 색상
+        True                            # 전역 msg 열기
+    )
+
