@@ -63,7 +63,7 @@ layout = dbc.Container(
                         ),
                         dbc.ButtonGroup(
                             [
-                                dbc.Button("분석 시작", id="btn-concrete-analyze", color="success", className="mt-2"),
+                                dbc.Button("분석 시작", id="btn-concrete-analyze", color="success", className="mt-2", disabled=True),
                                 dbc.Button("삭제", id="btn-concrete-del", color="danger", className="mt-2", disabled=True),
                             ],
                             size="sm",
@@ -122,20 +122,21 @@ def init_dropdown(selected_value):
     Output("tbl-concrete", "columns"),
     Output("tbl-concrete", "selected_rows"),
     Output("btn-concrete-del", "disabled"),
+    Output("btn-concrete-analyze", "disabled"),
     Output("concrete-title", "children"),
     Input("ddl-project", "value"),
     prevent_initial_call=True,
 )
 def on_project_change(selected_proj):
     if not selected_proj:
-        return [], [], [], True, ""
+        return [], [], [], True, True, ""
 
     # 1) 프로젝트 정보 로드
     try:
         proj_row = api_db.get_project_data(project_pk=selected_proj).iloc[0]
         proj_name = proj_row["name"]
     except Exception:
-        return [], [], [], True, "프로젝트 정보를 불러올 수 없음"
+        return [], [], [], True, True, "프로젝트 정보를 불러올 수 없음"
 
     # 2) 콘크리트 데이터 로드
     df_conc = api_db.get_concrete_data(project_pk=selected_proj)
@@ -165,16 +166,25 @@ def on_project_change(selected_proj):
     ]
 
     title = f"{proj_name} · 콘크리트 전체"
-    return table_data, columns, [], True, title
+    return table_data, columns, [], True, True, title
 
 # ───────────────────── ③ 콘크리트 선택 콜백 ─────────────────────
 @callback(
     Output("btn-concrete-del", "disabled", allow_duplicate=True),
+    Output("btn-concrete-analyze", "disabled", allow_duplicate=True),
     Input("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def on_concrete_select(selected_rows):
-    return not bool(selected_rows)
+def on_concrete_select(selected_rows, tbl_data):
+    if not selected_rows:
+        return True, True
+    
+    # 선택된 콘크리트의 activate 상태 확인
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    is_active = row["activate"] == "활성"
+    
+    return False, not is_active  # 삭제 버튼은 항상 활성화, 분석 버튼은 activate=1일 때만 활성화
 
 # ───────────────────── ④ 분석 시작 콜백 ─────────────────────
 @callback(
