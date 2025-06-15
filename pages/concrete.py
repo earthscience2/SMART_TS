@@ -171,20 +171,21 @@ layout = dbc.Container(
     Output("tbl", "selected_rows"),
     Input("init", "n_intervals"),
     Input("project-dropdown", "value"),
+    Input("tbl", "data_timestamp"),   # ← 추가
     prevent_initial_call=False
 )
-def refresh_table(n, project_pk):
+def refresh_table(n, project_pk, _data_ts):
     df_all = api_db.get_concrete_data()
     if project_pk:
         df = df_all[df_all["project_pk"] == project_pk]
     else:
         df = pd.DataFrame(columns=df_all.columns)
     cols = [
-        {"name": "이름", "id": "name"},
-        {"name": "해석 단위(m)", "id": "con_unit"},
-        {"name": "탄성계수", "id": "con_e"},
-        {"name": "베타", "id": "con_b"},
-        {"name": "N", "id": "con_n"},
+        {"name": "이름",             "id": "name"},
+        {"name": "해석 단위(m)",     "id": "con_unit"},
+        {"name": "탄성계수",         "id": "con_e"},
+        {"name": "베타",             "id": "con_b"},
+        {"name": "N",               "id": "con_n"},
     ]
     sel = [0] if not df.empty else []
     return df.to_dict("records"), cols, sel
@@ -255,10 +256,13 @@ def add_preview(_, nodes_txt, h):
 
 # ───────────────────── ⑤ 추가 저장
 @callback(
-    Output("add-alert",  "children",        allow_duplicate=True),
-    Output("add-alert",  "is_open",          allow_duplicate=True),
-    Output("tbl",        "data_timestamp",   allow_duplicate=True),
-    Output("modal-add",  "is_open",          allow_duplicate=True),
+    Output("add-alert",  "children",      allow_duplicate=True),
+    Output("add-alert",  "is_open",       allow_duplicate=True),
+    Output("tbl",        "data_timestamp",allow_duplicate=True),
+    Output("modal-add",  "is_open",       allow_duplicate=True),
+    Output("msg",        "children",      allow_duplicate=True),
+    Output("msg",        "color",         allow_duplicate=True),
+    Output("msg",        "is_open",       allow_duplicate=True),
     Input("add-save",    "n_clicks"),
     State("project-dropdown", "value"),
     State("add-name",    "value"),
@@ -271,11 +275,10 @@ def add_preview(_, nodes_txt, h):
     prevent_initial_call=True
 )
 def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, e, b, n):
-    # 클릭이 없으면 무시
     if not n_clicks:
         raise PreventUpdate
 
-    # 빈 값 체크
+    # 1) 빈값 체크
     missing = []
     if not project_pk: missing.append("프로젝트")
     if not name:       missing.append("이름")
@@ -285,18 +288,33 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, e, b, n):
     if e    is None:   missing.append("탄성계수")
     if b    is None:   missing.append("베타 상수")
     if n    is None:   missing.append("N 상수")
-
     if missing:
-        return f"{', '.join(missing)}을(를) 입력해주세요.", True, dash.no_update, True
+        return (
+            f"{', '.join(missing)}을(를) 입력해주세요.",  # add-alert.children
+            True,                                       # add-alert.is_open
+            dash.no_update,                             # tbl.data_timestamp
+            True,                                       # modal-add.is_open
+            "",                                         # msg.children
+            "",                                         # msg.color
+            False                                       # msg.is_open
+        )
 
-    # 노드 파싱
+    # 2) 노드 파싱
     try:
         nodes = ast.literal_eval(nodes_txt)
         assert isinstance(nodes, list)
     except Exception:
-        return "노드 형식이 잘못되었습니다.", True, dash.no_update, True
+        return (
+            "노드 형식이 잘못되었습니다.",
+            True,
+            dash.no_update,
+            True,
+            "",
+            "",
+            False
+        )
 
-    # DB 저장 (activate를 0으로 고정)
+    # 3) DB 저장 (activate=0 고정)
     dims = {"nodes": nodes, "h": float(h)}
     api_db.add_concrete_data(
         project_pk=project_pk,
@@ -309,8 +327,16 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, e, b, n):
         activate=0
     )
 
-    # 성공 시: 모달 닫기, Alert 숨기기, 테이블 갱신
-    return "", False, pd.Timestamp.utcnow().value, False
+    # 4) 성공 처리: 모달 닫기, 내부 Alert 숨기기, 테이블 갱신, 전역 알림
+    return (
+        "",                             # add-alert.children
+        False,                          # add-alert.is_open
+        pd.Timestamp.utcnow().value,   # tbl.data_timestamp
+        False,                          # modal-add.is_open
+        "저장했습니다.",                # msg.children
+        "success",                      # msg.color
+        True                            # msg.is_open
+    )
 
 # ───────────────────── ⑥ 삭제 수행
 @callback(
