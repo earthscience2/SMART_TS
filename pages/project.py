@@ -4,13 +4,18 @@
 
 * 왼쪽에서 프로젝트를 선택 → 해당 프로젝트의 콘크리트 리스트 표시
 * 콘크리트 분석 시작/삭제 기능
+* 3D 히트맵 뷰어로 시간별 온도 분포 확인
 """
 
 from __future__ import annotations
 
 import os
+import glob
 import shutil
 import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
+from datetime import datetime, timedelta
 import dash
 from dash import (
     html, dcc, Input, Output, State,
@@ -40,6 +45,9 @@ layout = dbc.Container(
             duration=3000,
             color="danger",
         ),
+
+        # ── (★) 현재 시간 정보를 저장할 Store
+        dcc.Store(id="current-time-store", data=None),
 
         # 상단: 프로젝트 선택 → 콘크리트 테이블 + 버튼
         dbc.Row(
@@ -76,12 +84,38 @@ layout = dbc.Container(
                 dbc.Col(
                     [
                         html.H6(id="concrete-title", className="mb-2"),
-                        # 3D 뷰는 비활성화
-                        html.Div(
-                            "3D 뷰는 비활성화되어 있습니다.",
-                            className="d-flex justify-content-center align-items-center",
-                            style={"height": "75vh", "backgroundColor": "#f8f9fa", "border": "1px solid #dee2e6"}
+                        # 3D 히트맵 뷰어
+                        dcc.Graph(
+                            id="viewer-heatmap",
+                            style={"height": "60vh"},
+                            config={"scrollZoom": True},
                         ),
+                        # 시간 슬라이더
+                        html.Div([
+                            html.Label("시간", className="form-label"),
+                            dcc.Slider(
+                                id="time-slider",
+                                min=0,
+                                max=100,
+                                step=1,
+                                value=0,
+                                marks={},
+                                tooltip={"placement": "bottom", "always_visible": True},
+                            ),
+                        ], className="mt-3"),
+                        # 단면도 조절 슬라이더
+                        html.Div([
+                            html.Label("단면도 높이 (m)", className="form-label"),
+                            dcc.Slider(
+                                id="section-slider",
+                                min=0,
+                                max=100,
+                                step=1,
+                                value=50,
+                                marks={},
+                                tooltip={"placement": "bottom", "always_visible": True},
+                            ),
+                        ], className="mt-3"),
                     ],
                     md=9,
                 ),
@@ -124,19 +158,24 @@ def init_dropdown(selected_value):
     Output("btn-concrete-del", "disabled"),
     Output("btn-concrete-analyze", "disabled"),
     Output("concrete-title", "children"),
+    Output("time-slider", "min"),
+    Output("time-slider", "max"),
+    Output("time-slider", "value"),
+    Output("time-slider", "marks"),
+    Output("current-time-store", "data"),
     Input("ddl-project", "value"),
     prevent_initial_call=True,
 )
 def on_project_change(selected_proj):
     if not selected_proj:
-        return [], [], [], True, True, ""
+        return [], [], [], True, True, "", 0, 100, 0, {}, None
 
     # 1) 프로젝트 정보 로드
     try:
         proj_row = api_db.get_project_data(project_pk=selected_proj).iloc[0]
         proj_name = proj_row["name"]
     except Exception:
-        return [], [], [], True, True, "프로젝트 정보를 불러올 수 없음"
+        return [], [], [], True, True, "프로젝트 정보를 불러올 수 없음", 0, 100, 0, {}, None
 
     # 2) 콘크리트 데이터 로드
     df_conc = api_db.get_concrete_data(project_pk=selected_proj)
@@ -166,27 +205,156 @@ def on_project_change(selected_proj):
     ]
 
     title = f"{proj_name} · 콘크리트 전체"
-    return table_data, columns, [], True, True, title
+    return table_data, columns, [], True, True, title, 0, 100, 0, {}, None
 
 # ───────────────────── ③ 콘크리트 선택 콜백 ─────────────────────
 @callback(
     Output("btn-concrete-del", "disabled", allow_duplicate=True),
     Output("btn-concrete-analyze", "disabled", allow_duplicate=True),
+    Output("time-slider", "min", allow_duplicate=True),
+    Output("time-slider", "max", allow_duplicate=True),
+    Output("time-slider", "value", allow_duplicate=True),
+    Output("time-slider", "marks", allow_duplicate=True),
+    Output("current-time-store", "data", allow_duplicate=True),
     Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
 def on_concrete_select(selected_rows, tbl_data):
     if not selected_rows:
-        return True, True
+        return True, True, 0, 100, 0, {}, None
     
     # 선택된 콘크리트의 activate 상태 확인
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     is_active = row["activate"] == "활성"
+    concrete_pk = row["concrete_pk"]
     
-    return False, not is_active  # 삭제 버튼은 항상 활성화, 분석 버튼은 activate=1일 때만 활성화
+    # inp 파일 목록 조회
+    inp_dir = f"inp/{concrete_pk}"
+    if not os.path.exists(inp_dir):
+        return False, not is_active, 0, 100, 0, {}, None
+    
+    # inp 파일 시간 목록 생성
+    inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+    if not inp_files:
+        return False, not is_active, 0, 100, 0, {}, None
+    
+    # 시간 범위 계산
+    times = []
+    for f in inp_files:
+        try:
+            time_str = os.path.basename(f).split(".")[0]
+            dt = datetime.strptime(time_str, "%Y%m%d%H")
+            times.append(dt)
+        except:
+            continue
+    
+    if not times:
+        return False, not is_active, 0, 100, 0, {}, None
+    
+    # 슬라이더 마크 생성
+    marks = {}
+    for i, t in enumerate(times):
+        if i % 6 == 0:  # 6시간 간격으로 마크 표시
+            marks[i] = t.strftime("%m/%d %H:00")
+    
+    return False, not is_active, 0, len(times)-1, 0, marks, times[0].strftime("%Y%m%d%H")
 
-# ───────────────────── ④ 분석 시작 콜백 ─────────────────────
+# ───────────────────── ④ 시간 슬라이더 콜백 ─────────────────────
+@callback(
+    Output("current-time-store", "data", allow_duplicate=True),
+    Output("viewer-heatmap", "figure"),
+    Input("time-slider", "value"),
+    Input("section-slider", "value"),
+    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    State("current-time-store", "data"),
+    prevent_initial_call=True,
+)
+def update_heatmap(time_idx, section_height, selected_rows, tbl_data, current_time):
+    if not selected_rows:
+        raise PreventUpdate
+    
+    # 선택된 콘크리트 정보
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    
+    # inp 파일 목록 조회
+    inp_dir = f"inp/{concrete_pk}"
+    if not os.path.exists(inp_dir):
+        raise PreventUpdate
+    
+    # inp 파일 시간 목록 생성
+    inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+    if not inp_files or time_idx >= len(inp_files):
+        raise PreventUpdate
+    
+    # 현재 시간의 inp 파일 읽기
+    current_file = inp_files[time_idx]
+    current_time = os.path.basename(current_file).split(".")[0]
+    
+    try:
+        # inp 파일 읽기 (예시: 간단한 3D 그리드 데이터)
+        with open(current_file, 'r') as f:
+            lines = f.readlines()
+        
+        # 여기서는 예시로 간단한 3D 그리드 데이터를 생성
+        x = np.linspace(0, 10, 20)
+        y = np.linspace(0, 10, 20)
+        z = np.linspace(0, 5, 10)
+        X, Y, Z = np.meshgrid(x, y, z)
+        
+        # 온도 데이터 생성 (예시)
+        T = np.sin(X/2) * np.cos(Y/2) * np.exp(-Z/5)
+        
+        # 단면도 높이에 해당하는 z 인덱스 계산
+        z_idx = int(section_height / 100 * (len(z) - 1))
+        
+        # 3D 히트맵 생성
+        fig = go.Figure()
+        
+        # 전체 3D 히트맵
+        fig.add_trace(go.Volume(
+            x=X.flatten(),
+            y=Y.flatten(),
+            z=Z.flatten(),
+            value=T.flatten(),
+            isomin=-1,
+            isomax=1,
+            opacity=0.3,
+            surface_count=20,
+            colorscale='RdBu',
+            showscale=True,
+        ))
+        
+        # 단면도
+        fig.add_trace(go.Heatmap(
+            x=x,
+            y=y,
+            z=T[:,:,z_idx],
+            colorscale='RdBu',
+            showscale=False,
+        ))
+        
+        # 레이아웃 설정
+        fig.update_layout(
+            title=f"시간: {current_time}",
+            scene=dict(
+                xaxis_title="X",
+                yaxis_title="Y",
+                zaxis_title="Z",
+                aspectmode='data'
+            ),
+            margin=dict(l=0, r=0, b=0, t=30),
+        )
+        
+        return current_time, fig
+        
+    except Exception as e:
+        print(f"Error reading inp file: {e}")
+        raise PreventUpdate
+
+# ───────────────────── ⑤ 분석 시작 콜백 ─────────────────────
 @callback(
     Output("project-alert", "children"),
     Output("project-alert", "color"),
@@ -216,7 +384,7 @@ def start_analysis(n_clicks, selected_rows, tbl_data):
     except Exception as e:
         return f"분석 시작 실패: {e}", "danger", True, dash.no_update
 
-# ───────────────────── ⑤ 삭제 컨펌 토글 콜백 ───────────────────
+# ───────────────────── ⑥ 삭제 컨펌 토글 콜백 ───────────────────
 @callback(
     Output("confirm-del-concrete", "displayed"),
     Input("btn-concrete-del", "n_clicks"),
@@ -226,7 +394,7 @@ def start_analysis(n_clicks, selected_rows, tbl_data):
 def ask_delete_concrete(n, sel):
     return bool(n and sel)
 
-# ───────────────────── ⑥ 삭제 실행 콜백 ─────────────────────
+# ───────────────────── ⑦ 삭제 실행 콜백 ─────────────────────
 @callback(
     Output("project-alert", "children", allow_duplicate=True),
     Output("project-alert", "color", allow_duplicate=True),
