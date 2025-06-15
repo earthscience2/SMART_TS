@@ -49,6 +49,9 @@ layout = dbc.Container(
         # ── (★) 현재 시간 정보를 저장할 Store
         dcc.Store(id="current-time-store", data=None),
 
+        # ── (★) 클릭 좌표 저장
+        dcc.Store(id="section-coord-store", data=None),
+
         # 상단: 프로젝트 선택 → 콘크리트 테이블 + 버튼
         dbc.Row(
             [
@@ -93,14 +96,15 @@ layout = dbc.Container(
                                     style={"height": "60vh"},
                                     config={"scrollZoom": True},
                                 ),
-                            ], md=8),
+                            ], md=7),
                             # 단면도
                             dbc.Col([
-                                dcc.Graph(
-                                    id="viewer-section",
-                                    style={"height": "60vh"},
-                                ),
-                            ], md=4),
+                                html.Div([
+                                    dcc.Graph(id="viewer-section-x", style={"height": "19vh"}),
+                                    dcc.Graph(id="viewer-section-y", style={"height": "19vh"}),
+                                    dcc.Graph(id="viewer-section-z", style={"height": "19vh"}),
+                                ]),
+                            ], md=5),
                         ]),
                         # 시간 슬라이더
                         html.Div([
@@ -108,22 +112,9 @@ layout = dbc.Container(
                             dcc.Slider(
                                 id="time-slider",
                                 min=0,
-                                max=100,
+                                max=5,
                                 step=1,
                                 value=0,
-                                marks={},
-                                tooltip={"placement": "bottom", "always_visible": True},
-                            ),
-                        ], className="mt-3"),
-                        # 단면도 조절 슬라이더
-                        html.Div([
-                            html.Label("단면도 높이 (m)", className="form-label"),
-                            dcc.Slider(
-                                id="section-slider",
-                                min=0,
-                                max=100,
-                                step=1,
-                                value=50,
                                 marks={},
                                 tooltip={"placement": "bottom", "always_visible": True},
                             ),
@@ -180,14 +171,14 @@ def init_dropdown(selected_value):
 )
 def on_project_change(selected_proj):
     if not selected_proj:
-        return [], [], [], True, True, "", 0, 100, 0, {}, None
+        return [], [], [], True, True, "", 0, 5, 0, {}, None
 
     # 1) 프로젝트 정보 로드
     try:
         proj_row = api_db.get_project_data(project_pk=selected_proj).iloc[0]
         proj_name = proj_row["name"]
     except Exception:
-        return [], [], [], True, True, "프로젝트 정보를 불러올 수 없음", 0, 100, 0, {}, None
+        return [], [], [], True, True, "프로젝트 정보를 불러올 수 없음", 0, 5, 0, {}, None
 
     # 2) 콘크리트 데이터 로드
     df_conc = api_db.get_concrete_data(project_pk=selected_proj)
@@ -217,7 +208,7 @@ def on_project_change(selected_proj):
     ]
 
     title = f"{proj_name} · 콘크리트 전체"
-    return table_data, columns, [], True, True, title, 0, 100, 0, {}, None
+    return table_data, columns, [], True, True, title, 0, 5, 0, {}, None
 
 # ───────────────────── ③ 콘크리트 선택 콜백 ─────────────────────
 @callback(
@@ -234,7 +225,7 @@ def on_project_change(selected_proj):
 )
 def on_concrete_select(selected_rows, tbl_data):
     if not selected_rows:
-        return True, True, 0, 100, 0, {}, None
+        return True, True, 0, 5, 0, {}, None
     
     # 선택된 콘크리트의 activate 상태 확인
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
@@ -244,12 +235,12 @@ def on_concrete_select(selected_rows, tbl_data):
     # inp 파일 목록 조회
     inp_dir = f"inp/{concrete_pk}"
     if not os.path.exists(inp_dir):
-        return False, not is_active, 0, 100, 0, {}, None
+        return False, not is_active, 0, 5, 0, {}, None
     
     # inp 파일 시간 목록 생성
     inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
     if not inp_files:
-        return False, not is_active, 0, 100, 0, {}, None
+        return False, not is_active, 0, 5, 0, {}, None
     
     # 시간 범위 계산
     times = []
@@ -262,7 +253,7 @@ def on_concrete_select(selected_rows, tbl_data):
             continue
     
     if not times:
-        return False, not is_active, 0, 100, 0, {}, None
+        return False, not is_active, 0, 5, 0, {}, None
     
     # 슬라이더 마크 생성
     marks = {}
@@ -274,164 +265,141 @@ def on_concrete_select(selected_rows, tbl_data):
 
 # ───────────────────── ④ 시간 슬라이더 콜백 ─────────────────────
 @callback(
+    Output("time-slider", "marks"),
+    Output("time-slider", "max"),
     Output("current-time-store", "data", allow_duplicate=True),
+    Input("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    prevent_initial_call=True,
+)
+def update_time_slider(selected_rows, tbl_data):
+    if not selected_rows:
+        raise PreventUpdate
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    inp_dir = f"inp/{concrete_pk}"
+    if not os.path.exists(inp_dir):
+        raise PreventUpdate
+    inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+    if not inp_files:
+        raise PreventUpdate
+    # 6등분
+    n = len(inp_files)
+    idxs = [round(i * (n-1)/5) for i in range(6)]
+    marks = {i: os.path.basename(inp_files[idxs[i]]).split(".")[0] for i in range(6)}
+    return marks, 5, 0
+
+# ───────────────────── 3D 뷰 클릭 → 단면 위치 저장 ─────────────────────
+@callback(
+    Output("section-coord-store", "data"),
+    Input("viewer-3d", "clickData"),
+    prevent_initial_call=True,
+)
+def store_section_coord(clickData):
+    if not clickData or "points" not in clickData:
+        raise PreventUpdate
+    pt = clickData["points"][0]
+    return {"x": pt["x"], "y": pt["y"], "z": pt["z"]}
+
+# ───────────────────── 3D/단면도 업데이트 콜백 ─────────────────────
+@callback(
     Output("viewer-3d", "figure"),
-    Output("viewer-section", "figure"),
+    Output("viewer-section-x", "figure"),
+    Output("viewer-section-y", "figure"),
+    Output("viewer-section-z", "figure"),
+    Output("current-time-store", "data", allow_duplicate=True),
     Input("time-slider", "value"),
-    Input("section-slider", "value"),
+    Input("section-coord-store", "data"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     State("current-time-store", "data"),
     prevent_initial_call=True,
 )
-def update_heatmap(time_idx, section_height, selected_rows, tbl_data, current_time):
+def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_time):
     if not selected_rows:
         raise PreventUpdate
-    
-    # 선택된 콘크리트 정보
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
-    
-    # inp 파일 목록 조회
     inp_dir = f"inp/{concrete_pk}"
-    if not os.path.exists(inp_dir):
-        raise PreventUpdate
-    
-    # inp 파일 시간 목록 생성
     inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
     if not inp_files or time_idx >= len(inp_files):
         raise PreventUpdate
-    
-    # 현재 시간의 inp 파일 읽기
-    current_file = inp_files[time_idx]
+    current_file = inp_files[round(time_idx * (len(inp_files)-1)/5)]
     current_time = os.path.basename(current_file).split(".")[0]
-    
-    try:
-        # inp 파일 읽기
-        with open(current_file, 'r') as f:
-            lines = f.readlines()
-        
-        # 노드 정보 파싱
-        nodes = {}
-        node_section = False
-        for line in lines:
-            if line.startswith('*NODE'):
-                node_section = True
-                continue
-            elif line.startswith('*'):
-                node_section = False
-                continue
-            
-            if node_section and ',' in line:
-                parts = line.strip().split(',')
-                if len(parts) >= 4:
-                    node_id = int(parts[0])
-                    x = float(parts[1])
-                    y = float(parts[2])
-                    z = float(parts[3])
-                    nodes[node_id] = {'x': x, 'y': y, 'z': z}
-        
-        # 온도 정보 파싱
-        temperatures = {}
-        temp_section = False
-        for line in lines:
-            if line.startswith('*TEMPERATURE'):
-                temp_section = True
-                continue
-            elif line.startswith('*'):
-                temp_section = False
-                continue
-            
-            if temp_section and ',' in line:
-                parts = line.strip().split(',')
-                if len(parts) >= 2:
-                    node_id = int(parts[0])
-                    temp = float(parts[1])
-                    temperatures[node_id] = temp
-        
-        # 3D 데이터 준비
-        x_coords = []
-        y_coords = []
-        z_coords = []
-        temps = []
-        
-        for node_id, node in nodes.items():
-            if node_id in temperatures:
-                x_coords.append(node['x'])
-                y_coords.append(node['y'])
-                z_coords.append(node['z'])
-                temps.append(temperatures[node_id])
-        
-        # 단면도 높이에 해당하는 z 값 계산
-        z_min = min(z_coords)
-        z_max = max(z_coords)
-        section_z = z_min + (z_max - z_min) * (section_height / 100)
-        
-        # 1. 노드 좌표와 온도 배열 준비
-        coords = np.array([[x, y, z] for x, y, z in zip(x_coords, y_coords, z_coords)])
-        temps = np.array(temps)
-
-        # 2. 0.1m 간격으로 격자 생성
-        x_bins = np.arange(coords[:,0].min(), coords[:,0].max()+0.1, 0.1)
-        y_bins = np.arange(coords[:,1].min(), coords[:,1].max()+0.1, 0.1)
-        z_bins = np.arange(coords[:,2].min(), coords[:,2].max()+0.1, 0.1)
-
-        # 3. 각 노드를 격자에 할당
-        indices = (
-            np.digitize(coords[:,0], x_bins) - 1,
-            np.digitize(coords[:,1], y_bins) - 1,
-            np.digitize(coords[:,2], z_bins) - 1
-        )
-
-        # 4. 3D 배열에 평균 온도 저장
-        grid = np.full((len(x_bins), len(y_bins), len(z_bins)), np.nan)
-        for i in range(len(coords)):
-            xi, yi, zi = indices[0][i], indices[1][i], indices[2][i]
-            if np.isnan(grid[xi, yi, zi]):
-                grid[xi, yi, zi] = temps[i]
-            else:
-                grid[xi, yi, zi] = (grid[xi, yi, zi] + temps[i]) / 2  # 평균
-
-        # 5. Plotly 3D Volume으로 시각화
-        fig_3d = go.Figure(data=go.Volume(
-            x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
-            opacity=0.2, surface_count=15, colorscale='RdBu'
-        ))
-        
-        # 단면도 생성
-        fig_section = go.Figure()
-        
-        # 단면도 데이터 준비
-        section_mask = [abs(z - section_z) < 0.1 for z in z_coords]
-        section_x = [x for i, x in enumerate(x_coords) if section_mask[i]]
-        section_y = [y for i, y in enumerate(y_coords) if section_mask[i]]
-        section_temps = [t for i, t in enumerate(temps) if section_mask[i]]
-        
-        if section_x and section_y and section_temps:
-            # 2D 히트맵 생성
-            fig_section.add_trace(go.Heatmap(
-                x=section_x,
-                y=section_y,
-                z=section_temps,
-                colorscale='RdBu',
-                showscale=True,
-                colorbar=dict(title='Temperature (°C)'),
-                zsmooth='best'
-            ))
-        
-        # 단면도 레이아웃 설정
-        fig_section.update_layout(
-            title=f"단면도 (Z = {section_z:.2f}m)",
-            xaxis_title="X (m)",
-            yaxis_title="Y (m)",
-            margin=dict(l=0, r=0, b=0, t=30)
-        )
-        
-        return current_time, fig_3d, fig_section
-        
-    except Exception as e:
-        print(f"Error reading inp file: {e}")
-        raise PreventUpdate
+    # inp 파일 파싱 (노드, 온도)
+    with open(current_file, 'r') as f:
+        lines = f.readlines()
+    nodes = {}
+    node_section = False
+    for line in lines:
+        if line.startswith('*NODE'):
+            node_section = True
+            continue
+        elif line.startswith('*'):
+            node_section = False
+            continue
+        if node_section and ',' in line:
+            parts = line.strip().split(',')
+            if len(parts) >= 4:
+                node_id = int(parts[0])
+                x = float(parts[1])
+                y = float(parts[2])
+                z = float(parts[3])
+                nodes[node_id] = {'x': x, 'y': y, 'z': z}
+    temperatures = {}
+    temp_section = False
+    for line in lines:
+        if line.startswith('*TEMPERATURE'):
+            temp_section = True
+            continue
+        elif line.startswith('*'):
+            temp_section = False
+            continue
+        if temp_section and ',' in line:
+            parts = line.strip().split(',')
+            if len(parts) >= 2:
+                node_id = int(parts[0])
+                temp = float(parts[1])
+                temperatures[node_id] = temp
+    x_coords = np.array([n['x'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
+    y_coords = np.array([n['y'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
+    z_coords = np.array([n['z'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
+    temps = np.array([temperatures[k] for k in nodes.keys() if k in temperatures])
+    # 컬러바 범위 통일
+    tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
+    # 3D 뷰 (컬러바 1개)
+    fig_3d = go.Figure()
+    fig_3d.add_trace(go.Scatter3d(
+        x=x_coords, y=y_coords, z=z_coords,
+        mode='markers',
+        marker=dict(size=3, color=temps, colorscale='RdBu', cmin=tmin, cmax=tmax, showscale=True, colorbar=dict(title='Temperature (°C)')),
+        name='Nodes'))
+    fig_3d.update_layout(title=f"시간: {current_time}", scene=dict(aspectmode='data'), margin=dict(l=0, r=0, b=0, t=30), showlegend=False)
+    # 단면 위치 (클릭 없으면 중앙)
+    x0 = float(section_coord['x']) if section_coord and 'x' in section_coord else float(np.median(x_coords))
+    y0 = float(section_coord['y']) if section_coord and 'y' in section_coord else float(np.median(y_coords))
+    z0 = float(section_coord['z']) if section_coord and 'z' in section_coord else float(np.median(z_coords))
+    # X, Y, Z 단면도 (0.1m 간격, ±0.05 tolerance)
+    tol = 0.05
+    # X 단면 (x ≈ x0)
+    mask_x = np.abs(x_coords - x0) < tol
+    fig_x = go.Figure(go.Heatmap(
+        x=y_coords[mask_x], y=z_coords[mask_x], z=temps[mask_x],
+        colorscale='RdBu', zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+    fig_x.update_layout(title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
+    # Y 단면 (y ≈ y0)
+    mask_y = np.abs(y_coords - y0) < tol
+    fig_y = go.Figure(go.Heatmap(
+        x=x_coords[mask_y], y=z_coords[mask_y], z=temps[mask_y],
+        colorscale='RdBu', zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+    fig_y.update_layout(title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
+    # Z 단면 (z ≈ z0)
+    mask_z = np.abs(z_coords - z0) < tol
+    fig_z = go.Figure(go.Heatmap(
+        x=x_coords[mask_z], y=y_coords[mask_z], z=temps[mask_z],
+        colorscale='RdBu', zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+    fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30))
+    return fig_3d, fig_x, fig_y, fig_z, current_time
 
 # ───────────────────── ⑤ 분석 시작 콜백 ─────────────────────
 @callback(
