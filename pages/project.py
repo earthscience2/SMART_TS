@@ -322,12 +322,11 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     # X 단면 (x ≈ x0)
     mask_x = np.abs(x_coords - x0) < tol
     if np.any(mask_x):
-        # 2D binning (y/z)
         yb, zb, tb = y_coords[mask_x], z_coords[mask_x], temps[mask_x]
         if len(yb) > 3:
             y_bins = np.linspace(yb.min(), yb.max(), 20)
             z_bins = np.linspace(zb.min(), zb.max(), 20)
-            hist, yedges, zedges = np.histogram2d(yb, zb, bins=[y_bins, z_bins], weights=tb, normed=False)
+            hist, yedges, zedges = np.histogram2d(yb, zb, bins=[y_bins, z_bins], weights=tb)
             counts, _, _ = np.histogram2d(yb, zb, bins=[y_bins, z_bins])
             with np.errstate(invalid='ignore'): hist = np.divide(hist, counts, where=counts>0)
             fig_x = go.Figure(go.Heatmap(
@@ -344,7 +343,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         if len(xb) > 3:
             x_bins = np.linspace(xb.min(), xb.max(), 20)
             z_bins = np.linspace(zb.min(), zb.max(), 20)
-            hist, xedges, zedges = np.histogram2d(xb, zb, bins=[x_bins, z_bins], weights=tb, normed=False)
+            hist, xedges, zedges = np.histogram2d(xb, zb, bins=[x_bins, z_bins], weights=tb)
             counts, _, _ = np.histogram2d(xb, zb, bins=[x_bins, z_bins])
             with np.errstate(invalid='ignore'): hist = np.divide(hist, counts, where=counts>0)
             fig_y = go.Figure(go.Heatmap(
@@ -361,7 +360,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         if len(xb) > 3:
             x_bins = np.linspace(xb.min(), xb.max(), 20)
             y_bins = np.linspace(yb.min(), yb.max(), 20)
-            hist, xedges, yedges = np.histogram2d(xb, yb, bins=[x_bins, y_bins], weights=tb, normed=False)
+            hist, xedges, yedges = np.histogram2d(xb, yb, bins=[x_bins, y_bins], weights=tb)
             counts, _, _ = np.histogram2d(xb, yb, bins=[x_bins, y_bins])
             with np.errstate(invalid='ignore'): hist = np.divide(hist, counts, where=counts>0)
             fig_z = go.Figure(go.Heatmap(
