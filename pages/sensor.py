@@ -385,7 +385,12 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
         sensor_ids.append(row["sensor_pk"])
         colors.append("blue")
         sizes.append(8)
-        table_data.append({"device_id": row["device_id"], "channel": row["channel"],"position": pos_str})
+        table_data.append({
+            "sensor_pk": row["sensor_pk"],    # ← 추가
+            "device_id": row["device_id"],
+            "channel":   row["channel"],
+            "position":  pos_str,
+        })
 
     # 4) 첫 번째 센서 강조
     selected_indices = []
@@ -456,13 +461,15 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
 
     # 8) 테이블 컬럼 정의
     columns = [
-        {"name": "name", "id": "name"},
+        {"name": "sensor_pk", "id": "sensor_pk", "hidden": True},
+        {"name": "Device ID", "id": "device_id"},
+        {"name": "채널",       "id": "channel"},
         {"name": "위치 (x,y,z)", "id": "position"},
     ]
 
-    title = f"{selected_conc} · 센서 전체"
-    edit_disabled = False if selected_indices else True
-    del_disabled = False if selected_indices else True
+    title         = f"{selected_conc} · 센서 전체"
+    edit_disabled = not bool(selected_indices)
+    del_disabled  = not bool(selected_indices)
 
     return fig, title, table_data, columns, selected_indices, edit_disabled, del_disabled
 
