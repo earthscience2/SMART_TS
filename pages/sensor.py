@@ -365,7 +365,7 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
     fig = make_concrete_fig(conc_nodes, conc_h)
 
     # 3) 센서 데이터 로드
-    df_sensor = api_db.get_sensor_data()
+    df_sensor = api_db.get_sensors_data()
     df_sensor = df_sensor[df_sensor["concrete_pk"] == selected_conc].copy()
 
     xs, ys, zs = [], [], []
