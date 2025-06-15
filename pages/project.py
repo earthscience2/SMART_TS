@@ -439,21 +439,23 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     Output("time-slider", "min", allow_duplicate=True),
     Output("time-slider", "max", allow_duplicate=True),
     Output("time-slider", "marks", allow_duplicate=True),
+    Output("time-slider", "value", allow_duplicate=True),
     Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
+    State("time-slider", "value"),
     prevent_initial_call=True,
 )
-def update_time_slider_marks(selected_rows, tbl_data):
+def update_time_slider_marks(selected_rows, tbl_data, current_value):
     if not selected_rows:
-        return 0, 5, {}
+        return 0, 5, {}, 0
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
     inp_dir = f"inp/{concrete_pk}"
     if not os.path.exists(inp_dir):
-        return 0, 5, {}
+        return 0, 5, {}, 0
     inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
     if not inp_files:
-        return 0, 5, {}
+        return 0, 5, {}, 0
     # 시간 파싱
     times = []
     for f in inp_files:
@@ -464,7 +466,7 @@ def update_time_slider_marks(selected_rows, tbl_data):
         except:
             continue
     if not times:
-        return 0, 5, {}
+        return 0, 5, {}, 0
     # 1일(24시간) 간격으로 마크 표시
     marks = {}
     for i, t in enumerate(times):
@@ -475,7 +477,10 @@ def update_time_slider_marks(selected_rows, tbl_data):
         marks[0] = times[0].strftime("%m/%d")
     if (len(times)-1) not in marks:
         marks[len(times)-1] = times[-1].strftime("%m/%d")
-    return 0, len(times)-1, marks
+    # value가 max보다 크면 max로 맞춤
+    max_idx = len(times)-1
+    value = min(current_value if current_value is not None else 0, max_idx)
+    return 0, max_idx, marks, value
 
 # ───────────────────── ⑤ 분석 시작 콜백 ─────────────────────
 @callback(
