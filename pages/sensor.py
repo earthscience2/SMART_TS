@@ -40,10 +40,6 @@ register_page(__name__, path="/sensor")
 
 # ────────────────────────────── 3-D 헬퍼 ─────────────────────────────
 def make_concrete_fig(nodes: list[list[float]], h: float) -> go.Figure:
-    """
-    기존 concrete의 3D 뷰를 그리는 함수.
-    nodes: [[x, y], ...], h: 높이
-    """
     fig = go.Figure()
     poly = np.array(nodes)
     x0, y0 = poly[:, 0], poly[:, 1]
@@ -103,12 +99,7 @@ def make_concrete_fig(nodes: list[list[float]], h: float) -> go.Figure:
     )
     return fig
 
-
 def get_polygon_intersections_x(y: float, nodes: list[list[float]]) -> list[float]:
-    """
-    폴리곤 노드 리스트와, y 고정값을 받으면,
-    폴리곤의 각 엣지와 수평선 y=k 가 만나는 x 좌표들을 계산하여 반환.
-    """
     intersections = []
     n = len(nodes)
     for i in range(n):
@@ -122,12 +113,7 @@ def get_polygon_intersections_x(y: float, nodes: list[list[float]]) -> list[floa
                 intersections.append(xi)
     return intersections
 
-
 def get_polygon_intersections_y(x: float, nodes: list[list[float]]) -> list[float]:
-    """
-    폴리곤 노드 리스트와, x 고정값을 받으면,
-    폴리곤의 각 엣지와 수직선 x=k 가 만나는 y 좌표들을 계산하여 반환.
-    """
     intersections = []
     n = len(nodes)
     for i in range(n):
@@ -338,7 +324,6 @@ def init_dropdown(selected_value):
     Input("toggle-lines", "value"),            
     Input("tbl-sensor", "data_timestamp"),     
     State("camera-store", "data"),
-    State("ddl-concrete", "value"),
     prevent_initial_call=True,
 )
 def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
@@ -881,7 +866,6 @@ def toggle_edit_modal(b_open, b_close, b_save, sel, tbl_data, conc_pk):
 
 # ───────────────────── ⑩ 수정 모달 필드 채우기 콜백 ─────────────────────
 @callback(
-    Output("edit-sensor-id", "value"),
     Output("edit-sensor-coords", "value"),
     Output("edit-sensor-preview", "figure"),
     Output("edit-sensor-alert", "children"),
@@ -1003,21 +987,19 @@ def fill_edit_sensor(opened, conc_pk, sensor_pk, show_lines):
             hoverinfo="skip",
         ))
 
-    # * 센서 ID 필드에는 기존 sensor_id 값을 채워서 보여줌 (이제 수정 가능)
     return coords_txt, fig_conc, "", False
 
 
-# ───────────────────── ⑪ 수정 미리보기 콜백 ─────────────────────
+# ───────────────────── ⑪ 수정 미리보기 콜백 ────────────────────
 @callback(
     Output("edit-sensor-preview", "figure", allow_duplicate=True),
     Output("edit-sensor-alert", "children", allow_duplicate=True),
     Output("edit-sensor-alert", "is_open", allow_duplicate=True),
-    Input("edit-sensor-build", "n_clicks"),           # “새로고침” 버튼 클릭
+    Input("edit-sensor-build", "n_clicks"),           # "새로고침" 버튼 클릭
     Input("edit-toggle-lines", "value"),              # 모달 내 보조선 스위치 값
     State("edit-sensor-coords", "value"),             # 수정할 좌표
     State("edit-sensor-concrete-id", "data"),         # 현재 콘크리트 ID
     State("edit-sensor-id-store", "data"),            # 수정 중인 센서 ID
-    State("edit-sensor-id", "value"),                 # 수정된 ID
     prevent_initial_call=True,
 )
 def edit_sensor_preview(n_clicks, show_lines, coords_txt, conc_pk, sensor_pk):
@@ -1030,7 +1012,6 @@ def edit_sensor_preview(n_clicks, show_lines, coords_txt, conc_pk, sensor_pk):
     1) 콘크리트 + (수정 대상 제외) 나머지 센서를 파란 점으로 그림
     2) show_lines=True 면 보조선을 그림
     3) 입력된 coords_txt로 수정된 센서를 빨간 점으로 그림
-    4) new_sensor_id가 기존 다른 센서와 중복되면 Alert 표시
     """
     # 1) 콘크리트 정보 로드 & 기본 Mesh 그리기
     try:
@@ -1120,15 +1101,7 @@ def edit_sensor_preview(n_clicks, show_lines, coords_txt, conc_pk, sensor_pk):
                     showlegend=False,
                 ))
 
-    # 4) new_sensor_id가 기존 다른 센서 목록과 중복되는지 검사
-    existing_ids = df_same["sensor_pk"].tolist()
-    # 자기 자신(sensor_pk) 제외
-    other_ids = [sid for sid in existing_ids if sid != sensor_pk]
-    if new_sensor_id:
-        if new_sensor_id in other_ids:
-            return dash.no_update, f"이미 존재하는 Sensor ID: {new_sensor_id}", True
-
-    # 5) coords_txt(수정할 좌표) 파싱
+    # 4) coords_txt(수정할 좌표) 파싱
     if not coords_txt:
         return dash.no_update, "좌표를 입력하세요 (예: [1,1,0])", True
     try:
@@ -1139,7 +1112,7 @@ def edit_sensor_preview(n_clicks, show_lines, coords_txt, conc_pk, sensor_pk):
     except Exception:
         return dash.no_update, "좌표 형식이 잘못되었습니다 (예: [1,1,0])", True
 
-    # 6) 수정된 센서를 빨간 점(크기 6)으로 표시
+    # 5) 수정된 센서를 빨간 점(크기 6)으로 표시
     fig_conc.add_trace(go.Scatter3d(
         x=[x_new], y=[y_new], z=[z_new],
         mode="markers",
