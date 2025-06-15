@@ -384,41 +384,61 @@ def open_edit(b1, b2, sel, data):
 
 # ───────────────────── ⑧ 수정 필드 채우기
 @callback(
-    Output("edit-name", "value"),
-    Output("edit-nodes", "value"),
-    Output("edit-h", "value"),
+    Output("edit-name",    "value"),
+    Output("edit-nodes",   "value"),
+    Output("edit-h",       "value"),
+    Output("edit-unit",    "value"),
+    Output("edit-e",       "value"),
+    Output("edit-b",       "value"),
+    Output("edit-n",       "value"),
     Output("edit-preview", "figure"),
-    Input("modal-edit", "is_open"),
-    State("edit-id", "data"),
+    Input("modal-edit",    "is_open"),
+    State("edit-id",       "data"),
     prevent_initial_call=True
 )
-def fill_edit(opened, cid):
+def fill_edit(opened: bool, cid):
     if not opened or not cid:
         raise PreventUpdate
 
     # 1) 데이터 조회
     df = api_db.get_concrete_data(cid)
 
-    # 2) 유효성 검사: None 또는 빈 DataFrame이면 취소
+    # 2) 유효성 검사: None 또는 빈 DataFrame이면 무시
     if df is None or (isinstance(df, pd.DataFrame) and df.empty):
         raise PreventUpdate
 
-    # 3) DataFrame이면 첫 행을 꺼내 dict로, 아니면 그대로 dict로 가정
+    # 3) DataFrame이면 첫 행을 꺼내 dict로, 아니면 이미 dict라고 가정
     if isinstance(df, pd.DataFrame):
         row = df.iloc[0].to_dict()
     else:
-        row = df  # 이미 dict일 때
+        row = df
 
-    # 4) dims는 dict 형태로 저장되어 있다고 가정
-    dims = row.get("dims", {})
+    # 4) dims 필드가 문자열이면 파싱
+    dims_field = row.get("dims", {})
+    if isinstance(dims_field, str):
+        try:
+            dims = ast.literal_eval(dims_field)
+        except Exception:
+            dims = {}
+    else:
+        dims = dims_field or {}
 
-    return (
-        # 수정 모달의 각 필드에 값을 채워줌
-        row.get("name", ""),
-        str(dims.get("nodes", [])),
-        dims.get("h", 0),
-        make_fig(dims.get("nodes", []), dims.get("h", 0))
-    )
+    # 5) 각 값 추출
+    name     = row.get("name", "")
+    nodes    = str(dims.get("nodes", []))
+    h_value  = dims.get("h", 0)
+
+    # 6) 수정된 콘크리트의 속성들
+    con_unit = row.get("con_unit", "")
+    con_e    = row.get("con_e", "")
+    con_b    = row.get("con_b", "")
+    con_n    = row.get("con_n", "")
+
+    # 7) 3D 미리보기 생성
+    fig = make_fig(dims.get("nodes", []), dims.get("h", 0))
+
+    return name, nodes, h_value, con_unit, con_e, con_b, con_n, fig
+
 
 # ───────────────────── ⑨ 수정 미리보기
 @callback(
