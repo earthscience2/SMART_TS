@@ -198,24 +198,39 @@ def refresh_table(n, project_pk, _data_ts):
 
 # ───────────────────── ② 선택된 행 → 3-D 뷰
 @callback(
-    Output("viewer", "figure"),
+    Output("viewer",    "figure"),
     Output("sel-title", "children"),
-    Output("btn-edit", "disabled"),
-    Output("btn-del", "disabled"),
-    Input("tbl", "selected_rows"),
-    State("tbl", "data"),
+    Output("btn-edit",  "disabled"),
+    Output("btn-del",   "disabled"),
+    Input("tbl",        "selected_rows"),
+    State("tbl",        "data"),
     prevent_initial_call=True
 )
 def show_selected(sel, data):
+    # 아무 것도 선택 안 됐으면 모두 비활성
     if not sel:
         return go.Figure(), "", True, True
+
+    # 선택된 레코드 가져오기
     row = pd.DataFrame(data).iloc[sel[0]]
+    # dims 파싱
     try:
         dims = ast.literal_eval(row["dims"])
     except Exception:
         raise PreventUpdate
+
+    # 3D 뷰와 타이틀 준비
+    fig   = make_fig(dims["nodes"], dims["h"])
     title = f"{row['concrete_pk']} · {row['name']}"
-    return make_fig(dims['nodes'], dims['h']), title, False, False
+
+    # activate 체크 (없으면 1로 간주)
+    is_active = row.get("activate", 1) == 1
+    # activate가 0이면 Edit 버튼만 비활성화
+    disable_edit = not is_active
+    # 삭제 버튼은 선택만 되면 활성화
+    disable_del  = False
+
+    return fig, title, disable_edit, disable_del
 
 # ───────────────────── ③ 추가 모달 토글
 @callback(
