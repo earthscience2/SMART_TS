@@ -529,7 +529,7 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, e, b, n):
         con_e=float(e),
         con_b=float(b),
         con_n=float(n),
-        activate=0
+        activate=1
     )
 
     # 4) 성공 처리
