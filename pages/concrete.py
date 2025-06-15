@@ -261,57 +261,55 @@ def add_preview(_, nodes_txt, h):
     Output("tbl", "data_timestamp", allow_duplicate=True),
     Input("add-save", "n_clicks"),
     State("project-dropdown", "value"),
-    State("add-name",          "value"),
-    State("add-nodes",         "value"),
-    State("add-h",             "value"),
-    State("add-unit",          "value"),
-    State("add-e",             "value"),
-    State("add-b",             "value"),
-    State("add-n",             "value"),
+    State("add-name",  "value"),
+    State("add-nodes", "value"),
+    State("add-h",     "value"),
+    State("add-unit",  "value"),
+    State("add-e",     "value"),
+    State("add-b",     "value"),
+    State("add-n",     "value"),
     prevent_initial_call=True
 )
 def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, e, b, n):
-    # 1) 버튼 클릭이 없으면 아무 것도 안 함
+    # 1) 클릭 없으면 무시
     if not n_clicks:
         raise PreventUpdate
 
     # 2) 필수 입력 체크
-    if not project_pk:
-        return "프로젝트 선택이 필요합니다.", "danger", True, dash.no_update
-    if not name or not name.strip():
-        return "이름을 입력하세요.", "danger", True, dash.no_update
-    if not nodes_txt or not nodes_txt.strip():
-        return "노드 목록을 입력하세요.", "danger", True, dash.no_update
-    for field, label in [(h, "높이 H"), (unit, "해석 단위"), (e, "탄성계수"), (b, "베타 상수"), (n, "N 상수")]:
-        if field is None:
-            return f"{label}를 입력하세요.", "danger", True, dash.no_update
+    missing = []
+    if not project_pk:       missing.append("프로젝트")
+    if not name:             missing.append("이름")
+    if not nodes_txt:        missing.append("노드 목록")
+    if h    is None:         missing.append("높이 H")
+    if unit is None:         missing.append("해석 단위")
+    if e    is None:         missing.append("탄성계수")
+    if b    is None:         missing.append("베타 상수")
+    if n    is None:         missing.append("N 상수")
 
-    # 3) 노드 파싱
+    if missing:
+        msg = ", ".join(missing) + "을(를) 입력해주세요."
+        return msg, "danger", True, dash.no_update
+
+    # 3) 노드 파싱 검증
     try:
         nodes = ast.literal_eval(nodes_txt)
         assert isinstance(nodes, list)
     except Exception:
         return "노드 형식이 잘못되었습니다.", "danger", True, dash.no_update
 
-    # 4) 타입 변환
+    # 4) 모든 검증 통과 → DB 저장
     dims     = {"nodes": nodes, "h": float(h)}
-    con_unit = float(unit)
-    con_e    = float(e)
-    con_b    = float(b)
-    con_n    = float(n)
-
-    # 5) 모든 검증 통과 후에만 DB 저장
     api_db.add_concrete_data(
         project_pk=project_pk,
         name=name.strip(),
         dims=dims,
-        con_unit=con_unit,
-        con_e=con_e,
-        con_b=con_b,
-        con_n=con_n
+        con_unit=float(unit),
+        con_e=float(e),
+        con_b=float(b),
+        con_n=float(n)
     )
 
-    # 6) 성공 메시지와 테이블 갱신 타임스탬프 리턴
+    # 5) 성공 메시지 및 테이블 갱신
     return "콘크리트가 정상적으로 추가되었습니다.", "success", True, pd.Timestamp.utcnow().value
 
 # ───────────────────── ⑥ 삭제 수행
