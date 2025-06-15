@@ -1102,7 +1102,7 @@ def edit_sensor_preview(n_clicks, show_lines, coords_txt, conc_pk, sensor_pk):
                     showlegend=False,
                 ))
 
-            # (c) XY 평면 내 Y축 투영 (x=x_s, z=0)
+            # (c) XY 평면 Y축 투영 (x=x_s, z=0)
             y_ints = get_polygon_intersections_y(x_s, conc_nodes)
             if y_ints:
                 down_candidates = [yi for yi in y_ints if yi < y_s]
@@ -1169,7 +1169,7 @@ def edit_sensor_save(n_clicks, conc_pk, old_sensor_pk, coords_txt):
         return dash.no_update, "좌표 형식이 잘못되었습니다 (예: [1,1,0])", "danger", True
 
     try:
-        api_db.update_sensors_data(old_sensor_pk, {"dims": {"nodes": xyz}})
+        api_db.update_sensors_data(sensor_pk=old_sensor_pk, dims={"nodes": xyz})
     except Exception as e:
         return dash.no_update, f"위치 업데이트 실패: {e}", "danger", True
 
