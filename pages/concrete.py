@@ -255,49 +255,49 @@ def add_preview(_, nodes_txt, h):
 
 # ───────────────────── ⑤ 추가 저장
 @callback(
-    Output("add-alert", "children"),
-    Output("add-alert", "is_open"),
-    Output("tbl",       "data_timestamp"),
-    Output("modal-add", "is_open"),
-    Input("add-save",   "n_clicks"),
+    Output("add-alert",  "children"),
+    Output("add-alert",  "is_open"),
+    Output("tbl",        "data_timestamp", allow_duplicate=True),
+    Output("modal-add",  "is_open",        allow_duplicate=True),
+    Input("add-save",    "n_clicks"),
     State("project-dropdown", "value"),
-    State("add-name",   "value"),
-    State("add-nodes",  "value"),
-    State("add-h",      "value"),
-    State("add-unit",   "value"),
-    State("add-e",      "value"),
-    State("add-b",      "value"),
-    State("add-n",      "value"),
+    State("add-name",    "value"),
+    State("add-nodes",   "value"),
+    State("add-h",       "value"),
+    State("add-unit",    "value"),
+    State("add-e",       "value"),
+    State("add-b",       "value"),
+    State("add-n",       "value"),
     prevent_initial_call=True
 )
 def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, e, b, n):
-    # 1) 클릭 없으면 무시
+    # 클릭이 없으면 무시
     if not n_clicks:
         raise PreventUpdate
 
-    # 2) 빈 필드 체크
+    # 빈 값 체크
     missing = []
-    if not project_pk:      missing.append("프로젝트")
-    if not name:            missing.append("이름")
-    if not nodes_txt:       missing.append("노드 목록")
-    if h    is None:        missing.append("높이 H")
-    if unit is None:        missing.append("해석 단위")
-    if e    is None:        missing.append("탄성계수")
-    if b    is None:        missing.append("베타 상수")
-    if n    is None:        missing.append("N 상수")
+    if not project_pk: missing.append("프로젝트")
+    if not name:       missing.append("이름")
+    if not nodes_txt:  missing.append("노드 목록")
+    if h    is None:   missing.append("높이 H")
+    if unit is None:   missing.append("해석 단위")
+    if e    is None:   missing.append("탄성계수")
+    if b    is None:   missing.append("베타 상수")
+    if n    is None:   missing.append("N 상수")
 
     if missing:
-        # 모달 내부 Alert에만 메시지 띄우고 모달은 계속 열어둠
+        # 모달 안 경고만 띄우고, 모달 닫지 않음, 테이블 갱신도 하지 않음
         return f"{', '.join(missing)}을(를) 입력해주세요.", True, dash.no_update, True
 
-    # 3) 노드 파싱 검증
+    # 노드 파싱
     try:
         nodes = ast.literal_eval(nodes_txt)
         assert isinstance(nodes, list)
     except Exception:
         return "노드 형식이 잘못되었습니다.", True, dash.no_update, True
 
-    # 4) 모든 검증 통과 → DB 저장
+    # DB 저장
     dims = {"nodes": nodes, "h": float(h)}
     api_db.add_concrete_data(
         project_pk=project_pk,
@@ -309,7 +309,7 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, e, b, n):
         con_n=float(n)
     )
 
-    # 5) 성공 시 테이블 갱신, 모달 닫기, Alert 숨기기
+    # 성공 시: 모달 닫고, Alert 숨기고, 테이블 갱신
     return "", False, pd.Timestamp.utcnow().value, False
 
 # ───────────────────── ⑥ 삭제 수행
