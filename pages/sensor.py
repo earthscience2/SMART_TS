@@ -385,7 +385,7 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
         sensor_ids.append(row["sensor_pk"])
         colors.append("blue")
         sizes.append(8)
-        table_data.append({"name": row["name"], "position": pos_str})
+        table_data.append({"device_id": row["device_id"], "channel": row["channel"],"position": pos_str})
 
     # 4) 첫 번째 센서 강조
     selected_indices = []
