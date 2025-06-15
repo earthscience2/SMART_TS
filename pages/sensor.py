@@ -480,6 +480,7 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
     State("tbl-sensor", "data"),
     State("viewer-sensor", "figure"),
     State("camera-store", "data"),
+    State("ddl-concrete", "value"),
     prevent_initial_call=True,
 )
 def on_sensor_select(selected_rows, tbl_data, current_fig, cam_store):
@@ -518,8 +519,9 @@ def on_sensor_select(selected_rows, tbl_data, current_fig, cam_store):
         if 0 <= sel_idx < n_points:
             new_colors[sel_idx] = "red"
             new_sizes[sel_idx] = 12   # ← 선택된 센서를 크기 12로 강조
-            edit_disabled = False
             del_disabled = False
+            activate = api_db.get_concrete_data().query("concrete_pk==@selected_conc").iloc[0].get("activate",1)
+            edit_disabled = True if activate == 0 else False
             sel_id = sensor_trace.customdata[sel_idx]
             base_title = fig.layout.title.text if (fig.layout and fig.layout.title) else ""
             base_conc = base_title.split("·")[0].strip() if base_title else ""
@@ -1162,39 +1164,16 @@ def edit_sensor_preview(n_clicks, show_lines, coords_txt, conc_pk, sensor_pk, ne
     Output("edit-sensor-alert", "is_open", allow_duplicate=True),
     Input("edit-sensor-save", "n_clicks"),
     State("edit-sensor-concrete-id", "data"),
-    State("edit-sensor-id-store", "data"),
-    State("edit-sensor-id", "value"),        # ← 새로운 센서 ID (수정 가능)
-    State("edit-sensor-coords", "value"),    # 수정된 좌표
+    State("edit-sensor-id-store", "data"),       # old_sensor_pk
+    State("edit-sensor-coords", "value"),        # 수정된 좌표
     prevent_initial_call=True,
 )
-def edit_sensor_save(_, conc_pk, old_sensor_pk, new_sensor_pk, coords_txt):
-    """
-    수정 버튼 클릭 시:
-    1) 콘크리트를 선택했는지, ID와 좌표를 입력했는지 확인
-    2) 동일 콘크리트 내에 이미 같은 ID가 있으면 Alert 반환 후 저장 중단
-    3) new_sensor_id가 old_sensor_id와 다른지 확인
-       - 다르면 기존 센서 삭제 후 새로운 ID로 같은 좌표를 추가
-       - 같으면 api_sensor.update_sensor로 좌표만 업데이트
-    4) 성공 시 data_timestamp를 반환하여 테이블을 갱신 트리거
-    """
+def edit_sensor_save(n_clicks, conc_pk, old_sensor_pk, coords_txt):
     if not (conc_pk and old_sensor_pk):
         return dash.no_update, "데이터 로드 실패", "danger", True
-    if not new_sensor_pk:
-        return dash.no_update, "센서 ID를 입력하세요", "danger", True
     if not coords_txt:
         return dash.no_update, "좌표를 입력하세요 (예: [1,1,0])", "danger", True
 
-    # (추가) 동일 콘크리트 내 기존 센서 ID 리스트 조회
-    df_sensor_full = api_db.get_sensors_data()
-    df_same = df_sensor_full[df_sensor_full["concrete_pk"] == conc_pk]
-    existing_ids = df_same["sensor_pk"].tolist()
-    # 자기 자신(old_sensor_pk) 제외한 ID 목록
-    other_ids = [sid for sid in existing_ids if sid != old_sensor_pk]
-
-    if new_sensor_pk in other_ids:
-        return dash.no_update, f"이미 존재하는 Sensor ID: {new_sensor_pk}", "danger", True
-
-    # 좌표 파싱
     try:
         xyz = ast.literal_eval(coords_txt)
         if not (isinstance(xyz, (list, tuple)) and len(xyz) == 3):
@@ -1203,24 +1182,10 @@ def edit_sensor_save(_, conc_pk, old_sensor_pk, new_sensor_pk, coords_txt):
     except Exception:
         return dash.no_update, "좌표 형식이 잘못되었습니다 (예: [1,1,0])", "danger", True
 
-    # (1) ID가 변경되었는지 확인
-    if new_sensor_pk and (new_sensor_pk != old_sensor_pk):
-        # a) 기존 센서 삭제
-        try:
-            api_db.delete_sensors_data(old_sensor_pk)
-        except Exception as e:
-            return dash.no_update, f"기존 센서 삭제 실패: {e}", "danger", True
-        # b) 새로운 ID로 동일한 좌표 추가
-        try:
-            api_db.add_sensors_data(conc_pk, new_sensor_pk, {"nodes": xyz})
-        except Exception as e:
-            return dash.no_update, f"새 센서 추가 실패: {e}", "danger", True
-    else:
-        # ID가 같다면, 좌표만 업데이트
-        try:
-            api_db.update_sensors_data(old_sensor_pk, {"nodes": xyz})
-        except Exception as e:
-            return dash.no_update, f"위치 업데이트 실패: {e}", "danger", True
+    try:
+        api_db.update_sensors_data(old_sensor_pk, {"nodes": xyz})
+    except Exception as e:
+        return dash.no_update, f"위치 업데이트 실패: {e}", "danger", True
 
-    # 수정 완료 후 테이블 갱신 트리거
-    return pd.Timestamp.utcnow().value, f"{new_sensor_pk or old_sensor_pk} 수정 완료", "success", True
+    # 성공: 테이블 갱신
+    return pd.Timestamp.utcnow().value, f"{old_sensor_pk} 위치 수정 완료", "success", True
