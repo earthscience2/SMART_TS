@@ -258,10 +258,15 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     concrete_pk = row["concrete_pk"]
     inp_dir = f"inp/{concrete_pk}"
     inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
-    if not inp_files or time_idx >= len(inp_files):
+    if not inp_files:
         raise PreventUpdate
-    current_file = inp_files[round(time_idx * (len(inp_files)-1)/5)]
+    
+    # 시간 슬라이더를 6등분으로 나누고 해당하는 파일 선택
+    total_files = len(inp_files)
+    file_idx = round(time_idx * (total_files - 1) / 5)  # 5는 슬라이더의 최대값
+    current_file = inp_files[file_idx]
     current_time = os.path.basename(current_file).split(".")[0]
+
     # inp 파일 파싱 (노드, 온도)
     with open(current_file, 'r') as f:
         lines = f.readlines()
@@ -282,6 +287,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
                 y = float(parts[2])
                 z = float(parts[3])
                 nodes[node_id] = {'x': x, 'y': y, 'z': z}
+
     temperatures = {}
     temp_section = False
     for line in lines:
@@ -297,28 +303,64 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
                 node_id = int(parts[0])
                 temp = float(parts[1])
                 temperatures[node_id] = temp
+
     # 좌표/온도 배열
     x_coords = np.array([n['x'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
     y_coords = np.array([n['y'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
     z_coords = np.array([n['z'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
     temps = np.array([temperatures[k] for k in nodes.keys() if k in temperatures])
     tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
-    # 3D 뷰: Mesh3d + 와이어프레임
+
+    # 3D 뷰 생성
     fig_3d = go.Figure()
-    fig_3d.add_trace(go.Mesh3d(
-        x=x_coords, y=y_coords, z=z_coords,
-        intensity=temps, colorscale='RdBu', cmin=tmin, cmax=tmax,
-        opacity=0.4, name='Surface', showscale=True, colorbar=dict(title='Temperature (°C)')
-    ))
+    
+    # 와이어프레임 추가
     fig_3d.add_trace(go.Scatter3d(
-        x=x_coords, y=y_coords, z=z_coords,
-        mode='markers', marker=dict(size=2, color='black'), name='Wireframe'))
-    fig_3d.update_layout(title=f"시간: {current_time}", scene=dict(aspectmode='data'), margin=dict(l=0, r=0, b=0, t=30), showlegend=False)
+        x=x_coords,
+        y=y_coords,
+        z=z_coords,
+        mode='markers',
+        marker=dict(
+            size=3,
+            color=temps,
+            colorscale='RdBu',
+            showscale=True,
+            colorbar=dict(title='Temperature (°C)')
+        ),
+        name='Nodes'
+    ))
+    
+    # 서피스 추가
+    fig_3d.add_trace(go.Mesh3d(
+        x=x_coords,
+        y=y_coords,
+        z=z_coords,
+        colorbar_title='Temperature (°C)',
+        colorscale='RdBu',
+        intensity=temps,
+        opacity=0.3,
+        name='Surface'
+    ))
+    
+    # 3D 뷰 레이아웃 설정
+    fig_3d.update_layout(
+        title=f"시간: {current_time}",
+        scene=dict(
+            xaxis_title="X (m)",
+            yaxis_title="Y (m)",
+            zaxis_title="Z (m)",
+            aspectmode='data'
+        ),
+        margin=dict(l=0, r=0, b=0, t=30),
+        showlegend=True
+    )
+
     # 단면 위치 (클릭 없으면 중앙)
     x0 = float(section_coord['x']) if section_coord and 'x' in section_coord else float(np.median(x_coords))
     y0 = float(section_coord['y']) if section_coord and 'y' in section_coord else float(np.median(y_coords))
     z0 = float(section_coord['z']) if section_coord and 'z' in section_coord else float(np.median(z_coords))
     tol = 0.05
+
     # X 단면 (x ≈ x0)
     mask_x = np.abs(x_coords - x0) < tol
     if np.any(mask_x):
@@ -336,6 +378,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     else:
         fig_x = go.Figure()
     fig_x.update_layout(title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
+
     # Y 단면 (y ≈ y0)
     mask_y = np.abs(y_coords - y0) < tol
     if np.any(mask_y):
@@ -353,6 +396,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     else:
         fig_y = go.Figure()
     fig_y.update_layout(title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
+
     # Z 단면 (z ≈ z0)
     mask_z = np.abs(z_coords - z0) < tol
     if np.any(mask_z):
@@ -370,6 +414,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     else:
         fig_z = go.Figure()
     fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30))
+
     return fig_3d, fig_x, fig_y, fig_z, current_time
 
 # ───────────────────── ⑤ 분석 시작 콜백 ─────────────────────
@@ -451,3 +496,15 @@ def delete_concrete_confirm(_click, sel, tbl_data):
         return f"{concrete_pk} 삭제 완료", "success", True, updated_data
     except Exception as e:
         return f"삭제 실패: {e}", "danger", True, dash.no_update
+
+# 콘크리트 선택 시 최근 시간으로 이동하는 콜백 추가
+@callback(
+    Output("time-slider", "value", allow_duplicate=True),
+    Input("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    prevent_initial_call=True,
+)
+def move_to_latest_time(selected_rows, tbl_data):
+    if not selected_rows:
+        raise PreventUpdate
+    return 5  # 최대값으로 설정하여 최근 시간으로 이동
