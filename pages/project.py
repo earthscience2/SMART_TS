@@ -24,6 +24,7 @@ from dash import (
 import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
 from scipy.interpolate import griddata
+import ast
 
 import api_db
 
@@ -261,10 +262,15 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
     if not inp_files:
         raise PreventUpdate
-    
-    # 시간 슬라이더를 6등분으로 나누고 해당하는 파일 선택
-    total_files = len(inp_files)
-    file_idx = round(time_idx * (total_files - 1) / 5)  # 5는 슬라이더의 최대값
+
+    # 시간 슬라이더: 처음/중간/끝만 표시
+    N = len(inp_files)
+    if time_idx == 0:
+        file_idx = 0
+    elif time_idx == 1:
+        file_idx = N // 2
+    else:
+        file_idx = N - 1
     current_file = inp_files[file_idx]
     current_time = os.path.basename(current_file).split(".")[0]
 
@@ -288,7 +294,6 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
                 y = float(parts[2])
                 z = float(parts[3])
                 nodes[node_id] = {'x': x, 'y': y, 'z': z}
-
     temperatures = {}
     temp_section = False
     for line in lines:
@@ -304,52 +309,80 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
                 node_id = int(parts[0])
                 temp = float(parts[1])
                 temperatures[node_id] = temp
-
-    # 좌표/온도 배열
     x_coords = np.array([n['x'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
     y_coords = np.array([n['y'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
     z_coords = np.array([n['z'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
     temps = np.array([temperatures[k] for k in nodes.keys() if k in temperatures])
     tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
 
-    # 1. 노드 좌표와 온도 배열 준비
+    # 콘크리트 dims 파싱 (꼭짓점, 높이)
+    try:
+        dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
+        poly_nodes = np.array(dims["nodes"])
+        poly_h = float(dims["h"])
+    except Exception:
+        poly_nodes = None
+        poly_h = None
+
+    # 1. 3D 볼륨 렌더링
     coords = np.array([[x, y, z] for x, y, z in zip(x_coords, y_coords, z_coords)])
     temps = np.array(temps)
-
-    # 2. 0.1m 간격으로 격자 생성
-    x_bins = np.arange(coords[:,0].min(), coords[:,0].max()+0.1, 0.1)
-    y_bins = np.arange(coords[:,1].min(), coords[:,1].max()+0.1, 0.1)
-    z_bins = np.arange(coords[:,2].min(), coords[:,2].max()+0.1, 0.1)
-
-    # 3. 각 노드를 격자에 할당
-    indices = (
-        np.digitize(coords[:,0], x_bins) - 1,
-        np.digitize(coords[:,1], y_bins) - 1,
-        np.digitize(coords[:,2], z_bins) - 1
-    )
-
-    # 4. 3D 배열에 평균 온도 저장
-    grid = np.full((len(x_bins), len(y_bins), len(z_bins)), np.nan)
-    for i in range(len(coords)):
-        xi, yi, zi = indices[0][i], indices[1][i], indices[2][i]
-        if np.isnan(grid[xi, yi, zi]):
-            grid[xi, yi, zi] = temps[i]
-        else:
-            grid[xi, yi, zi] = (grid[xi, yi, zi] + temps[i]) / 2  # 평균
-
-    # 5. Plotly 3D Volume으로 시각화
     fig_3d = go.Figure(data=go.Volume(
         x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
         opacity=0.2, surface_count=15, colorscale='RdBu',
         colorbar=dict(title='Temperature (°C)')
     ))
 
-    # 단면 위치 (클릭 없으면 중앙)
+    # 2. 콘크리트 모서리 강조 (Mesh3d + Scatter3d)
+    if poly_nodes is not None and poly_h is not None:
+        n = len(poly_nodes)
+        x0, y0 = poly_nodes[:,0], poly_nodes[:,1]
+        z0 = np.zeros(n)
+        x1, y1 = x0, y0
+        z1 = np.full(n, poly_h)
+        # 바닥/천장/세로 모서리
+        edges = []
+        for i in range(n):
+            edges.append((x0[i], y0[i], 0)); edges.append((x0[(i+1)%n], y0[(i+1)%n], 0))
+        for i in range(n):
+            edges.append((x1[i], y1[i], poly_h)); edges.append((x1[(i+1)%n], y1[(i+1)%n], poly_h))
+        for i in range(n):
+            edges.append((x0[i], y0[i], 0)); edges.append((x1[i], y1[i], poly_h))
+        fig_3d.add_trace(go.Scatter3d(
+            x=[e[0] for e in edges], y=[e[1] for e in edges], z=[e[2] for e in edges],
+            mode="lines", line=dict(width=6, color="dimgray"), hoverinfo="skip", name="Edge"
+        ))
+
+    # 3. 단면 위치: 중앙값 기본, 클릭 시 해당 위치
     x0 = float(section_coord['x']) if section_coord and 'x' in section_coord else float(np.median(x_coords))
     y0 = float(section_coord['y']) if section_coord and 'y' in section_coord else float(np.median(y_coords))
     z0 = float(section_coord['z']) if section_coord and 'z' in section_coord else float(np.median(z_coords))
-    tol = 0.05
 
+    # 4. 3D 뷰에 단면 위치 표시 (빨간 평면/선)
+    if poly_nodes is not None and poly_h is not None:
+        # X 단면 (빨간 YZ 평면)
+        fig_3d.add_trace(go.Scatter3d(
+            x=[x0]*5, y=[poly_nodes[:,1].min(), poly_nodes[:,1].max(), poly_nodes[:,1].max(), poly_nodes[:,1].min(), poly_nodes[:,1].min()],
+            z=[0, 0, poly_h, poly_h, 0],
+            mode="lines", line=dict(color="red", width=8), name="Section-X", hoverinfo="skip"
+        ))
+        # Y 단면 (파란 XZ 평면)
+        fig_3d.add_trace(go.Scatter3d(
+            x=[poly_nodes[:,0].min(), poly_nodes[:,0].max(), poly_nodes[:,0].max(), poly_nodes[:,0].min(), poly_nodes[:,0].min()],
+            y=[y0]*5,
+            z=[0, 0, poly_h, poly_h, 0],
+            mode="lines", line=dict(color="blue", width=8), name="Section-Y", hoverinfo="skip"
+        ))
+        # Z 단면 (녹색 XY 평면)
+        fig_3d.add_trace(go.Scatter3d(
+            x=[poly_nodes[:,0].min(), poly_nodes[:,0].max(), poly_nodes[:,0].max(), poly_nodes[:,0].min(), poly_nodes[:,0].min()],
+            y=[poly_nodes[:,1].min(), poly_nodes[:,1].min(), poly_nodes[:,1].max(), poly_nodes[:,1].max(), poly_nodes[:,1].min()],
+            z=[z0]*5,
+            mode="lines", line=dict(color="green", width=8), name="Section-Z", hoverinfo="skip"
+        ))
+
+    # 이하 기존 단면도 코드 (중앙값/클릭 위치 반영)
+    tol = 0.05
     # X 단면 (x ≈ x0)
     mask_x = np.abs(x_coords - x0) < tol
     if np.any(mask_x):
@@ -367,7 +400,6 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     else:
         fig_x = go.Figure()
     fig_x.update_layout(title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
-
     # Y 단면 (y ≈ y0)
     mask_y = np.abs(y_coords - y0) < tol
     if np.any(mask_y):
@@ -385,7 +417,6 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     else:
         fig_y = go.Figure()
     fig_y.update_layout(title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
-
     # Z 단면 (z ≈ z0)
     mask_z = np.abs(z_coords - z0) < tol
     if np.any(mask_z):
@@ -403,8 +434,25 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     else:
         fig_z = go.Figure()
     fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30))
-
     return fig_3d, fig_x, fig_y, fig_z, current_time
+
+# 시간 슬라이더 마크: 처음/중간/끝만 표시
+@callback(
+    Output("time-slider", "marks", allow_duplicate=True),
+    Input("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    prevent_initial_call=True,
+)
+def update_time_slider_marks(selected_rows, tbl_data):
+    if not selected_rows:
+        return {0: '처음', 1: '중간', 2: '끝'}
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    inp_dir = f"inp/{concrete_pk}"
+    inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+    if not inp_files:
+        return {0: '처음', 1: '중간', 2: '끝'}
+    return {0: '처음', 1: '중간', 2: '끝'}
 
 # ───────────────────── ⑤ 분석 시작 콜백 ─────────────────────
 @callback(
