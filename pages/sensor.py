@@ -836,12 +836,13 @@ def ask_delete_sensor(n, sel):
 
 @callback(
     Output("tbl-sensor", "data_timestamp", allow_duplicate=True),
-    Output("add-sensor-alert", "children", allow_duplicate=True),
-    Output("add-sensor-alert", "color", allow_duplicate=True),
-    Output("add-sensor-alert", "is_open", allow_duplicate=True),
-    Input("confirm-del-sensor", "submit_n_clicks"),
-    State("tbl-sensor", "selected_rows"), State("tbl-sensor", "data"),
-    State("ddl-concrete", "value"),
+    Output("add-sensor-alert",    "children",      allow_duplicate=True),
+    Output("add-sensor-alert",    "color",         allow_duplicate=True),
+    Output("add-sensor-alert",    "is_open",       allow_duplicate=True),
+    Input("confirm-del-sensor",   "submit_n_clicks"),
+    State("tbl-sensor",           "selected_rows"),
+    State("tbl-sensor",           "data"),
+    State("ddl-concrete",         "value"),
     prevent_initial_call=True,
 )
 def delete_sensor_confirm(_click, sel, tbl_data, conc_pk):
@@ -849,7 +850,8 @@ def delete_sensor_confirm(_click, sel, tbl_data, conc_pk):
         raise PreventUpdate
 
     row = pd.DataFrame(tbl_data).iloc[sel[0]]
-    sensor_pk = row["sensor_pk"]
+    sensor_pk = row["sensor_pk"]       # ← 이제 에러 없이 조회됨
+
     try:
         api_db.delete_sensor_data(sensor_pk)
     except Exception as e:
