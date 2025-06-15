@@ -266,7 +266,7 @@ layout = dbc.Container(
                         dcc.Store(id="edit-sensor-id-store"),
                         dbc.Alert(id="edit-sensor-alert", is_open=False, duration=3000, color="danger"),
                         # 센서 ID(이제 수정 가능)
-                        dbc.Input(id="edit-sensor-id", placeholder="Sensor ID", className="mb-2"),
+                        #dbc.Input(id="edit-sensor-id", placeholder="Sensor ID", className="mb-2"),
                         # 좌표 입력 필드
                         dbc.Input(id="edit-sensor-coords", placeholder="센서 좌표 [x, y, z] (예: [1, 1, 0])", className="mb-2"),
                         # (★) 수정 모달 보조선 토글 스위치
@@ -335,8 +335,8 @@ def init_dropdown(selected_value):
     Output("btn-sensor-edit", "disabled"),
     Output("btn-sensor-del", "disabled"),
     Input("ddl-concrete", "value"),
-    Input("toggle-lines", "value"),
-    Input("tbl-sensor", "data_timestamp"),
+    Input("toggle-lines", "value"),            
+    Input("tbl-sensor", "data_timestamp"),     
     State("camera-store", "data"),
     prevent_initial_call=True,
 )
@@ -348,8 +348,10 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
     # 1) 콘크리트 정보 로드
     try:
         conc_row = api_db.get_concrete_data().query("concrete_pk == @selected_conc").iloc[0]
-        conc_dims = ast.literal_eval(conc_row["dims"])
-        conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
+        activate = conc_row.get("activate", 1)
+        dims = ast.literal_eval(conc_row["dims"])
+        conc_nodes, conc_h = dims["nodes"], dims["h"]
+
     except Exception:
         return go.Figure(), "콘크리트 정보를 불러올 수 없음", [], [], [], True, True
 
@@ -385,7 +387,8 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
         })
 
     # 4) 첫 번째 센서 강조
-    selected_indices = []
+    selected_indices = [0] if sensor_ids else []
+
     if sensor_ids:
         colors[0] = "red"
         sizes[0] = 12
@@ -459,9 +462,10 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
     ]
 
     title         = f"{selected_conc} · 센서 전체"
-    edit_disabled = not bool(selected_indices)
+    edit_disabled = True if activate == 0 else not bool(selected_indices)
     del_disabled  = not bool(selected_indices)
 
+    title = f"{selected_conc} · 센서 전체"
     return fig, title, table_data, columns, selected_indices, edit_disabled, del_disabled
 
 
