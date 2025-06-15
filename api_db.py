@@ -240,7 +240,7 @@ def get_sensors_data(sensor_pk: str = None,
     return pd.read_sql(stmt, con=engine, params=params)
 
 # 센서 추가
-def add_sensor_data(concrete_pk: str, device_id: str, channel: int, 
+def add_sensors_data(concrete_pk: str, device_id: str, channel: int, 
                    d_type: int, dims: dict) -> None:
     # 1) 현재 가장 큰 sensor_pk 가져오기
     max_pk_sql = "SELECT MAX(sensor_pk) as max_pk FROM sensor"
@@ -276,7 +276,7 @@ def add_sensor_data(concrete_pk: str, device_id: str, channel: int,
         conn.commit()
 
 # 센서 업데이트
-def update_sensor_data(sensor_pk: str, **kwargs) -> None:
+def update_sensors_data(sensor_pk: str, **kwargs) -> None:
     # 업데이트할 필드와 값만 추출
     update_fields = {k: v for k, v in kwargs.items() if v is not None}
     if not update_fields:
@@ -302,7 +302,7 @@ def update_sensor_data(sensor_pk: str, **kwargs) -> None:
         conn.commit()
 
 # 센서 삭제
-def delete_sensor_data(sensor_pk: str) -> None:
+def delete_sensors_data(sensor_pk: str) -> None:
     sql = "DELETE FROM sensor WHERE sensor_pk = :sensor_pk"
     params = {"sensor_pk": sensor_pk}
     with engine.connect() as conn:

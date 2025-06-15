@@ -658,7 +658,7 @@ def add_sensor_preview(_, conc_pk, sensor_pk, coords_txt, show_lines):
         return dash.no_update, "센서 ID를 입력하세요", True
 
     # (추가) 동일 콘크리트 내 기존 센서 ID 리스트 조회
-    df_sensor_full = api_db.get_sensor_data()
+    df_sensor_full = api_db.get_sensors_data()
     df_same = df_sensor_full[df_sensor_full["concrete_pk"] == conc_pk]
     existing_ids = df_same["sensor_pk"].tolist()
     if sensor_pk in existing_ids:
@@ -788,7 +788,7 @@ def add_sensor_save(_, conc_pk, sensor_pk, coords_txt):
         return dash.no_update, "콘크리트 및 센서 ID를 입력하세요", "danger", True
 
     # (추가) 동일 콘크리트 내 기존 센서 ID 리스트 조회
-    df_sensor_full = api_db.get_sensor_data()
+    df_sensor_full = api_db.get_sensors_data()
     df_same = df_sensor_full[df_sensor_full["concrete_pk"] == conc_pk]
     existing_ids = df_same["sensor_pk"].tolist()
     if sensor_pk in existing_ids:
