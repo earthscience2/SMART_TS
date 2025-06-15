@@ -452,7 +452,11 @@ def update_time_slider_marks(selected_rows, tbl_data):
     inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
     if not inp_files:
         return {0: '처음', 1: '중간', 2: '끝'}
-    return {0: '처음', 1: '중간', 2: '끝'}
+    slider_min = 0
+    slider_max = len(inp_files) - 1
+    slider_marks = {i: os.path.basename(f).split('.')[0] for i, f in enumerate(inp_files)}
+    # value는 최근 파일 인덱스(기본값)
+    return slider_marks
 
 # ───────────────────── ⑤ 분석 시작 콜백 ─────────────────────
 @callback(
