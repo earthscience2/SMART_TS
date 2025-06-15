@@ -369,9 +369,25 @@ def open_edit(b1, b2, sel, data):
 def fill_edit(opened, cid):
     if not opened or not cid:
         raise PreventUpdate
-    row = api_db.get_concrete_data(cid) or {}
+
+    # 1) 데이터 조회
+    df = api_db.get_concrete_data(cid)
+
+    # 2) 유효성 검사: None 또는 빈 DataFrame이면 취소
+    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
+        raise PreventUpdate
+
+    # 3) DataFrame이면 첫 행을 꺼내 dict로, 아니면 그대로 dict로 가정
+    if isinstance(df, pd.DataFrame):
+        row = df.iloc[0].to_dict()
+    else:
+        row = df  # 이미 dict일 때
+
+    # 4) dims는 dict 형태로 저장되어 있다고 가정
     dims = row.get("dims", {})
+
     return (
+        # 수정 모달의 각 필드에 값을 채워줌
         row.get("name", ""),
         str(dims.get("nodes", [])),
         dims.get("h", 0),
