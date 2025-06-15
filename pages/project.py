@@ -84,12 +84,24 @@ layout = dbc.Container(
                 dbc.Col(
                     [
                         html.H6(id="concrete-title", className="mb-2"),
-                        # 3D 히트맵 뷰어
-                        dcc.Graph(
-                            id="viewer-heatmap",
-                            style={"height": "60vh"},
-                            config={"scrollZoom": True},
-                        ),
+                        # 3D 뷰와 단면도를 나란히 배치
+                        dbc.Row([
+                            # 3D 뷰
+                            dbc.Col([
+                                dcc.Graph(
+                                    id="viewer-3d",
+                                    style={"height": "60vh"},
+                                    config={"scrollZoom": True},
+                                ),
+                            ], md=8),
+                            # 단면도
+                            dbc.Col([
+                                dcc.Graph(
+                                    id="viewer-section",
+                                    style={"height": "60vh"},
+                                ),
+                            ], md=4),
+                        ]),
                         # 시간 슬라이더
                         html.Div([
                             html.Label("시간", className="form-label"),
@@ -263,7 +275,8 @@ def on_concrete_select(selected_rows, tbl_data):
 # ───────────────────── ④ 시간 슬라이더 콜백 ─────────────────────
 @callback(
     Output("current-time-store", "data", allow_duplicate=True),
-    Output("viewer-heatmap", "figure"),
+    Output("viewer-3d", "figure"),
+    Output("viewer-section", "figure"),
     Input("time-slider", "value"),
     Input("section-slider", "value"),
     State("tbl-concrete", "selected_rows"),
@@ -354,44 +367,39 @@ def update_heatmap(time_idx, section_height, selected_rows, tbl_data, current_ti
         z_max = max(z_coords)
         section_z = z_min + (z_max - z_min) * (section_height / 100)
         
-        # 3D 히트맵 생성
-        fig = go.Figure()
+        # 3D 뷰 생성
+        fig_3d = go.Figure()
         
-        # 전체 3D 히트맵
-        fig.add_trace(go.Scatter3d(
+        # 와이어프레임 추가
+        fig_3d.add_trace(go.Scatter3d(
             x=x_coords,
             y=y_coords,
             z=z_coords,
             mode='markers',
             marker=dict(
-                size=5,
+                size=3,
                 color=temps,
                 colorscale='RdBu',
                 showscale=True,
                 colorbar=dict(title='Temperature (°C)')
             ),
-            name='3D View'
+            name='Nodes'
         ))
         
-        # 단면도
-        section_mask = [abs(z - section_z) < 0.1 for z in z_coords]
-        if any(section_mask):
-            fig.add_trace(go.Scatter3d(
-                x=[x for i, x in enumerate(x_coords) if section_mask[i]],
-                y=[y for i, y in enumerate(y_coords) if section_mask[i]],
-                z=[z for i, z in enumerate(z_coords) if section_mask[i]],
-                mode='markers',
-                marker=dict(
-                    size=8,
-                    color=[t for i, t in enumerate(temps) if section_mask[i]],
-                    colorscale='RdBu',
-                    showscale=False
-                ),
-                name='Section View'
-            ))
+        # 서피스 추가
+        fig_3d.add_trace(go.Mesh3d(
+            x=x_coords,
+            y=y_coords,
+            z=z_coords,
+            colorbar_title='Temperature (°C)',
+            colorscale='RdBu',
+            intensity=temps,
+            opacity=0.3,
+            name='Surface'
+        ))
         
-        # 레이아웃 설정
-        fig.update_layout(
+        # 3D 뷰 레이아웃 설정
+        fig_3d.update_layout(
             title=f"시간: {current_time}",
             scene=dict(
                 xaxis_title="X (m)",
@@ -403,7 +411,35 @@ def update_heatmap(time_idx, section_height, selected_rows, tbl_data, current_ti
             showlegend=True
         )
         
-        return current_time, fig
+        # 단면도 생성
+        fig_section = go.Figure()
+        
+        # 단면도 데이터 준비
+        section_mask = [abs(z - section_z) < 0.1 for z in z_coords]
+        section_x = [x for i, x in enumerate(x_coords) if section_mask[i]]
+        section_y = [y for i, y in enumerate(y_coords) if section_mask[i]]
+        section_temps = [t for i, t in enumerate(temps) if section_mask[i]]
+        
+        if section_x and section_y and section_temps:
+            # 2D 히트맵 생성
+            fig_section.add_trace(go.Heatmap(
+                x=section_x,
+                y=section_y,
+                z=section_temps,
+                colorscale='RdBu',
+                showscale=True,
+                colorbar=dict(title='Temperature (°C)')
+            ))
+        
+        # 단면도 레이아웃 설정
+        fig_section.update_layout(
+            title=f"단면도 (Z = {section_z:.2f}m)",
+            xaxis_title="X (m)",
+            yaxis_title="Y (m)",
+            margin=dict(l=0, r=0, b=0, t=30)
+        )
+        
+        return current_time, fig_3d, fig_section
         
     except Exception as e:
         print(f"Error reading inp file: {e}")
