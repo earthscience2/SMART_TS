@@ -245,7 +245,7 @@ def store_section_coord(clickData):
     Output("viewer-section-y", "figure"),
     Output("viewer-section-z", "figure"),
     Output("current-time-store", "data", allow_duplicate=True),
-    Input("time-slider", "value", allow_duplicate=True),
+    Input("time-slider", "value"),
     Input("section-coord-store", "data"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
