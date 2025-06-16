@@ -394,21 +394,33 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     # 2. 콘크리트 모서리 강조 (꼭짓점/천장/세로 엣지만)
     if poly_nodes is not None and poly_h is not None:
         n = len(poly_nodes)
-        x0, y0, z0 = poly_nodes[:,0], poly_nodes[:,1], np.zeros(n)
-        x1, y1, z1 = x0, y0, np.full(n, poly_h)
+        # poly_nodes는 항상 2D 좌표임을 가정
+        x0, y0 = poly_nodes[:,0], poly_nodes[:,1]
+        z0 = np.zeros(n)
+        x1, y1 = x0, y0
+        z1 = np.full(n, poly_h)
         # 바닥 외곽선
         fig_3d.add_trace(go.Scatter3d(
             x=np.append(x0, x0[0]), y=np.append(y0, y0[0]), z=np.append(z0, z0[0]),
-            mode='lines', line=dict(width=12, color='black'), name='바닥', hoverinfo='skip'))
+            mode='lines', line=dict(width=16, color='black'), name='바닥-아웃라인', hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(
+            x=np.append(x0, x0[0]), y=np.append(y0, y0[0]), z=np.append(z0, z0[0]),
+            mode='lines', line=dict(width=6, color='yellow'), name='바닥-강조', hoverinfo='skip'))
         # 천장 외곽선
         fig_3d.add_trace(go.Scatter3d(
             x=np.append(x1, x1[0]), y=np.append(y1, y1[0]), z=np.append(z1, z1[0]),
-            mode='lines', line=dict(width=12, color='black'), name='천장', hoverinfo='skip'))
+            mode='lines', line=dict(width=16, color='black'), name='천장-아웃라인', hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(
+            x=np.append(x1, x1[0]), y=np.append(y1, y1[0]), z=np.append(z1, z1[0]),
+            mode='lines', line=dict(width=6, color='yellow'), name='천장-강조', hoverinfo='skip'))
         # 세로 엣지
         for i in range(n):
             fig_3d.add_trace(go.Scatter3d(
                 x=[x0[i], x1[i]], y=[y0[i], y1[i]], z=[z0[i], z1[i]],
-                mode='lines', line=dict(width=12, color='black'), name='세로', hoverinfo='skip'))
+                mode='lines', line=dict(width=16, color='black'), name='세로-아웃라인', hoverinfo='skip'))
+            fig_3d.add_trace(go.Scatter3d(
+                x=[x0[i], x1[i]], y=[y0[i], y1[i]], z=[z0[i], z1[i]],
+                mode='lines', line=dict(width=6, color='yellow'), name='세로-강조', hoverinfo='skip'))
 
     # 3. 단면 위치: 중앙값 기본, 클릭 시 해당 위치
     x0 = float(section_coord['x']) if section_coord and 'x' in section_coord else float(np.median(x_coords))
