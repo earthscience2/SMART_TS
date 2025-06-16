@@ -408,7 +408,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
             fig_3d.add_trace(go.Scatter3d(
                 x=xs, y=ys, z=zs,
                 mode='markers',
-                marker=dict(size=8, color='red', symbol='circle'),
+                marker=dict(size=4, color='red', symbol='circle'),
                 text=names,
                 hoverinfo='text',
                 name='센서',
