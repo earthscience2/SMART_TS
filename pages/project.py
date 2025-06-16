@@ -90,6 +90,8 @@ layout = dbc.Container(
                 dbc.Col(
                     [
                         html.H6(id="concrete-title", className="mb-2"),
+                        # 현재 파일명 표시
+                        html.H6(id="current-file-title", className="mb-2"),
                         # 3D 뷰와 단면도를 나란히 배치
                         dbc.Row([
                             # 3D 뷰
@@ -246,6 +248,7 @@ def store_section_coord(clickData):
     Output("viewer-section-y", "figure"),
     Output("viewer-section-z", "figure"),
     Output("current-time-store", "data", allow_duplicate=True),
+    Output("current-file-title", "children"),
     Input("time-slider", "value"),
     Input("section-coord-store", "data"),
     State("tbl-concrete", "selected_rows"),
@@ -273,6 +276,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         file_idx = N - 1
     current_file = inp_files[file_idx]
     current_time = os.path.basename(current_file).split(".")[0]
+    current_file_title = f"현재 파일: {current_time}"
 
     # inp 파일 파싱 (노드, 온도)
     with open(current_file, 'r') as f:
@@ -433,7 +437,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     else:
         fig_z = go.Figure()
     fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30))
-    return fig_3d, fig_x, fig_y, fig_z, current_time
+    return fig_3d, fig_x, fig_y, fig_z, current_time, current_file_title
 
 # 시간 슬라이더 마크: 처음/중간/끝만 표시
 @callback(
