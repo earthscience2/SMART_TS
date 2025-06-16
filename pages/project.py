@@ -362,36 +362,19 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         poly_nodes = None
         poly_h = None
 
-    # 3D 볼륨 보간: 콘크리트 경계 내부 전체에 대해 보간
-    fig_3d = go.Figure()
-    if poly_nodes is not None and poly_h is not None and len(x_coords) > 0:
-        # 1. 3D 그리드 생성
-        N = 30  # 해상도 조절
-        xg = np.linspace(poly_nodes[:,0].min(), poly_nodes[:,0].max(), N)
-        yg = np.linspace(poly_nodes[:,1].min(), poly_nodes[:,1].max(), N)
-        zg = np.linspace(0, poly_h, N)
-        xx, yy, zz = np.meshgrid(xg, yg, zg, indexing='ij')
-        # 2. 2D 다각형 내부인지 마스킹
-        from matplotlib.path import Path
-        poly_path = Path(poly_nodes)
-        mask2d = poly_path.contains_points(np.column_stack([xx[:,:,0].flatten(), yy[:,:,0].flatten()]))
-        mask2d = mask2d.reshape(xx[:,:,0].shape)
-        mask3d = np.repeat(mask2d[:, :, np.newaxis], N, axis=2)
-        # 3. 온도 보간
-        points = np.column_stack([x_coords, y_coords, z_coords])
-        values = temps
-        grid_temps = griddata(points, values, (xx, yy, zz), method='linear')
-        grid_temps[~mask3d] = np.nan
-        # 4. 볼륨 플롯
-        fig_3d.add_trace(go.Volume(
-            x=xx.flatten(), y=yy.flatten(), z=zz.flatten(), value=grid_temps.flatten(),
-            opacity=0.1, surface_count=15, 
-            colorscale=[[0, 'blue'], [1, 'red']],
-            colorbar=dict(title='Temperature (°C)', thickness=10),
-            cmin=np.nanmin(temps), cmax=np.nanmax(temps),
-            showscale=True
-        ))
-        # 모서리 강조(기존 코드)
+    # 1. 3D 볼륨 렌더링 (노드 기반, 원래 방식)
+    coords = np.array([[x, y, z] for x, y, z in zip(x_coords, y_coords, z_coords)])
+    temps = np.array(temps)
+    fig_3d = go.Figure(data=go.Volume(
+        x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
+        opacity=0.1, surface_count=15, 
+        colorscale=[[0, 'blue'], [1, 'red']],
+        colorbar=dict(title='Temperature (°C)', thickness=10),
+        cmin=np.nanmin(temps), cmax=np.nanmax(temps),
+        showscale=True
+    ))
+    # 모서리 강조(기존 코드)
+    if poly_nodes is not None and poly_h is not None:
         n = len(poly_nodes)
         x0, y0 = poly_nodes[:,0], poly_nodes[:,1]
         z0 = np.zeros(n)
@@ -407,8 +390,6 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
             fig_3d.add_trace(go.Scatter3d(
                 x=[x0[i], x1[i]], y=[y0[i], y1[i]], z=[z0[i], z1[i]],
                 mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
-        # 섹션 선(기존 코드)
-        # ... (생략) ...
     # ... (기타 레이아웃 설정 등 기존 코드 유지) ...
     return fig_3d, current_time, current_file_title
 
