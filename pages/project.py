@@ -379,7 +379,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     temps = np.array(temps)
     fig_3d = go.Figure(data=go.Volume(
         x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
-        opacity=0.2, surface_count=15, 
+        opacity=0.1, surface_count=15, 
         colorscale=[[0, 'blue'], [1, 'red']],
         colorbar=dict(title='Temperature (°C)'),
         cmin=tmin, cmax=tmax
@@ -399,16 +399,16 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         # 바닥 외곽선
         fig_3d.add_trace(go.Scatter3d(
             x=np.append(x0, x0[0]), y=np.append(y0, y0[0]), z=np.append(z0, z0[0]),
-            mode='lines', line=dict(width=8, color='black'), name='바닥', hoverinfo='skip'))
+            mode='lines', line=dict(width=12, color='black'), name='바닥', hoverinfo='skip'))
         # 천장 외곽선
         fig_3d.add_trace(go.Scatter3d(
             x=np.append(x1, x1[0]), y=np.append(y1, y1[0]), z=np.append(z1, z1[0]),
-            mode='lines', line=dict(width=8, color='black'), name='천장', hoverinfo='skip'))
+            mode='lines', line=dict(width=12, color='black'), name='천장', hoverinfo='skip'))
         # 세로 엣지
         for i in range(n):
             fig_3d.add_trace(go.Scatter3d(
                 x=[x0[i], x1[i]], y=[y0[i], y1[i]], z=[z0[i], z1[i]],
-                mode='lines', line=dict(width=8, color='black'), name='세로', hoverinfo='skip'))
+                mode='lines', line=dict(width=12, color='black'), name='세로', hoverinfo='skip'))
 
     # 3. 단면 위치: 중앙값 기본, 클릭 시 해당 위치
     x0 = float(section_coord['x']) if section_coord and 'x' in section_coord else float(np.median(x_coords))
