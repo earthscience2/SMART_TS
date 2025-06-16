@@ -200,6 +200,7 @@ def on_project_change(selected_proj):
             "concrete_pk": row["concrete_pk"],
             "name": row["name"],
             "shape": shape_info,
+            "dims": row["dims"],
             "activate": "활성" if row["activate"] == 1 else "비활성",
         })
 
