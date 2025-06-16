@@ -368,6 +368,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     # 콘크리트 dims 파싱 (꼭짓점, 높이)
     try:
         dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
+        
         poly_nodes = np.array(dims["nodes"])
         poly_h = float(dims["h"])
     except Exception:
@@ -390,6 +391,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
             aspectmode='data'  # 데이터 비율 유지
         )
     )
+    print(row)
     print("poly_nodes:", poly_nodes)
     print("poly_h:", poly_h)
 
