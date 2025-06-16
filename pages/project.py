@@ -395,11 +395,21 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     try:
         df_sensors = api_db.get_sensors_data(concrete_pk=concrete_pk)
         if not df_sensors.empty:
+            xs, ys, zs, names = [], [], [], []
+            for _, srow in df_sensors.iterrows():
+                try:
+                    dims = json.loads(srow['dims'])
+                    xs.append(dims['nodes'][0])
+                    ys.append(dims['nodes'][1])
+                    zs.append(dims['nodes'][2])
+                    names.append(srow['name'])
+                except Exception as e:
+                    print('센서 파싱 오류:', e)
             fig_3d.add_trace(go.Scatter3d(
-                x=json.loads(df_sensors['dims'])['nodes'][0], y=json.loads(df_sensors['dims'])['nodes'][1], z=json.loads(df_sensors['dims'])        ['nodes'][2],
-                mode='markers', 
+                x=xs, y=ys, z=zs,
+                mode='markers',
                 marker=dict(size=8, color='red', symbol='circle'),
-                text=df_sensors['name'],
+                text=names,
                 hoverinfo='text',
                 name='센서',
                 showlegend=False
