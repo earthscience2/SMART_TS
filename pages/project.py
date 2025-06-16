@@ -355,6 +355,12 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         colorbar=dict(title='Temperature (°C)'),
         cmin=tmin, cmax=tmax
     ))
+    fig_3d.update_layout(
+        uirevision='constant',  # 시점 유지
+        scene=dict(
+            aspectmode='data'  # 데이터 비율 유지
+        )
+    )
 
     # 2. 콘크리트 모서리 강조 (꼭짓점/천장/세로 엣지만)
     if poly_nodes is not None and poly_h is not None:
@@ -421,7 +427,13 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
             fig_x = go.Figure()
     else:
         fig_x = go.Figure()
-    fig_x.update_layout(title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
+    fig_x.update_layout(
+        title=f"X={x0:.2f}m 단면", 
+        xaxis_title="Y (m)", 
+        yaxis_title="Z (m)", 
+        margin=dict(l=0, r=0, b=0, t=30),
+        uirevision='constant'  # 시점 유지
+    )
     # Y 단면 (y ≈ y0)
     mask_y = np.abs(y_coords - y0) < tol
     if np.any(mask_y):
@@ -438,7 +450,13 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
             fig_y = go.Figure()
     else:
         fig_y = go.Figure()
-    fig_y.update_layout(title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
+    fig_y.update_layout(
+        title=f"Y={y0:.2f}m 단면", 
+        xaxis_title="X (m)", 
+        yaxis_title="Z (m)", 
+        margin=dict(l=0, r=0, b=0, t=30),
+        uirevision='constant'  # 시점 유지
+    )
     # Z 단면 (z ≈ z0)
     mask_z = np.abs(z_coords - z0) < tol
     if np.any(mask_z):
@@ -455,7 +473,13 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
             fig_z = go.Figure()
     else:
         fig_z = go.Figure()
-    fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30))
+    fig_z.update_layout(
+        title=f"Z={z0:.2f}m 단면", 
+        xaxis_title="X (m)", 
+        yaxis_title="Y (m)", 
+        margin=dict(l=0, r=0, b=0, t=30),
+        uirevision='constant'  # 시점 유지
+    )
     return fig_3d, fig_x, fig_y, fig_z, current_time, current_file_title
 
 # 시간 슬라이더 마크: 날짜의 00시만 표시, 텍스트는 MM/DD 형식
