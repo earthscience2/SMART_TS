@@ -98,18 +98,11 @@ layout = dbc.Container(
                             dbc.Col([
                                 dcc.Graph(
                                     id="viewer-3d",
-                                    style={"height": "60vh"},
+                                    style={"height": "80vh"},
                                     config={"scrollZoom": True},
                                 ),
-                            ], md=7),
-                            # 단면도
-                            dbc.Col([
-                                html.Div([
-                                    dcc.Graph(id="viewer-section-x", style={"height": "19vh"}),
-                                    dcc.Graph(id="viewer-section-y", style={"height": "19vh"}),
-                                    dcc.Graph(id="viewer-section-z", style={"height": "19vh"}),
-                                ]),
-                            ], md=5),
+                            ], md=12),
+                            # 단면도는 숨김 처리(필요시 완전히 제거 가능)
                         ]),
                         # 시간 슬라이더
                         html.Div([
@@ -206,10 +199,7 @@ def on_project_change(selected_proj):
 
     # 3) 테이블 컬럼 정의
     columns = [
-        {"name": "콘크리트 ID", "id": "concrete_pk"},
         {"name": "이름", "id": "name"},
-        {"name": "형상", "id": "shape"},
-        {"name": "상태", "id": "activate"},
     ]
 
     title = f"{proj_name} · 콘크리트 전체"
@@ -456,13 +446,21 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     if np.any(mask_x):
         yb, zb, tb = y_coords[mask_x], z_coords[mask_x], temps[mask_x]
         if len(yb) > 3:
-            y_bins = np.linspace(yb.min(), yb.max(), 20)
-            z_bins = np.linspace(zb.min(), zb.max(), 20)
-            hist, yedges, zedges = np.histogram2d(yb, zb, bins=[y_bins, z_bins], weights=tb)
-            counts, _, _ = np.histogram2d(yb, zb, bins=[y_bins, z_bins])
-            with np.errstate(invalid='ignore'): hist = np.divide(hist, counts, where=counts>0)
+            y_bins = np.linspace(yb.min(), yb.max(), 50)
+            z_bins = np.linspace(zb.min(), zb.max(), 50)
+            yy, zz = np.meshgrid(y_bins, z_bins)
+            # 콘크리트 경계 다각형 마스킹
+            from matplotlib.path import Path
+            poly_path = Path(poly_nodes)
+            mask = poly_path.contains_points(np.column_stack([np.full_like(yy.flatten(), x0), yy.flatten()]))
+            mask = mask.reshape(yy.shape)
+            # 보간
+            points = np.column_stack([yb, zb])
+            values = tb
+            grid = griddata(points, values, (yy, zz), method='linear')
+            grid[~mask] = np.nan
             fig_x = go.Figure(go.Heatmap(
-                x=y_bins, y=z_bins, z=hist.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+                x=y_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
         else:
             fig_x = go.Figure()
     else:
@@ -479,13 +477,20 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     if np.any(mask_y):
         xb, zb, tb = x_coords[mask_y], z_coords[mask_y], temps[mask_y]
         if len(xb) > 3:
-            x_bins = np.linspace(xb.min(), xb.max(), 20)
-            z_bins = np.linspace(zb.min(), zb.max(), 20)
-            hist, xedges, zedges = np.histogram2d(xb, zb, bins=[x_bins, z_bins], weights=tb)
-            counts, _, _ = np.histogram2d(xb, zb, bins=[x_bins, z_bins])
-            with np.errstate(invalid='ignore'): hist = np.divide(hist, counts, where=counts>0)
+            x_bins = np.linspace(xb.min(), xb.max(), 50)
+            z_bins = np.linspace(zb.min(), zb.max(), 50)
+            yy, zz = np.meshgrid(x_bins, z_bins)
+            # 콘크리트 경계 다각형 마스킹
+            poly_path = Path(poly_nodes)
+            mask = poly_path.contains_points(np.column_stack([xb, np.full_like(xb, y0)]))
+            mask = mask.reshape(yy.shape)
+            # 보간
+            points = np.column_stack([xb, zb])
+            values = tb
+            grid = griddata(points, values, (yy, zz), method='linear')
+            grid[~mask] = np.nan
             fig_y = go.Figure(go.Heatmap(
-                x=x_bins, y=z_bins, z=hist.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+                x=x_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
         else:
             fig_y = go.Figure()
     else:
@@ -502,13 +507,20 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     if np.any(mask_z):
         xb, yb, tb = x_coords[mask_z], y_coords[mask_z], temps[mask_z]
         if len(xb) > 3:
-            x_bins = np.linspace(xb.min(), xb.max(), 20)
-            y_bins = np.linspace(yb.min(), yb.max(), 20)
-            hist, xedges, yedges = np.histogram2d(xb, yb, bins=[x_bins, y_bins], weights=tb)
-            counts, _, _ = np.histogram2d(xb, yb, bins=[x_bins, y_bins])
-            with np.errstate(invalid='ignore'): hist = np.divide(hist, counts, where=counts>0)
+            x_bins = np.linspace(xb.min(), xb.max(), 50)
+            y_bins = np.linspace(yb.min(), yb.max(), 50)
+            yy, zz = np.meshgrid(x_bins, y_bins)
+            # 콘크리트 경계 다각형 마스킹
+            poly_path = Path(poly_nodes)
+            mask = poly_path.contains_points(np.column_stack([xb, yb]))
+            mask = mask.reshape(yy.shape)
+            # 보간
+            points = np.column_stack([xb, tb])
+            values = tb
+            grid = griddata(points, values, (yy, zz), method='linear')
+            grid[~mask] = np.nan
             fig_z = go.Figure(go.Heatmap(
-                x=x_bins, y=y_bins, z=hist.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+                x=x_bins, y=y_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
         else:
             fig_z = go.Figure()
     else:
