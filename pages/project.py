@@ -390,7 +390,21 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
             fig_3d.add_trace(go.Scatter3d(
                 x=[x0[i], x1[i]], y=[y0[i], y1[i]], z=[z0[i], z1[i]],
                 mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
-    # ... (기타 레이아웃 설정 등 기존 코드 유지) ...
+    # 센서 위치 표시
+    try:
+        df_sensors = api_db.get_sensors_data(concrete_pk=concrete_pk)
+        if not df_sensors.empty:
+            fig_3d.add_trace(go.Scatter3d(
+                x=df_sensors['x'], y=df_sensors['y'], z=df_sensors['z'],
+                mode='markers',
+                marker=dict(size=8, color='red', symbol='circle'),
+                text=df_sensors['name'],
+                hoverinfo='text',
+                name='센서',
+                showlegend=False
+            ))
+    except Exception as e:
+        print('센서 표시 오류:', e)
     return fig_3d, current_time, current_file_title
 
 # 시간 슬라이더 마크: 날짜의 00시만 표시, 텍스트는 MM/DD 형식
