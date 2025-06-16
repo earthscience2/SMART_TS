@@ -353,7 +353,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
         opacity=0.2, surface_count=15, colorscale='RdBu',
         colorbar=dict(title='Temperature (°C)'),
-        zmin=tmin, zmax=tmax
+        cmin=tmin, cmax=tmax
     ))
 
     # 2. 콘크리트 모서리 강조 (꼭짓점/천장/세로 엣지만)
