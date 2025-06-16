@@ -295,7 +295,35 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     # 시간 슬라이더: 1시간 단위로 표시
     current_file = inp_files[time_idx]
     current_time = os.path.basename(current_file).split(".")[0]
-    current_file_title = f"현재 파일: {current_time}"
+    
+    # 현재 파일의 온도 통계 계산
+    current_temps = []
+    with open(current_file, 'r') as f:
+        lines = f.readlines()
+    temp_section = False
+    for line in lines:
+        if line.startswith('*TEMPERATURE'):
+            temp_section = True
+            continue
+        elif line.startswith('*'):
+            temp_section = False
+            continue
+        if temp_section and ',' in line:
+            parts = line.strip().split(',')
+            if len(parts) >= 2:
+                try:
+                    temp = float(parts[1])
+                    current_temps.append(temp)
+                except:
+                    continue
+    
+    if current_temps:
+        current_min = float(np.nanmin(current_temps))
+        current_max = float(np.nanmax(current_temps))
+        current_avg = float(np.nanmean(current_temps))
+        current_file_title = f"현재 파일: {current_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)"
+    else:
+        current_file_title = f"현재 파일: {current_time}"
 
     # inp 파일 파싱 (노드, 온도)
     with open(current_file, 'r') as f:
