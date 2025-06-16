@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # pages/project.py
+# 현재 파일: pages/project.py
 """Dash 페이지: 프로젝트 및 콘크리트 관리
 
 * 왼쪽에서 프로젝트를 선택 → 해당 프로젝트의 콘크리트 리스트 표시
