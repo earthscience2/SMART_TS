@@ -26,6 +26,7 @@ import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
 from scipy.interpolate import griddata
 import ast
+import json
 
 import api_db
 
@@ -395,7 +396,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         df_sensors = api_db.get_sensors_data(concrete_pk=concrete_pk)
         if not df_sensors.empty:
             fig_3d.add_trace(go.Scatter3d(
-                x=df_sensors['dims']['nodes'][0], y=df_sensors['dims']['nodes'][1], z=df_sensors['dims']['nodes'][2],
+                x=json.loads(df_sensors['dims'])['nodes'][0], y=json.loads(df_sensors['dims'])['nodes'][1], z=json.loads(df_sensors['dims'])        ['nodes'][2],
                 mode='markers', 
                 marker=dict(size=8, color='red', symbol='circle'),
                 text=df_sensors['name'],
