@@ -393,6 +393,8 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
 
     # 2. 콘크리트 모서리 강조 (꼭짓점/천장/세로 엣지만)
     if poly_nodes is not None and poly_h is not None:
+        print("poly_nodes:", poly_nodes)
+        print("poly_h:", poly_h)
         n = len(poly_nodes)
         # poly_nodes는 항상 2D 좌표임을 가정
         x0, y0 = poly_nodes[:,0], poly_nodes[:,1]
