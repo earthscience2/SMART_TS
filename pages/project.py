@@ -266,15 +266,8 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     if not inp_files:
         raise PreventUpdate
 
-    # 시간 슬라이더: 처음/중간/끝만 표시
-    N = len(inp_files)
-    if time_idx == 0:
-        file_idx = 0
-    elif time_idx == 1:
-        file_idx = N // 2
-    else:
-        file_idx = N - 1
-    current_file = inp_files[file_idx]
+    # 시간 슬라이더: 1시간 단위로 표시
+    current_file = inp_files[time_idx]
     current_time = os.path.basename(current_file).split(".")[0]
     current_file_title = f"현재 파일: {current_time}"
 
@@ -439,7 +432,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30))
     return fig_3d, fig_x, fig_y, fig_z, current_time, current_file_title
 
-# 시간 슬라이더 마크: 처음/중간/끝만 표시
+# 시간 슬라이더 마크: 1시간 단위로 표시
 @callback(
     Output("time-slider", "min", allow_duplicate=True),
     Output("time-slider", "max", allow_duplicate=True),
@@ -479,16 +472,11 @@ def update_time_slider(selected_rows, tbl_data, current_value):
     if not times:
         return 0, 5, {}, 0
     
-    # 1일(24시간) 간격으로 마크 표시
+    # 1시간 단위로 마크 표시
     marks = {}
     for i, t in enumerate(times):
-        if t.hour == 0:
-            marks[i] = t.strftime("%m/%d")
-    # 첫번째와 마지막은 항상 표시
-    if 0 not in marks:
-        marks[0] = times[0].strftime("%m/%d")
-    if (len(times)-1) not in marks:
-        marks[len(times)-1] = times[-1].strftime("%m/%d")
+        # 매 시간마다 표시
+        marks[i] = t.strftime("%m/%d %H시")
     
     max_idx = len(times)-1
     
