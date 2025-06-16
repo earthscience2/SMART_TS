@@ -432,21 +432,21 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         fig_3d.add_trace(go.Scatter3d(
             x=[x0]*5, y=[poly_nodes[:,1].min(), poly_nodes[:,1].max(), poly_nodes[:,1].max(), poly_nodes[:,1].min(), poly_nodes[:,1].min()],
             z=[0, 0, poly_h, poly_h, 0],
-            mode="lines", line=dict(color="red", width=8), name="Section-X", hoverinfo="skip"
+            mode="lines", line=dict(color="red", width=1), showlegend=False, hoverinfo="skip"
         ))
         # Y 단면 (파란 XZ 평면)
         fig_3d.add_trace(go.Scatter3d(
             x=[poly_nodes[:,0].min(), poly_nodes[:,0].max(), poly_nodes[:,0].max(), poly_nodes[:,0].min(), poly_nodes[:,0].min()],
             y=[y0]*5,
             z=[0, 0, poly_h, poly_h, 0],
-            mode="lines", line=dict(color="blue", width=8), name="Section-Y", hoverinfo="skip"
+            mode="lines", line=dict(color="blue", width=1), showlegend=False, hoverinfo="skip"
         ))
         # Z 단면 (녹색 XY 평면)
         fig_3d.add_trace(go.Scatter3d(
             x=[poly_nodes[:,0].min(), poly_nodes[:,0].max(), poly_nodes[:,0].max(), poly_nodes[:,0].min(), poly_nodes[:,0].min()],
             y=[poly_nodes[:,1].min(), poly_nodes[:,1].min(), poly_nodes[:,1].max(), poly_nodes[:,1].max(), poly_nodes[:,1].min()],
             z=[z0]*5,
-            mode="lines", line=dict(color="green", width=8), name="Section-Z", hoverinfo="skip"
+            mode="lines", line=dict(color="green", width=1), showlegend=False, hoverinfo="skip"
         ))
 
     # 이하 기존 단면도 코드 (중앙값/클릭 위치 반영)
