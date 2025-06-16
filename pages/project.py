@@ -379,7 +379,8 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     temps = np.array(temps)
     fig_3d = go.Figure(data=go.Volume(
         x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
-        opacity=0.2, surface_count=15, colorscale='RdBu',
+        opacity=0.2, surface_count=15, 
+        colorscale=[[0, 'blue'], [1, 'red']],
         colorbar=dict(title='Temperature (°C)'),
         cmin=tmin, cmax=tmax
     ))
@@ -450,7 +451,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
             counts, _, _ = np.histogram2d(yb, zb, bins=[y_bins, z_bins])
             with np.errstate(invalid='ignore'): hist = np.divide(hist, counts, where=counts>0)
             fig_x = go.Figure(go.Heatmap(
-                x=y_bins, y=z_bins, z=hist.T, colorscale='RdBu', zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+                x=y_bins, y=z_bins, z=hist.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
         else:
             fig_x = go.Figure()
     else:
@@ -473,7 +474,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
             counts, _, _ = np.histogram2d(xb, zb, bins=[x_bins, z_bins])
             with np.errstate(invalid='ignore'): hist = np.divide(hist, counts, where=counts>0)
             fig_y = go.Figure(go.Heatmap(
-                x=x_bins, y=z_bins, z=hist.T, colorscale='RdBu', zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+                x=x_bins, y=z_bins, z=hist.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
         else:
             fig_y = go.Figure()
     else:
@@ -496,7 +497,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
             counts, _, _ = np.histogram2d(xb, yb, bins=[x_bins, y_bins])
             with np.errstate(invalid='ignore'): hist = np.divide(hist, counts, where=counts>0)
             fig_z = go.Figure(go.Heatmap(
-                x=x_bins, y=y_bins, z=hist.T, colorscale='RdBu', zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+                x=x_bins, y=y_bins, z=hist.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
         else:
             fig_z = go.Figure()
     else:
