@@ -390,6 +390,8 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
             aspectmode='data'  # 데이터 비율 유지
         )
     )
+    print("poly_nodes:", poly_nodes)
+    print("poly_h:", poly_h)
 
     # 2. 콘크리트 모서리 강조 (꼭짓점/천장/세로 엣지만)
     if poly_nodes is not None and poly_h is not None:
