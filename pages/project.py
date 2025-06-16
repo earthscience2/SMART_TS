@@ -266,6 +266,32 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     if not inp_files:
         raise PreventUpdate
 
+    # 전체 파일의 온도 min/max 계산
+    all_temps = []
+    for f in inp_files:
+        with open(f, 'r') as file:
+            lines = file.readlines()
+        temp_section = False
+        for line in lines:
+            if line.startswith('*TEMPERATURE'):
+                temp_section = True
+                continue
+            elif line.startswith('*'):
+                temp_section = False
+                continue
+            if temp_section and ',' in line:
+                parts = line.strip().split(',')
+                if len(parts) >= 2:
+                    try:
+                        temp = float(parts[1])
+                        all_temps.append(temp)
+                    except:
+                        continue
+    if all_temps:
+        tmin, tmax = float(np.nanmin(all_temps)), float(np.nanmax(all_temps))
+    else:
+        tmin, tmax = 0, 100
+
     # 시간 슬라이더: 1시간 단위로 표시
     current_file = inp_files[time_idx]
     current_time = os.path.basename(current_file).split(".")[0]
@@ -310,7 +336,6 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     y_coords = np.array([n['y'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
     z_coords = np.array([n['z'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
     temps = np.array([temperatures[k] for k in nodes.keys() if k in temperatures])
-    tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
 
     # 콘크리트 dims 파싱 (꼭짓점, 높이)
     try:
@@ -327,7 +352,8 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     fig_3d = go.Figure(data=go.Volume(
         x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
         opacity=0.2, surface_count=15, colorscale='RdBu',
-        colorbar=dict(title='Temperature (°C)')
+        colorbar=dict(title='Temperature (°C)'),
+        zmin=tmin, zmax=tmax
     ))
 
     # 2. 콘크리트 모서리 강조 (꼭짓점/천장/세로 엣지만)
@@ -432,7 +458,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30))
     return fig_3d, fig_x, fig_y, fig_z, current_time, current_file_title
 
-# 시간 슬라이더 마크: 1시간 단위로 표시
+# 시간 슬라이더 마크: 날짜의 00시만 표시, 텍스트는 MM/DD 형식
 @callback(
     Output("time-slider", "min", allow_duplicate=True),
     Output("time-slider", "max", allow_duplicate=True),
@@ -447,7 +473,6 @@ def update_time_slider(selected_rows, tbl_data, current_value):
     if not selected_rows:
         return 0, 5, {}, 0
     
-    # 콜백 컨텍스트 확인
     ctx = dash.callback_context
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
@@ -460,7 +485,6 @@ def update_time_slider(selected_rows, tbl_data, current_value):
     if not inp_files:
         return 0, 5, {}, 0
     
-    # 시간 파싱
     times = []
     for f in inp_files:
         try:
@@ -472,21 +496,22 @@ def update_time_slider(selected_rows, tbl_data, current_value):
     if not times:
         return 0, 5, {}, 0
     
-    # 1시간 단위로 마크 표시
+    # 날짜의 00시만 마크 표시, 텍스트는 MM/DD
     marks = {}
     for i, t in enumerate(times):
-        # 매 시간마다 표시
-        marks[i] = t.strftime("%m/%d %H시")
+        if t.hour == 0:
+            marks[i] = t.strftime("%m/%d")
+    # 첫번째와 마지막은 항상 표시
+    if 0 not in marks:
+        marks[0] = times[0].strftime("%m/%d")
+    if (len(times)-1) not in marks:
+        marks[len(times)-1] = times[-1].strftime("%m/%d")
     
     max_idx = len(times)-1
-    
-    # 콘크리트 선택 시 최근 시간으로 이동
     if trigger_id == "tbl-concrete":
         value = max_idx
     else:
-        # value가 max보다 크면 max로 맞춤
         value = min(current_value if current_value is not None else 0, max_idx)
-    
     return 0, max_idx, marks, value
 
 # ───────────────────── ⑤ 분석 시작 콜백 ─────────────────────
