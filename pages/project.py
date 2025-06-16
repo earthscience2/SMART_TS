@@ -445,9 +445,14 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     State("time-slider", "value"),
     prevent_initial_call=True,
 )
-def update_time_slider_marks(selected_rows, tbl_data, current_value):
+def update_time_slider(selected_rows, tbl_data, current_value):
     if not selected_rows:
         return 0, 5, {}, 0
+    
+    # 콜백 컨텍스트 확인
+    ctx = dash.callback_context
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
     inp_dir = f"inp/{concrete_pk}"
@@ -456,6 +461,7 @@ def update_time_slider_marks(selected_rows, tbl_data, current_value):
     inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
     if not inp_files:
         return 0, 5, {}, 0
+    
     # 시간 파싱
     times = []
     for f in inp_files:
@@ -467,6 +473,7 @@ def update_time_slider_marks(selected_rows, tbl_data, current_value):
             continue
     if not times:
         return 0, 5, {}, 0
+    
     # 1일(24시간) 간격으로 마크 표시
     marks = {}
     for i, t in enumerate(times):
@@ -477,9 +484,16 @@ def update_time_slider_marks(selected_rows, tbl_data, current_value):
         marks[0] = times[0].strftime("%m/%d")
     if (len(times)-1) not in marks:
         marks[len(times)-1] = times[-1].strftime("%m/%d")
-    # value가 max보다 크면 max로 맞춤
+    
     max_idx = len(times)-1
-    value = min(current_value if current_value is not None else 0, max_idx)
+    
+    # 콘크리트 선택 시 최근 시간으로 이동
+    if trigger_id == "tbl-concrete":
+        value = max_idx
+    else:
+        # value가 max보다 크면 max로 맞춤
+        value = min(current_value if current_value is not None else 0, max_idx)
+    
     return 0, max_idx, marks, value
 
 # ───────────────────── ⑤ 분석 시작 콜백 ─────────────────────
@@ -561,15 +575,3 @@ def delete_concrete_confirm(_click, sel, tbl_data):
         return f"{concrete_pk} 삭제 완료", "success", True, updated_data
     except Exception as e:
         return f"삭제 실패: {e}", "danger", True, dash.no_update
-
-# 콘크리트 선택 시 최근 시간으로 이동하는 콜백 추가
-@callback(
-    Output("time-slider", "value", allow_duplicate=True),
-    Input("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
-    prevent_initial_call=True,
-)
-def move_to_latest_time(selected_rows, tbl_data):
-    if not selected_rows:
-        raise PreventUpdate
-    return 5  # 최대값으로 설정하여 최근 시간으로 이동
