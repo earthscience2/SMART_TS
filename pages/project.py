@@ -761,6 +761,7 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     Output("section-x-input", "min"), Output("section-x-input", "max"), Output("section-x-input", "value"),
     Output("section-y-input", "min"), Output("section-y-input", "max"), Output("section-y-input", "value"),
     Output("section-z-input", "min"), Output("section-z-input", "max"), Output("section-z-input", "value"),
+    Output("section-colorbar", "figure"),
     Input("time-slider-section", "value"),
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
@@ -770,7 +771,7 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     State("section-z-input", "value"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
-    prevent_initial_call=True,
+    prevent_initial_call=False,
 )
 def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, selected_rows, tbl_data):
     import math
@@ -778,13 +779,13 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
     import numpy as np
     from scipy.interpolate import griddata
     if not selected_rows:
-        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5
+        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, go.Figure()
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
     inp_dir = f"inp/{concrete_pk}"
     inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
     if not inp_files:
-        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5
+        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, go.Figure()
     # 시간 인덱스 안전 처리
     if time_idx is None or (isinstance(time_idx, float) and math.isnan(time_idx)) or (isinstance(time_idx, str) and not str(time_idx).isdigit()):
         file_idx = len(inp_files)-1
@@ -854,20 +855,32 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
         scene=dict(aspectmode='data', bgcolor='white'),
         margin=dict(l=0, r=0, t=0, b=0)
     )
-    # 단면 위치 평면(선) 표시
-    fig_3d.add_trace(go.Scatter3d(
-        x=[x0]*2, y=[y_min, y_max], z=[z_min, z_max],
-        mode="lines", line=dict(color="red", width=3), showlegend=False, hoverinfo="skip"
+    # 단면 위치 평면(케이크 자르듯)
+    # X 평면
+    fig_3d.add_trace(go.Surface(
+        x=[[x0, x0], [x0, x0]],
+        y=[[y_min, y_max], [y_min, y_max]],
+        z=[[z_min, z_min], [z_max, z_max]],
+        showscale=False, opacity=0.3, colorscale=[[0, 'red'], [1, 'red']],
+        hoverinfo='skip', name='X-section', showlegend=False
     ))
-    fig_3d.add_trace(go.Scatter3d(
-        x=[x_min, x_max], y=[y0]*2, z=[z_min, z_max],
-        mode="lines", line=dict(color="blue", width=3), showlegend=False, hoverinfo="skip"
+    # Y 평면
+    fig_3d.add_trace(go.Surface(
+        x=[[x_min, x_max], [x_min, x_max]],
+        y=[[y0, y0], [y0, y0]],
+        z=[[z_min, z_min], [z_max, z_max]],
+        showscale=False, opacity=0.3, colorscale=[[0, 'blue'], [1, 'blue']],
+        hoverinfo='skip', name='Y-section', showlegend=False
     ))
-    fig_3d.add_trace(go.Scatter3d(
-        x=[x_min, x_max], y=[y_min, y_max], z=[z0]*2,
-        mode="lines", line=dict(color="green", width=3), showlegend=False, hoverinfo="skip"
+    # Z 평면
+    fig_3d.add_trace(go.Surface(
+        x=[[x_min, x_max], [x_min, x_max]],
+        y=[[y_min, y_min], [y_max, y_max]],
+        z=[[z0, z0], [z0, z0]],
+        showscale=False, opacity=0.3, colorscale=[[0, 'green'], [1, 'green']],
+        hoverinfo='skip', name='Z-section', showlegend=False
     ))
-    # X 단면 (x ≈ x0, 리니어 보간, 컬러바 통일)
+    # X 단면 (x ≈ x0, 리니어 보간, 컬러바 없음)
     tol = 0.05
     mask_x = np.abs(x_coords - x0) < tol
     if np.any(mask_x):
@@ -880,13 +893,13 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
             values = tb
             grid = griddata(points, values, (yy, zz), method='linear')
             fig_x = go.Figure(go.Heatmap(
-                x=y_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=dict(thickness=12), zsmooth='best'))
+                x=y_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
         else:
             fig_x = go.Figure()
     else:
         fig_x = go.Figure()
     fig_x.update_layout(title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
-    # Y 단면 (y ≈ y0, 리니어 보간, 컬러바 통일)
+    # Y 단면 (y ≈ y0, 리니어 보간, 컬러바 없음)
     mask_y = np.abs(y_coords - y0) < tol
     if np.any(mask_y):
         xb, zb, tb = x_coords[mask_y], z_coords[mask_y], temps[mask_y]
@@ -898,13 +911,13 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
             values = tb
             grid = griddata(points, values, (xx, zz), method='linear')
             fig_y = go.Figure(go.Heatmap(
-                x=x_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=dict(thickness=12), zsmooth='best'))
+                x=x_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
         else:
             fig_y = go.Figure()
     else:
         fig_y = go.Figure()
     fig_y.update_layout(title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
-    # Z 단면 (z ≈ z0, 리니어 보간, 컬러바 통일)
+    # Z 단면 (z ≈ z0, 리니어 보간, 컬러바 없음)
     mask_z = np.abs(z_coords - z0) < tol
     if np.any(mask_z):
         xb, yb, tb = x_coords[mask_z], y_coords[mask_z], temps[mask_z]
@@ -916,11 +929,15 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
             values = tb
             grid = griddata(points, values, (xx, yy), method='linear')
             fig_z = go.Figure(go.Heatmap(
-                x=x_bins, y=y_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=dict(thickness=12), zsmooth='best'))
+                x=x_bins, y=y_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
         else:
             fig_z = go.Figure()
     else:
         fig_z = go.Figure()
     fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30))
+    # 컬러바(3D 뷰 기준)만 따로 생성
+    colorbar_fig = go.Figure(go.Heatmap(
+        z=[[tmin, tmax]], colorscale=[[0, 'blue'], [1, 'red']], showscale=True, colorbar=dict(title='Temperature (°C)', thickness=18, len=0.8, y=0.5, yanchor='middle'), zmin=tmin, zmax=tmax))
+    colorbar_fig.update_layout(margin=dict(l=0, r=0, t=0, b=0), xaxis=dict(visible=False), yaxis=dict(visible=False), width=80, height=300)
     # step=0.1로 반환
-    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0
+    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, colorbar_fig
