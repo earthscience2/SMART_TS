@@ -894,75 +894,9 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
     x0 = ensure_scalar(x_val, x_mid)
     y0 = ensure_scalar(y_val, y_mid)
     z0 = ensure_scalar(z_val, z_mid)
-    # 디버깅용: 실제 값과 shape 출력
-    print(f"[DEBUG] x0: {x0}, type: {type(x0)}, y0: {y0}, type: {type(y0)}, z0: {z0}, type: {type(z0)}")
-    # 3D 뷰(작게)
-    coords = np.array([[x, y, z] for x, y, z in zip(x_coords, y_coords, z_coords)])
-    fig_3d = go.Figure(data=go.Volume(
-        x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
-        opacity=0.1, surface_count=15, colorscale=[[0, 'blue'], [1, 'red']],
-        colorbar=None, cmin=tmin, cmax=tmax, showscale=False
-    ))
-    fig_3d.update_layout(
-        uirevision='constant',
-        scene=dict(aspectmode='data', bgcolor='white'),
-        margin=dict(l=0, r=0, t=0, b=0)
-    )
-    # 콘크리트 외곽선(모서리) 항상 표시
-    try:
-        dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
-        poly_nodes = np.array(dims["nodes"])
-        poly_h = float(dims["h"])
-        n = len(poly_nodes)
-        x0, y0 = poly_nodes[:,0], poly_nodes[:,1]
-        z0 = np.zeros(n)
-        x1, y1 = x0, y0
-        z1 = np.full(n, poly_h)
-        fig_3d.add_trace(go.Scatter3d(
-            x=np.append(x0, x0[0]), y=np.append(y0, y0[0]), z=np.append(z0, z0[0]),
-            mode='lines', line=dict(width=3, color='black'), showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(
-            x=np.append(x1, x1[0]), y=np.append(y1, y1[0]), z=np.append(z1, z1[0]),
-            mode='lines', line=dict(width=3, color='black'), showlegend=False, hoverinfo='skip'))
-        for i in range(n):
-            fig_3d.add_trace(go.Scatter3d(
-                x=[x0[i], x1[i]], y=[y0[i], y1[i]], z=[z0[i], z1[i]],
-                mode='lines', line=dict(width=3, color='black'), showlegend=False, hoverinfo='skip'))
-    except Exception:
-        pass
-    # 컬러바(3D 뷰 기준)만 따로 생성
-    colorbar_fig = go.Figure()
-    colorbar_fig.add_trace(go.Scatter(
-        x=[None], y=[None],
-        mode='markers',
-        marker=dict(
-            colorscale=[[0, 'blue'], [1, 'red']],
-            cmin=tmin, cmax=tmax,
-            colorbar=dict(
-                title=dict(text='온도 (°C)', font=dict(size=18)),
-                thickness=30,
-                len=0.95,
-                y=0.5,
-                yanchor='middle',
-                tickfont=dict(size=16),
-                outlinewidth=1,
-                outlinecolor='black',
-                ticks='outside',
-                ticklen=8,
-            ),
-            showscale=True,
-        ),
-        showlegend=False
-    ))
-    colorbar_fig.update_layout(
-        margin=dict(l=0, r=0, t=0, b=0),
-        width=90, height=420,
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)'
-    )
-    # X/Y/Z 단면도(Heatmap) 복구
-    tol = 0.05
-    # X 단면
+    # mask_x 연산 전에 shape 및 예시 출력
+    print(f"[DEBUG] x_coords shape: {x_coords.shape}, x_coords 예시: {x_coords[:5]}")
+    print(f"[DEBUG] x0 shape: {np.shape(x0)}, x0: {x0}")
     mask_x = np.abs(x_coords - x0) < tol
     if np.any(mask_x):
         yb, zb, tb = y_coords[mask_x], z_coords[mask_x], temps[mask_x]
