@@ -879,25 +879,18 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
     x_mid = float(np.median(x_coords))
     y_mid = float(np.median(y_coords))
     z_mid = float(np.median(z_coords))
-    # 최초 진입 시에만 중앙값, 이후에는 사용자가 조작한 값 유지
-    def ensure_scalar(val, default):
-        # 리스트/배열이면 첫 번째 값만 사용
-        if isinstance(val, (list, np.ndarray)):
-            if len(val) > 0:
-                return float(val[0])
-            else:
-                return float(default)
-        elif val is not None:
-            return float(val)
-        else:
-            return float(default)
-    x0 = ensure_scalar(x_val, x_mid)
-    y0 = ensure_scalar(y_val, y_mid)
-    z0 = ensure_scalar(z_val, z_mid)
+    # tol 정의를 mask_x, mask_y, mask_z보다 위로 이동
+    tol = 0.05
     # mask_x 연산 전에 shape 및 예시 출력
     print(f"[DEBUG] x_coords shape: {x_coords.shape}, x_coords 예시: {x_coords[:5]}")
     print(f"[DEBUG] x0 shape: {np.shape(x0)}, x0: {x0}")
     mask_x = np.abs(x_coords - x0) < tol
+    print(f"[DEBUG] y_coords shape: {y_coords.shape}, y_coords 예시: {y_coords[:5]}")
+    print(f"[DEBUG] y0 shape: {np.shape(y0)}, y0: {y0}")
+    mask_y = np.abs(y_coords - y0) < tol
+    print(f"[DEBUG] z_coords shape: {z_coords.shape}, z_coords 예시: {z_coords[:5]}")
+    print(f"[DEBUG] z0 shape: {np.shape(z0)}, z0: {z0}")
+    mask_z = np.abs(z_coords - z0) < tol
     if np.any(mask_x):
         yb, zb, tb = y_coords[mask_x], z_coords[mask_x], temps[mask_x]
         if len(yb) > 3:
@@ -916,9 +909,6 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
         fig_x = go.Figure()
     fig_x.update_layout(title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
     # Y 단면
-    print(f"[DEBUG] y_coords shape: {y_coords.shape}, y_coords 예시: {y_coords[:5]}")
-    print(f"[DEBUG] y0 shape: {np.shape(y0)}, y0: {y0}")
-    mask_y = np.abs(y_coords - y0) < tol
     if np.any(mask_y):
         xb, zb, tb = x_coords[mask_y], z_coords[mask_y], temps[mask_y]
         if len(xb) > 3:
@@ -937,9 +927,6 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
         fig_y = go.Figure()
     fig_y.update_layout(title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
     # Z 단면
-    print(f"[DEBUG] z_coords shape: {z_coords.shape}, z_coords 예시: {z_coords[:5]}")
-    print(f"[DEBUG] z0 shape: {np.shape(z0)}, z0: {z0}")
-    mask_z = np.abs(z_coords - z0) < tol
     if np.any(mask_z):
         xb, yb, tb = x_coords[mask_z], y_coords[mask_z], temps[mask_z]
         if len(xb) > 3:
