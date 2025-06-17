@@ -14,7 +14,7 @@
   - add_concrete(project_pk, name, dims)
   - update_concrete(concrete_pk, **kwargs)
 * DataTable 열: 이름, 해석 단위(con_unit), 탄성계수(con_e), 베타(con_b), N(con_n)
-* DataTable 아래에 “추가/수정/삭제” 버튼 그룹을 배치.
+* DataTable 아래에 "추가/수정/삭제" 버튼 그룹을 배치.
 """
 from __future__ import annotations
 
@@ -225,12 +225,11 @@ def show_selected(sel, data):
 
     # activate 체크 (없으면 1로 간주)
     is_active = row.get("activate", 1) == 1
-    # activate가 0이면 Edit 버튼만 비활성화
-    disable_edit = not is_active
-    # 삭제 버튼은 선택만 되면 활성화
-    disable_del  = False
-
-    return fig, title, disable_edit, disable_del
+    # activate가 0이면 Edit, Delete 버튼 모두 비활성화
+    if not is_active:
+        return fig, title, True, True
+    # 둘 다 활성화
+    return fig, title, False, False
 
 # ───────────────────── ③ 추가 모달 토글
 @callback(
