@@ -53,6 +53,7 @@ layout = dbc.Container(
         # ── (★) 현재 시간 정보를 저장할 Store
         dcc.Store(id="current-time-store", data=None),
         dcc.Store(id="current-file-title-store", data=""),
+        dcc.Store(id="shared-time-slider", data=0),
 
         # ── (★) 클릭 좌표 저장
         dcc.Store(id="section-coord-store", data=None),
@@ -260,7 +261,7 @@ def store_section_coord(clickData):
     Output("time-slider", "marks", allow_duplicate=True),
     Output("time-slider", "value", allow_duplicate=True),
     Output("current-file-title-store", "data", allow_duplicate=True),
-    Input("time-slider", "value"),
+    Input("shared-time-slider", "data"),
     Input("section-coord-store", "data"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
@@ -573,34 +574,30 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     max=slider_max,
                     step=1,
                     value=slider_value,
+                    persistence=True,
+                    persistence_type="session",
                     marks=slider_marks,
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
             ], className="mb-3"),
-            # 입력창 (x, y, z) - 동그라미를 위에 중앙 정렬
+            # 입력창 (x, y, z) - 가로 배치, 동그라미는 입력창 왼쪽
             html.Div([
-                html.Div([
-                    html.Span(style={"display": "block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#ff3333", "margin": "0 auto 4px auto"}),
-                    dbc.InputGroup([
-                        dbc.InputGroupText("X"),
-                        dbc.Input(id="section-x-input", type="number", step=0.1, value=None, style={"width": "80px"}),
-                    ], style={"display": "flex", "flexDirection": "column", "alignItems": "center"}),
-                ], className="me-2", style={"display": "inline-flex", "flexDirection": "column", "alignItems": "center"}),
-                html.Div([
-                    html.Span(style={"display": "block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#3388ff", "margin": "0 auto 4px auto"}),
-                    dbc.InputGroup([
-                        dbc.InputGroupText("Y"),
-                        dbc.Input(id="section-y-input", type="number", step=0.1, value=None, style={"width": "80px"}),
-                    ], style={"display": "flex", "flexDirection": "column", "alignItems": "center"}),
-                ], className="me-2", style={"display": "inline-flex", "flexDirection": "column", "alignItems": "center"}),
-                html.Div([
-                    html.Span(style={"display": "block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#33cc33", "margin": "0 auto 4px auto"}),
-                    dbc.InputGroup([
-                        dbc.InputGroupText("Z"),
-                        dbc.Input(id="section-z-input", type="number", step=0.1, value=None, style={"width": "80px"}),
-                    ], style={"display": "flex", "flexDirection": "column", "alignItems": "center"}),
-                ], style={"display": "inline-flex", "flexDirection": "column", "alignItems": "center"}),
-            ], style={"display": "flex", "flexDirection": "row", "alignItems": "flex-end", "padding": "10px"}),
+                dbc.InputGroup([
+                    html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#ff3333", "marginRight": "6px"}),
+                    dbc.InputGroupText("X"),
+                    dbc.Input(id="section-x-input", type="number", step=0.1, value=None, style={"width": "80px"}),
+                ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
+                dbc.InputGroup([
+                    html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#3388ff", "marginRight": "6px"}),
+                    dbc.InputGroupText("Y"),
+                    dbc.Input(id="section-y-input", type="number", step=0.1, value=None, style={"width": "80px"}),
+                ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
+                dbc.InputGroup([
+                    html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#33cc33", "marginRight": "6px"}),
+                    dbc.InputGroupText("Z"),
+                    dbc.Input(id="section-z-input", type="number", step=0.1, value=None, style={"width": "80px"}),
+                ], style={"display": "inline-flex", "verticalAlign": "middle"}),
+            ], style={"display": "flex", "flexDirection": "row", "alignItems": "center", "padding": "10px"}),
             # 2x2 배열 배치 (컬러바 제거)
             dbc.Row([
                 dbc.Col([
@@ -781,7 +778,7 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     Output("section-y-input", "min"), Output("section-y-input", "max"), Output("section-y-input", "value"),
     Output("section-z-input", "min"), Output("section-z-input", "max"), Output("section-z-input", "value"),
     Output("current-file-title-store", "data", allow_duplicate=True),
-    Input("time-slider-section", "value"),
+    Input("shared-time-slider", "data"),
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
     Input("section-z-input", "value"),
@@ -994,3 +991,21 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
     )
     # step=0.1로 반환
     return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, current_file_title
+
+# 3D 뷰/단면도에서 시간 슬라이더 값 공유용 콜백
+@callback(
+    Output("shared-time-slider", "data"),
+    Input("time-slider", "value"),
+    Input("time-slider-section", "value"),
+    prevent_initial_call=True,
+)
+def sync_time_slider(time_val_3d, time_val_section):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        return 0
+    trigger = ctx.triggered[0]["prop_id"].split(".")[0]
+    if trigger == "time-slider":
+        return time_val_3d
+    elif trigger == "time-slider-section":
+        return time_val_section
+    return 0
