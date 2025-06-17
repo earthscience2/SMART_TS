@@ -925,5 +925,64 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)'
     )
+    # X/Y/Z 단면도(Heatmap) 복구
+    tol = 0.05
+    # X 단면
+    mask_x = np.abs(x_coords - x0) < tol
+    if np.any(mask_x):
+        yb, zb, tb = y_coords[mask_x], z_coords[mask_x], temps[mask_x]
+        if len(yb) > 3:
+            y_bins = np.linspace(yb.min(), yb.max(), 40)
+            z_bins = np.linspace(zb.min(), zb.max(), 40)
+            yy, zz = np.meshgrid(y_bins, z_bins)
+            points = np.column_stack([yb, zb])
+            values = tb
+            grid = griddata(points, values, (yy, zz), method='linear')
+            fig_x = go.Figure(go.Heatmap(
+                x=y_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']],
+                zmin=tmin, zmax=tmax, showscale=False, zsmooth='best'))
+        else:
+            fig_x = go.Figure()
+    else:
+        fig_x = go.Figure()
+    fig_x.update_layout(title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
+    # Y 단면
+    mask_y = np.abs(y_coords - y0) < tol
+    if np.any(mask_y):
+        xb, zb, tb = x_coords[mask_y], z_coords[mask_y], temps[mask_y]
+        if len(xb) > 3:
+            x_bins = np.linspace(xb.min(), xb.max(), 40)
+            z_bins = np.linspace(zb.min(), zb.max(), 40)
+            xx, zz = np.meshgrid(x_bins, z_bins)
+            points = np.column_stack([xb, zb])
+            values = tb
+            grid = griddata(points, values, (xx, zz), method='linear')
+            fig_y = go.Figure(go.Heatmap(
+                x=x_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']],
+                zmin=tmin, zmax=tmax, showscale=False, zsmooth='best'))
+        else:
+            fig_y = go.Figure()
+    else:
+        fig_y = go.Figure()
+    fig_y.update_layout(title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
+    # Z 단면
+    mask_z = np.abs(z_coords - z0) < tol
+    if np.any(mask_z):
+        xb, yb, tb = x_coords[mask_z], y_coords[mask_z], temps[mask_z]
+        if len(xb) > 3:
+            x_bins = np.linspace(xb.min(), xb.max(), 40)
+            y_bins = np.linspace(yb.min(), yb.max(), 40)
+            xx, yy = np.meshgrid(x_bins, y_bins)
+            points = np.column_stack([xb, yb])
+            values = tb
+            grid = griddata(points, values, (xx, yy), method='linear')
+            fig_z = go.Figure(go.Heatmap(
+                x=x_bins, y=y_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']],
+                zmin=tmin, zmax=tmax, showscale=False, zsmooth='best'))
+        else:
+            fig_z = go.Figure()
+    else:
+        fig_z = go.Figure()
+    fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30))
     # step=0.1로 반환
     return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, colorbar_fig
