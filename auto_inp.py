@@ -278,6 +278,3 @@ def auto_inp():
         logger.info("auto_inp completed successfully")
     except Exception as e:
         logger.exception(f"auto_inp error: {e}")
-
-
-auto_inp()

@@ -54,10 +54,10 @@ app.title = "Concrete Dashboard"
 navbar = dbc.NavbarSimple(
     brand="Concrete MONITOR", color="dark", dark=True, className="mb-4",
     children=[
-        dbc.NavItem(dcc.Link("Home", href="/", className="nav-link")),
-        dbc.NavItem(dcc.Link("Project", href="/project", className="nav-link")),
-        dbc.NavItem(dcc.Link("Concrete", href="/concrete", className="nav-link")),
-        dbc.NavItem(dcc.Link("Sensor", href="/sensor", className="nav-link")),
+        dbc.NavItem(dcc.Link("Home", href="/", className="nav-link", id="nav-home")),
+        dbc.NavItem(dcc.Link("Project", href="/project", className="nav-link", id="nav-project")),
+        dbc.NavItem(dcc.Link("Concrete", href="/concrete", className="nav-link", id="nav-concrete")),
+        dbc.NavItem(dcc.Link("Sensor", href="/sensor", className="nav-link", id="nav-sensor")),
         # Logout: dcc.Link + refresh=True 로 강제 풀 리프레시
         """
         dbc.NavItem(
@@ -76,10 +76,33 @@ navbar = dbc.NavbarSimple(
 app.layout = dbc.Container(
     fluid=True,
     children=[
+        dcc.Location(id="url"),
         navbar,
         dbc.Card(className="shadow-sm p-4", children=[ page_container ]),
     ],
 )
+
+# 네비게이션 바 active 클래스 동적 적용 콜백
+from dash.dependencies import Input, Output
+
+@app.callback(
+    [Output("nav-home", "className"),
+     Output("nav-project", "className"),
+     Output("nav-concrete", "className"),
+     Output("nav-sensor", "className")],
+    Input("url", "pathname")
+)
+def update_nav_active(pathname):
+    classes = ["nav-link"] * 4
+    if pathname == "/":
+        classes[0] += " active"
+    elif pathname.startswith("/project"):
+        classes[1] += " active"
+    elif pathname.startswith("/concrete"):
+        classes[2] += " active"
+    elif pathname.startswith("/sensor"):
+        classes[3] += " active"
+    return classes
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=23022)
