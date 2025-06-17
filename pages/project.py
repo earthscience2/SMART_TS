@@ -547,8 +547,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
             ]),
         ])
     elif active_tab == "tab-section":
-        # 단면도 탭: 시간 슬라이더, 입력창, 3D 뷰(작게), X/Y/Z 단면도
-        # 슬라이더 상태는 3D 뷰 Store에서 복원
+        # 단면도 탭: 2x2 배열 배치, 입력창 상단, 3D 뷰/단면도
         if viewer_data and 'slider' in viewer_data:
             slider = viewer_data['slider']
             slider_min = slider.get('min', 0)
@@ -558,6 +557,22 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
         else:
             slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
         return html.Div([
+            # 입력창 (x, y, z)
+            html.Div([
+                html.Label("단면 위치 설정", className="mb-2"),
+                dbc.InputGroup([
+                    dbc.InputGroupText("X"),
+                    dbc.Input(id="section-x-input", type="number", step=0.01, value=None),
+                ], className="mb-2 d-inline-flex me-2"),
+                dbc.InputGroup([
+                    dbc.InputGroupText("Y"),
+                    dbc.Input(id="section-y-input", type="number", step=0.01, value=None),
+                ], className="mb-2 d-inline-flex me-2"),
+                dbc.InputGroup([
+                    dbc.InputGroupText("Z"),
+                    dbc.Input(id="section-z-input", type="number", step=0.01, value=None),
+                ], className="mb-2 d-inline-flex"),
+            ], style={"padding": "10px"}),
             # 시간 슬라이더 (상단)
             html.Div([
                 html.Label("시간", className="form-label"),
@@ -571,47 +586,22 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
             ], className="mb-3"),
+            # 2x2 배열 배치
             dbc.Row([
-                # 입력창 (x, y, z)
                 dbc.Col([
-                    html.Div([
-                        html.Label("단면 위치 설정", className="mb-2"),
-                        dbc.InputGroup([
-                            dbc.InputGroupText("X"),
-                            dbc.Input(id="section-x-input", type="number", step=0.01, value=None),
-                        ], className="mb-2"),
-                        dbc.InputGroup([
-                            dbc.InputGroupText("Y"),
-                            dbc.Input(id="section-y-input", type="number", step=0.01, value=None),
-                        ], className="mb-2"),
-                        dbc.InputGroup([
-                            dbc.InputGroupText("Z"),
-                            dbc.Input(id="section-z-input", type="number", step=0.01, value=None),
-                        ], className="mb-2"),
-                    ], style={"padding": "10px"}),
-                ], md=2),
-                # 3D 뷰(작게)
+                    dcc.Graph(id="viewer-3d-section", style={"height": "32vh", "border": "2px solid #dee2e6", "borderRadius": "8px"}, config={"scrollZoom": True}),
+                ], md=6),
                 dbc.Col([
-                    html.Div([
-                        dcc.Graph(
-                            id="viewer-3d-section",
-                            style={"height": "30vh", "border": "2px solid #dee2e6", "borderRadius": "8px"},
-                            config={"scrollZoom": True},
-                        ),
-                    ], style={"padding": "10px"}),
-                ], md=3),
-                # X 단면도
+                    dcc.Graph(id="viewer-section-x", style={"height": "32vh"}),
+                ], md=6),
+            ], className="mb-2"),
+            dbc.Row([
                 dbc.Col([
-                    dcc.Graph(id="viewer-section-x", style={"height": "30vh"}),
-                ], md=2),
-                # Y 단면도
+                    dcc.Graph(id="viewer-section-y", style={"height": "32vh"}),
+                ], md=6),
                 dbc.Col([
-                    dcc.Graph(id="viewer-section-y", style={"height": "30vh"}),
-                ], md=2),
-                # Z 단면도
-                dbc.Col([
-                    dcc.Graph(id="viewer-section-z", style={"height": "30vh"}),
-                ], md=3),
+                    dcc.Graph(id="viewer-section-z", style={"height": "32vh"}),
+                ], md=6),
             ]),
         ])
     elif active_tab == "tab-temp":
@@ -768,9 +758,9 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     Output("viewer-section-x", "figure"),
     Output("viewer-section-y", "figure"),
     Output("viewer-section-z", "figure"),
-    Output("section-x-input", "min"), Output("section-x-input", "max"),
-    Output("section-y-input", "min"), Output("section-y-input", "max"),
-    Output("section-z-input", "min"), Output("section-z-input", "max"),
+    Output("section-x-input", "min"), Output("section-x-input", "max"), Output("section-x-input", "value"),
+    Output("section-y-input", "min"), Output("section-y-input", "max"), Output("section-y-input", "value"),
+    Output("section-z-input", "min"), Output("section-z-input", "max"), Output("section-z-input", "value"),
     Input("time-slider-section", "value"),
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
@@ -783,14 +773,15 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
     import math
     import plotly.graph_objects as go
     import numpy as np
+    from scipy.interpolate import griddata
     if not selected_rows:
-        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0, 1, 0, 1
+        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
     inp_dir = f"inp/{concrete_pk}"
     inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
     if not inp_files:
-        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0, 1, 0, 1
+        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5
     # 시간 인덱스 안전 처리
     if time_idx is None or (isinstance(time_idx, float) and math.isnan(time_idx)) or (isinstance(time_idx, str) and not str(time_idx).isdigit()):
         file_idx = len(inp_files)-1
@@ -837,14 +828,16 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
     z_coords = np.array([n['z'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
     temps = np.array([temperatures[k] for k in nodes.keys() if k in temperatures])
     tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
-    # 입력창 min/max 자동 설정
+    # 입력창 min/max/기본값 자동 설정
     x_min, x_max = float(np.min(x_coords)), float(np.max(x_coords))
     y_min, y_max = float(np.min(y_coords)), float(np.max(y_coords))
     z_min, z_max = float(np.min(z_coords)), float(np.max(z_coords))
-    # 입력값 기본값 처리
-    x0 = x_val if x_val is not None else float(np.median(x_coords))
-    y0 = y_val if y_val is not None else float(np.median(y_coords))
-    z0 = z_val if z_val is not None else float(np.median(z_coords))
+    x_mid = float(np.median(x_coords))
+    y_mid = float(np.median(y_coords))
+    z_mid = float(np.median(z_coords))
+    x0 = x_val if x_val is not None else x_mid
+    y0 = y_val if y_val is not None else y_mid
+    z0 = z_val if z_val is not None else z_mid
     # 3D 뷰(작게)
     coords = np.array([[x, y, z] for x, y, z in zip(x_coords, y_coords, z_coords)])
     fig_3d = go.Figure(data=go.Volume(
@@ -857,56 +850,59 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
         scene=dict(aspectmode='data', bgcolor='white'),
         margin=dict(l=0, r=0, t=0, b=0)
     )
-    # X 단면 (x ≈ x0)
+    # X 단면 (x ≈ x0, 리니어 보간)
     tol = 0.05
     mask_x = np.abs(x_coords - x0) < tol
     if np.any(mask_x):
         yb, zb, tb = y_coords[mask_x], z_coords[mask_x], temps[mask_x]
         if len(yb) > 3:
-            y_bins = np.linspace(yb.min(), yb.max(), 30)
-            z_bins = np.linspace(zb.min(), zb.max(), 30)
-            hist, yedges, zedges = np.histogram2d(yb, zb, bins=[y_bins, z_bins], weights=tb)
-            counts, _, _ = np.histogram2d(yb, zb, bins=[y_bins, z_bins])
-            with np.errstate(invalid='ignore'): hist = np.divide(hist, counts, where=counts>0)
+            y_bins = np.linspace(yb.min(), yb.max(), 40)
+            z_bins = np.linspace(zb.min(), zb.max(), 40)
+            yy, zz = np.meshgrid(y_bins, z_bins)
+            points = np.column_stack([yb, zb])
+            values = tb
+            grid = griddata(points, values, (yy, zz), method='linear')
             fig_x = go.Figure(go.Heatmap(
-                x=y_bins, y=z_bins, z=hist.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+                x=y_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
         else:
             fig_x = go.Figure()
     else:
         fig_x = go.Figure()
     fig_x.update_layout(title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
-    # Y 단면 (y ≈ y0)
+    # Y 단면 (y ≈ y0, 리니어 보간)
     mask_y = np.abs(y_coords - y0) < tol
     if np.any(mask_y):
         xb, zb, tb = x_coords[mask_y], z_coords[mask_y], temps[mask_y]
         if len(xb) > 3:
-            x_bins = np.linspace(xb.min(), xb.max(), 30)
-            z_bins = np.linspace(zb.min(), zb.max(), 30)
-            hist, xedges, zedges = np.histogram2d(xb, zb, bins=[x_bins, z_bins], weights=tb)
-            counts, _, _ = np.histogram2d(xb, zb, bins=[x_bins, z_bins])
-            with np.errstate(invalid='ignore'): hist = np.divide(hist, counts, where=counts>0)
+            x_bins = np.linspace(xb.min(), xb.max(), 40)
+            z_bins = np.linspace(zb.min(), zb.max(), 40)
+            xx, zz = np.meshgrid(x_bins, z_bins)
+            points = np.column_stack([xb, zb])
+            values = tb
+            grid = griddata(points, values, (xx, zz), method='linear')
             fig_y = go.Figure(go.Heatmap(
-                x=x_bins, y=z_bins, z=hist.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+                x=x_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
         else:
             fig_y = go.Figure()
     else:
         fig_y = go.Figure()
     fig_y.update_layout(title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
-    # Z 단면 (z ≈ z0)
+    # Z 단면 (z ≈ z0, 리니어 보간)
     mask_z = np.abs(z_coords - z0) < tol
     if np.any(mask_z):
         xb, yb, tb = x_coords[mask_z], y_coords[mask_z], temps[mask_z]
         if len(xb) > 3:
-            x_bins = np.linspace(xb.min(), xb.max(), 30)
-            y_bins = np.linspace(yb.min(), yb.max(), 30)
-            hist, xedges, yedges = np.histogram2d(xb, yb, bins=[x_bins, y_bins], weights=tb)
-            counts, _, _ = np.histogram2d(xb, yb, bins=[x_bins, y_bins])
-            with np.errstate(invalid='ignore'): hist = np.divide(hist, counts, where=counts>0)
+            x_bins = np.linspace(xb.min(), xb.max(), 40)
+            y_bins = np.linspace(yb.min(), yb.max(), 40)
+            xx, yy = np.meshgrid(x_bins, y_bins)
+            points = np.column_stack([xb, yb])
+            values = tb
+            grid = griddata(points, values, (xx, yy), method='linear')
             fig_z = go.Figure(go.Heatmap(
-                x=x_bins, y=y_bins, z=hist.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+                x=x_bins, y=y_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
         else:
             fig_z = go.Figure()
     else:
         fig_z = go.Figure()
     fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30))
-    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, y_min, y_max, z_min, z_max
+    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x_mid, y_min, y_max, y_mid, z_min, z_max, z_mid
