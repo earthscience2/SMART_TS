@@ -271,7 +271,7 @@ def store_section_coord(clickData):
 @callback(
     Output("viewer-3d", "figure"),
     Output("current-time-store", "data", allow_duplicate=True),
-    Output("current-file-title", "children"),
+    Output("current-file-title", "children", allow_duplicate=True),
     Output("viewer-3d-store", "data"),
     Output("time-slider", "min", allow_duplicate=True),
     Output("time-slider", "max", allow_duplicate=True),
@@ -520,7 +520,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     State("tbl-concrete", "data"),
     State("viewer-3d-store", "data"),
     State("current-file-title-store", "data"),
-    State("concrete-title", "children"),
+    State("concrete-title", "children", allow_duplicate=True),
     prevent_initial_call=True,
 )
 def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_title, concrete_title):
