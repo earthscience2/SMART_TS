@@ -52,6 +52,7 @@ layout = dbc.Container(
 
         # ── (★) 현재 시간 정보를 저장할 Store
         dcc.Store(id="current-time-store", data=None),
+        dcc.Store(id="current-file-title-store", data=""),
 
         # ── (★) 클릭 좌표 저장
         dcc.Store(id="section-coord-store", data=None),
@@ -258,6 +259,7 @@ def store_section_coord(clickData):
     Output("time-slider", "max", allow_duplicate=True),
     Output("time-slider", "marks", allow_duplicate=True),
     Output("time-slider", "value", allow_duplicate=True),
+    Output("current-file-title-store", "data", allow_duplicate=True),
     Input("time-slider", "value"),
     Input("section-coord-store", "data"),
     State("tbl-concrete", "selected_rows"),
@@ -285,7 +287,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         except:
             continue
     if not times:
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0, ""
     marks = {}
     for i, t in enumerate(times):
         if t.hour == 0:
@@ -489,18 +491,20 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         }
     }
     
-    return fig_3d, current_time, current_file_title, viewer_data, 0, max_idx, marks, value
+    return fig_3d, current_time, current_file_title, viewer_data, 0, max_idx, marks, value, current_file_title
 
 # 탭 콘텐츠 처리 콜백
 @callback(
     Output("tab-content", "children"),
+    Output("current-file-title", "children", allow_duplicate=True),
     Input("tabs-main", "active_tab"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     State("viewer-3d-store", "data"),
+    State("current-file-title-store", "data"),
     prevent_initial_call=True,
 )
-def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
+def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_title):
     if active_tab == "tab-3d":
         # 저장된 3D 뷰 정보가 있으면 복원, 없으면 기본 뷰
         if viewer_data and 'figure' in viewer_data:
@@ -548,7 +552,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
                     ], style={"padding": "10px"}),
                 ], md=12),
             ]),
-        ])
+        ]), current_file_title
     elif active_tab == "tab-section":
         # 단면도 탭: 2x2 배열 배치, 입력창 상단, 3D 뷰/단면도
         if viewer_data and 'slider' in viewer_data:
@@ -560,8 +564,6 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
         else:
             slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
         return html.Div([
-            # 상단 파일명 표시
-            html.Div(id="section-current-file-title", style={"fontWeight": 600, "marginBottom": "8px"}),
             # 입력창 (x, y, z)
             html.Div([
                 html.Label("단면 위치 설정", className="mb-2"),
@@ -596,7 +598,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
             ], className="mb-3"),
-            # 2x2+컬러바 배열 배치
+            # 2x2 배열 배치 (컬러바 제거)
             dbc.Row([
                 dbc.Col([
                     dbc.Row([
@@ -615,23 +617,20 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
                             dcc.Graph(id="viewer-section-z", style={"height": "32vh"}),
                         ], md=6),
                     ]),
-                ], md=10),
-                dbc.Col([
-                    dcc.Graph(id="section-colorbar", style={"height": "66vh", "width": "80px", "marginLeft": "-30px", "display": "block"}),
-                ], md=2),
+                ], md=12),
             ]),
-        ])
+        ]), current_file_title
     elif active_tab == "tab-temp":
         return html.Div([
             html.H4("온도분포", className="text-center mt-5"),
             html.P("준비 중입니다...", className="text-center text-muted"),
-        ])
+        ]), current_file_title
     elif active_tab == "tab-analysis":
         return html.Div([
             html.H4("수치해석", className="text-center mt-5"),
             html.P("준비 중입니다...", className="text-center text-muted"),
-        ])
-    return html.Div()
+        ]), current_file_title
+    return html.Div(), current_file_title
 
 # 시간 슬라이더 마크: 날짜의 00시만 표시, 텍스트는 MM/DD 형식
 @callback(
@@ -778,8 +777,6 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     Output("section-x-input", "min"), Output("section-x-input", "max"), Output("section-x-input", "value"),
     Output("section-y-input", "min"), Output("section-y-input", "max"), Output("section-y-input", "value"),
     Output("section-z-input", "min"), Output("section-z-input", "max"), Output("section-z-input", "value"),
-    Output("section-colorbar", "figure"),
-    Output("section-current-file-title", "children"),
     Input("time-slider-section", "value"),
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
@@ -794,20 +791,19 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
     import numpy as np
     from scipy.interpolate import griddata
     if not selected_rows:
-        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, go.Figure(), ""
+        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
     inp_dir = f"inp/{concrete_pk}"
     inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
     if not inp_files:
-        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, go.Figure(), ""
+        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5
     # 시간 인덱스 안전 처리
     if time_idx is None or (isinstance(time_idx, float) and math.isnan(time_idx)) or (isinstance(time_idx, str) and not str(time_idx).isdigit()):
         file_idx = len(inp_files)-1
     else:
         file_idx = min(int(time_idx), len(inp_files)-1)
     current_file = inp_files[file_idx]
-    current_time = os.path.basename(current_file).split(".")[0]
     # inp 파일 파싱 (노드, 온도)
     with open(current_file, 'r') as f:
         lines = f.readlines()
@@ -964,11 +960,5 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
         xaxis=dict(scaleanchor="y", scaleratio=1),
         yaxis=dict(constrain='domain')
     )
-    # 컬러바(3D 뷰 기준)만 따로 생성, 온도 표시 소수점 1자리
-    colorbar_fig = go.Figure(go.Heatmap(
-        z=[[tmin, tmax]], colorscale=[[0, 'blue'], [1, 'red']], showscale=True, colorbar=dict(
-            title='Temperature (°C)', thickness=18, len=0.8, y=0.5, yanchor='middle',
-            tickformat='.1f'), zmin=tmin, zmax=tmax))
-    colorbar_fig.update_layout(margin=dict(l=0, r=0, t=0, b=0), xaxis=dict(visible=False), yaxis=dict(visible=False), width=80, height=300)
     # step=0.1로 반환
-    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, colorbar_fig, f"현재 파일: {current_time}"
+    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0
