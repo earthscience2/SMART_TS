@@ -226,16 +226,32 @@ def on_project_change(selected_proj):
 @callback(
     Output("btn-concrete-del", "disabled", allow_duplicate=True),
     Output("btn-concrete-analyze", "disabled", allow_duplicate=True),
+    Output("concrete-title", "children", allow_duplicate=True),
     Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
 def on_concrete_select(selected_rows, tbl_data):
     if not selected_rows:
-        return True, True
+        return True, True, ""
+    
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     is_active = row["activate"] == "활성"
-    return False, not is_active
+    
+    # 안내 메시지 생성
+    if is_active:
+        title = "⚠️ 분석을 시작하려면 왼쪽의 '분석 시작' 버튼을 클릭하세요."
+    else:
+        # 비활성 상태일 때 데이터 존재 여부 확인
+        concrete_pk = row["concrete_pk"]
+        inp_dir = f"inp/{concrete_pk}"
+        inp_files = glob.glob(f"{inp_dir}/*.inp")
+        if not inp_files:
+            title = "⏳ 아직 수집된 데이터가 없습니다. 잠시 후 다시 확인해주세요."
+        else:
+            title = ""
+            
+    return False, not is_active, title
 
 # ───────────────────── 3D 뷰 클릭 → 단면 위치 저장 ─────────────────────
 @callback(
@@ -740,6 +756,7 @@ def update_time_slider(selected_rows, tbl_data, current_value):
     Output("project-alert", "color"),
     Output("project-alert", "is_open"),
     Output("tbl-concrete", "data", allow_duplicate=True),
+    Output("btn-concrete-analyze", "disabled", allow_duplicate=True),
     Input("btn-concrete-analyze", "n_clicks"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
@@ -747,7 +764,7 @@ def update_time_slider(selected_rows, tbl_data, current_value):
 )
 def start_analysis(n_clicks, selected_rows, tbl_data):
     if not selected_rows:
-        return "콘크리트를 선택하세요", "warning", True, dash.no_update
+        return "콘크리트를 선택하세요", "warning", True, dash.no_update, dash.no_update
 
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
@@ -760,9 +777,9 @@ def start_analysis(n_clicks, selected_rows, tbl_data):
         updated_data = tbl_data.copy()
         updated_data[selected_rows[0]]["activate"] = "비활성"
         
-        return f"{concrete_pk} 분석이 시작되었습니다", "success", True, updated_data
+        return f"{concrete_pk} 분석이 시작되었습니다", "success", True, updated_data, True
     except Exception as e:
-        return f"분석 시작 실패: {e}", "danger", True, dash.no_update
+        return f"분석 시작 실패: {e}", "danger", True, dash.no_update, dash.no_update
 
 # ───────────────────── ⑥ 삭제 컨펌 토글 콜백 ───────────────────
 @callback(
