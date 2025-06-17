@@ -670,7 +670,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     dcc.Graph(id="temp-time-graph", style={"height": "50vh"}),
                 ], md=6),
             ]),
-        ]), current_file_title
+        ]), "전체 파일"
     elif active_tab == "tab-analysis":
         return html.Div([
             html.H4("수치해석", className="text-center mt-5"),
@@ -1048,15 +1048,24 @@ def update_temp_tab(store_data, x, y, z, selected_rows, tbl_data):
     x = x if x is not None else x0
     y = y if y is not None else y0
     z = z if z is not None else z0
+    # poly_nodes, poly_h 정의 (NameError 방지)
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    try:
+        dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
+        poly_nodes = np.array(dims["nodes"])
+        poly_h = float(dims["h"])
+    except Exception:
+        poly_nodes = np.array([[0,0]])
+        poly_h = 1.0
     # 콘크리트 외곽선(윗면, 아랫면)
     n = len(poly_nodes)
     x0, y0 = poly_nodes[:,0], poly_nodes[:,1]
-    z0 = np.zeros(n)
+    z0s = np.zeros(n)
     z1 = np.full(n, poly_h)
     fig_3d = go.Figure()
     # 아래면
     fig_3d.add_trace(go.Scatter3d(
-        x=np.append(x0, x0[0]), y=np.append(y0, y0[0]), z=np.append(z0, z0[0]),
+        x=np.append(x0, x0[0]), y=np.append(y0, y0[0]), z=np.append(z0s, z0s[0]),
         mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
     # 윗면
     fig_3d.add_trace(go.Scatter3d(
@@ -1065,7 +1074,7 @@ def update_temp_tab(store_data, x, y, z, selected_rows, tbl_data):
     # 기둥
     for i in range(n):
         fig_3d.add_trace(go.Scatter3d(
-            x=[x0[i], x0[i]], y=[y0[i], y0[i]], z=[z0[i], z1[i]],
+            x=[x0[i], x0[i]], y=[y0[i], y0[i]], z=[z0s[i], z1[i]],
             mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
     # 입력 위치 표시
     if x is not None and y is not None and z is not None:
