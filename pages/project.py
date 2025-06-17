@@ -101,7 +101,19 @@ layout = dbc.Container(
                             dbc.Tab(label="수치해석", tab_id="tab-analysis"),
                         ], id="tabs-main", active_tab="tab-3d"),
                         # 탭 콘텐츠
-                        html.Div(id="tab-content"),
+                        html.Div(id="tab-content", children=[
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Div([
+                                        dcc.Graph(
+                                            id="viewer-3d",
+                                            style={"height": "80vh", "border": "2px solid #dee2e6", "borderRadius": "8px"},
+                                            config={"scrollZoom": True},
+                                        ),
+                                    ], style={"padding": "10px"}),
+                                ], md=12),
+                            ]),
+                        ]),
                         # 시간 슬라이더
                         html.Div([
                             html.Label("시간", className="form-label"),
@@ -371,6 +383,18 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         cmin=np.nanmin(temps), cmax=np.nanmax(temps),
         showscale=True
     ))
+    # 3D 뷰 시점 고정 및 경계선 추가
+    fig_3d.update_layout(
+        uirevision='constant',  # 시점 고정
+        scene=dict(
+            aspectmode='data',  # 데이터 비율 유지
+            bgcolor='white',    # 배경색
+            xaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
+            yaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
+            zaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
+        ),
+        margin=dict(l=0, r=0, t=0, b=0)
+    )
     # 모서리 강조(기존 코드)
     if poly_nodes is not None and poly_h is not None:
         n = len(poly_nodes)
@@ -419,18 +443,22 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
 @callback(
     Output("tab-content", "children"),
     Input("tabs-main", "active_tab"),
+    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def switch_tab(active_tab):
+def switch_tab(active_tab, selected_rows, tbl_data):
     if active_tab == "tab-3d":
         return html.Div([
             dbc.Row([
                 dbc.Col([
-                    dcc.Graph(
-                        id="viewer-3d",
-                        style={"height": "80vh"},
-                        config={"scrollZoom": True},
-                    ),
+                    html.Div([
+                        dcc.Graph(
+                            id="viewer-3d",
+                            style={"height": "80vh", "border": "2px solid #dee2e6", "borderRadius": "8px"},
+                            config={"scrollZoom": True},
+                        ),
+                    ], style={"padding": "10px"}),
                 ], md=12),
             ]),
         ])
