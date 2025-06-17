@@ -563,19 +563,21 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
             # 입력창 (x, y, z)
             html.Div([
                 html.Label("단면 위치 설정", className="mb-2"),
-                dbc.InputGroup([
-                    dbc.InputGroupText("X"),
-                    dbc.Input(id="section-x-input", type="number", step=0.1, value=None, style={"width": "80px"}),
-                ], className="mb-2"),
-                dbc.InputGroup([
-                    dbc.InputGroupText("Y"),
-                    dbc.Input(id="section-y-input", type="number", step=0.1, value=None, style={"width": "80px"}),
-                ], className="mb-2"),
-                dbc.InputGroup([
-                    dbc.InputGroupText("Z"),
-                    dbc.Input(id="section-z-input", type="number", step=0.1, value=None, style={"width": "80px"}),
-                ], className="mb-2"),
-            ], style={"padding": "10px", "width": "110px", "display": "flex", "flexDirection": "column", "alignItems": "flex-start"}),
+                html.Div([
+                    dbc.InputGroup([
+                        dbc.InputGroupText("X"),
+                        dbc.Input(id="section-x-input", type="number", step=0.1, value=None, style={"width": "80px"}),
+                    ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
+                    dbc.InputGroup([
+                        dbc.InputGroupText("Y"),
+                        dbc.Input(id="section-y-input", type="number", step=0.1, value=None, style={"width": "80px"}),
+                    ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
+                    dbc.InputGroup([
+                        dbc.InputGroupText("Z"),
+                        dbc.Input(id="section-z-input", type="number", step=0.1, value=None, style={"width": "80px"}),
+                    ], style={"display": "inline-flex", "verticalAlign": "middle"}),
+                ], style={"display": "flex", "flexDirection": "row", "alignItems": "center"}),
+            ], style={"padding": "10px"}),
             # 시간 슬라이더 (상단)
             html.Div([
                 html.Label("시간", className="form-label"),
@@ -589,7 +591,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
             ], className="mb-3"),
-            # 2x2+컬러바 배열 배치
+            # 2x2 배열 배치 (컬러바 제거)
             dbc.Row([
                 dbc.Col([
                     dbc.Row([
@@ -608,10 +610,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
                             dcc.Graph(id="viewer-section-z", style={"height": "32vh"}),
                         ], md=6),
                     ]),
-                ], md=10),
-                dbc.Col([
-                    dcc.Graph(id="section-colorbar", style={"height": "66vh", "width": "80px", "marginLeft": "-30px", "display": "block"}),
-                ], md=2),
+                ], md=12),
             ]),
         ])
     elif active_tab == "tab-temp":
@@ -771,7 +770,6 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     Output("section-x-input", "min"), Output("section-x-input", "max"), Output("section-x-input", "value"),
     Output("section-y-input", "min"), Output("section-y-input", "max"), Output("section-y-input", "value"),
     Output("section-z-input", "min"), Output("section-z-input", "max"), Output("section-z-input", "value"),
-    Output("section-colorbar", "figure"),
     Input("time-slider-section", "value"),
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
@@ -786,13 +784,13 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
     import numpy as np
     from scipy.interpolate import griddata
     if not selected_rows:
-        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, go.Figure()
+        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
     inp_dir = f"inp/{concrete_pk}"
     inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
     if not inp_files:
-        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, go.Figure()
+        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5
     # 시간 인덱스 안전 처리
     if time_idx is None or (isinstance(time_idx, float) and math.isnan(time_idx)) or (isinstance(time_idx, str) and not str(time_idx).isdigit()):
         file_idx = len(inp_files)-1
@@ -944,9 +942,5 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
     else:
         fig_z = go.Figure()
     fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30))
-    # 컬러바(3D 뷰 기준)만 따로 생성
-    colorbar_fig = go.Figure(go.Heatmap(
-        z=[[tmin, tmax]], colorscale=[[0, 'blue'], [1, 'red']], showscale=True, colorbar=dict(title='Temperature (°C)', thickness=18, len=0.8, y=0.5, yanchor='middle'), zmin=tmin, zmax=tmax))
-    colorbar_fig.update_layout(margin=dict(l=0, r=0, t=0, b=0), xaxis=dict(visible=False), yaxis=dict(visible=False), width=80, height=300)
     # step=0.1로 반환
-    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, colorbar_fig
+    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0
