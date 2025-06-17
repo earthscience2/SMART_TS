@@ -27,6 +27,9 @@ from dash.exceptions import PreventUpdate
 from scipy.interpolate import griddata
 import ast
 import json
+import auto_sensor
+import auto_inp
+import time
 
 import api_db
 
@@ -793,6 +796,12 @@ def start_analysis(n_clicks, selected_rows, tbl_data):
     try:
         # activate를 0으로 변경
         api_db.update_concrete_data(concrete_pk=concrete_pk, activate=0)
+        
+        # (1) 센서 데이터 자동 저장
+        auto_sensor.auto_sensor_data()
+        # (2) 1초 대기 후 INP 자동 생성
+        time.sleep(1)
+        auto_inp.auto_inp()
         
         # 테이블 데이터 업데이트
         updated_data = tbl_data.copy()
