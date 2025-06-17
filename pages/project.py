@@ -777,6 +777,7 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     Output("section-x-input", "min"), Output("section-x-input", "max"), Output("section-x-input", "value"),
     Output("section-y-input", "min"), Output("section-y-input", "max"), Output("section-y-input", "value"),
     Output("section-z-input", "min"), Output("section-z-input", "max"), Output("section-z-input", "value"),
+    Output("current-file-title", "children", allow_duplicate=True),
     Input("time-slider-section", "value"),
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
@@ -791,13 +792,13 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
     import numpy as np
     from scipy.interpolate import griddata
     if not selected_rows:
-        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5
+        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, ""
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
     inp_dir = f"inp/{concrete_pk}"
     inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
     if not inp_files:
-        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5
+        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, ""
     # 시간 인덱스 안전 처리
     if time_idx is None or (isinstance(time_idx, float) and math.isnan(time_idx)) or (isinstance(time_idx, str) and not str(time_idx).isdigit()):
         file_idx = len(inp_files)-1
@@ -960,5 +961,14 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
         xaxis=dict(scaleanchor="y", scaleratio=1),
         yaxis=dict(constrain='domain')
     )
+    # 현재 파일명/온도 통계 계산
+    try:
+        time_str = os.path.basename(current_file).split(".")[0]
+        current_min = float(np.nanmin(temps))
+        current_max = float(np.nanmax(temps))
+        current_avg = float(np.nanmean(temps))
+        current_file_title = f"현재 파일: {time_str} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)"
+    except Exception:
+        current_file_title = f"현재 파일: {os.path.basename(current_file)}"
     # step=0.1로 반환
-    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0
+    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, current_file_title
