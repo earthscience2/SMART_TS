@@ -146,12 +146,14 @@ layout = dbc.Container(
 @callback(
     Output("ddl-project", "options"),
     Output("ddl-project", "value"),
+    Output("concrete-title", "children", allow_duplicate=True),
     Input("ddl-project", "value"),
     prevent_initial_call=False,
 )
 def init_dropdown(selected_value):
     """
     페이지 로드 또는 값이 None일 때 프로젝트 목록을 Dropdown 옵션으로 설정.
+    콘크리트가 없으면 안내 문구를 concrete-title에 전달.
     """
     df_proj = api_db.get_project_data()
     options = [
@@ -159,13 +161,13 @@ def init_dropdown(selected_value):
         for _, row in df_proj.iterrows()
     ]
     if not options:
-        return [], None
+        return [], None, "분석할 콘크리트를 추가하세요."
 
     # 초기 로드 시(= selected_value가 None일 때)만 첫 번째 옵션을 기본값으로 지정
     if selected_value is None:
-        return options, options[0]["value"]
+        return options, options[0]["value"], ""
     # 사용자가 이미 선택한 값이 있으면 그대로 유지
-    return options, selected_value
+    return options, selected_value, ""
 
 # ───────────────────── ② 프로젝트 선택 콜백 ─────────────────────
 @callback(
@@ -174,7 +176,7 @@ def init_dropdown(selected_value):
     Output("tbl-concrete", "selected_rows"),
     Output("btn-concrete-del", "disabled"),
     Output("btn-concrete-analyze", "disabled"),
-    Output("concrete-title", "children"),
+    Output("concrete-title", "children", allow_duplicate=True),
     Output("time-slider", "min", allow_duplicate=True),
     Output("time-slider", "max", allow_duplicate=True),
     Output("time-slider", "value", allow_duplicate=True),
@@ -205,7 +207,6 @@ def on_project_change(selected_proj):
             shape_info = f"{len(nodes)}각형 (높이: {h:.2f}m)"
         except Exception:
             shape_info = "파싱 오류"
-        
         table_data.append({
             "concrete_pk": row["concrete_pk"],
             "name": row["name"],
@@ -213,14 +214,15 @@ def on_project_change(selected_proj):
             "dims": row["dims"],
             "activate": "활성" if row["activate"] == 1 else "비활성",
         })
-
-    # 3) 테이블 컬럼 정의
     columns = [
         {"name": "이름", "id": "name"},
     ]
-
     title = f"{proj_name} · 콘크리트 전체"
-    return table_data, columns, [], True, True, title, 0, 5, 0, {}, None
+    # 콘크리트가 없으면 안내 문구 전달
+    if not table_data:
+        return [], columns, [], True, True, "분석할 콘크리트를 추가하세요.", 0, 5, 0, {}, None
+    # 첫 번째 콘크리트 자동 선택
+    return table_data, columns, [0], True, True, title, 0, 5, 0, {}, None
 
 # ───────────────────── ③ 콘크리트 선택 콜백 ─────────────────────
 @callback(
@@ -522,9 +524,9 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     prevent_initial_call=True,
 )
 def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_title, concrete_title):
-    # 안내 문구만 보여야 하는 경우
+    # 안내 문구만 보여야 하는 경우(분석 시작 안내, 데이터 없음, 콘크리트 없음)
     if concrete_title and (
-        "분석을 시작하려면" in concrete_title or "아직 수집된 데이터가 없습니다" in concrete_title
+        "분석을 시작하려면" in concrete_title or "아직 수집된 데이터가 없습니다" in concrete_title or "분석할 콘크리트를 추가하세요" in concrete_title
     ):
         return html.Div([
             html.Div(concrete_title, style={
