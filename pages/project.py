@@ -509,7 +509,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     
     return fig_3d, current_time, current_file_title, viewer_data, 0, max_idx, marks, value, current_file_title
 
-# 탭 콘텐츠 처리 콜백
+# 탭 콘텐츠 처리 콜백 (수정)
 @callback(
     Output("tab-content", "children"),
     Output("current-file-title", "children", allow_duplicate=True),
@@ -521,6 +521,27 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     prevent_initial_call=True,
 )
 def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_title):
+    # 안내 문구만 보여야 하는 경우(분석 시작 안내, 데이터 없음)
+    guide_message = None
+    if selected_rows and tbl_data:
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+        is_active = row["activate"] == "활성"
+        concrete_pk = row["concrete_pk"]
+        inp_dir = f"inp/{concrete_pk}"
+        inp_files = glob.glob(f"{inp_dir}/*.inp")
+        if is_active:
+            guide_message = "⚠️ 분석을 시작하려면 왼쪽의 '분석 시작' 버튼을 클릭하세요."
+        elif not inp_files:
+            guide_message = "⏳ 아직 수집된 데이터가 없습니다. 잠시 후 다시 확인해주세요."
+    elif tbl_data is not None and len(tbl_data) == 0:
+        guide_message = "분석할 콘크리트를 추가하세요."
+    if guide_message:
+        return html.Div([
+            html.Div(guide_message, style={
+                "textAlign": "center", "fontSize": "1.3rem", "color": "#555", "marginTop": "120px"
+            })
+        ]), ""
+    # 이하 기존 코드 유지
     if active_tab == "tab-3d":
         # 저장된 3D 뷰 정보가 있으면 복원, 없으면 기본 뷰
         if viewer_data and 'figure' in viewer_data:
