@@ -564,27 +564,6 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         else:
             slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
         return html.Div([
-            # 입력창 (x, y, z)
-            html.Div([
-                html.Label("단면 위치 설정", className="mb-2"),
-                html.Div([
-                    dbc.InputGroup([
-                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#ff3333", "marginRight": "6px"}),
-                        dbc.InputGroupText("X"),
-                        dbc.Input(id="section-x-input", type="number", step=0.1, value=None, style={"width": "80px"}),
-                    ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
-                    dbc.InputGroup([
-                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#3388ff", "marginRight": "6px"}),
-                        dbc.InputGroupText("Y"),
-                        dbc.Input(id="section-y-input", type="number", step=0.1, value=None, style={"width": "80px"}),
-                    ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
-                    dbc.InputGroup([
-                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#33cc33", "marginRight": "6px"}),
-                        dbc.InputGroupText("Z"),
-                        dbc.Input(id="section-z-input", type="number", step=0.1, value=None, style={"width": "80px"}),
-                    ], style={"display": "inline-flex", "verticalAlign": "middle"}),
-                ], style={"display": "flex", "flexDirection": "row", "alignItems": "center"}),
-            ], style={"padding": "10px"}),
             # 시간 슬라이더 (상단)
             html.Div([
                 html.Label("시간", className="form-label"),
@@ -598,6 +577,27 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
             ], className="mb-3"),
+            # 입력창 (x, y, z)
+            html.Div([
+                html.Label("단면 위치 설정", className="mb-2"),
+                html.Div([
+                    dbc.InputGroup([
+                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#ff3333", "marginRight": "6px", "marginTop": "4px"}),
+                        dbc.InputGroupText("X"),
+                        dbc.Input(id="section-x-input", type="number", step=0.1, value=None, style={"width": "80px"}),
+                    ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
+                    dbc.InputGroup([
+                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#3388ff", "marginRight": "6px", "marginTop": "4px"}),
+                        dbc.InputGroupText("Y"),
+                        dbc.Input(id="section-y-input", type="number", step=0.1, value=None, style={"width": "80px"}),
+                    ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
+                    dbc.InputGroup([
+                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#33cc33", "marginRight": "6px", "marginTop": "4px"}),
+                        dbc.InputGroupText("Z"),
+                        dbc.Input(id="section-z-input", type="number", step=0.1, value=None, style={"width": "80px"}),
+                    ], style={"display": "inline-flex", "verticalAlign": "middle"}),
+                ], style={"display": "flex", "flexDirection": "row", "alignItems": "center"}),
+            ], style={"padding": "10px"}),
             # 2x2 배열 배치 (컬러바 제거)
             dbc.Row([
                 dbc.Col([
