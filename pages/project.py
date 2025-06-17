@@ -30,6 +30,7 @@ import json
 import auto_sensor
 import auto_inp
 import time
+from urllib.parse import parse_qs, urlparse
 
 import api_db
 
@@ -39,6 +40,7 @@ register_page(__name__, path="/project")
 layout = dbc.Container(
     fluid=True,
     children=[
+        dcc.Location(id="project-url", refresh=False),
         # ── (★) 삭제 컨펌 다이얼로그
         dcc.ConfirmDialog(
             id="confirm-del-concrete",
@@ -150,11 +152,13 @@ layout = dbc.Container(
     Output("ddl-project", "options"),
     Output("ddl-project", "value"),
     Input("ddl-project", "value"),
+    Input("project-url", "search"),
     prevent_initial_call=False,
 )
-def init_dropdown(selected_value):
+def init_dropdown(selected_value, search):
     """
     페이지 로드 또는 값이 None일 때 프로젝트 목록을 Dropdown 옵션으로 설정.
+    URL 쿼리스트링에 page=프로젝트PK가 있으면 해당 값을 우선 적용.
     """
     df_proj = api_db.get_project_data()
     options = [
@@ -163,6 +167,14 @@ def init_dropdown(selected_value):
     ]
     if not options:
         return [], None
+
+    # 쿼리스트링에서 page 파라미터 추출
+    project_from_url = None
+    if search:
+        qs = parse_qs(search.lstrip('?'))
+        project_from_url = qs.get('page', [None])[0]
+        if project_from_url and project_from_url in [opt['value'] for opt in options]:
+            return options, project_from_url
 
     # 초기 로드 시(= selected_value가 None일 때)만 첫 번째 옵션을 기본값으로 지정
     if selected_value is None:
