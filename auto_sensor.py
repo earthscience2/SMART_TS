@@ -79,15 +79,16 @@ def auto_sensor_data():
     )
 
     try:
-        df_sensors = pd.read_sql("SELECT sensor_pk,device_id,channel,d_type FROM sensor;", conn)
+        df_sensors = pd.read_sql("SELECT device_id,channel,d_type FROM sensor;", conn)
         records = df_sensors.to_dict(orient='records')
 
         with conn.cursor() as cursor:
             for rec in records:
-                sensor_pk = rec['sensor_pk']
+                device_id = rec['device_id']
+                channel = rec['channel']
                 cursor.execute(
-                    "SELECT MAX(`time`) FROM `sensor_data` WHERE `sensor_pk` = %s",
-                    (sensor_pk,)
+                    "SELECT MAX(`time`) FROM `sensor_data` WHERE `device_id` = %s AND `channel` = %s",
+                    (device_id, channel)
                 )
                 last_time = cursor.fetchone()[0]
 
@@ -99,9 +100,9 @@ def auto_sensor_data():
                 else:
                     sd_start = None
 
-                logger.info(f"{sensor_pk} 기준 start_date={sd_start}")
+                logger.info(f"{device_id}/{channel} 기준 start_date={sd_start}")
 
-                agg = export_sensor_data(rec['device_id'], rec['channel'], sd_start)
+                agg = export_sensor_data(device_id, channel, sd_start)
                 if agg is None or agg.empty:
                     continue
 
@@ -111,8 +112,8 @@ def auto_sensor_data():
                     hmd, sv, tmp = row['humidity'], row['sv'], row['temperature']
 
                     cursor.execute(
-                        "SELECT COUNT(*) FROM sensor_data WHERE sensor_pk=%s AND time=%s",
-                        (sensor_pk, ts)
+                        "SELECT COUNT(*) FROM sensor_data WHERE device_id=%s AND channel=%s AND time=%s",
+                        (device_id, channel, ts)
                     )
                     exists = cursor.fetchone()[0] > 0
 
@@ -120,19 +121,21 @@ def auto_sensor_data():
                         cursor.execute("""
                             UPDATE sensor_data
                             SET humidity=%s, sv=%s, temperature=%s, updated_at=NOW()
-                            WHERE sensor_pk=%s AND time=%s
-                        """, (hmd, sv, tmp, sensor_pk, ts))
-                        logger.info(f"UPDATED {sensor_pk} @ {ts}: hmd={hmd}, sv={sv}, tmp={tmp}")
+                            WHERE device_id=%s AND channel=%s AND time=%s
+                        """, (hmd, sv, tmp, device_id, channel, ts))
+                        logger.info(f"UPDATED {device_id}/{channel} @ {ts}: hmd={hmd}, sv={sv}, tmp={tmp}")
                     else:
                         cursor.execute("""
                             INSERT INTO sensor_data
-                              (sensor_pk, time, humidity, sv, temperature, created_at, updated_at)
-                            VALUES (%s, %s, %s, %s, %s, NOW(), NOW())
-                        """, (sensor_pk, ts, hmd, sv, tmp))
-                        logger.info(f"INSERTED {sensor_pk} @ {ts}: hmd={hmd}, sv={sv}, tmp={tmp}")
+                              (device_id, channel, time, humidity, sv, temperature, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
+                        """, (device_id, channel, ts, hmd, sv, tmp))
+                        logger.info(f"INSERTED {device_id}/{channel} @ {ts}: hmd={hmd}, sv={sv}, tmp={tmp}")
 
                 conn.commit()
     except Exception as e:
         logger.error(f"auto_sensor_data 오류: {e}")
     finally:
         conn.close()
+
+auto_sensor_data()
