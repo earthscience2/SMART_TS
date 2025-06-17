@@ -61,39 +61,45 @@ def layout():
             "overflow": "hidden",
             "transition": "transform 0.2s, box-shadow 0.2s",
             "boxShadow": "0 4px 8px rgba(135, 206, 250, 0.4)",
+            "cursor": "pointer",
+            "textDecoration": "none"
         }
 
         cards.append(
-            dbc.Card(
-                dbc.CardBody([
-                    html.H5(
-                        row["name"],
-                        className="card-title fw-bold fs-5 mb-2"
-                    ),
-                    html.P(
-                        f"생성일: {format_date(row['created_at'])}",
-                        className="card-text fs-7 mb-1"
-                    ),
-                    html.P(
-                        f"콘크리트 : {conc_cnt} 개",
-                        className="card-text fs-7 mb-1"
-                    ),
-                    html.P(
-                        f"센서 : {sensor_cnt} 개",
-                        className="card-text fs-7 mb-1"
-                    ),
-                    html.P(
-                        f"{row['user_company_pk']}",
-                        className="card-text fs-9 mb-1"
-                    ),
-                ], className="d-flex flex-column align-items-center justify-content-center h-100"),
-                style=card_style,
-                className="project-card mb-4"
+            dcc.Link(
+                href=f"/project?page={proj_pk}",
+                style={"textDecoration": "none"},
+                children=dbc.Card(
+                    dbc.CardBody([
+                        html.H5(
+                            row["name"],
+                            className="card-title fw-bold fs-5 mb-2"
+                        ),
+                        html.P(
+                            f"생성일: {format_date(row['created_at'])}",
+                            className="card-text fs-7 mb-1"
+                        ),
+                        html.P(
+                            f"콘크리트 : {conc_cnt} 개",
+                            className="card-text fs-7 mb-1"
+                        ),
+                        html.P(
+                            f"센서 : {sensor_cnt} 개",
+                            className="card-text fs-7 mb-1"
+                        ),
+                        html.P(
+                            f"{row['user_company_pk']}",
+                            className="card-text fs-9 mb-1"
+                        ),
+                    ], className="d-flex flex-column align-items-center justify-content-center h-100"),
+                    style=card_style,
+                    className="project-card mb-4"
+                )
             )
         )
 
     card_grid = dbc.Row(
-        [dbc.Col(card, xs=12, sm=6, md=4) for card in cards],
+        [dbc.Col(card, xs=12, sm=6, md=3, lg=3) for card in cards],
         justify="center",
         style={
             "rowGap": "4rem",       # 세로 간격
