@@ -261,6 +261,11 @@ def auto_inp():
         existing = get_subfolders('inp')
         logger.info(f"Concretes to process: {[c['concrete_pk'] for c in concrete_list]}")
         for conc in concrete_list:
+            # activate가 0인 경우에만 처리
+            if conc.get('activate', 1) != 0:
+                logger.info(f"Skipping concrete_pk={conc['concrete_pk']} because activate != 0")
+                continue
+                
             cpk = conc['concrete_pk']
             if cpk not in existing:
                 os.makedirs(f'inp/{cpk}', exist_ok=True)
