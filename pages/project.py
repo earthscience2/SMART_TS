@@ -859,8 +859,12 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
     z_mid = float(np.median(z_coords))
     # 최초 진입 시에만 중앙값, 이후에는 사용자가 조작한 값 유지
     def ensure_scalar(val, default):
+        # 리스트/배열이면 첫 번째 값만 사용
         if isinstance(val, (list, np.ndarray)):
-            return float(val[0])
+            if len(val) > 0:
+                return float(val[0])
+            else:
+                return float(default)
         elif val is not None:
             return float(val)
         else:
@@ -868,6 +872,8 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
     x0 = ensure_scalar(x_val, x_mid)
     y0 = ensure_scalar(y_val, y_mid)
     z0 = ensure_scalar(z_val, z_mid)
+    # 디버깅용: 실제 값과 shape 출력
+    print(f"[DEBUG] x0: {x0}, type: {type(x0)}, y0: {y0}, type: {type(y0)}, z0: {z0}, type: {type(z0)}")
     # 3D 뷰(작게)
     coords = np.array([[x, y, z] for x, y, z in zip(x_coords, y_coords, z_coords)])
     fig_3d = go.Figure(data=go.Volume(
