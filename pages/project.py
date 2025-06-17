@@ -547,9 +547,72 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
             ]),
         ])
     elif active_tab == "tab-section":
+        # 단면도 탭: 시간 슬라이더, 입력창, 3D 뷰(작게), X/Y/Z 단면도
+        # 슬라이더 상태는 3D 뷰 Store에서 복원
+        if viewer_data and 'slider' in viewer_data:
+            slider = viewer_data['slider']
+            slider_min = slider.get('min', 0)
+            slider_max = slider.get('max', 5)
+            slider_marks = slider.get('marks', {})
+            slider_value = slider.get('value', 0)
+        else:
+            slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
         return html.Div([
-            html.H4("단면도", className="text-center mt-5"),
-            html.P("준비 중입니다...", className="text-center text-muted"),
+            # 시간 슬라이더 (상단)
+            html.Div([
+                html.Label("시간", className="form-label"),
+                dcc.Slider(
+                    id="time-slider-section",
+                    min=slider_min,
+                    max=slider_max,
+                    step=1,
+                    value=slider_value,
+                    marks=slider_marks,
+                    tooltip={"placement": "bottom", "always_visible": True},
+                ),
+            ], className="mb-3"),
+            dbc.Row([
+                # 입력창 (x, y, z)
+                dbc.Col([
+                    html.Div([
+                        html.Label("단면 위치 설정", className="mb-2"),
+                        dbc.InputGroup([
+                            dbc.InputGroupText("X"),
+                            dbc.Input(id="section-x-input", type="number", step=0.01, value=None),
+                        ], className="mb-2"),
+                        dbc.InputGroup([
+                            dbc.InputGroupText("Y"),
+                            dbc.Input(id="section-y-input", type="number", step=0.01, value=None),
+                        ], className="mb-2"),
+                        dbc.InputGroup([
+                            dbc.InputGroupText("Z"),
+                            dbc.Input(id="section-z-input", type="number", step=0.01, value=None),
+                        ], className="mb-2"),
+                    ], style={"padding": "10px"}),
+                ], md=2),
+                # 3D 뷰(작게)
+                dbc.Col([
+                    html.Div([
+                        dcc.Graph(
+                            id="viewer-3d-section",
+                            style={"height": "30vh", "border": "2px solid #dee2e6", "borderRadius": "8px"},
+                            config={"scrollZoom": True},
+                        ),
+                    ], style={"padding": "10px"}),
+                ], md=3),
+                # X 단면도
+                dbc.Col([
+                    dcc.Graph(id="viewer-section-x", style={"height": "30vh"}),
+                ], md=2),
+                # Y 단면도
+                dbc.Col([
+                    dcc.Graph(id="viewer-section-y", style={"height": "30vh"}),
+                ], md=2),
+                # Z 단면도
+                dbc.Col([
+                    dcc.Graph(id="viewer-section-z", style={"height": "30vh"}),
+                ], md=3),
+            ]),
         ])
     elif active_tab == "tab-temp":
         return html.Div([
