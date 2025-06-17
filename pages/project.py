@@ -560,19 +560,24 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
         else:
             slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
         return html.Div([
+            # 상단 파일명 표시
+            html.Div(id="section-current-file-title", style={"fontWeight": 600, "marginBottom": "8px"}),
             # 입력창 (x, y, z)
             html.Div([
                 html.Label("단면 위치 설정", className="mb-2"),
                 html.Div([
                     dbc.InputGroup([
+                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#ff3333", "marginRight": "6px"}),
                         dbc.InputGroupText("X"),
                         dbc.Input(id="section-x-input", type="number", step=0.1, value=None, style={"width": "80px"}),
                     ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
                     dbc.InputGroup([
+                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#3388ff", "marginRight": "6px"}),
                         dbc.InputGroupText("Y"),
                         dbc.Input(id="section-y-input", type="number", step=0.1, value=None, style={"width": "80px"}),
                     ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
                     dbc.InputGroup([
+                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#33cc33", "marginRight": "6px"}),
                         dbc.InputGroupText("Z"),
                         dbc.Input(id="section-z-input", type="number", step=0.1, value=None, style={"width": "80px"}),
                     ], style={"display": "inline-flex", "verticalAlign": "middle"}),
@@ -591,7 +596,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
             ], className="mb-3"),
-            # 2x2 배열 배치 (컬러바 제거)
+            # 2x2+컬러바 배열 배치
             dbc.Row([
                 dbc.Col([
                     dbc.Row([
@@ -610,7 +615,10 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
                             dcc.Graph(id="viewer-section-z", style={"height": "32vh"}),
                         ], md=6),
                     ]),
-                ], md=12),
+                ], md=10),
+                dbc.Col([
+                    dcc.Graph(id="section-colorbar", style={"height": "66vh", "width": "80px", "marginLeft": "-30px", "display": "block"}),
+                ], md=2),
             ]),
         ])
     elif active_tab == "tab-temp":
@@ -770,6 +778,8 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     Output("section-x-input", "min"), Output("section-x-input", "max"), Output("section-x-input", "value"),
     Output("section-y-input", "min"), Output("section-y-input", "max"), Output("section-y-input", "value"),
     Output("section-z-input", "min"), Output("section-z-input", "max"), Output("section-z-input", "value"),
+    Output("section-colorbar", "figure"),
+    Output("section-current-file-title", "children"),
     Input("time-slider-section", "value"),
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
@@ -784,19 +794,20 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
     import numpy as np
     from scipy.interpolate import griddata
     if not selected_rows:
-        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5
+        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, go.Figure(), ""
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
     inp_dir = f"inp/{concrete_pk}"
     inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
     if not inp_files:
-        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5
+        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, go.Figure(), ""
     # 시간 인덱스 안전 처리
     if time_idx is None or (isinstance(time_idx, float) and math.isnan(time_idx)) or (isinstance(time_idx, str) and not str(time_idx).isdigit()):
         file_idx = len(inp_files)-1
     else:
         file_idx = min(int(time_idx), len(inp_files)-1)
     current_file = inp_files[file_idx]
+    current_time = os.path.basename(current_file).split(".")[0]
     # inp 파일 파싱 (노드, 온도)
     with open(current_file, 'r') as f:
         lines = f.readlines()
@@ -844,7 +855,6 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
     x_mid = float(np.median(x_coords))
     y_mid = float(np.median(y_coords))
     z_mid = float(np.median(z_coords))
-    # 최초 진입 시에만 중앙값, 이후에는 사용자가 조작한 값 유지
     def round01(val):
         return round(val * 10) / 10 if val is not None else None
     x0 = round01(x_val) if x_val is not None else round01(x_mid)
@@ -905,7 +915,7 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
             fig_x = go.Figure()
     else:
         fig_x = go.Figure()
-    fig_x.update_layout(title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
+    fig_x.update_layout(title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30), aspectmode='data')
     # Y 단면 (y ≈ y0, 리니어 보간, 컬러바 없음)
     mask_y = np.abs(y_coords - y0) < tol
     if np.any(mask_y):
@@ -923,7 +933,7 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
             fig_y = go.Figure()
     else:
         fig_y = go.Figure()
-    fig_y.update_layout(title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
+    fig_y.update_layout(title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30), aspectmode='data')
     # Z 단면 (z ≈ z0, 리니어 보간, 컬러바 없음)
     mask_z = np.abs(z_coords - z0) < tol
     if np.any(mask_z):
@@ -941,6 +951,12 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
             fig_z = go.Figure()
     else:
         fig_z = go.Figure()
-    fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30))
+    fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30), aspectmode='data')
+    # 컬러바(3D 뷰 기준)만 따로 생성, 온도 표시 소수점 1자리
+    colorbar_fig = go.Figure(go.Heatmap(
+        z=[[tmin, tmax]], colorscale=[[0, 'blue'], [1, 'red']], showscale=True, colorbar=dict(
+            title='Temperature (°C)', thickness=18, len=0.8, y=0.5, yanchor='middle',
+            tickformat='.1f'), zmin=tmin, zmax=tmax))
+    colorbar_fig.update_layout(margin=dict(l=0, r=0, t=0, b=0), xaxis=dict(visible=False), yaxis=dict(visible=False), width=80, height=300)
     # step=0.1로 반환
-    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0
+    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, colorbar_fig, f"현재 파일: {current_time}"
