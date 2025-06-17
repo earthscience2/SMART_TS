@@ -104,7 +104,7 @@ layout = dbc.Container(
                         dbc.Tabs([
                             dbc.Tab(label="3D뷰", tab_id="tab-3d"),
                             dbc.Tab(label="단면도", tab_id="tab-section"),
-                            dbc.Tab(label="온도분포", tab_id="tab-temp"),
+                            dbc.Tab(label="온도 변화", tab_id="tab-temp"),
                             dbc.Tab(label="수치해석", tab_id="tab-analysis"),
                         ], id="tabs-main", active_tab="tab-3d"),
                         # 탭 콘텐츠
@@ -621,7 +621,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             ]),
         ]), current_file_title
     elif active_tab == "tab-temp":
-        # 온도분포 탭: 입력창(맨 위), 3D 뷰(왼쪽, 콘크리트 모양만, 온도 없음, 입력 위치 표시), 오른쪽 시간에 따른 온도 정보(빈 그래프)
+        # 온도 변화 탭: 입력창(맨 위), 3D 뷰(왼쪽, 콘크리트 모양만, 온도 없음, 입력 위치 표시), 오른쪽 시간에 따른 온도 정보(그래프)
         # 기본값 계산용
         if selected_rows and tbl_data:
             row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
@@ -636,6 +636,11 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 x_mid, y_mid, z_mid = 0.5, 0.5, 0.5
         else:
             x_mid, y_mid, z_mid = 0.5, 0.5, 0.5
+        # Store에 기본값 저장: 탭이 눌릴 때마다 입력값이 기본값으로 초기화되도록
+        import dash
+        dash.callback_context.response.set_cookie('temp-x-input', str(round(x_mid,1)))
+        dash.callback_context.response.set_cookie('temp-y-input', str(round(y_mid,1)))
+        dash.callback_context.response.set_cookie('temp-z-input', str(round(z_mid,1)))
         return html.Div([
             # 입력창 (맨 위)
             html.Div([
@@ -1134,6 +1139,8 @@ def update_temp_tab(x, y, z, selected_rows, tbl_data):
     # 그래프 생성
     fig_temp = go.Figure()
     if temp_times and temp_values:
-        fig_temp.add_trace(go.Scatter(x=temp_times, y=temp_values, mode='lines+markers', name='온도'))
+        # 한글 날짜 포맷으로 변환
+        x_labels = [dt.strftime('%Y년 %-m월 %-d일 %H시') for dt in temp_times]
+        fig_temp.add_trace(go.Scatter(x=x_labels, y=temp_values, mode='lines+markers', name='온도'))
     fig_temp.update_layout(title="시간에 따른 온도 정보", xaxis_title="시간", yaxis_title="온도(°C)")
     return fig_3d, fig_temp
