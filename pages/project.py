@@ -787,7 +787,7 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     Input("section-z-input", "value"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
-    prevent_initial_call=False,
+    prevent_initial_call=True,
 )
 def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data):
     import math
