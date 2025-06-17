@@ -992,19 +992,20 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
     # step=0.1로 반환
     return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, current_file_title
 
-# 3D 뷰/단면도 슬라이더 값이 바뀌면 Store를 업데이트 (time-slider-section은 별도 콜백, 중복 Output 없음)
+# 3D 뷰/단면도 슬라이더 값이 바뀌면 Store를 업데이트 (중복 Output 제거, 하나의 콜백으로 합침)
 @callback(
     Output("shared-time-slider", "data"),
     Input("time-slider", "value"),
-    prevent_initial_call=True,
-)
-def update_shared_time_slider(val_3d):
-    return val_3d
-
-@callback(
-    Output("shared-time-slider", "data"),
     Input("time-slider-section", "value"),
     prevent_initial_call=True,
 )
-def update_shared_time_section(val):
-    return val
+def update_shared_time_slider(val_3d, val_section):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        return 0
+    trigger = ctx.triggered[0]["prop_id"].split(".")[0]
+    if trigger == "time-slider":
+        return val_3d
+    elif trigger == "time-slider-section":
+        return val_section
+    return 0
