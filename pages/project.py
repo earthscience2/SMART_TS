@@ -563,18 +563,26 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
             # 입력창 (x, y, z)
             html.Div([
                 html.Label("단면 위치 설정", className="mb-2"),
-                dbc.InputGroup([
-                    dbc.InputGroupText("X"),
-                    dcc.Input(id="section-x-input", type="number", step=0.01, value=None, className="form-control", inputMode="numeric", style={"width": "100%"}),
-                ], className="mb-2 d-inline-flex me-2"),
-                dbc.InputGroup([
-                    dbc.InputGroupText("Y"),
-                    dcc.Input(id="section-y-input", type="number", step=0.01, value=None, className="form-control", inputMode="numeric", style={"width": "100%"}),
-                ], className="mb-2 d-inline-flex me-2"),
-                dbc.InputGroup([
-                    dbc.InputGroupText("Z"),
-                    dcc.Input(id="section-z-input", type="number", step=0.01, value=None, className="form-control", inputMode="numeric", style={"width": "100%"}),
-                ], className="mb-2 d-inline-flex"),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.InputGroup([
+                            dbc.InputGroupText("X"),
+                            dcc.Input(id="section-x-input", type="number", step=0.1, value=None, className="form-control", inputMode="numeric", style={"width": "100%"}),
+                        ]),
+                    ], width=4),
+                    dbc.Col([
+                        dbc.InputGroup([
+                            dbc.InputGroupText("Y"),
+                            dcc.Input(id="section-y-input", type="number", step=0.1, value=None, className="form-control", inputMode="numeric", style={"width": "100%"}),
+                        ]),
+                    ], width=4),
+                    dbc.Col([
+                        dbc.InputGroup([
+                            dbc.InputGroupText("Z"),
+                            dcc.Input(id="section-z-input", type="number", step=0.1, value=None, className="form-control", inputMode="numeric", style={"width": "100%"}),
+                        ]),
+                    ], width=4),
+                ], className="g-2 mb-2"),
             ], style={"padding": "10px"}),
             # 시간 슬라이더 (상단)
             html.Div([
@@ -865,106 +873,54 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
         scene=dict(aspectmode='data', bgcolor='white'),
         margin=dict(l=0, r=0, t=0, b=0)
     )
-    # 단면 위치 평면(케이크 자르듯)
-    # X 평면
-    fig_3d.add_trace(go.Surface(
-        x=[[x0, x0], [x0, x0]],
-        y=[[y_min, y_max], [y_min, y_max]],
-        z=[[z_min, z_min], [z_max, z_max]],
-        showscale=False, opacity=0.3, colorscale=[[0, 'red'], [1, 'red']],
-        hoverinfo='skip', name='X-section', showlegend=False
-    ))
-    # Y 평면
-    fig_3d.add_trace(go.Surface(
-        x=[[x_min, x_max], [x_min, x_max]],
-        y=[[y0, y0], [y0, y0]],
-        z=[[z_min, z_min], [z_max, z_max]],
-        showscale=False, opacity=0.3, colorscale=[[0, 'blue'], [1, 'blue']],
-        hoverinfo='skip', name='Y-section', showlegend=False
-    ))
-    # Z 평면
-    fig_3d.add_trace(go.Surface(
-        x=[[x_min, x_max], [x_min, x_max]],
-        y=[[y_min, y_min], [y_max, y_max]],
-        z=[[z0, z0], [z0, z0]],
-        showscale=False, opacity=0.3, colorscale=[[0, 'green'], [1, 'green']],
-        hoverinfo='skip', name='Z-section', showlegend=False
-    ))
-    # X 단면 (x ≈ x0, 리니어 보간, 컬러바 없음)
-    tol = 0.05
-    mask_x = np.abs(x_coords - x0) < tol
-    if np.any(mask_x):
-        yb, zb, tb = y_coords[mask_x], z_coords[mask_x], temps[mask_x]
-        if len(yb) > 3:
-            y_bins = np.linspace(yb.min(), yb.max(), 40)
-            z_bins = np.linspace(zb.min(), zb.max(), 40)
-            yy, zz = np.meshgrid(y_bins, z_bins)
-            points = np.column_stack([yb, zb])
-            values = tb
-            grid = griddata(points, values, (yy, zz), method='linear')
-            fig_x = go.Figure(go.Heatmap(
-                x=y_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, showscale=False, zsmooth='best'))
-        else:
-            fig_x = go.Figure()
-    else:
-        fig_x = go.Figure()
-    fig_x.update_layout(title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
-    # Y 단면 (y ≈ y0, 리니어 보간, 컬러바 없음)
-    mask_y = np.abs(y_coords - y0) < tol
-    if np.any(mask_y):
-        xb, zb, tb = x_coords[mask_y], z_coords[mask_y], temps[mask_y]
-        if len(xb) > 3:
-            x_bins = np.linspace(xb.min(), xb.max(), 40)
-            z_bins = np.linspace(zb.min(), zb.max(), 40)
-            xx, zz = np.meshgrid(x_bins, z_bins)
-            points = np.column_stack([xb, zb])
-            values = tb
-            grid = griddata(points, values, (xx, zz), method='linear')
-            fig_y = go.Figure(go.Heatmap(
-                x=x_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, showscale=False, zsmooth='best'))
-        else:
-            fig_y = go.Figure()
-    else:
-        fig_y = go.Figure()
-    fig_y.update_layout(title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
-    # Z 단면 (z ≈ z0, 리니어 보간, 컬러바 없음)
-    mask_z = np.abs(z_coords - z0) < tol
-    if np.any(mask_z):
-        xb, yb, tb = x_coords[mask_z], y_coords[mask_z], temps[mask_z]
-        if len(xb) > 3:
-            x_bins = np.linspace(xb.min(), xb.max(), 40)
-            y_bins = np.linspace(yb.min(), yb.max(), 40)
-            xx, yy = np.meshgrid(x_bins, y_bins)
-            points = np.column_stack([xb, yb])
-            values = tb
-            grid = griddata(points, values, (xx, yy), method='linear')
-            fig_z = go.Figure(go.Heatmap(
-                x=x_bins, y=y_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, showscale=False, zsmooth='best'))
-        else:
-            fig_z = go.Figure()
-    else:
-        fig_z = go.Figure()
-    fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30))
+    # 콘크리트 외곽선(모서리) 항상 표시
+    try:
+        dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
+        poly_nodes = np.array(dims["nodes"])
+        poly_h = float(dims["h"])
+        n = len(poly_nodes)
+        x0, y0 = poly_nodes[:,0], poly_nodes[:,1]
+        z0 = np.zeros(n)
+        x1, y1 = x0, y0
+        z1 = np.full(n, poly_h)
+        fig_3d.add_trace(go.Scatter3d(
+            x=np.append(x0, x0[0]), y=np.append(y0, y0[0]), z=np.append(z0, z0[0]),
+            mode='lines', line=dict(width=3, color='black'), showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(
+            x=np.append(x1, x1[0]), y=np.append(y1, y1[0]), z=np.append(z1, z1[0]),
+            mode='lines', line=dict(width=3, color='black'), showlegend=False, hoverinfo='skip'))
+        for i in range(n):
+            fig_3d.add_trace(go.Scatter3d(
+                x=[x0[i], x1[i]], y=[y0[i], y1[i]], z=[z0[i], z1[i]],
+                mode='lines', line=dict(width=3, color='black'), showlegend=False, hoverinfo='skip'))
+    except Exception:
+        pass
     # 컬러바(3D 뷰 기준)만 따로 생성
-    colorbar_fig = go.Figure(go.Heatmap(
-        z=[[tmin, tmax]], colorscale=[[0, 'blue'], [1, 'red']], showscale=True,
-        colorbar=dict(
-            title=dict(text='온도 (°C)', font=dict(size=18)),
-            thickness=30,
-            len=0.95,
-            y=0.5,
-            yanchor='middle',
-            tickfont=dict(size=16),
-            outlinewidth=1,
-            outlinecolor='black',
-            ticks='outside',
-            ticklen=8,
+    colorbar_fig = go.Figure()
+    colorbar_fig.add_trace(go.Scatter(
+        x=[None], y=[None],
+        mode='markers',
+        marker=dict(
+            colorscale=[[0, 'blue'], [1, 'red']],
+            cmin=tmin, cmax=tmax,
+            colorbar=dict(
+                title=dict(text='온도 (°C)', font=dict(size=18)),
+                thickness=30,
+                len=0.95,
+                y=0.5,
+                yanchor='middle',
+                tickfont=dict(size=16),
+                outlinewidth=1,
+                outlinecolor='black',
+                ticks='outside',
+                ticklen=8,
+            ),
+            showscale=True,
         ),
-        zmin=tmin, zmax=tmax))
+        showlegend=False
+    ))
     colorbar_fig.update_layout(
         margin=dict(l=0, r=0, t=0, b=0),
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
         width=90, height=420,
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)'
