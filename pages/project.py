@@ -565,15 +565,15 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
                 html.Label("단면 위치 설정", className="mb-2"),
                 dbc.InputGroup([
                     dbc.InputGroupText("X"),
-                    dbc.Input(id="section-x-input", type="number", step=0.01, value=None, **{"onWheel": "this.blur()"}),
+                    dbc.Input(id="section-x-input", type="number", step=0.01, value=None),
                 ], className="mb-2 d-inline-flex me-2"),
                 dbc.InputGroup([
                     dbc.InputGroupText("Y"),
-                    dbc.Input(id="section-y-input", type="number", step=0.01, value=None, **{"onWheel": "this.blur()"}),
+                    dbc.Input(id="section-y-input", type="number", step=0.01, value=None),
                 ], className="mb-2 d-inline-flex me-2"),
                 dbc.InputGroup([
                     dbc.InputGroupText("Z"),
-                    dbc.Input(id="section-z-input", type="number", step=0.01, value=None, **{"onWheel": "this.blur()"}),
+                    dbc.Input(id="section-z-input", type="number", step=0.01, value=None),
                 ], className="mb-2 d-inline-flex"),
             ], style={"padding": "10px"}),
             # 시간 슬라이더 (상단)
@@ -850,9 +850,9 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
     y_mid = float(np.median(y_coords))
     z_mid = float(np.median(z_coords))
     # 최초 진입 시에만 중앙값, 이후에는 사용자가 조작한 값 유지
-    x0 = x_val if x_val is not None else x_mid
-    y0 = y_val if y_val is not None else y_mid
-    z0 = z_val if z_val is not None else z_mid
+    x0 = x_val if x_val is not None else (prev_x if prev_x is not None else x_mid)
+    y0 = y_val if y_val is not None else (prev_y if prev_y is not None else y_mid)
+    z0 = z_val if z_val is not None else (prev_z if prev_z is not None else z_mid)
     # 3D 뷰(작게)
     coords = np.array([[x, y, z] for x, y, z in zip(x_coords, y_coords, z_coords)])
     fig_3d = go.Figure(data=go.Volume(
@@ -903,7 +903,7 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
             values = tb
             grid = griddata(points, values, (yy, zz), method='linear')
             fig_x = go.Figure(go.Heatmap(
-                x=y_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, showscale=False, zsmooth='best'))
+                x=y_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
         else:
             fig_x = go.Figure()
     else:
@@ -921,7 +921,7 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
             values = tb
             grid = griddata(points, values, (xx, zz), method='linear')
             fig_y = go.Figure(go.Heatmap(
-                x=x_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, showscale=False, zsmooth='best'))
+                x=x_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
         else:
             fig_y = go.Figure()
     else:
@@ -939,7 +939,7 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
             values = tb
             grid = griddata(points, values, (xx, yy), method='linear')
             fig_z = go.Figure(go.Heatmap(
-                x=x_bins, y=y_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, showscale=False, zsmooth='best'))
+                x=x_bins, y=y_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
         else:
             fig_z = go.Figure()
     else:
@@ -947,28 +947,7 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
     fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30))
     # 컬러바(3D 뷰 기준)만 따로 생성
     colorbar_fig = go.Figure(go.Heatmap(
-        z=[[tmin, tmax]], colorscale=[[0, 'blue'], [1, 'red']], showscale=True,
-        colorbar=dict(
-            title='온도 (°C)',
-            thickness=30,
-            len=0.95,
-            y=0.5,
-            yanchor='middle',
-            tickfont=dict(size=16),
-            titlefont=dict(size=18),
-            outlinewidth=1,
-            outlinecolor='black',
-            ticks='outside',
-            ticklen=8,
-        ),
-        zmin=tmin, zmax=tmax))
-    colorbar_fig.update_layout(
-        margin=dict(l=0, r=0, t=0, b=0),
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
-        width=90, height=420,
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)'
-    )
+        z=[[tmin, tmax]], colorscale=[[0, 'blue'], [1, 'red']], showscale=True, colorbar=dict(title='Temperature (°C)', thickness=18, len=0.8, y=0.5, yanchor='middle'), zmin=tmin, zmax=tmax))
+    colorbar_fig.update_layout(margin=dict(l=0, r=0, t=0, b=0), xaxis=dict(visible=False), yaxis=dict(visible=False), width=80, height=300)
     # step=0.1로 반환
     return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, colorbar_fig
