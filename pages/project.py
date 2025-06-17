@@ -565,15 +565,16 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
                 html.Label("단면 위치 설정", className="mb-2"),
                 dbc.InputGroup([
                     dbc.InputGroupText("X"),
-                    dcc.Input(id="section-x-input", type="number", step=0.01, value=None, className="form-control", inputMode="decimal", style={"width": "100%"}, inputProps={"onWheel": "this.blur()"}),
+                    # 마우스 휠로 값 변경 방지는 assets/disable-wheel.js에서 처리
+                    dcc.Input(id="section-x-input", type="number", step=0.01, value=None, className="form-control", inputMode="decimal", style={"width": "100%"}),
                 ], className="mb-2 d-inline-flex me-2"),
                 dbc.InputGroup([
                     dbc.InputGroupText("Y"),
-                    dcc.Input(id="section-y-input", type="number", step=0.01, value=None, className="form-control", inputMode="decimal", style={"width": "100%"}, inputProps={"onWheel": "this.blur()"}),
+                    dcc.Input(id="section-y-input", type="number", step=0.01, value=None, className="form-control", inputMode="decimal", style={"width": "100%"}),
                 ], className="mb-2 d-inline-flex me-2"),
                 dbc.InputGroup([
                     dbc.InputGroupText("Z"),
-                    dcc.Input(id="section-z-input", type="number", step=0.01, value=None, className="form-control", inputMode="decimal", style={"width": "100%"}, inputProps={"onWheel": "this.blur()"}),
+                    dcc.Input(id="section-z-input", type="number", step=0.01, value=None, className="form-control", inputMode="decimal", style={"width": "100%"}),
                 ], className="mb-2 d-inline-flex"),
             ], style={"padding": "10px"}),
             # 시간 슬라이더 (상단)
