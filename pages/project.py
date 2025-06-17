@@ -396,10 +396,22 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
                 node_id = int(parts[0])
                 temp = float(parts[1])
                 temperatures[node_id] = temp
-    x_coords = np.array([n['x'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
-    y_coords = np.array([n['y'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
-    z_coords = np.array([n['z'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
-    temps = np.array([temperatures[k] for k in nodes.keys() if k in temperatures])
+
+    # 노드번호 기준으로 온도와 좌표를 매칭해서 배열 생성
+    x_coords = []
+    y_coords = []
+    z_coords = []
+    temps = []
+    for node_id, node in nodes.items():
+        if node_id in temperatures:
+            x_coords.append(node['x'])
+            y_coords.append(node['y'])
+            z_coords.append(node['z'])
+            temps.append(temperatures[node_id])
+    x_coords = np.array(x_coords)
+    y_coords = np.array(y_coords)
+    z_coords = np.array(z_coords)
+    temps = np.array(temps)
 
     # 콘크리트 dims 파싱 (꼭짓점, 높이)
     try:
@@ -845,10 +857,20 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
                 node_id = int(parts[0])
                 temp = float(parts[1])
                 temperatures[node_id] = temp
-    x_coords = np.array([n['x'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
-    y_coords = np.array([n['y'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
-    z_coords = np.array([n['z'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
-    temps = np.array([temperatures[k] for k in nodes.keys() if k in temperatures])
+    x_coords = []
+    y_coords = []
+    z_coords = []
+    temps = []
+    for node_id, node in nodes.items():
+        if node_id in temperatures:
+            x_coords.append(node['x'])
+            y_coords.append(node['y'])
+            z_coords.append(node['z'])
+            temps.append(temperatures[node_id])
+    x_coords = np.array(x_coords)
+    y_coords = np.array(y_coords)
+    z_coords = np.array(z_coords)
+    temps = np.array(temps)
     tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
     # 입력창 min/max/기본값 자동 설정
     x_min, x_max = float(np.min(x_coords)), float(np.max(x_coords))
