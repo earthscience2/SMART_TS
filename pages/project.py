@@ -396,22 +396,10 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
                 node_id = int(parts[0])
                 temp = float(parts[1])
                 temperatures[node_id] = temp
-
-    # 노드번호 기준으로 온도와 좌표를 매칭해서 배열 생성
-    x_coords = []
-    y_coords = []
-    z_coords = []
-    temps = []
-    for node_id, node in nodes.items():
-        if node_id in temperatures:
-            x_coords.append(node['x'])
-            y_coords.append(node['y'])
-            z_coords.append(node['z'])
-            temps.append(temperatures[node_id])
-    x_coords = np.array(x_coords)
-    y_coords = np.array(y_coords)
-    z_coords = np.array(z_coords)
-    temps = np.array(temps)
+    x_coords = np.array([n['x'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
+    y_coords = np.array([n['y'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
+    z_coords = np.array([n['z'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
+    temps = np.array([temperatures[k] for k in nodes.keys() if k in temperatures])
 
     # 콘크리트 dims 파싱 (꼭짓점, 높이)
     try:
@@ -575,26 +563,18 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
             # 입력창 (x, y, z)
             html.Div([
                 html.Label("단면 위치 설정", className="mb-2"),
-                dbc.Row([
-                    dbc.Col([
-                        dbc.InputGroup([
-                            dbc.InputGroupText("X"),
-                            dcc.Input(id="section-x-input", type="number", step=0.1, value=None, className="form-control", inputMode="numeric", style={"width": "100%"}),
-                        ]),
-                    ], width=4),
-                    dbc.Col([
-                        dbc.InputGroup([
-                            dbc.InputGroupText("Y"),
-                            dcc.Input(id="section-y-input", type="number", step=0.1, value=None, className="form-control", inputMode="numeric", style={"width": "100%"}),
-                        ]),
-                    ], width=4),
-                    dbc.Col([
-                        dbc.InputGroup([
-                            dbc.InputGroupText("Z"),
-                            dcc.Input(id="section-z-input", type="number", step=0.1, value=None, className="form-control", inputMode="numeric", style={"width": "100%"}),
-                        ]),
-                    ], width=4),
-                ], className="g-2 mb-2"),
+                dbc.InputGroup([
+                    dbc.InputGroupText("X"),
+                    dcc.Input(id="section-x-input", type="number", step=0.01, value=None, className="form-control", inputMode="numeric", style={"width": "100%"}),
+                ], className="mb-2 d-inline-flex me-2"),
+                dbc.InputGroup([
+                    dbc.InputGroupText("Y"),
+                    dcc.Input(id="section-y-input", type="number", step=0.01, value=None, className="form-control", inputMode="numeric", style={"width": "100%"}),
+                ], className="mb-2 d-inline-flex me-2"),
+                dbc.InputGroup([
+                    dbc.InputGroupText("Z"),
+                    dcc.Input(id="section-z-input", type="number", step=0.01, value=None, className="form-control", inputMode="numeric", style={"width": "100%"}),
+                ], className="mb-2 d-inline-flex"),
             ], style={"padding": "10px"}),
             # 시간 슬라이더 (상단)
             html.Div([
@@ -857,20 +837,10 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
                 node_id = int(parts[0])
                 temp = float(parts[1])
                 temperatures[node_id] = temp
-    x_coords = []
-    y_coords = []
-    z_coords = []
-    temps = []
-    for node_id, node in nodes.items():
-        if node_id in temperatures:
-            x_coords.append(node['x'])
-            y_coords.append(node['y'])
-            z_coords.append(node['z'])
-            temps.append(temperatures[node_id])
-    x_coords = np.array(x_coords)
-    y_coords = np.array(y_coords)
-    z_coords = np.array(z_coords)
-    temps = np.array(temps)
+    x_coords = np.array([n['x'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
+    y_coords = np.array([n['y'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
+    z_coords = np.array([n['z'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
+    temps = np.array([temperatures[k] for k in nodes.keys() if k in temperatures])
     tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
     # 입력창 min/max/기본값 자동 설정
     x_min, x_max = float(np.min(x_coords)), float(np.max(x_coords))
@@ -879,18 +849,50 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
     x_mid = float(np.median(x_coords))
     y_mid = float(np.median(y_coords))
     z_mid = float(np.median(z_coords))
-    # tol 정의를 mask_x, mask_y, mask_z보다 위로 이동
+    # 최초 진입 시에만 중앙값, 이후에는 사용자가 조작한 값 유지
+    x0 = x_val if x_val is not None else x_mid
+    y0 = y_val if y_val is not None else y_mid
+    z0 = z_val if z_val is not None else z_mid
+    # 3D 뷰(작게)
+    coords = np.array([[x, y, z] for x, y, z in zip(x_coords, y_coords, z_coords)])
+    fig_3d = go.Figure(data=go.Volume(
+        x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
+        opacity=0.1, surface_count=15, colorscale=[[0, 'blue'], [1, 'red']],
+        colorbar=None, cmin=tmin, cmax=tmax, showscale=False
+    ))
+    fig_3d.update_layout(
+        uirevision='constant',
+        scene=dict(aspectmode='data', bgcolor='white'),
+        margin=dict(l=0, r=0, t=0, b=0)
+    )
+    # 단면 위치 평면(케이크 자르듯)
+    # X 평면
+    fig_3d.add_trace(go.Surface(
+        x=[[x0, x0], [x0, x0]],
+        y=[[y_min, y_max], [y_min, y_max]],
+        z=[[z_min, z_min], [z_max, z_max]],
+        showscale=False, opacity=0.3, colorscale=[[0, 'red'], [1, 'red']],
+        hoverinfo='skip', name='X-section', showlegend=False
+    ))
+    # Y 평면
+    fig_3d.add_trace(go.Surface(
+        x=[[x_min, x_max], [x_min, x_max]],
+        y=[[y0, y0], [y0, y0]],
+        z=[[z_min, z_min], [z_max, z_max]],
+        showscale=False, opacity=0.3, colorscale=[[0, 'blue'], [1, 'blue']],
+        hoverinfo='skip', name='Y-section', showlegend=False
+    ))
+    # Z 평면
+    fig_3d.add_trace(go.Surface(
+        x=[[x_min, x_max], [x_min, x_max]],
+        y=[[y_min, y_min], [y_max, y_max]],
+        z=[[z0, z0], [z0, z0]],
+        showscale=False, opacity=0.3, colorscale=[[0, 'green'], [1, 'green']],
+        hoverinfo='skip', name='Z-section', showlegend=False
+    ))
+    # X 단면 (x ≈ x0, 리니어 보간, 컬러바 없음)
     tol = 0.05
-    # mask_x 연산 전에 shape 및 예시 출력
-    print(f"[DEBUG] x_coords shape: {x_coords.shape}, x_coords 예시: {x_coords[:5]}")
-    print(f"[DEBUG] x0 shape: {np.shape(x0)}, x0: {x0}")
     mask_x = np.abs(x_coords - x0) < tol
-    print(f"[DEBUG] y_coords shape: {y_coords.shape}, y_coords 예시: {y_coords[:5]}")
-    print(f"[DEBUG] y0 shape: {np.shape(y0)}, y0: {y0}")
-    mask_y = np.abs(y_coords - y0) < tol
-    print(f"[DEBUG] z_coords shape: {z_coords.shape}, z_coords 예시: {z_coords[:5]}")
-    print(f"[DEBUG] z0 shape: {np.shape(z0)}, z0: {z0}")
-    mask_z = np.abs(z_coords - z0) < tol
     if np.any(mask_x):
         yb, zb, tb = y_coords[mask_x], z_coords[mask_x], temps[mask_x]
         if len(yb) > 3:
@@ -901,14 +903,14 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
             values = tb
             grid = griddata(points, values, (yy, zz), method='linear')
             fig_x = go.Figure(go.Heatmap(
-                x=y_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']],
-                zmin=tmin, zmax=tmax, showscale=False, zsmooth='best'))
+                x=y_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, showscale=False, zsmooth='best'))
         else:
             fig_x = go.Figure()
     else:
         fig_x = go.Figure()
     fig_x.update_layout(title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
-    # Y 단면
+    # Y 단면 (y ≈ y0, 리니어 보간, 컬러바 없음)
+    mask_y = np.abs(y_coords - y0) < tol
     if np.any(mask_y):
         xb, zb, tb = x_coords[mask_y], z_coords[mask_y], temps[mask_y]
         if len(xb) > 3:
@@ -919,14 +921,14 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
             values = tb
             grid = griddata(points, values, (xx, zz), method='linear')
             fig_y = go.Figure(go.Heatmap(
-                x=x_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']],
-                zmin=tmin, zmax=tmax, showscale=False, zsmooth='best'))
+                x=x_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, showscale=False, zsmooth='best'))
         else:
             fig_y = go.Figure()
     else:
         fig_y = go.Figure()
     fig_y.update_layout(title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
-    # Z 단면
+    # Z 단면 (z ≈ z0, 리니어 보간, 컬러바 없음)
+    mask_z = np.abs(z_coords - z0) < tol
     if np.any(mask_z):
         xb, yb, tb = x_coords[mask_z], y_coords[mask_z], temps[mask_z]
         if len(xb) > 3:
@@ -937,12 +939,36 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
             values = tb
             grid = griddata(points, values, (xx, yy), method='linear')
             fig_z = go.Figure(go.Heatmap(
-                x=x_bins, y=y_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']],
-                zmin=tmin, zmax=tmax, showscale=False, zsmooth='best'))
+                x=x_bins, y=y_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, showscale=False, zsmooth='best'))
         else:
             fig_z = go.Figure()
     else:
         fig_z = go.Figure()
     fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30))
+    # 컬러바(3D 뷰 기준)만 따로 생성
+    colorbar_fig = go.Figure(go.Heatmap(
+        z=[[tmin, tmax]], colorscale=[[0, 'blue'], [1, 'red']], showscale=True,
+        colorbar=dict(
+            title='온도 (°C)',
+            thickness=30,
+            len=0.95,
+            y=0.5,
+            yanchor='middle',
+            tickfont=dict(size=16),
+            titlefont=dict(size=18),
+            outlinewidth=1,
+            outlinecolor='black',
+            ticks='outside',
+            ticklen=8,
+        ),
+        zmin=tmin, zmax=tmax))
+    colorbar_fig.update_layout(
+        margin=dict(l=0, r=0, t=0, b=0),
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+        width=90, height=420,
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)'
+    )
     # step=0.1로 반환
     return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, colorbar_fig
