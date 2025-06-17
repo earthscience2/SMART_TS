@@ -86,25 +86,22 @@ layout = dbc.Container(
                             className="w-100",
                         ),
                     ],
-                    md=3,
+                    md=2,
                 ),
                 dbc.Col(
                     [
                         html.H6(id="concrete-title", className="mb-2"),
                         # 현재 파일명 표시
                         html.H6(id="current-file-title", className="mb-2"),
-                        # 3D 뷰와 단면도를 나란히 배치
-                        dbc.Row([
-                            # 3D 뷰
-                            dbc.Col([
-                                dcc.Graph(
-                                    id="viewer-3d",
-                                    style={"height": "80vh"},
-                                    config={"scrollZoom": True},
-                                ),
-                            ], md=12),
-                            # 단면도는 숨김 처리(필요시 완전히 제거 가능)
-                        ]),
+                        # 탭 메뉴
+                        dbc.Tabs([
+                            dbc.Tab(label="3D뷰", tab_id="tab-3d"),
+                            dbc.Tab(label="단면도", tab_id="tab-section"),
+                            dbc.Tab(label="온도분포", tab_id="tab-temp"),
+                            dbc.Tab(label="수치해석", tab_id="tab-analysis"),
+                        ], id="tabs-main", active_tab="tab-3d"),
+                        # 탭 콘텐츠
+                        html.Div(id="tab-content"),
                         # 시간 슬라이더
                         html.Div([
                             html.Label("시간", className="form-label"),
@@ -118,7 +115,7 @@ layout = dbc.Container(
                             ),
                         ], className="mt-3"),
                     ],
-                    md=9,
+                    md=10,
                 ),
             ],
             className="g-3",
@@ -402,7 +399,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
                     xs.append(dims['nodes'][0])
                     ys.append(dims['nodes'][1])
                     zs.append(dims['nodes'][2])
-                    names.append(srow['name'])
+                    names.append(srow['device_id'])
                 except Exception as e:
                     print('센서 파싱 오류:', e)
             fig_3d.add_trace(go.Scatter3d(
@@ -417,6 +414,42 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     except Exception as e:
         print('센서 표시 오류:', e)
     return fig_3d, current_time, current_file_title
+
+# 탭 콘텐츠 처리 콜백
+@callback(
+    Output("tab-content", "children"),
+    Input("tabs-main", "active_tab"),
+    prevent_initial_call=True,
+)
+def switch_tab(active_tab):
+    if active_tab == "tab-3d":
+        return html.Div([
+            dbc.Row([
+                dbc.Col([
+                    dcc.Graph(
+                        id="viewer-3d",
+                        style={"height": "80vh"},
+                        config={"scrollZoom": True},
+                    ),
+                ], md=12),
+            ]),
+        ])
+    elif active_tab == "tab-section":
+        return html.Div([
+            html.H4("단면도", className="text-center mt-5"),
+            html.P("준비 중입니다...", className="text-center text-muted"),
+        ])
+    elif active_tab == "tab-temp":
+        return html.Div([
+            html.H4("온도분포", className="text-center mt-5"),
+            html.P("준비 중입니다...", className="text-center text-muted"),
+        ])
+    elif active_tab == "tab-analysis":
+        return html.Div([
+            html.H4("수치해석", className="text-center mt-5"),
+            html.P("준비 중입니다...", className="text-center text-muted"),
+        ])
+    return html.Div()
 
 # 시간 슬라이더 마크: 날짜의 00시만 표시, 텍스트는 MM/DD 형식
 @callback(
