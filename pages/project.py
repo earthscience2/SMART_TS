@@ -916,6 +916,8 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
         fig_x = go.Figure()
     fig_x.update_layout(title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
     # Y 단면
+    print(f"[DEBUG] y_coords shape: {y_coords.shape}, y_coords 예시: {y_coords[:5]}")
+    print(f"[DEBUG] y0 shape: {np.shape(y0)}, y0: {y0}")
     mask_y = np.abs(y_coords - y0) < tol
     if np.any(mask_y):
         xb, zb, tb = x_coords[mask_y], z_coords[mask_y], temps[mask_y]
@@ -935,6 +937,8 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
         fig_y = go.Figure()
     fig_y.update_layout(title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
     # Z 단면
+    print(f"[DEBUG] z_coords shape: {z_coords.shape}, z_coords 예시: {z_coords[:5]}")
+    print(f"[DEBUG] z0 shape: {np.shape(z0)}, z0: {z0}")
     mask_z = np.abs(z_coords - z0) < tol
     if np.any(mask_z):
         xb, yb, tb = x_coords[mask_z], y_coords[mask_z], temps[mask_z]
