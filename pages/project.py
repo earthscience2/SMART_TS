@@ -761,3 +761,152 @@ def delete_concrete_confirm(_click, sel, tbl_data):
         return f"{concrete_pk} 삭제 완료", "success", True, updated_data
     except Exception as e:
         return f"삭제 실패: {e}", "danger", True, dash.no_update
+
+# 단면도 탭 콜백: 3D 뷰(작게)와 X/Y/Z 단면도, 입력창 min/max 자동 설정
+@callback(
+    Output("viewer-3d-section", "figure"),
+    Output("viewer-section-x", "figure"),
+    Output("viewer-section-y", "figure"),
+    Output("viewer-section-z", "figure"),
+    Output("section-x-input", "min"), Output("section-x-input", "max"),
+    Output("section-y-input", "min"), Output("section-y-input", "max"),
+    Output("section-z-input", "min"), Output("section-z-input", "max"),
+    Input("time-slider-section", "value"),
+    Input("section-x-input", "value"),
+    Input("section-y-input", "value"),
+    Input("section-z-input", "value"),
+    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    prevent_initial_call=True,
+)
+def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data):
+    import math
+    import plotly.graph_objects as go
+    import numpy as np
+    if not selected_rows:
+        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0, 1, 0, 1
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    inp_dir = f"inp/{concrete_pk}"
+    inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+    if not inp_files:
+        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0, 1, 0, 1
+    # 시간 인덱스 안전 처리
+    if time_idx is None or (isinstance(time_idx, float) and math.isnan(time_idx)) or (isinstance(time_idx, str) and not str(time_idx).isdigit()):
+        file_idx = len(inp_files)-1
+    else:
+        file_idx = min(int(time_idx), len(inp_files)-1)
+    current_file = inp_files[file_idx]
+    # inp 파일 파싱 (노드, 온도)
+    with open(current_file, 'r') as f:
+        lines = f.readlines()
+    nodes = {}
+    node_section = False
+    for line in lines:
+        if line.startswith('*NODE'):
+            node_section = True
+            continue
+        elif line.startswith('*'):
+            node_section = False
+            continue
+        if node_section and ',' in line:
+            parts = line.strip().split(',')
+            if len(parts) >= 4:
+                node_id = int(parts[0])
+                x = float(parts[1])
+                y = float(parts[2])
+                z = float(parts[3])
+                nodes[node_id] = {'x': x, 'y': y, 'z': z}
+    temperatures = {}
+    temp_section = False
+    for line in lines:
+        if line.startswith('*TEMPERATURE'):
+            temp_section = True
+            continue
+        elif line.startswith('*'):
+            temp_section = False
+            continue
+        if temp_section and ',' in line:
+            parts = line.strip().split(',')
+            if len(parts) >= 2:
+                node_id = int(parts[0])
+                temp = float(parts[1])
+                temperatures[node_id] = temp
+    x_coords = np.array([n['x'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
+    y_coords = np.array([n['y'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
+    z_coords = np.array([n['z'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
+    temps = np.array([temperatures[k] for k in nodes.keys() if k in temperatures])
+    tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
+    # 입력창 min/max 자동 설정
+    x_min, x_max = float(np.min(x_coords)), float(np.max(x_coords))
+    y_min, y_max = float(np.min(y_coords)), float(np.max(y_coords))
+    z_min, z_max = float(np.min(z_coords)), float(np.max(z_coords))
+    # 입력값 기본값 처리
+    x0 = x_val if x_val is not None else float(np.median(x_coords))
+    y0 = y_val if y_val is not None else float(np.median(y_coords))
+    z0 = z_val if z_val is not None else float(np.median(z_coords))
+    # 3D 뷰(작게)
+    coords = np.array([[x, y, z] for x, y, z in zip(x_coords, y_coords, z_coords)])
+    fig_3d = go.Figure(data=go.Volume(
+        x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
+        opacity=0.1, surface_count=15, colorscale=[[0, 'blue'], [1, 'red']],
+        colorbar=None, cmin=tmin, cmax=tmax, showscale=False
+    ))
+    fig_3d.update_layout(
+        uirevision='constant',
+        scene=dict(aspectmode='data', bgcolor='white'),
+        margin=dict(l=0, r=0, t=0, b=0)
+    )
+    # X 단면 (x ≈ x0)
+    tol = 0.05
+    mask_x = np.abs(x_coords - x0) < tol
+    if np.any(mask_x):
+        yb, zb, tb = y_coords[mask_x], z_coords[mask_x], temps[mask_x]
+        if len(yb) > 3:
+            y_bins = np.linspace(yb.min(), yb.max(), 30)
+            z_bins = np.linspace(zb.min(), zb.max(), 30)
+            hist, yedges, zedges = np.histogram2d(yb, zb, bins=[y_bins, z_bins], weights=tb)
+            counts, _, _ = np.histogram2d(yb, zb, bins=[y_bins, z_bins])
+            with np.errstate(invalid='ignore'): hist = np.divide(hist, counts, where=counts>0)
+            fig_x = go.Figure(go.Heatmap(
+                x=y_bins, y=z_bins, z=hist.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+        else:
+            fig_x = go.Figure()
+    else:
+        fig_x = go.Figure()
+    fig_x.update_layout(title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
+    # Y 단면 (y ≈ y0)
+    mask_y = np.abs(y_coords - y0) < tol
+    if np.any(mask_y):
+        xb, zb, tb = x_coords[mask_y], z_coords[mask_y], temps[mask_y]
+        if len(xb) > 3:
+            x_bins = np.linspace(xb.min(), xb.max(), 30)
+            z_bins = np.linspace(zb.min(), zb.max(), 30)
+            hist, xedges, zedges = np.histogram2d(xb, zb, bins=[x_bins, z_bins], weights=tb)
+            counts, _, _ = np.histogram2d(xb, zb, bins=[x_bins, z_bins])
+            with np.errstate(invalid='ignore'): hist = np.divide(hist, counts, where=counts>0)
+            fig_y = go.Figure(go.Heatmap(
+                x=x_bins, y=z_bins, z=hist.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+        else:
+            fig_y = go.Figure()
+    else:
+        fig_y = go.Figure()
+    fig_y.update_layout(title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
+    # Z 단면 (z ≈ z0)
+    mask_z = np.abs(z_coords - z0) < tol
+    if np.any(mask_z):
+        xb, yb, tb = x_coords[mask_z], y_coords[mask_z], temps[mask_z]
+        if len(xb) > 3:
+            x_bins = np.linspace(xb.min(), xb.max(), 30)
+            y_bins = np.linspace(yb.min(), yb.max(), 30)
+            hist, xedges, yedges = np.histogram2d(xb, yb, bins=[x_bins, y_bins], weights=tb)
+            counts, _, _ = np.histogram2d(xb, yb, bins=[x_bins, y_bins])
+            with np.errstate(invalid='ignore'): hist = np.divide(hist, counts, where=counts>0)
+            fig_z = go.Figure(go.Heatmap(
+                x=x_bins, y=y_bins, z=hist.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+        else:
+            fig_z = go.Figure()
+    else:
+        fig_z = go.Figure()
+    fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30))
+    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, y_min, y_max, z_min, z_max
