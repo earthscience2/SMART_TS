@@ -1149,22 +1149,12 @@ def update_temp_tab(store_data, x, y, z, selected_rows, tbl_data):
     # 그래프 생성
     fig_temp = go.Figure()
     if temp_times and temp_values:
-        # 날짜가 바뀔 때만(00시) 날짜 표시
-        x_labels = []
-        for dt in temp_times:
-            if dt.hour == 0:  # 00시일 때만 날짜 표시
-                x_labels.append(dt.strftime('%-m/%-d'))
-            else:
-                x_labels.append('')
+        # 모든 시간 정보를 'M/D H시' 형식으로 표시
+        x_labels = [dt.strftime('%-m/%-d %H시') for dt in temp_times]
         fig_temp.add_trace(go.Scatter(x=x_labels, y=temp_values, mode='lines+markers', name='온도'))
-        # x축 설정: 모든 데이터 포인트 표시
         fig_temp.update_layout(
             title="시간에 따른 온도 정보",
-            xaxis=dict(
-                tickmode='array',
-                ticktext=x_labels,
-                tickvals=list(range(len(x_labels)))
-            ),
+            xaxis_title="시간",
             yaxis_title="온도(°C)"
         )
     return fig_3d, fig_temp
