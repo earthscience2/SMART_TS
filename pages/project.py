@@ -1030,6 +1030,8 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
 def update_temp_tab(x, y, z, selected_rows, tbl_data):
     import plotly.graph_objects as go
     import numpy as np
+    import glob, os
+    from datetime import datetime
     if not selected_rows or not tbl_data:
         return go.Figure(), go.Figure()
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
@@ -1070,7 +1072,68 @@ def update_temp_tab(x, y, z, selected_rows, tbl_data):
         scene=dict(aspectmode='data', bgcolor='white'),
         margin=dict(l=0, r=0, t=0, b=0)
     )
-    # 오른쪽 온도 정보(빈 그래프)
+    # 오른쪽 온도 정보(시간에 따른 입력 위치 온도)
+    temp_times = []
+    temp_values = []
+    concrete_pk = row["concrete_pk"]
+    inp_dir = f"inp/{concrete_pk}"
+    inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+    for f in inp_files:
+        # 시간 파싱
+        try:
+            time_str = os.path.basename(f).split(".")[0]
+            dt = datetime.strptime(time_str, "%Y%m%d%H")
+        except:
+            continue
+        # inp 파일 파싱 (노드, 온도)
+        with open(f, 'r') as file:
+            lines = file.readlines()
+        nodes = {}
+        node_section = False
+        for line in lines:
+            if line.startswith('*NODE'):
+                node_section = True
+                continue
+            elif line.startswith('*'):
+                node_section = False
+                continue
+            if node_section and ',' in line:
+                parts = line.strip().split(',')
+                if len(parts) >= 4:
+                    node_id = int(parts[0])
+                    nx = float(parts[1])
+                    ny = float(parts[2])
+                    nz = float(parts[3])
+                    nodes[node_id] = {'x': nx, 'y': ny, 'z': nz}
+        temperatures = {}
+        temp_section = False
+        for line in lines:
+            if line.startswith('*TEMPERATURE'):
+                temp_section = True
+                continue
+            elif line.startswith('*'):
+                temp_section = False
+                continue
+            if temp_section and ',' in line:
+                parts = line.strip().split(',')
+                if len(parts) >= 2:
+                    node_id = int(parts[0])
+                    temp = float(parts[1])
+                    temperatures[node_id] = temp
+        # 입력 위치와 가장 가까운 노드 찾기
+        if x is not None and y is not None and z is not None and nodes:
+            coords = np.array([[v['x'], v['y'], v['z']] for v in nodes.values()])
+            node_ids = list(nodes.keys())
+            dists = np.linalg.norm(coords - np.array([x, y, z]), axis=1)
+            min_idx = np.argmin(dists)
+            closest_id = node_ids[min_idx]
+            temp_val = temperatures.get(closest_id, None)
+            if temp_val is not None:
+                temp_times.append(dt)
+                temp_values.append(temp_val)
+    # 그래프 생성
     fig_temp = go.Figure()
+    if temp_times and temp_values:
+        fig_temp.add_trace(go.Scatter(x=temp_times, y=temp_values, mode='lines+markers', name='온도'))
     fig_temp.update_layout(title="시간에 따른 온도 정보", xaxis_title="시간", yaxis_title="온도(°C)")
     return fig_3d, fig_temp
