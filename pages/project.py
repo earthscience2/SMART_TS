@@ -565,17 +565,17 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
                 html.Label("단면 위치 설정", className="mb-2"),
                 dbc.InputGroup([
                     dbc.InputGroupText("X"),
-                    dbc.Input(id="section-x-input", type="number", step=0.1, value=None),
-                ], className="mb-2 d-inline-flex me-2"),
+                    dbc.Input(id="section-x-input", type="number", step=0.1, value=None, style={"width": "80px"}),
+                ], className="mb-2"),
                 dbc.InputGroup([
                     dbc.InputGroupText("Y"),
-                    dbc.Input(id="section-y-input", type="number", step=0.1, value=None),
-                ], className="mb-2 d-inline-flex me-2"),
+                    dbc.Input(id="section-y-input", type="number", step=0.1, value=None, style={"width": "80px"}),
+                ], className="mb-2"),
                 dbc.InputGroup([
                     dbc.InputGroupText("Z"),
-                    dbc.Input(id="section-z-input", type="number", step=0.1, value=None),
-                ], className="mb-2 d-inline-flex"),
-            ], style={"padding": "10px"}),
+                    dbc.Input(id="section-z-input", type="number", step=0.1, value=None, style={"width": "80px"}),
+                ], className="mb-2"),
+            ], style={"padding": "10px", "width": "110px", "display": "flex", "flexDirection": "column", "alignItems": "flex-start"}),
             # 시간 슬라이더 (상단)
             html.Div([
                 html.Label("시간", className="form-label"),
@@ -847,9 +847,11 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
     y_mid = float(np.median(y_coords))
     z_mid = float(np.median(z_coords))
     # 최초 진입 시에만 중앙값, 이후에는 사용자가 조작한 값 유지
-    x0 = x_val if x_val is not None else x_mid
-    y0 = y_val if y_val is not None else y_mid
-    z0 = z_val if z_val is not None else z_mid
+    def round01(val):
+        return round(val * 10) / 10 if val is not None else None
+    x0 = round01(x_val) if x_val is not None else round01(x_mid)
+    y0 = round01(y_val) if y_val is not None else round01(y_mid)
+    z0 = round01(z_val) if z_val is not None else round01(z_mid)
     # 3D 뷰(작게)
     coords = np.array([[x, y, z] for x, y, z in zip(x_coords, y_coords, z_coords)])
     fig_3d = go.Figure(data=go.Volume(
