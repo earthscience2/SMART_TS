@@ -514,7 +514,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             slider_min = slider.get('min', 0)
             slider_max = slider.get('max', 5)
             slider_marks = slider.get('marks', {})
-            slider_value = slider.get('value', 0)
+            slider_value = shared_time_value if 'shared_time_value' in locals() else slider.get('value', 0)
         else:
             # 기본 빈 3D 뷰
             fig_3d = go.Figure()
@@ -561,7 +561,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             slider_min = slider.get('min', 0)
             slider_max = slider.get('max', 5)
             slider_marks = slider.get('marks', {})
-            slider_value = slider.get('value', 0)
+            slider_value = shared_time_value if 'shared_time_value' in locals() else slider.get('value', 0)
         else:
             slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
         return html.Div([
@@ -992,20 +992,20 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
     # step=0.1로 반환
     return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, current_file_title
 
-# 3D 뷰/단면도에서 시간 슬라이더 값 공유용 콜백
+# 3D 뷰 슬라이더 값이 바뀌면 Store를 업데이트
 @callback(
     Output("shared-time-slider", "data"),
     Input("time-slider", "value"),
+    prevent_initial_call=True,
+)
+def update_shared_time_3d(val):
+    return val
+
+# 단면도 슬라이더 값이 바뀌면 Store를 업데이트
+@callback(
+    Output("shared-time-slider", "data"),
     Input("time-slider-section", "value"),
     prevent_initial_call=True,
 )
-def sync_time_slider(time_val_3d, time_val_section):
-    ctx = dash.callback_context
-    if not ctx.triggered:
-        return 0
-    trigger = ctx.triggered[0]["prop_id"].split(".")[0]
-    if trigger == "time-slider":
-        return time_val_3d
-    elif trigger == "time-slider-section":
-        return time_val_section
-    return 0
+def update_shared_time_section(val):
+    return val
