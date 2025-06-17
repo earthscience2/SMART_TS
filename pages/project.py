@@ -586,22 +586,29 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
             ], className="mb-3"),
-            # 2x2 배열 배치
+            # 2x2+컬러바 배열 배치
             dbc.Row([
                 dbc.Col([
-                    dcc.Graph(id="viewer-3d-section", style={"height": "32vh", "border": "2px solid #dee2e6", "borderRadius": "8px"}, config={"scrollZoom": True}),
-                ], md=6),
+                    dbc.Row([
+                        dbc.Col([
+                            dcc.Graph(id="viewer-3d-section", style={"height": "32vh", "border": "2px solid #dee2e6", "borderRadius": "8px"}, config={"scrollZoom": True}),
+                        ], md=6),
+                        dbc.Col([
+                            dcc.Graph(id="viewer-section-x", style={"height": "32vh"}),
+                        ], md=6),
+                    ], className="mb-2"),
+                    dbc.Row([
+                        dbc.Col([
+                            dcc.Graph(id="viewer-section-y", style={"height": "32vh"}),
+                        ], md=6),
+                        dbc.Col([
+                            dcc.Graph(id="viewer-section-z", style={"height": "32vh"}),
+                        ], md=6),
+                    ]),
+                ], md=10),
                 dbc.Col([
-                    dcc.Graph(id="viewer-section-x", style={"height": "32vh"}),
-                ], md=6),
-            ], className="mb-2"),
-            dbc.Row([
-                dbc.Col([
-                    dcc.Graph(id="viewer-section-y", style={"height": "32vh"}),
-                ], md=6),
-                dbc.Col([
-                    dcc.Graph(id="viewer-section-z", style={"height": "32vh"}),
-                ], md=6),
+                    dcc.Graph(id="section-colorbar", style={"height": "66vh", "width": "80px", "marginLeft": "-30px"}),
+                ], md=2),
             ]),
         ])
     elif active_tab == "tab-temp":
