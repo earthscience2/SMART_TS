@@ -672,10 +672,19 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 x_mid = float(np.mean(poly_nodes[:,0]))
                 y_mid = float(np.mean(poly_nodes[:,1]))
                 z_mid = float(poly_h/2)
+                x_min, x_max = float(np.min(poly_nodes[:,0])), float(np.max(poly_nodes[:,0]))
+                y_min, y_max = float(np.min(poly_nodes[:,1])), float(np.max(poly_nodes[:,1]))
+                z_min, z_max = 0.0, float(poly_h)
             except Exception:
                 x_mid, y_mid, z_mid = 0.5, 0.5, 0.5
+                x_min, x_max = 0.0, 1.0
+                y_min, y_max = 0.0, 1.0
+                z_min, z_max = 0.0, 1.0
         else:
             x_mid, y_mid, z_mid = 0.5, 0.5, 0.5
+            x_min, x_max = 0.0, 1.0
+            y_min, y_max = 0.0, 1.0
+            z_min, z_max = 0.0, 1.0
         # dcc.Store로 기본값 저장: 탭 진입 시 자동으로 콜백이 실행되도록
         store_data = {'x': round(x_mid,1), 'y': round(y_mid,1), 'z': round(z_mid,1)}
         return html.Div([
@@ -687,17 +696,17 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     dbc.InputGroup([
                         html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#ff3333", "marginRight": "6px", "marginTop": "8px"}),
                         dbc.InputGroupText("X"),
-                        dbc.Input(id="temp-x-input", type="number", step=0.1, value=round(x_mid,1), style={"width": "80px"}),
+                        dbc.Input(id="temp-x-input", type="number", step=0.1, value=round(x_mid,1), min=round(x_min,2), max=round(x_max,2), style={"width": "80px"}),
                     ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
                     dbc.InputGroup([
                         html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#3388ff", "marginRight": "6px", "marginTop": "8px"}),
                         dbc.InputGroupText("Y"),
-                        dbc.Input(id="temp-y-input", type="number", step=0.1, value=round(y_mid,1), style={"width": "80px"}),
+                        dbc.Input(id="temp-y-input", type="number", step=0.1, value=round(y_mid,1), min=round(y_min,2), max=round(y_max,2), style={"width": "80px"}),
                     ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
                     dbc.InputGroup([
                         html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#33cc33", "marginRight": "6px", "marginTop": "8px"}),
                         dbc.InputGroupText("Z"),
-                        dbc.Input(id="temp-z-input", type="number", step=0.1, value=round(z_mid,1), style={"width": "80px"}),
+                        dbc.Input(id="temp-z-input", type="number", step=0.1, value=round(z_mid,1), min=round(z_min,2), max=round(z_max,2), style={"width": "80px"}),
                     ], style={"display": "inline-flex", "verticalAlign": "middle"}),
                 ], style={"display": "flex", "flexDirection": "row", "alignItems": "center"}),
             ], style={"padding": "10px"}),
