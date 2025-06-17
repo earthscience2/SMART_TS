@@ -148,7 +148,7 @@ layout = dbc.Container(
     Output("ddl-project", "value"),
     Output("concrete-title", "children", allow_duplicate=True),
     Input("ddl-project", "value"),
-    prevent_initial_call=False,
+    prevent_initial_call=True,
 )
 def init_dropdown(selected_value):
     """
