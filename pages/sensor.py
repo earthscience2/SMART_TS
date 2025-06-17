@@ -530,9 +530,14 @@ def on_sensor_select(selected_rows, tbl_data, current_fig, cam_store, selected_c
         if 0 <= sel_idx < n_points:
             new_colors[sel_idx] = "red"
             new_sizes[sel_idx] = 12   # ← 선택된 센서를 크기 12로 강조
-            del_disabled = False
+            # 콘크리트 활성화 상태 확인
             activate = api_db.get_concrete_data().query("concrete_pk==@selected_conc").iloc[0].get("activate",1)
-            edit_disabled = True if activate == 0 else False
+            if activate == 0:
+                edit_disabled = True
+                del_disabled = True
+            else:
+                edit_disabled = False
+                del_disabled = False
             sel_id = sensor_trace.customdata[sel_idx]
             base_title = fig.layout.title.text if (fig.layout and fig.layout.title) else ""
             base_conc = base_title.split("·")[0].strip() if base_title else ""
