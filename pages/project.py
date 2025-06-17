@@ -146,7 +146,7 @@ layout = dbc.Container(
 @callback(
     Output("ddl-project", "options"),
     Output("ddl-project", "value"),
-    Output("concrete-title", "children"),
+    Output("concrete-title", "children", allow_duplicate=True),
     Input("ddl-project", "value"),
     prevent_initial_call=True,
 )
@@ -176,11 +176,11 @@ def init_dropdown(selected_value):
     Output("tbl-concrete", "selected_rows"),
     Output("btn-concrete-del", "disabled"),
     Output("btn-concrete-analyze", "disabled"),
-    Output("concrete-title", "children"),
-    Output("time-slider", "min"),
-    Output("time-slider", "max"),
-    Output("time-slider", "value"),
-    Output("time-slider", "marks"),
+    Output("concrete-title", "children", allow_duplicate=True),
+    Output("time-slider", "min", allow_duplicate=True),
+    Output("time-slider", "max", allow_duplicate=True),
+    Output("time-slider", "value", allow_duplicate=True),
+    Output("time-slider", "marks", allow_duplicate=True),
     Output("current-time-store", "data"),
     Input("ddl-project", "value"),
     prevent_initial_call=True,
@@ -226,9 +226,9 @@ def on_project_change(selected_proj):
 
 # ───────────────────── ③ 콘크리트 선택 콜백 ─────────────────────
 @callback(
-    Output("btn-concrete-del", "disabled"),
-    Output("btn-concrete-analyze", "disabled"),
-    Output("concrete-title", "children"),
+    Output("btn-concrete-del", "disabled", allow_duplicate=True),
+    Output("btn-concrete-analyze", "disabled", allow_duplicate=True),
+    Output("concrete-title", "children", allow_duplicate=True),
     Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
@@ -270,14 +270,14 @@ def store_section_coord(clickData):
 # ───────────────────── 3D/단면도 업데이트 콜백 ─────────────────────
 @callback(
     Output("viewer-3d", "figure"),
-    Output("current-time-store", "data"),
+    Output("current-time-store", "data", allow_duplicate=True),
     Output("current-file-title", "children"),
     Output("viewer-3d-store", "data"),
-    Output("time-slider", "min"),
-    Output("time-slider", "max"),
-    Output("time-slider", "marks"),
-    Output("time-slider", "value"),
-    Output("current-file-title-store", "data"),
+    Output("time-slider", "min", allow_duplicate=True),
+    Output("time-slider", "max", allow_duplicate=True),
+    Output("time-slider", "marks", allow_duplicate=True),
+    Output("time-slider", "value", allow_duplicate=True),
+    Output("current-file-title-store", "data", allow_duplicate=True),
     Input("time-slider", "value"),
     Input("section-coord-store", "data"),
     State("tbl-concrete", "selected_rows"),
@@ -514,7 +514,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
 # 탭 콘텐츠 처리 콜백
 @callback(
     Output("tab-content", "children"),
-    Output("current-file-title", "children"),
+    Output("current-file-title", "children", allow_duplicate=True),
     Input("tabs-main", "active_tab"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
@@ -709,10 +709,10 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
 
 # 시간 슬라이더 마크: 날짜의 00시만 표시, 텍스트는 MM/DD 형식
 @callback(
-    Output("time-slider", "min"),
-    Output("time-slider", "max"),
-    Output("time-slider", "marks"),
-    Output("time-slider", "value"),
+    Output("time-slider", "min", allow_duplicate=True),
+    Output("time-slider", "max", allow_duplicate=True),
+    Output("time-slider", "marks", allow_duplicate=True),
+    Output("time-slider", "value", allow_duplicate=True),
     Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     State("time-slider", "value"),
@@ -768,8 +768,8 @@ def update_time_slider(selected_rows, tbl_data, current_value):
     Output("project-alert", "children"),
     Output("project-alert", "color"),
     Output("project-alert", "is_open"),
-    Output("tbl-concrete", "data"),
-    Output("btn-concrete-analyze", "disabled"),
+    Output("tbl-concrete", "data", allow_duplicate=True),
+    Output("btn-concrete-analyze", "disabled", allow_duplicate=True),
     Input("btn-concrete-analyze", "n_clicks"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
@@ -806,10 +806,10 @@ def ask_delete_concrete(n, sel):
 
 # ───────────────────── ⑦ 삭제 실행 콜백 ─────────────────────
 @callback(
-    Output("project-alert", "children"),
-    Output("project-alert", "color"),
-    Output("project-alert", "is_open"),
-    Output("tbl-concrete", "data"),
+    Output("project-alert", "children", allow_duplicate=True),
+    Output("project-alert", "color", allow_duplicate=True),
+    Output("project-alert", "is_open", allow_duplicate=True),
+    Output("tbl-concrete", "data", allow_duplicate=True),
     Input("confirm-del-concrete", "submit_n_clicks"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
@@ -853,7 +853,7 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     Output("section-x-input", "min"), Output("section-x-input", "max"), Output("section-x-input", "value"),
     Output("section-y-input", "min"), Output("section-y-input", "max"), Output("section-y-input", "value"),
     Output("section-z-input", "min"), Output("section-z-input", "max"), Output("section-z-input", "value"),
-    Output("current-file-title", "children"),
+    Output("current-file-title", "children", allow_duplicate=True),
     Input("time-slider-section", "value"),
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
