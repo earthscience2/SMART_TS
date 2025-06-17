@@ -565,15 +565,15 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
                 html.Label("단면 위치 설정", className="mb-2"),
                 dbc.InputGroup([
                     dbc.InputGroupText("X"),
-                    dbc.Input(id="section-x-input", type="number", step=0.01, value=None),
+                    dbc.Input(id="section-x-input", type="number", step=0.1, value=None),
                 ], className="mb-2 d-inline-flex me-2"),
                 dbc.InputGroup([
                     dbc.InputGroupText("Y"),
-                    dbc.Input(id="section-y-input", type="number", step=0.01, value=None),
+                    dbc.Input(id="section-y-input", type="number", step=0.1, value=None),
                 ], className="mb-2 d-inline-flex me-2"),
                 dbc.InputGroup([
                     dbc.InputGroupText("Z"),
-                    dbc.Input(id="section-z-input", type="number", step=0.01, value=None),
+                    dbc.Input(id="section-z-input", type="number", step=0.1, value=None),
                 ], className="mb-2 d-inline-flex"),
             ], style={"padding": "10px"}),
             # 시간 슬라이더 (상단)
@@ -776,14 +776,11 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
     Input("section-z-input", "value"),
-    State("section-x-input", "value"),
-    State("section-y-input", "value"),
-    State("section-z-input", "value"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=False,
 )
-def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, selected_rows, tbl_data):
+def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data):
     import math
     import plotly.graph_objects as go
     import numpy as np
@@ -850,9 +847,9 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
     y_mid = float(np.median(y_coords))
     z_mid = float(np.median(z_coords))
     # 최초 진입 시에만 중앙값, 이후에는 사용자가 조작한 값 유지
-    x0 = x_val if x_val is not None else (prev_x if prev_x is not None else x_mid)
-    y0 = y_val if y_val is not None else (prev_y if prev_y is not None else y_mid)
-    z0 = z_val if z_val is not None else (prev_z if prev_z is not None else z_mid)
+    x0 = x_val if x_val is not None else x_mid
+    y0 = y_val if y_val is not None else y_mid
+    z0 = z_val if z_val is not None else z_mid
     # 3D 뷰(작게)
     coords = np.array([[x, y, z] for x, y, z in zip(x_coords, y_coords, z_coords)])
     fig_3d = go.Figure(data=go.Volume(
