@@ -765,11 +765,14 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
     Input("section-z-input", "value"),
+    State("section-x-input", "value"),
+    State("section-y-input", "value"),
+    State("section-z-input", "value"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data):
+def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, selected_rows, tbl_data):
     import math
     import plotly.graph_objects as go
     import numpy as np
@@ -835,9 +838,10 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
     x_mid = float(np.median(x_coords))
     y_mid = float(np.median(y_coords))
     z_mid = float(np.median(z_coords))
-    x0 = x_val if x_val is not None else x_mid
-    y0 = y_val if y_val is not None else y_mid
-    z0 = z_val if z_val is not None else z_mid
+    # 최초 진입 시에만 중앙값, 이후에는 사용자가 조작한 값 유지
+    x0 = x_val if x_val is not None else (prev_x if prev_x is not None else x_mid)
+    y0 = y_val if y_val is not None else (prev_y if prev_y is not None else y_mid)
+    z0 = z_val if z_val is not None else (prev_z if prev_z is not None else z_mid)
     # 3D 뷰(작게)
     coords = np.array([[x, y, z] for x, y, z in zip(x_coords, y_coords, z_coords)])
     fig_3d = go.Figure(data=go.Volume(
@@ -850,7 +854,20 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
         scene=dict(aspectmode='data', bgcolor='white'),
         margin=dict(l=0, r=0, t=0, b=0)
     )
-    # X 단면 (x ≈ x0, 리니어 보간)
+    # 단면 위치 평면(선) 표시
+    fig_3d.add_trace(go.Scatter3d(
+        x=[x0]*2, y=[y_min, y_max], z=[z_min, z_max],
+        mode="lines", line=dict(color="red", width=3), showlegend=False, hoverinfo="skip"
+    ))
+    fig_3d.add_trace(go.Scatter3d(
+        x=[x_min, x_max], y=[y0]*2, z=[z_min, z_max],
+        mode="lines", line=dict(color="blue", width=3), showlegend=False, hoverinfo="skip"
+    ))
+    fig_3d.add_trace(go.Scatter3d(
+        x=[x_min, x_max], y=[y_min, y_max], z=[z0]*2,
+        mode="lines", line=dict(color="green", width=3), showlegend=False, hoverinfo="skip"
+    ))
+    # X 단면 (x ≈ x0, 리니어 보간, 컬러바 통일)
     tol = 0.05
     mask_x = np.abs(x_coords - x0) < tol
     if np.any(mask_x):
@@ -863,13 +880,13 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
             values = tb
             grid = griddata(points, values, (yy, zz), method='linear')
             fig_x = go.Figure(go.Heatmap(
-                x=y_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+                x=y_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=dict(thickness=12), zsmooth='best'))
         else:
             fig_x = go.Figure()
     else:
         fig_x = go.Figure()
     fig_x.update_layout(title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
-    # Y 단면 (y ≈ y0, 리니어 보간)
+    # Y 단면 (y ≈ y0, 리니어 보간, 컬러바 통일)
     mask_y = np.abs(y_coords - y0) < tol
     if np.any(mask_y):
         xb, zb, tb = x_coords[mask_y], z_coords[mask_y], temps[mask_y]
@@ -881,13 +898,13 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
             values = tb
             grid = griddata(points, values, (xx, zz), method='linear')
             fig_y = go.Figure(go.Heatmap(
-                x=x_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+                x=x_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=dict(thickness=12), zsmooth='best'))
         else:
             fig_y = go.Figure()
     else:
         fig_y = go.Figure()
     fig_y.update_layout(title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30))
-    # Z 단면 (z ≈ z0, 리니어 보간)
+    # Z 단면 (z ≈ z0, 리니어 보간, 컬러바 통일)
     mask_z = np.abs(z_coords - z0) < tol
     if np.any(mask_z):
         xb, yb, tb = x_coords[mask_z], y_coords[mask_z], temps[mask_z]
@@ -899,10 +916,11 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
             values = tb
             grid = griddata(points, values, (xx, yy), method='linear')
             fig_z = go.Figure(go.Heatmap(
-                x=x_bins, y=y_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=None, zsmooth='best'))
+                x=x_bins, y=y_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], zmin=tmin, zmax=tmax, colorbar=dict(thickness=12), zsmooth='best'))
         else:
             fig_z = go.Figure()
     else:
         fig_z = go.Figure()
     fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30))
-    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x_mid, y_min, y_max, y_mid, z_min, z_max, z_mid
+    # step=0.1로 반환
+    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0
