@@ -314,69 +314,76 @@ def delete_sensors_data(sensor_pk: str) -> None:
 # --------------------------------------------------
 
 # 센서 데이터 조회
-def get_sensor_data(sensor_pk: str = None,
-                    start: str  = None,
-                    end: str    = None) -> pd.DataFrame:
+def get_sensor_data(device_id: str = None,
+                   channel: str = None,
+                   start: str = None,
+                   end: str = None) -> pd.DataFrame:
     # 1) 날짜 계산
     if start:
-        dt_start = parse_ymdh(start)
+        start_dt = parse_ymdh(start)
+    else:
+        start_dt = datetime.now() - timedelta(days=30)
+    
     if end:
-        dt_end = parse_ymdh(end)
+        end_dt = parse_ymdh(end)
+    else:
+        end_dt = datetime.now()
 
-    if not (start or end):
-        df_max = pd.read_sql(text("SELECT MAX(`time`) AS max_time FROM sensor_data"),
-                             con=engine)
-        latest = df_max.loc[0, "max_time"]
-        dt_end = latest if isinstance(latest, datetime) else pd.to_datetime(latest)
-        dt_start = dt_end - timedelta(days=30)
-    elif not start:
-        dt_start = dt_end - timedelta(days=30)
-    elif not end:
-        dt_end = dt_start + timedelta(days=30)
+    # 2) SQL 쿼리 생성
+    sql = "SELECT * FROM sensor_data"
+    conditions = []
+    params = {}
 
-    # 2) 쿼리 조합
-    sql = """
-    SELECT *
-      FROM sensor_data
-     WHERE time BETWEEN :start_time AND :end_time
-    """
-    params = {
-        "start_time": format_sql_datetime(dt_start),
-        "end_time":   format_sql_datetime(dt_end),
-    }
+    if device_id:
+        conditions.append("device_id = :device_id")
+        params["device_id"] = device_id
+    if channel:
+        conditions.append("channel = :channel")
+        params["channel"] = channel
 
-    if sensor_pk:
-        sql += " AND sensor_pk = :sensor_pk"
-        params["sensor_pk"] = sensor_pk
+    # 날짜 조건 추가
+    conditions.append("time >= :start_dt")
+    conditions.append("time <= :end_dt")
+    params["start_dt"] = format_sql_datetime(start_dt)
+    params["end_dt"] = format_sql_datetime(end_dt)
 
+    if conditions:
+        sql += " WHERE " + " AND ".join(conditions)
     sql += " ORDER BY time ASC"
-    stmt = text(sql)
 
+    stmt = text(sql)
     return pd.read_sql(stmt, con=engine, params=params)
 
-# 센서 데이터 조회 (시간 범위)
-def get_sensor_data_by_time(sensor_pk: str = None,
-                            time: str    = None) -> pd.DataFrame:
+# 특정 시간의 센서 데이터 조회
+def get_sensor_data_by_time(device_id: str = None,
+                          channel: str = None,
+                          time: str = None) -> pd.DataFrame:
     # 1) 날짜 계산
-    if not (time):
-        return None
+    if time:
+        time_dt = datetime.strptime(time, '%Y-%m-%d %H:%M:%S')
+    else:
+        time_dt = datetime.now()
 
-    # 2) 쿼리 조합
-    sql = """
-    SELECT *
-      FROM sensor_data
-     WHERE time = :time
-    """
-    params = {
-        "time": time,
-    }
+    # 2) SQL 쿼리 생성
+    sql = "SELECT * FROM sensor_data"
+    conditions = []
+    params = {}
 
-    if sensor_pk:
-        sql += " AND sensor_pk = :sensor_pk"
-        params["sensor_pk"] = sensor_pk
+    if device_id:
+        conditions.append("device_id = :device_id")
+        params["device_id"] = device_id
+    if channel:
+        conditions.append("channel = :channel")
+        params["channel"] = channel
+
+    # 시간 조건 추가
+    conditions.append("time = :time_dt")
+    params["time_dt"] = format_sql_datetime(time_dt)
+
+    if conditions:
+        sql += " WHERE " + " AND ".join(conditions)
 
     stmt = text(sql)
-
     return pd.read_sql(stmt, con=engine, params=params)
 
 # --------------------------------------------------
@@ -470,7 +477,8 @@ if __name__ == "__main__":
     print("\n=== 센서 데이터 테스트 ===")
     # 센서 데이터 조회 (시간 범위)
     sensor_data = get_sensor_data(
-        sensor_pk="S000001",
+        device_id="test_device",
+        channel=1,
         start="2025061300",
         end="2025061400"
     )
@@ -479,7 +487,8 @@ if __name__ == "__main__":
     
     # 센서 데이터 조회 (특정 시간)
     sensor_data_time = get_sensor_data_by_time(
-        sensor_pk="S000001",
+        device_id="test_device",
+        channel=1,
         time="2025-06-13 12:00:00"
     )
     print("\n센서 데이터 (특정 시간):")
