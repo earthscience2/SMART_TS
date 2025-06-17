@@ -59,6 +59,9 @@ layout = dbc.Container(
         # ── (★) 3D 뷰 정보 저장
         dcc.Store(id="viewer-3d-store", data=None),
 
+        # section-colorbar 항상 포함 (처음엔 숨김)
+        dcc.Graph(id='section-colorbar', style={'display':'none'}),
+
         # 상단: 프로젝트 선택 → 콘크리트 테이블 + 버튼
         dbc.Row(
             [
@@ -607,7 +610,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
                     ]),
                 ], md=10),
                 dbc.Col([
-                    dcc.Graph(id="section-colorbar", style={"height": "66vh", "width": "80px", "marginLeft": "-30px"}),
+                    dcc.Graph(id="section-colorbar", style={"height": "66vh", "width": "80px", "marginLeft": "-30px", "display": "block"}),
                 ], md=2),
             ]),
         ])
