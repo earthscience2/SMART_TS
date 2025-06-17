@@ -518,9 +518,20 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     State("tbl-concrete", "data"),
     State("viewer-3d-store", "data"),
     State("current-file-title-store", "data"),
+    State("concrete-title", "children"),
     prevent_initial_call=True,
 )
-def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_title):
+def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_title, concrete_title):
+    # 안내 문구만 보여야 하는 경우
+    if concrete_title and (
+        "분석을 시작하려면" in concrete_title or "아직 수집된 데이터가 없습니다" in concrete_title
+    ):
+        return html.Div([
+            html.Div(concrete_title, style={
+                "textAlign": "center", "fontSize": "1.3rem", "color": "#555", "marginTop": "120px"
+            })
+        ]), ""
+    # 이하 기존 코드 유지
     if active_tab == "tab-3d":
         # 저장된 3D 뷰 정보가 있으면 복원, 없으면 기본 뷰
         if viewer_data and 'figure' in viewer_data:
