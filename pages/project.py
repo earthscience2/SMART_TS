@@ -915,7 +915,11 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
             fig_x = go.Figure()
     else:
         fig_x = go.Figure()
-    fig_x.update_layout(title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30), aspectmode='data')
+    fig_x.update_layout(
+        title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30),
+        xaxis=dict(scaleanchor="y", scaleratio=1),
+        yaxis=dict(constrain='domain')
+    )
     # Y 단면 (y ≈ y0, 리니어 보간, 컬러바 없음)
     mask_y = np.abs(y_coords - y0) < tol
     if np.any(mask_y):
@@ -933,7 +937,11 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
             fig_y = go.Figure()
     else:
         fig_y = go.Figure()
-    fig_y.update_layout(title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30), aspectmode='data')
+    fig_y.update_layout(
+        title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30),
+        xaxis=dict(scaleanchor="y", scaleratio=1),
+        yaxis=dict(constrain='domain')
+    )
     # Z 단면 (z ≈ z0, 리니어 보간, 컬러바 없음)
     mask_z = np.abs(z_coords - z0) < tol
     if np.any(mask_z):
@@ -951,7 +959,11 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
             fig_z = go.Figure()
     else:
         fig_z = go.Figure()
-    fig_z.update_layout(title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30), aspectmode='data')
+    fig_z.update_layout(
+        title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30),
+        xaxis=dict(scaleanchor="y", scaleratio=1),
+        yaxis=dict(constrain='domain')
+    )
     # 컬러바(3D 뷰 기준)만 따로 생성, 온도 표시 소수점 1자리
     colorbar_fig = go.Figure(go.Heatmap(
         z=[[tmin, tmax]], colorscale=[[0, 'blue'], [1, 'red']], showscale=True, colorbar=dict(
