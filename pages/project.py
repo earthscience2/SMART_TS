@@ -582,17 +582,17 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 html.Label("단면 위치 설정", className="mb-2"),
                 html.Div([
                     dbc.InputGroup([
-                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#ff3333", "marginRight": "6px", "marginTop": "4px"}),
+                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#ff3333", "marginRight": "6px", "marginTop": "8px"}),
                         dbc.InputGroupText("X"),
                         dbc.Input(id="section-x-input", type="number", step=0.1, value=None, style={"width": "80px"}),
                     ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
                     dbc.InputGroup([
-                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#3388ff", "marginRight": "6px", "marginTop": "4px"}),
+                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#3388ff", "marginRight": "6px", "marginTop": "8px"}),
                         dbc.InputGroupText("Y"),
                         dbc.Input(id="section-y-input", type="number", step=0.1, value=None, style={"width": "80px"}),
                     ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
                     dbc.InputGroup([
-                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#33cc33", "marginRight": "6px", "marginTop": "4px"}),
+                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#33cc33", "marginRight": "6px", "marginTop": "8px"}),
                         dbc.InputGroupText("Z"),
                         dbc.Input(id="section-z-input", type="number", step=0.1, value=None, style={"width": "80px"}),
                     ], style={"display": "inline-flex", "verticalAlign": "middle"}),
@@ -621,9 +621,52 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             ]),
         ]), current_file_title
     elif active_tab == "tab-temp":
+        # 온도분포 탭: 입력창(맨 위), 3D 뷰(왼쪽, 콘크리트 모양만, 온도 없음, 입력 위치 표시), 오른쪽 시간에 따른 온도 정보(빈 그래프)
+        # 기본값 계산용
+        if selected_rows and tbl_data:
+            row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+            try:
+                dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
+                poly_nodes = np.array(dims["nodes"])
+                poly_h = float(dims["h"])
+                x_mid = float(np.mean(poly_nodes[:,0]))
+                y_mid = float(np.mean(poly_nodes[:,1]))
+                z_mid = float(poly_h/2)
+            except Exception:
+                x_mid, y_mid, z_mid = 0.5, 0.5, 0.5
+        else:
+            x_mid, y_mid, z_mid = 0.5, 0.5, 0.5
         return html.Div([
-            html.H4("온도분포", className="text-center mt-5"),
-            html.P("준비 중입니다...", className="text-center text-muted"),
+            # 입력창 (맨 위)
+            html.Div([
+                html.Label("위치 설정", className="mb-2"),
+                html.Div([
+                    dbc.InputGroup([
+                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#ff3333", "marginRight": "6px", "marginTop": "8px"}),
+                        dbc.InputGroupText("X"),
+                        dbc.Input(id="temp-x-input", type="number", step=0.1, value=round(x_mid,1), style={"width": "80px"}),
+                    ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
+                    dbc.InputGroup([
+                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#3388ff", "marginRight": "6px", "marginTop": "8px"}),
+                        dbc.InputGroupText("Y"),
+                        dbc.Input(id="temp-y-input", type="number", step=0.1, value=round(y_mid,1), style={"width": "80px"}),
+                    ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
+                    dbc.InputGroup([
+                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#33cc33", "marginRight": "6px", "marginTop": "8px"}),
+                        dbc.InputGroupText("Z"),
+                        dbc.Input(id="temp-z-input", type="number", step=0.1, value=round(z_mid,1), style={"width": "80px"}),
+                    ], style={"display": "inline-flex", "verticalAlign": "middle"}),
+                ], style={"display": "flex", "flexDirection": "row", "alignItems": "center"}),
+            ], style={"padding": "10px"}),
+            # 3D 뷰 + 온도 정보 (좌우 배치)
+            dbc.Row([
+                dbc.Col([
+                    dcc.Graph(id="temp-viewer-3d", style={"height": "50vh", "border": "2px solid #dee2e6", "borderRadius": "8px"}, config={"scrollZoom": True}),
+                ], md=6),
+                dbc.Col([
+                    dcc.Graph(id="temp-time-graph", style={"height": "50vh"}),
+                ], md=6),
+            ]),
         ]), current_file_title
     elif active_tab == "tab-analysis":
         return html.Div([
@@ -972,3 +1015,62 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
         current_file_title = f"현재 파일: {os.path.basename(current_file)}"
     # step=0.1로 반환
     return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, current_file_title
+
+# 온도분포 탭 콜백: 입력값 변경 시 3D 뷰와 온도 정보 갱신
+@callback(
+    Output("temp-viewer-3d", "figure"),
+    Output("temp-time-graph", "figure"),
+    Input("temp-x-input", "value"),
+    Input("temp-y-input", "value"),
+    Input("temp-z-input", "value"),
+    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    prevent_initial_call=True,
+)
+def update_temp_tab(x, y, z, selected_rows, tbl_data):
+    import plotly.graph_objects as go
+    import numpy as np
+    if not selected_rows or not tbl_data:
+        return go.Figure(), go.Figure()
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    try:
+        dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
+        poly_nodes = np.array(dims["nodes"])
+        poly_h = float(dims["h"])
+    except Exception:
+        poly_nodes = np.array([[0,0]])
+        poly_h = 1.0
+    # 콘크리트 외곽선(윗면, 아랫면)
+    n = len(poly_nodes)
+    x0, y0 = poly_nodes[:,0], poly_nodes[:,1]
+    z0 = np.zeros(n)
+    z1 = np.full(n, poly_h)
+    fig_3d = go.Figure()
+    # 아래면
+    fig_3d.add_trace(go.Scatter3d(
+        x=np.append(x0, x0[0]), y=np.append(y0, y0[0]), z=np.append(z0, z0[0]),
+        mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
+    # 윗면
+    fig_3d.add_trace(go.Scatter3d(
+        x=np.append(x0, x0[0]), y=np.append(y0, y0[0]), z=np.append(z1, z1[0]),
+        mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
+    # 기둥
+    for i in range(n):
+        fig_3d.add_trace(go.Scatter3d(
+            x=[x0[i], x0[i]], y=[y0[i], y0[i]], z=[z0[i], z1[i]],
+            mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
+    # 입력 위치 표시
+    if x is not None and y is not None and z is not None:
+        fig_3d.add_trace(go.Scatter3d(
+            x=[x], y=[y], z=[z],
+            mode='markers', marker=dict(size=6, color='red', symbol='circle'),
+            name='위치', showlegend=False, hoverinfo='text', text=['선택 위치']
+        ))
+    fig_3d.update_layout(
+        scene=dict(aspectmode='data', bgcolor='white'),
+        margin=dict(l=0, r=0, t=0, b=0)
+    )
+    # 오른쪽 온도 정보(빈 그래프)
+    fig_temp = go.Figure()
+    fig_temp.update_layout(title="시간에 따른 온도 정보", xaxis_title="시간", yaxis_title="온도(°C)")
+    return fig_3d, fig_temp
