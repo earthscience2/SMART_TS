@@ -57,15 +57,15 @@ def get_latest_csv(path):
         return None
 
 
-def get_concrete_pk_by_sensor(sensor_pk):
+def get_concrete_pk_by_sensor(device_id, channel):
     try:
-        sensor_df = api_db.get_sensors_data(sensor_pk=sensor_pk)
+        sensor_df = api_db.get_sensors_data(device_id=device_id, channel=channel)
         if not sensor_df.empty:
             pk = sensor_df.iloc[0]['concrete_pk']
-            logger.info(f"Sensor {sensor_pk} -> concrete_pk {pk}")
+            logger.info(f"Sensor {device_id}/{channel} -> concrete_pk {pk}")
             return pk
         else:
-            logger.warning(f"No sensor record for sensor_pk={sensor_pk}")
+            logger.warning(f"No sensor record for device_id={device_id}, channel={channel}")
             return None
     except Exception as e:
         logger.error(f"get_concrete_pk_by_sensor error: {e}")
@@ -184,7 +184,7 @@ def make_inp(concrete, sensor_data_list, latest_csv):
             sensors = []
             num = 1
             for sensor in sensor_data_list:
-                df_time = api_db.get_sensor_data_by_time(sensor_pk=sensor['sensor_pk'], time=time)
+                df_time = api_db.get_sensor_data_by_time(device_id=sensor['device_id'], channel=sensor['channel'], time=time)
                 position = json.loads(sensor['dims'])['nodes']
                 if not df_time.empty:
                     temp = float(df_time.iloc[0]['temperature'])
@@ -273,3 +273,6 @@ def auto_inp():
         logger.info("auto_inp completed successfully")
     except Exception as e:
         logger.exception(f"auto_inp error: {e}")
+
+
+auto_inp()

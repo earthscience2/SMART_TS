@@ -137,5 +137,3 @@ def auto_sensor_data():
         logger.error(f"auto_sensor_data 오류: {e}")
     finally:
         conn.close()
-
-auto_sensor_data()
