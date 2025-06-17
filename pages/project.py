@@ -56,6 +56,9 @@ layout = dbc.Container(
         # ── (★) 클릭 좌표 저장
         dcc.Store(id="section-coord-store", data=None),
 
+        # ── (★) 3D 뷰 정보 저장
+        dcc.Store(id="viewer-3d-store", data=None),
+
         # 상단: 프로젝트 선택 → 콘크리트 테이블 + 버튼
         dbc.Row(
             [
@@ -102,30 +105,30 @@ layout = dbc.Container(
                         ], id="tabs-main", active_tab="tab-3d"),
                         # 탭 콘텐츠
                         html.Div(id="tab-content", children=[
+                            # 시간 슬라이더 (3D 뷰 위에 배치)
+                            html.Div([
+                                html.Label("시간", className="form-label"),
+                                dcc.Slider(
+                                    id="time-slider",
+                                    min=0,
+                                    step=1,
+                                    value=0,
+                                    marks={},
+                                    tooltip={"placement": "bottom", "always_visible": True},
+                                ),
+                            ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
                                     html.Div([
                                         dcc.Graph(
                                             id="viewer-3d",
-                                            style={"height": "80vh", "border": "2px solid #dee2e6", "borderRadius": "8px"},
+                                            style={"height": "70vh", "border": "2px solid #dee2e6", "borderRadius": "8px"},
                                             config={"scrollZoom": True},
                                         ),
                                     ], style={"padding": "10px"}),
                                 ], md=12),
                             ]),
                         ]),
-                        # 시간 슬라이더
-                        html.Div([
-                            html.Label("시간", className="form-label"),
-                            dcc.Slider(
-                                id="time-slider",
-                                min=0,
-                                step=1,
-                                value=0,
-                                marks={},
-                                tooltip={"placement": "bottom", "always_visible": True},
-                            ),
-                        ], className="mt-3"),
                     ],
                     md=10,
                 ),
@@ -247,6 +250,7 @@ def store_section_coord(clickData):
     Output("viewer-3d", "figure"),
     Output("current-time-store", "data", allow_duplicate=True),
     Output("current-file-title", "children"),
+    Output("viewer-3d-store", "data"),
     Input("time-slider", "value"),
     Input("section-coord-store", "data"),
     State("tbl-concrete", "selected_rows"),
@@ -437,7 +441,15 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
             ))
     except Exception as e:
         print('센서 표시 오류:', e)
-    return fig_3d, current_time, current_file_title
+    
+    # 3D 뷰 정보를 Store에 저장
+    viewer_data = {
+        'figure': fig_3d,
+        'current_time': current_time,
+        'current_file_title': current_file_title
+    }
+    
+    return fig_3d, current_time, current_file_title, viewer_data
 
 # 탭 콘텐츠 처리 콜백
 @callback(
@@ -445,18 +457,46 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     Input("tabs-main", "active_tab"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
+    State("viewer-3d-store", "data"),
     prevent_initial_call=True,
 )
-def switch_tab(active_tab, selected_rows, tbl_data):
+def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
     if active_tab == "tab-3d":
+        # 저장된 3D 뷰 정보가 있으면 복원, 없으면 기본 뷰
+        if viewer_data and 'figure' in viewer_data:
+            fig_3d = viewer_data['figure']
+        else:
+            # 기본 빈 3D 뷰
+            fig_3d = go.Figure()
+            fig_3d.update_layout(
+                scene=dict(
+                    xaxis=dict(title="X"),
+                    yaxis=dict(title="Y"),
+                    zaxis=dict(title="Z"),
+                ),
+                title="콘크리트를 선택하고 시간을 조절하세요"
+            )
         return html.Div([
+            # 시간 슬라이더 (3D 뷰 위에 배치)
+            html.Div([
+                html.Label("시간", className="form-label"),
+                dcc.Slider(
+                    id="time-slider",
+                    min=0,
+                    step=1,
+                    value=0,
+                    marks={},
+                    tooltip={"placement": "bottom", "always_visible": True},
+                ),
+            ], className="mb-3"),
             dbc.Row([
                 dbc.Col([
                     html.Div([
                         dcc.Graph(
                             id="viewer-3d",
-                            style={"height": "80vh", "border": "2px solid #dee2e6", "borderRadius": "8px"},
+                            style={"height": "70vh", "border": "2px solid #dee2e6", "borderRadius": "8px"},
                             config={"scrollZoom": True},
+                            figure=fig_3d,
                         ),
                     ], style={"padding": "10px"}),
                 ], md=12),
