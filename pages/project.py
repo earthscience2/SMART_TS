@@ -858,9 +858,9 @@ def update_section_views(time_idx, x_val, y_val, z_val, prev_x, prev_y, prev_z, 
     y_mid = float(np.median(y_coords))
     z_mid = float(np.median(z_coords))
     # 최초 진입 시에만 중앙값, 이후에는 사용자가 조작한 값 유지
-    x0 = x_val if x_val is not None else x_mid
-    y0 = y_val if y_val is not None else y_mid
-    z0 = z_val if z_val is not None else z_mid
+    x0 = float(x_val) if x_val is not None else float(x_mid)
+    y0 = float(y_val) if y_val is not None else float(y_mid)
+    z0 = float(z_val) if z_val is not None else float(z_mid)
     # 3D 뷰(작게)
     coords = np.array([[x, y, z] for x, y, z in zip(x_coords, y_coords, z_coords)])
     fig_3d = go.Figure(data=go.Volume(
