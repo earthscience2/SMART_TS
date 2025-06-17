@@ -251,6 +251,10 @@ def store_section_coord(clickData):
     Output("current-time-store", "data", allow_duplicate=True),
     Output("current-file-title", "children"),
     Output("viewer-3d-store", "data"),
+    Output("time-slider", "min", allow_duplicate=True),
+    Output("time-slider", "max", allow_duplicate=True),
+    Output("time-slider", "marks", allow_duplicate=True),
+    Output("time-slider", "value", allow_duplicate=True),
     Input("time-slider", "value"),
     Input("section-coord-store", "data"),
     State("tbl-concrete", "selected_rows"),
@@ -267,6 +271,33 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
     if not inp_files:
         raise PreventUpdate
+
+    # 시간 파싱 및 슬라이더 상태 계산
+    times = []
+    for f in inp_files:
+        try:
+            time_str = os.path.basename(f).split(".")[0]
+            dt = datetime.strptime(time_str, "%Y%m%d%H")
+            times.append(dt)
+        except:
+            continue
+    if not times:
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0
+    marks = {}
+    for i, t in enumerate(times):
+        if t.hour == 0:
+            marks[i] = t.strftime("%m/%d")
+    if 0 not in marks:
+        marks[0] = times[0].strftime("%m/%d")
+    if (len(times)-1) not in marks:
+        marks[len(times)-1] = times[-1].strftime("%m/%d")
+    max_idx = len(times)-1
+    # value가 max보다 크거나 None/NaN이면 max로 맞춤
+    import math
+    if time_idx is None or (isinstance(time_idx, float) and math.isnan(time_idx)) or (isinstance(time_idx, str) and not time_idx.isdigit()):
+        value = max_idx
+    else:
+        value = min(int(time_idx), max_idx)
 
     # 전체 파일의 온도 min/max 계산
     all_temps = []
@@ -295,7 +326,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         tmin, tmax = 0, 100
 
     # 시간 슬라이더: 1시간 단위로 표시
-    current_file = inp_files[time_idx]
+    current_file = inp_files[value]
     current_time = os.path.basename(current_file).split(".")[0]
     
     # 현재 파일의 온도 통계 계산
@@ -446,10 +477,16 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     viewer_data = {
         'figure': fig_3d,
         'current_time': current_time,
-        'current_file_title': current_file_title
+        'current_file_title': current_file_title,
+        'slider': {
+            'min': 0,
+            'max': max_idx,
+            'marks': marks,
+            'value': value
+        }
     }
     
-    return fig_3d, current_time, current_file_title, viewer_data
+    return fig_3d, current_time, current_file_title, viewer_data, 0, max_idx, marks, value
 
 # 탭 콘텐츠 처리 콜백
 @callback(
@@ -465,6 +502,11 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
         # 저장된 3D 뷰 정보가 있으면 복원, 없으면 기본 뷰
         if viewer_data and 'figure' in viewer_data:
             fig_3d = viewer_data['figure']
+            slider = viewer_data.get('slider', {})
+            slider_min = slider.get('min', 0)
+            slider_max = slider.get('max', 5)
+            slider_marks = slider.get('marks', {})
+            slider_value = slider.get('value', 0)
         else:
             # 기본 빈 3D 뷰
             fig_3d = go.Figure()
@@ -476,16 +518,18 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data):
                 ),
                 title="콘크리트를 선택하고 시간을 조절하세요"
             )
+            slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
         return html.Div([
             # 시간 슬라이더 (3D 뷰 위에 배치)
             html.Div([
                 html.Label("시간", className="form-label"),
                 dcc.Slider(
                     id="time-slider",
-                    min=0,
+                    min=slider_min,
+                    max=slider_max,
                     step=1,
-                    value=0,
-                    marks={},
+                    value=slider_value,
+                    marks=slider_marks,
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
             ], className="mb-3"),
