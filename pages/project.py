@@ -636,12 +636,10 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 x_mid, y_mid, z_mid = 0.5, 0.5, 0.5
         else:
             x_mid, y_mid, z_mid = 0.5, 0.5, 0.5
-        # Store에 기본값 저장: 탭이 눌릴 때마다 입력값이 기본값으로 초기화되도록
-        import dash
-        dash.callback_context.response.set_cookie('temp-x-input', str(round(x_mid,1)))
-        dash.callback_context.response.set_cookie('temp-y-input', str(round(y_mid,1)))
-        dash.callback_context.response.set_cookie('temp-z-input', str(round(z_mid,1)))
+        # dcc.Store로 기본값 저장: 탭 진입 시 자동으로 콜백이 실행되도록
+        store_data = {'x': round(x_mid,1), 'y': round(y_mid,1), 'z': round(z_mid,1)}
         return html.Div([
+            dcc.Store(id="temp-coord-store", data=store_data),
             # 입력창 (맨 위)
             html.Div([
                 html.Label("위치 설정", className="mb-2"),
@@ -1025,28 +1023,31 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
 @callback(
     Output("temp-viewer-3d", "figure"),
     Output("temp-time-graph", "figure"),
+    Input("temp-coord-store", "data"),
     Input("temp-x-input", "value"),
     Input("temp-y-input", "value"),
     Input("temp-z-input", "value"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
-    prevent_initial_call=True,
+    prevent_initial_call=False,
 )
-def update_temp_tab(x, y, z, selected_rows, tbl_data):
+def update_temp_tab(store_data, x, y, z, selected_rows, tbl_data):
     import plotly.graph_objects as go
     import numpy as np
     import glob, os
     from datetime import datetime
     if not selected_rows or not tbl_data:
         return go.Figure(), go.Figure()
-    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-    try:
-        dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
-        poly_nodes = np.array(dims["nodes"])
-        poly_h = float(dims["h"])
-    except Exception:
-        poly_nodes = np.array([[0,0]])
-        poly_h = 1.0
+    # store_data가 있으면 기본값으로 사용, 입력값이 있으면 입력값 우선
+    if store_data is not None:
+        x0 = store_data.get('x', 0.5)
+        y0 = store_data.get('y', 0.5)
+        z0 = store_data.get('z', 0.5)
+    else:
+        x0, y0, z0 = 0.5, 0.5, 0.5
+    x = x if x is not None else x0
+    y = y if y is not None else y0
+    z = z if z is not None else z0
     # 콘크리트 외곽선(윗면, 아랫면)
     n = len(poly_nodes)
     x0, y0 = poly_nodes[:,0], poly_nodes[:,1]
@@ -1139,8 +1140,8 @@ def update_temp_tab(x, y, z, selected_rows, tbl_data):
     # 그래프 생성
     fig_temp = go.Figure()
     if temp_times and temp_values:
-        # 한글 날짜 포맷으로 변환
-        x_labels = [dt.strftime('%Y년 %-m월 %-d일 %H시') for dt in temp_times]
+        # MM/DD 형식으로 변환
+        x_labels = [dt.strftime('%-m/%-d') for dt in temp_times]
         fig_temp.add_trace(go.Scatter(x=x_labels, y=temp_values, mode='lines+markers', name='온도'))
     fig_temp.update_layout(title="시간에 따른 온도 정보", xaxis_title="시간", yaxis_title="온도(°C)")
     return fig_3d, fig_temp
