@@ -996,22 +996,16 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
 @callback(
     Output("shared-time-slider", "data"),
     Input("time-slider", "value"),
+    Input("time-slider-section", "value"),
     prevent_initial_call=True,
 )
-def update_shared_time_slider(val_3d):
+def update_shared_time_slider(val_3d, val_section):
     ctx = dash.callback_context
     if not ctx.triggered:
         return 0
     trigger = ctx.triggered[0]["prop_id"].split(".")[0]
     if trigger == "time-slider":
         return val_3d
+    elif trigger == "time-slider-section":
+        return val_section
     return 0
-
-# 단면도 탭에서 시간 슬라이더 value는 shared_time_value를 사용하고, onChange 시 Store를 업데이트하는 콜백만 둔다.
-@callback(
-    Output("shared-time-slider", "data"),
-    Input("time-slider-section", "value"),
-    prevent_initial_call=True,
-)
-def update_shared_time_section(val):
-    return val
