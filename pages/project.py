@@ -737,8 +737,8 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         ]), "전체 파일"
     elif active_tab == "tab-analysis":
         # 수치해석 탭: dash-vtk로 VTK 파일을 보여줌
-        import dash_vtk
-        import dash_html_components as html
+        # import dash_vtk
+        # import dash_html_components as html
         if not (selected_rows and tbl_data):
             return html.Div("콘크리트를 선택하세요."), ""
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
