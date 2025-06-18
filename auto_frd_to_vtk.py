@@ -83,5 +83,5 @@ def convert_all_frd_to_vtk(concrete_pk_dir, vtk_root_dir):
                 write_vtk(nodes, elements, vtk_path)
 
 if __name__ == "__main__":
-    # concrete_pk 폴더와 vtk 폴더는 workspace 최상위에 있다고 가정
-    convert_all_frd_to_vtk('concrete_pk', 'vtk')
+    # frd 폴더와 vtk 폴더는 workspace 최상위에 있다고 가정
+    convert_all_frd_to_vtk('frd', 'vtk')
