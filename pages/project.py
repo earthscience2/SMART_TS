@@ -280,7 +280,7 @@ def store_section_coord(clickData):
     pt = clickData["points"][0]
     return {"x": pt["x"], "y": pt["y"], "z": pt["z"]}
 
-# ───────────────────── 3D/단면도 업데이트 콜백 ─────────────────────
+# ───────────────────── 3D/단면도 업데이트 콜백 ────────────────────
 @callback(
     Output("viewer-3d", "figure"),
     Output("current-time-store", "data", allow_duplicate=True),
@@ -706,17 +706,14 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 html.Label("위치 설정", className="mb-2"),
                 html.Div([
                     dbc.InputGroup([
-                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#ff3333", "marginRight": "6px", "marginTop": "8px"}),
                         dbc.InputGroupText("X"),
                         dbc.Input(id="temp-x-input", type="number", step=0.1, value=round(x_mid,1), min=round(x_min,2), max=round(x_max,2), style={"width": "80px"}),
                     ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
                     dbc.InputGroup([
-                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#3388ff", "marginRight": "6px", "marginTop": "8px"}),
                         dbc.InputGroupText("Y"),
                         dbc.Input(id="temp-y-input", type="number", step=0.1, value=round(y_mid,1), min=round(y_min,2), max=round(y_max,2), style={"width": "80px"}),
                     ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
                     dbc.InputGroup([
-                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#33cc33", "marginRight": "6px", "marginTop": "8px"}),
                         dbc.InputGroupText("Z"),
                         dbc.Input(id="temp-z-input", type="number", step=0.1, value=round(z_mid,1), min=round(z_min,2), max=round(z_max,2), style={"width": "80px"}),
                     ], style={"display": "inline-flex", "verticalAlign": "middle"}),
@@ -1127,30 +1124,44 @@ def update_temp_tab(store_data, x, y, z, selected_rows, tbl_data):
         poly_h = 1.0
     # 콘크리트 외곽선(윗면, 아랫면)
     n = len(poly_nodes)
-    x0, y0 = poly_nodes[:,0], poly_nodes[:,1]
+    x0s, y0s = poly_nodes[:,0], poly_nodes[:,1]
     z0s = np.zeros(n)
     z1 = np.full(n, poly_h)
     fig_3d = go.Figure()
     # 아래면
     fig_3d.add_trace(go.Scatter3d(
-        x=np.append(x0, x0[0]), y=np.append(y0, y0[0]), z=np.append(z0s, z0s[0]),
+        x=np.append(x0s, x0s[0]), y=np.append(y0s, y0s[0]), z=np.append(z0s, z0s[0]),
         mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
     # 윗면
     fig_3d.add_trace(go.Scatter3d(
-        x=np.append(x0, x0[0]), y=np.append(y0, y0[0]), z=np.append(z1, z1[0]),
+        x=np.append(x0s, x0s[0]), y=np.append(y0s, y0s[0]), z=np.append(z1, z1[0]),
         mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
     # 기둥
     for i in range(n):
         fig_3d.add_trace(go.Scatter3d(
-            x=[x0[i], x0[i]], y=[y0[i], y0[i]], z=[z0s[i], z1[i]],
+            x=[x0s[i], x0s[i]], y=[y0s[i], y0s[i]], z=[z0s[i], z1[i]],
             mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
-    # 입력 위치 표시
+    # 입력 위치 표시 + 보조선
     if x is not None and y is not None and z is not None:
+        # 점
         fig_3d.add_trace(go.Scatter3d(
             x=[x], y=[y], z=[z],
             mode='markers', marker=dict(size=6, color='red', symbol='circle'),
             name='위치', showlegend=False, hoverinfo='text', text=['선택 위치']
         ))
+        # 보조선: x/y/z축 평면까지
+        fig_3d.add_trace(go.Scatter3d(
+            x=[x, x], y=[y, y], z=[0, z],
+            mode='lines', line=dict(width=2, color='gray', dash='dash'), showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(
+            x=[x, x], y=[y, y], z=[z, poly_h],
+            mode='lines', line=dict(width=2, color='gray', dash='dash'), showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(
+            x=[x, x], y=[min(y0s), max(y0s)], z=[z, z],
+            mode='lines', line=dict(width=2, color='gray', dash='dash'), showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(
+            x=[min(x0s), max(x0s)], y=[y, y], z=[z, z],
+            mode='lines', line=dict(width=2, color='gray', dash='dash'), showlegend=False, hoverinfo='skip'))
     fig_3d.update_layout(
         scene=dict(aspectmode='data', bgcolor='white'),
         margin=dict(l=0, r=0, t=0, b=0)
