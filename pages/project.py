@@ -111,6 +111,7 @@ layout = dbc.Container(
                             dbc.Tab(label="단면도", tab_id="tab-section"),
                             dbc.Tab(label="온도 변화", tab_id="tab-temp"),
                             dbc.Tab(label="수치해석", tab_id="tab-analysis"),
+                            dbc.Tab(label="inp 파일 목록", tab_id="tab-inp-files"),
                         ], id="tabs-main", active_tab="tab-3d"),
                         # 탭 콘텐츠
                         html.Div(id="tab-content", children=[
@@ -734,7 +735,58 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             html.H4("수치해석", className="text-center mt-5"),
             html.P("준비 중입니다...", className="text-center text-muted"),
         ]), current_file_title
+    elif active_tab == "tab-inp-files":
+        # inp 파일 목록 탭
+        if not (selected_rows and tbl_data):
+            return html.Div("콘크리트를 선택하세요."), ""
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+        concrete_pk = row["concrete_pk"]
+        inp_dir = f"inp/{concrete_pk}"
+        if not os.path.exists(inp_dir):
+            return html.Div("inp 폴더가 존재하지 않습니다."), ""
+        files = sorted([f for f in os.listdir(inp_dir) if f.endswith('.inp')])
+        if not files:
+            return html.Div("inp 파일이 없습니다."), ""
+        # 파일 목록 테이블 + 다운로드 버튼
+        table = dash_table.DataTable(
+            id="inp-file-table",
+            columns=[{"name": "파일명", "id": "filename"}, {"name": "다운로드", "id": "download"}],
+            data=[{"filename": f, "download": f"다운로드"} for f in files],
+            style_cell={"textAlign": "center"},
+            style_header={"backgroundColor": "#f1f3f5", "fontWeight": 600},
+            style_table={"width": "60%", "margin": "auto"},
+            row_selectable=False,
+            cell_selectable=False,
+        )
+        # 다운로드 버튼 클릭 시 dcc.Download 트리거
+        return html.Div([
+            table,
+            dcc.Download(id="inp-file-download")
+        ]), f"inp 파일 {len(files)}개"
     return html.Div(), current_file_title
+
+# inp 파일 다운로드 콜백
+@callback(
+    Output("inp-file-download", "data"),
+    Input("inp-file-table", "active_cell"),
+    State("inp-file-table", "data"),
+    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    prevent_initial_call=True,
+)
+def download_inp_file(active_cell, table_data, selected_rows, tbl_data):
+    if not active_cell or active_cell.get("column_id") != "download":
+        raise PreventUpdate
+    row_idx = active_cell["row"]
+    filename = table_data[row_idx]["filename"]
+    if not (selected_rows and tbl_data):
+        raise PreventUpdate
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    inp_path = os.path.join("inp", str(concrete_pk), filename)
+    if not os.path.exists(inp_path):
+        raise PreventUpdate
+    return dcc.send_file(inp_path)
 
 # 시간 슬라이더 마크: 날짜의 00시만 표시, 텍스트는 MM/DD 형식
 @callback(
