@@ -31,6 +31,7 @@ import auto_sensor
 import auto_inp
 import time
 from urllib.parse import parse_qs, urlparse
+from dash.dependencies import ALL
 
 import api_db
 
@@ -755,9 +756,17 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             id="inp-file-table",
             columns=[
                 {"name": "파일명", "id": "filename"},
-                {"name": "다운로드", "id": "download_btn", "presentation": "input"}
+                {"name": "다운로드", "id": "download_btn"}
             ],
-            data=[{"filename": f, "download_btn": f"다운로드"} for f in files],
+            data=[{
+                "filename": f,
+                "download_btn": html.Button(
+                    "다운로드",
+                    id={"type": "inp-download-btn", "index": f},
+                    n_clicks=0,
+                    style={"padding": "4px 12px", "backgroundColor": "#198754", "color": "white", "border": "none", "borderRadius": "4px"}
+                )
+            } for f in files],
             style_cell={"textAlign": "center"},
             style_header={"backgroundColor": "#f1f3f5", "fontWeight": 600},
             style_table={"width": "60%", "margin": "auto"},
@@ -765,7 +774,6 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             row_selectable=False,
             cell_selectable=False,
         )
-        # 다운로드 버튼 클릭 시 dcc.Download 트리거 (다운로드 버튼은 별도 콜백에서 처리)
         return html.Div([
             table,
             dcc.Download(id="inp-file-download")
@@ -775,29 +783,32 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
 # inp 파일 다운로드 콜백 (다운로드 버튼 클릭 시)
 @callback(
     Output("inp-file-download", "data"),
-    Input("inp-file-table", "active_cell"),
-    State("inp-file-table", "data"),
+    Input({'type': 'inp-download-btn', 'index': ALL}, 'n_clicks'),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def download_inp_file(active_cell, table_data, selected_rows, tbl_data):
+def download_inp_file(n_clicks_list, selected_rows, tbl_data):
     from dash.exceptions import PreventUpdate
-    if not active_cell or active_cell.get("column_id") != "download_btn":
+    import dash
+    ctx = dash.callback_context
+    if not ctx.triggered or not selected_rows or not tbl_data:
         raise PreventUpdate
-    row_idx = active_cell["row"]
-    filename = table_data[row_idx]["filename"]
-    if not (selected_rows and tbl_data):
-        raise PreventUpdate
-    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-    concrete_pk = row["concrete_pk"]
-    inp_path = os.path.join("inp", str(concrete_pk), filename)
-    try:
-        if not os.path.exists(inp_path):
-            raise PreventUpdate
-        return dcc.send_file(inp_path)
-    except Exception:
-        raise PreventUpdate
+    # 어떤 버튼이 눌렸는지 확인
+    for i, n in enumerate(n_clicks_list):
+        if n:
+            btn_id = ctx.inputs_list[0][i]["id"]
+            filename = btn_id["index"]
+            row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+            concrete_pk = row["concrete_pk"]
+            inp_path = os.path.join("inp", str(concrete_pk), filename)
+            try:
+                if not os.path.exists(inp_path):
+                    raise PreventUpdate
+                return dcc.send_file(inp_path)
+            except Exception:
+                raise PreventUpdate
+    raise PreventUpdate
 
 # 시간 슬라이더 마크: 날짜의 00시만 표시, 텍스트는 MM/DD 형식
 @callback(
