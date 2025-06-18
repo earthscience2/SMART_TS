@@ -1,5 +1,6 @@
 import re
 import os
+import shutil
 
 def parse_frd(filename):
     nodes = {}
@@ -138,6 +139,9 @@ def convert_all_frd_to_vtk(frd_root_dir, vtk_root_dir):
             continue
         vtk_pk_path = os.path.join(vtk_root_dir, pk_name)
         os.makedirs(vtk_pk_path, exist_ok=True)
+        # assets/vtk/{concrete_pk} 폴더도 생성
+        assets_vtk_pk_path = os.path.join('assets', 'vtk', pk_name)
+        os.makedirs(assets_vtk_pk_path, exist_ok=True)
         for fname in os.listdir(pk_path):
             if fname.lower().endswith('.frd'):
                 frd_path = os.path.join(pk_path, fname)
@@ -145,6 +149,9 @@ def convert_all_frd_to_vtk(frd_root_dir, vtk_root_dir):
                 print(f"변환: {frd_path} -> {vtk_path}")
                 nodes, elements, displacements, stresses = parse_frd(frd_path)
                 write_vtk(nodes, elements, vtk_path, displacements, stresses)
+                # assets 폴더에도 복사
+                assets_vtk_path = os.path.join(assets_vtk_pk_path, fname[:-4] + '.vtk')
+                shutil.copyfile(vtk_path, assets_vtk_path)
 
 if __name__ == "__main__":
     # 샘플 파일로 파싱 결과 확인 (C000001/2025061215.frd가 있다고 가정)

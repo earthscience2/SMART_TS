@@ -734,15 +734,18 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             ]),
         ]), "전체 파일"
     elif active_tab == "tab-analysis":
-        # 수치해석 탭: vtk/{concrete_pk} 폴더의 VTK 파일을 시간 슬라이더와 함께 3D로 보여줌
+        # 수치해석 탭: dash-vtk로 VTK 파일을 보여줌
+        import dash_vtk
+        import dash_html_components as html
         if not (selected_rows and tbl_data):
             return html.Div("콘크리트를 선택하세요."), ""
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
         concrete_pk = row["concrete_pk"]
         vtk_dir = f"vtk/{concrete_pk}"
-        if not os.path.exists(vtk_dir):
-            return html.Div("vtk 폴더가 존재하지 않습니다."), ""
-        vtk_files = sorted([f for f in os.listdir(vtk_dir) if f.endswith('.vtk')])
+        assets_vtk_dir = f"assets/vtk/{concrete_pk}"
+        if not os.path.exists(assets_vtk_dir):
+            return html.Div("assets/vtk 폴더가 존재하지 않습니다."), ""
+        vtk_files = sorted([f for f in os.listdir(assets_vtk_dir) if f.endswith('.vtk')])
         if not vtk_files:
             return html.Div("VTK 파일이 없습니다."), ""
         # 시간 파싱 (3D뷰와 동일: YYYYMMDDHH.vtk)
@@ -768,104 +771,17 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             marks[len(times)-1] = times[-1][0].strftime("%m/%d")
         max_idx = len(times)-1
         slider_value = max_idx
-        # VTK 파일 파싱 함수
-        def parse_vtk(filepath):
-            with open(filepath, 'r') as f:
-                lines = f.readlines()
-            points = []
-            cells = []
-            cell_types = []
-            displacement = []
-            stress = []
-            mode = None
-            n_points = n_cells = 0
-            for line in lines:
-                if line.startswith('POINTS'):
-                    mode = 'points'
-                    n_points = int(line.split()[1])
-                    continue
-                elif line.startswith('CELLS'):
-                    mode = 'cells'
-                    n_cells = int(line.split()[1])
-                    continue
-                elif line.startswith('CELL_TYPES'):
-                    mode = 'cell_types'
-                    continue
-                elif line.startswith('POINT_DATA'):
-                    mode = None
-                    continue
-                elif line.startswith('VECTORS displacement'):
-                    mode = 'displacement'
-                    continue
-                elif line.startswith('CELL_DATA'):
-                    mode = None
-                    continue
-                elif line.startswith('SCALARS stress'):
-                    mode = 'stress'
-                    continue
-                elif line.startswith('LOOKUP_TABLE'):
-                    continue
-                if mode == 'points':
-                    if len(points) < n_points:
-                        points.append([float(x) for x in line.strip().split()])
-                elif mode == 'cells':
-                    cells.append([int(x) for x in line.strip().split()[1:]])
-                elif mode == 'cell_types':
-                    try:
-                        cell_types.append(int(line.strip()))
-                    except ValueError:
-                        continue
-                elif mode == 'displacement':
-                    parts = line.strip().split()
-                    if len(parts) == 3:
-                        displacement.append([float(x) for x in parts])
-                elif mode == 'stress':
-                    try:
-                        stress.append(float(line.strip()))
-                    except:
-                        continue
-            import numpy as np
-            return np.array(points), np.array(cells), np.array(cell_types), np.array(displacement), np.array(stress)
-        # 시간 인덱스
         slider_value = min(slider_value, len(times)-1)
-        vtk_path = os.path.join(vtk_dir, times[slider_value][1])
-        points, cells, cell_types, displacement, stress = parse_vtk(vtk_path)
-        import plotly.graph_objects as go
-        fig = go.Figure()
-        # 시각화: 변위(norm) → 응력 → geometry
-        if len(points) > 0 and len(cells) > 0:
-            if len(displacement) == len(points):
-                disp_norm = np.linalg.norm(displacement, axis=1)
-                fig.add_trace(go.Mesh3d(
-                    x=points[:,0], y=points[:,1], z=points[:,2],
-                    i=cells[:,0], j=cells[:,1], k=cells[:,2],
-                    intensity=disp_norm,
-                    colorscale='Viridis',
-                    colorbar=dict(title='변위 크기'),
-                    opacity=0.7
-                ))
-            elif len(stress) == len(cells):
-                fig.add_trace(go.Mesh3d(
-                    x=points[:,0], y=points[:,1], z=points[:,2],
-                    i=cells[:,0], j=cells[:,1], k=cells[:,2],
-                    intensity=stress,
-                    colorscale='Jet',
-                    colorbar=dict(title='응력'),
-                    opacity=0.7
-                ))
-            else:
-                fig.add_trace(go.Mesh3d(
-                    x=points[:,0], y=points[:,1], z=points[:,2],
-                    i=cells[:,0], j=cells[:,1], k=cells[:,2],
-                    color='lightblue', opacity=0.5
-                ))
-            fig.update_layout(
-                scene=dict(aspectmode='data', bgcolor='white'),
-                margin=dict(l=0, r=0, t=0, b=0),
-                title=f"{times[slider_value][0].strftime('%Y-%m-%d %H시')} VTK 결과"
-            )
-        else:
-            fig = go.Figure()
+        vtk_rel_path = f"vtk/{concrete_pk}/{times[slider_value][1]}"
+        vtk_url = f"/assets/{vtk_rel_path}"
+        vtk_viewer = dash_vtk.View([
+            dash_vtk.GeometryRepresentation([
+                dash_vtk.Reader(
+                    id="vtk-reader",
+                    url=vtk_url
+                )
+            ])
+        ], style={"height": "60vh", "width": "100%"})
         return html.Div([
             html.Div([
                 html.Label("시간", className="form-label"),
@@ -879,7 +795,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
             ], className="mb-3"),
-            dcc.Graph(id="frd-3d-viewer", figure=fig, style={"height": "60vh", "border": "2px solid #dee2e6", "borderRadius": "8px"}, config={"scrollZoom": True}),
+            vtk_viewer
         ]), f"{times[slider_value][0].strftime('%Y-%m-%d %H시')} VTK 결과"
     elif active_tab == "tab-inp-files":
         # inp 파일 목록 탭
