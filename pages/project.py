@@ -776,7 +776,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             node_section = False
             elem_section = False
             for line in lines:
-                if line.startswith('    1C'):  # 노드 시작
+                if line.startswith('    1C'):
                     node_section = True
                     continue
                 if node_section and line.startswith(' -1'):
@@ -784,10 +784,14 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     continue
                 if node_section:
                     parts = line.strip().split()
-                    if len(parts) >= 4:
-                        nodes.append([float(parts[1]), float(parts[2]), float(parts[3])])
+                    # 노드 데이터: -1로 시작하고 5개 값이 있는 경우만
+                    if len(parts) == 5 and parts[0] == '-1':
+                        try:
+                            nodes.append([float(parts[2]), float(parts[3]), float(parts[4])])
+                        except Exception:
+                            continue
                     continue
-                if line.startswith('    2C'):  # 요소 시작
+                if line.startswith('    2C'):
                     elem_section = True
                     continue
                 if elem_section and line.startswith(' -1'):
@@ -795,9 +799,11 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     continue
                 if elem_section:
                     parts = line.strip().split()
-                    # 삼각형(3), 사면체(4) 등
                     if len(parts) >= 5:
-                        faces.append([int(i)-1 for i in parts[2:]])  # 0-based
+                        try:
+                            faces.append([int(i)-1 for i in parts[2:]])
+                        except Exception:
+                            continue
             if not nodes or not faces:
                 return None, None
             import numpy as np
