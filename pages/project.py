@@ -811,7 +811,10 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 elif mode == 'cells':
                     cells.append([int(x) for x in line.strip().split()[1:]])
                 elif mode == 'cell_types':
-                    cell_types.append(int(line.strip()))
+                    try:
+                        cell_types.append(int(line.strip()))
+                    except ValueError:
+                        continue
                 elif mode == 'displacement':
                     displacement.append([float(x) for x in line.strip().split()])
                 elif mode == 'stress':
