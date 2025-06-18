@@ -1,6 +1,7 @@
 import re
 import os
 import shutil
+import numpy as np
 
 def parse_frd(filename):
     nodes = {}
@@ -76,6 +77,10 @@ def parse_frd(filename):
                         displacements[node_id] = (dx, dy, dz)
                     except:
                         continue
+    # 모든 노드에 대해 값이 없으면 0으로 채움
+    for nid in nodes:
+        if nid not in displacements:
+            displacements[nid] = (0.0, 0.0, 0.0)
 
     # 스트레스 파싱
     stresses = {}
@@ -98,6 +103,15 @@ def parse_frd(filename):
                         stresses[elem_id] = sxx
                     except:
                         continue
+
+    print(f"노드 개수: {len(nodes)}")
+    print(f"변위 개수: {len(displacements)}")
+    print(f"응력 개수: {len(stresses)}")
+    # 응력 데이터의 key와 노드/요소ID 비교용 출력
+    print("frd 응력 데이터 key(앞 10개):", list(stresses.keys())[:10])
+    print("frd 응력 데이터 예시(앞 3개):", [stresses[k] for k in list(stresses.keys())[:3]])
+    print("frd 노드ID(앞 10개):", list(nodes.keys())[:10])
+    print("frd 요소ID(앞 10개):", element_ids[:10])
 
     return nodes, elements, displacements, stresses
 
@@ -141,6 +155,101 @@ def write_vtk(nodes, elements, outname, displacements=None, stresses=None, node_
                 s = stresses.get(node_id, 0.0)
                 f.write(f"{s}\n")
 
+def compare_frd_vtk(frd_path, vtk_path):
+    """
+    frd와 vtk 파일의 노드/요소/데이터 정보를 비교하여 변환이 잘 되었는지 확인하는 함수
+    더 자세하게: 좌표 오차, 요소 구성, 변위/응력 데이터까지 비교
+    """
+    nodes, elements, displacements, stresses = parse_frd(frd_path)
+    node_order = sorted(nodes.keys())
+
+    with open(vtk_path, 'r') as f:
+        lines = f.readlines()
+
+    # POINTS 파싱
+    points_idx = [i for i, l in enumerate(lines) if l.startswith('POINTS')][0]
+    n_points = int(lines[points_idx].split()[1])
+    vtk_points = []
+    for i in range(points_idx+1, points_idx+1+n_points):
+        vtk_points.append(tuple(map(float, lines[i].split())))
+
+    # CELLS 파싱
+    cells_idx = [i for i, l in enumerate(lines) if l.startswith('CELLS')][0]
+    n_cells = int(lines[cells_idx].split()[1])
+    vtk_cells = []
+    for i in range(cells_idx+1, cells_idx+1+n_cells):
+        vtk_cells.append(list(map(int, lines[i].split()[1:])))
+
+    # CELL_TYPES 파싱
+    cell_types_idx = [i for i, l in enumerate(lines) if l.startswith('CELL_TYPES')][0]
+    vtk_cell_types = [int(lines[cell_types_idx+1+i].strip()) for i in range(n_cells)]
+
+    # 변위(VECTORS displacement) 파싱
+    disp_idx = None
+    for i, l in enumerate(lines):
+        if l.strip().startswith('VECTORS displacement float'):
+            disp_idx = i
+            break
+    vtk_disps = []
+    if disp_idx is not None:
+        for i in range(disp_idx+1, disp_idx+1+n_points):
+            vtk_disps.append(tuple(map(float, lines[i].split())))
+    
+    # 응력(SCALARS stress) 파싱
+    stress_idx = None
+    for i, l in enumerate(lines):
+        if l.strip().startswith('SCALARS stress float 1'):
+            stress_idx = i
+            break
+    vtk_stresses = []
+    if stress_idx is not None:
+        # 'LOOKUP_TABLE default' 다음부터 n_points줄
+        for i in range(stress_idx+2, stress_idx+2+n_points):
+            vtk_stresses.append(float(lines[i].strip()))
+
+    print(f"노드 개수: frd={len(nodes)}, vtk={len(vtk_points)}")
+    print(f"요소 개수: frd={len(elements)}, vtk={len(vtk_cells)}")
+    # 노드 좌표 오차
+    frd_coords = np.array([nodes[nid] for nid in node_order])
+    vtk_coords = np.array(vtk_points)
+    if frd_coords.shape == vtk_coords.shape:
+        coord_diff = np.linalg.norm(frd_coords - vtk_coords, axis=1)
+        print(f"노드 좌표 오차 (최대/평균): {coord_diff.max():.3e} / {coord_diff.mean():.3e}")
+    else:
+        print("노드 좌표 shape 불일치!")
+    # 요소 구성 비교
+    elem_match = 0
+    for e1, e2 in zip(elements, vtk_cells):
+        # vtk는 0-based, frd는 1-based라서 -1
+        if [n-1 for n in e1] == e2:
+            elem_match += 1
+    print(f"요소 구성 일치: {elem_match}/{len(elements)} ({elem_match/len(elements)*100:.1f}%)")
+    # 변위 비교
+    if vtk_disps and len(displacements) == len(vtk_disps):
+        frd_disps = np.array([displacements.get(nid, (0.0,0.0,0.0)) for nid in node_order])
+        vtk_disps_np = np.array(vtk_disps)
+        disp_diff = np.linalg.norm(frd_disps - vtk_disps_np, axis=1)
+        print(f"변위 오차 (최대/평균): {disp_diff.max():.3e} / {disp_diff.mean():.3e}")
+    else:
+        print("변위 데이터 비교 불가(개수 불일치 또는 없음)")
+    # 응력 비교
+    if vtk_stresses and len(stresses) == len(vtk_stresses):
+        frd_stress = np.array([stresses.get(nid, 0.0) for nid in node_order])
+        vtk_stress = np.array(vtk_stresses)
+        stress_diff = np.abs(frd_stress - vtk_stress)
+        print(f"응력 오차 (최대/평균): {stress_diff.max():.3e} / {stress_diff.mean():.3e}")
+    else:
+        print("응력 데이터 비교 불가(개수 불일치 또는 없음)")
+    # 샘플 출력
+    print("frd 첫 3개 노드:", [nodes[nid] for nid in node_order[:3]])
+    print("vtk 첫 3개 POINTS:", vtk_points[:3])
+    print("frd 첫 3개 요소:", elements[:3])
+    print("vtk 첫 3개 CELLS:", vtk_cells[:3])
+    if len(nodes) == len(vtk_points) and len(elements) == len(vtk_cells):
+        print("기본 구조는 일치합니다.")
+    else:
+        print("구조 불일치! 변환 로직 점검 필요.")
+
 def convert_all_frd_to_vtk(frd_root_dir, vtk_root_dir):
     for pk_name in os.listdir(frd_root_dir):
         pk_path = os.path.join(frd_root_dir, pk_name)
@@ -168,16 +277,12 @@ def convert_all_frd_to_vtk(frd_root_dir, vtk_root_dir):
 if __name__ == "__main__":
     # 샘플 파일로 파싱 결과 확인 (C000001/2025061215.frd가 있다고 가정)
     sample_frd = os.path.join('frd', 'C000001', '2025061215.frd')
-    if os.path.exists(sample_frd):
-        nodes, elements, displacements, stresses = parse_frd(sample_frd)
-        print("[샘플 변위] 앞 5개:")
-        for k in list(displacements.keys())[:5]:
-            print(f"노드 {k}: {displacements[k]}")
-        print("[샘플 스트레스] 앞 5개:")
-        for k in list(stresses.keys())[:5]:
-            print(f"요소/노드 {k}: {stresses[k]}")
+    sample_vtk = os.path.join('assets', 'vtk', 'C000001', '2025061215.vtk')
+    if os.path.exists(sample_frd) and os.path.exists(sample_vtk):
+        print("[FRD-VTK 비교 결과]")
+        compare_frd_vtk(sample_frd, sample_vtk)
     else:
-        print(f"샘플 파일 {sample_frd} 없음")
+        print(f"샘플 파일 {sample_frd} 또는 {sample_vtk} 없음")
     # 전체 변환 실행
     convert_all_frd_to_vtk('frd', 'vtk')
 
