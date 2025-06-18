@@ -768,6 +768,8 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         return html.Div([
             table,
             html.Div([
+                dbc.Button("전체 선택", id="btn-inp-select-all", color="secondary", className="me-2 mt-3", n_clicks=0),
+                dbc.Button("전체 해제", id="btn-inp-deselect-all", color="light", className="me-2 mt-3", n_clicks=0),
                 dbc.Button("선택 파일 다운로드", id="btn-inp-download", color="success", className="mt-3", n_clicks=0),
                 dcc.Download(id="inp-file-download")
             ], style={"textAlign": "center"})
@@ -804,6 +806,26 @@ def download_selected_inp_files(n_clicks, selected_rows, table_data, selected_co
                 zf.write(fpath, arcname=fname)
     zip_buffer.seek(0)
     return dcc.send_bytes(zip_buffer.getvalue(), filename=f"inp_files_{concrete_pk}.zip")
+
+# 전체 선택/해제 콜백
+@callback(
+    Output("inp-file-table", "selected_rows"),
+    Input("btn-inp-select-all", "n_clicks"),
+    Input("btn-inp-deselect-all", "n_clicks"),
+    State("inp-file-table", "data"),
+    prevent_initial_call=True,
+)
+def select_deselect_all(n_all, n_none, table_data):
+    import dash
+    ctx = dash.callback_context
+    if not ctx.triggered or not table_data:
+        raise dash.exceptions.PreventUpdate
+    trig = ctx.triggered_id
+    if trig == "btn-inp-select-all":
+        return list(range(len(table_data)))
+    elif trig == "btn-inp-deselect-all":
+        return []
+    raise dash.exceptions.PreventUpdate
 
 # 시간 슬라이더 마크: 날짜의 00시만 표시, 텍스트는 MM/DD 형식
 @callback(
