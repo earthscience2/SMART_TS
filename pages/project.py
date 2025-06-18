@@ -753,22 +753,27 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         # 파일 목록 테이블 + 다운로드 버튼
         table = dash_table.DataTable(
             id="inp-file-table",
-            columns=[{"name": "파일명", "id": "filename"}, {"name": "다운로드", "id": "download"}],
-            data=[{"filename": f, "download": f"다운로드"} for f in files],
+            columns=[
+                {"name": "파일명", "id": "filename"},
+                {"name": "다운로드", "id": "download_btn", "presentation": "markdown"}
+            ],
+            data=[{"filename": f, "download_btn": f"[다운로드](#/download/{f})"} for f in files],
             style_cell={"textAlign": "center"},
             style_header={"backgroundColor": "#f1f3f5", "fontWeight": 600},
             style_table={"width": "60%", "margin": "auto"},
+            page_size=10,
             row_selectable=False,
             cell_selectable=False,
+            markdown_options={"link_target": "_self"},
         )
-        # 다운로드 버튼 클릭 시 dcc.Download 트리거
+        # 다운로드 버튼 클릭 시 dcc.Download 트리거 (다운로드 버튼은 별도 콜백에서 처리)
         return html.Div([
             table,
             dcc.Download(id="inp-file-download")
         ]), f"inp 파일 {len(files)}개"
     return html.Div(), current_file_title
 
-# inp 파일 다운로드 콜백
+# inp 파일 다운로드 콜백 (다운로드 버튼 클릭 시)
 @callback(
     Output("inp-file-download", "data"),
     Input("inp-file-table", "active_cell"),
@@ -779,7 +784,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
 )
 def download_inp_file(active_cell, table_data, selected_rows, tbl_data):
     from dash.exceptions import PreventUpdate
-    if not active_cell or active_cell.get("column_id") != "download":
+    if not active_cell or active_cell.get("column_id") != "download_btn":
         raise PreventUpdate
     row_idx = active_cell["row"]
     filename = table_data[row_idx]["filename"]
