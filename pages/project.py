@@ -269,7 +269,7 @@ def on_concrete_select(selected_rows, tbl_data):
             
     return False, not is_active, title
 
-# ───────────────────── 3D 뷰 클릭 → 단면 위치 저장 ─────────────────────
+# ───────────────────── 3D 뷰 클릭 → 단면 위치 저장 ────────────────────
 @callback(
     Output("section-coord-store", "data"),
     Input("viewer-3d", "clickData"),
@@ -742,9 +742,12 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
         concrete_pk = row["concrete_pk"]
         inp_dir = f"inp/{concrete_pk}"
-        if not os.path.exists(inp_dir):
-            return html.Div("inp 폴더가 존재하지 않습니다."), ""
-        files = sorted([f for f in os.listdir(inp_dir) if f.endswith('.inp')])
+        try:
+            if not os.path.exists(inp_dir):
+                return html.Div("inp 폴더가 존재하지 않습니다."), ""
+            files = sorted([f for f in os.listdir(inp_dir) if f.endswith('.inp')])
+        except Exception as e:
+            return html.Div(f"파일 목록을 불러오는 중 오류 발생: {e}"), ""
         if not files:
             return html.Div("inp 파일이 없습니다."), ""
         # 파일 목록 테이블 + 다운로드 버튼
@@ -775,6 +778,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
     prevent_initial_call=True,
 )
 def download_inp_file(active_cell, table_data, selected_rows, tbl_data):
+    from dash.exceptions import PreventUpdate
     if not active_cell or active_cell.get("column_id") != "download":
         raise PreventUpdate
     row_idx = active_cell["row"]
@@ -784,9 +788,12 @@ def download_inp_file(active_cell, table_data, selected_rows, tbl_data):
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
     inp_path = os.path.join("inp", str(concrete_pk), filename)
-    if not os.path.exists(inp_path):
+    try:
+        if not os.path.exists(inp_path):
+            raise PreventUpdate
+        return dcc.send_file(inp_path)
+    except Exception:
         raise PreventUpdate
-    return dcc.send_file(inp_path)
 
 # 시간 슬라이더 마크: 날짜의 00시만 표시, 텍스트는 MM/DD 형식
 @callback(
