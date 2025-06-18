@@ -113,6 +113,7 @@ layout = dbc.Container(
                             dbc.Tab(label="온도 변화", tab_id="tab-temp"),
                             dbc.Tab(label="수치해석", tab_id="tab-analysis"),
                             dbc.Tab(label="inp 파일 목록", tab_id="tab-inp-files"),
+                            dbc.Tab(label="frd 파일 업로드", tab_id="tab-frd-upload"),
                         ], id="tabs-main", active_tab="tab-3d"),
                         # 탭 콘텐츠
                         html.Div(id="tab-content", children=[
@@ -774,6 +775,31 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 dcc.Download(id="inp-file-download")
             ], style={"textAlign": "center"})
         ]), f"inp 파일 {len(files)}개"
+    elif active_tab == "tab-frd-upload":
+        # frd 파일 업로드 탭
+        if not (selected_rows and tbl_data):
+            return html.Div("콘크리트를 선택하세요."), ""
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+        concrete_pk = row["concrete_pk"]
+        upload_dir = f"frd/{concrete_pk}"
+        os.makedirs(upload_dir, exist_ok=True)
+        return html.Div([
+            html.H5("frd 파일 업로드", className="mb-3"),
+            dcc.Upload(
+                id="frd-upload",
+                children=html.Div([
+                    '여기에 frd 파일을 드래그하거나 ',
+                    html.A('클릭하여 업로드')
+                ]),
+                multiple=True,
+                style={
+                    'width': '100%', 'height': '80px', 'lineHeight': '80px',
+                    'borderWidth': '1px', 'borderStyle': 'dashed', 'borderRadius': '8px',
+                    'textAlign': 'center', 'margin': '20px 0', 'background': '#f8f9fa'
+                },
+            ),
+            html.Div(id="frd-upload-msg", className="mt-3"),
+        ]), "frd 파일 업로드"
     return html.Div(), current_file_title
 
 # 선택 파일 zip 다운로드 콜백
@@ -1328,3 +1354,38 @@ def update_temp_tab(store_data, x, y, z, selected_rows, tbl_data):
             yaxis_title="온도(°C)"
         )
     return fig_3d, fig_temp
+
+# frd 파일 업로드 콜백
+@callback(
+    Output("frd-upload-msg", "children"),
+    Input("frd-upload", "contents"),
+    State("frd-upload", "filename"),
+    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    prevent_initial_call=True,
+)
+def save_frd_files(contents, filenames, selected_rows, tbl_data):
+    import base64, os
+    from dash.exceptions import PreventUpdate
+    if not contents or not filenames or not (selected_rows and tbl_data):
+        raise PreventUpdate
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    upload_dir = f"frd/{concrete_pk}"
+    os.makedirs(upload_dir, exist_ok=True)
+    if isinstance(contents, str):
+        contents = [contents]
+        filenames = [filenames]
+    saved_files = []
+    for content, fname in zip(contents, filenames):
+        try:
+            header, data = content.split(",", 1)
+            with open(os.path.join(upload_dir, fname), "wb") as f:
+                f.write(base64.b64decode(data))
+            saved_files.append(fname)
+        except Exception as e:
+            return html.Div([f"업로드 실패: {fname} ({e})"], style={"color": "red"})
+    return html.Div([
+        html.Span(f"{len(saved_files)}개 파일 업로드 완료: "),
+        html.Ul([html.Li(f) for f in saved_files])
+    ], style={"color": "green"})
