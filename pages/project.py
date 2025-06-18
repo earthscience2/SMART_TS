@@ -756,73 +756,54 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             id="inp-file-table",
             columns=[
                 {"name": "파일명", "id": "filename"},
-                {"name": "다운로드", "id": "download_btn"}
             ],
-            data=[{"filename": f, "download_btn": "다운로드"} for f in files],
+            data=[{"filename": f} for f in files],
             style_cell={"textAlign": "center"},
             style_header={"backgroundColor": "#f1f3f5", "fontWeight": 600},
             style_table={"width": "60%", "margin": "auto"},
-            style_data_conditional=[
-                {
-                    "if": {"column_id": "download_btn"},
-                    "backgroundColor": "#198754",
-                    "color": "white",
-                    "borderRadius": "6px",
-                    "fontWeight": 600,
-                    "cursor": "pointer",
-                    "textAlign": "center",
-                    "fontSize": "1rem",
-                    "boxShadow": "0 2px 6px rgba(0,0,0,0.08)",
-                    "border": "1px solid #145c2c",
-                },
-                {
-                    "if": {"state": "active", "column_id": "download_btn"},
-                    "backgroundColor": "#145c2c",
-                    "color": "white",
-                },
-                {
-                    "if": {"state": "selected", "column_id": "download_btn"},
-                    "backgroundColor": "#145c2c",
-                    "color": "white",
-                },
-            ],
             page_size=10,
-            row_selectable=False,
-            cell_selectable=True,
+            row_selectable="multi",
+            cell_selectable=False,
         )
         return html.Div([
             table,
-            dcc.Download(id="inp-file-download")
+            html.Div([
+                dbc.Button("선택 파일 다운로드", id="btn-inp-download", color="success", className="mt-3", n_clicks=0),
+                dcc.Download(id="inp-file-download")
+            ], style={"textAlign": "center"})
         ]), f"inp 파일 {len(files)}개"
     return html.Div(), current_file_title
 
-# inp 파일 다운로드 콜백 (다운로드 셀 클릭 시, active_cell 리셋)
+# 선택 파일 zip 다운로드 콜백
 @callback(
     Output("inp-file-download", "data"),
-    Output("inp-file-table", "active_cell"),
-    Input("inp-file-table", "active_cell"),
+    Input("btn-inp-download", "n_clicks"),
+    State("inp-file-table", "selected_rows"),
     State("inp-file-table", "data"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def download_inp_file(active_cell, table_data, selected_rows, tbl_data):
+def download_selected_inp_files(n_clicks, selected_rows, table_data, selected_conc_rows, tbl_data):
     from dash.exceptions import PreventUpdate
-    if not active_cell or active_cell.get("column_id") != "download_btn":
+    import io, zipfile, os
+    if not n_clicks or not selected_rows or not selected_conc_rows or not tbl_data:
         raise PreventUpdate
-    row_idx = active_cell["row"]
-    filename = table_data[row_idx]["filename"]
-    if not (selected_rows and tbl_data):
-        raise PreventUpdate
-    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    row = pd.DataFrame(tbl_data).iloc[selected_conc_rows[0]]
     concrete_pk = row["concrete_pk"]
-    inp_path = os.path.join("inp", str(concrete_pk), filename)
-    try:
-        if not os.path.exists(inp_path):
-            raise PreventUpdate
-        return dcc.send_file(inp_path), None
-    except Exception:
+    inp_dir = os.path.join("inp", str(concrete_pk))
+    files = [table_data[i]["filename"] for i in selected_rows]
+    if not files:
         raise PreventUpdate
+    # zip 파일 메모리 생성
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w") as zf:
+        for fname in files:
+            fpath = os.path.join(inp_dir, fname)
+            if os.path.exists(fpath):
+                zf.write(fpath, arcname=fname)
+    zip_buffer.seek(0)
+    return dcc.send_bytes(zip_buffer.getvalue(), filename=f"inp_files_{concrete_pk}.zip")
 
 # 시간 슬라이더 마크: 날짜의 00시만 표시, 텍스트는 MM/DD 형식
 @callback(
