@@ -783,6 +783,12 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         concrete_pk = row["concrete_pk"]
         upload_dir = f"frd/{concrete_pk}"
         os.makedirs(upload_dir, exist_ok=True)
+        # 현재 업로드된 파일 목록
+        file_list = []
+        try:
+            file_list = sorted([f for f in os.listdir(upload_dir) if os.path.isfile(os.path.join(upload_dir, f))])
+        except Exception:
+            file_list = []
         return html.Div([
             html.H5("frd 파일 업로드", className="mb-3"),
             dcc.Upload(
@@ -799,6 +805,8 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 },
             ),
             html.Div(id="frd-upload-msg", className="mt-3"),
+            html.H6("현재 업로드된 파일 목록", className="mt-4 mb-2"),
+            html.Ul([html.Li(f) for f in file_list]) if file_list else html.Div("업로드된 파일이 없습니다.", style={"color": "#888"}),
         ]), "frd 파일 업로드"
     return html.Div(), current_file_title
 
@@ -1355,7 +1363,7 @@ def update_temp_tab(store_data, x, y, z, selected_rows, tbl_data):
         )
     return fig_3d, fig_temp
 
-# frd 파일 업로드 콜백
+# frd 파일 업로드 콜백 (중복 파일명 방지)
 @callback(
     Output("frd-upload-msg", "children"),
     Input("frd-upload", "contents"),
@@ -1376,6 +1384,13 @@ def save_frd_files(contents, filenames, selected_rows, tbl_data):
     if isinstance(contents, str):
         contents = [contents]
         filenames = [filenames]
+    # 중복 파일명 체크
+    existing_files = set(os.listdir(upload_dir))
+    for fname in filenames:
+        if fname in existing_files:
+            return html.Div([
+                html.Span(f"중복된 파일명: {fname} (업로드 취소)", style={"color": "red"})
+            ])
     saved_files = []
     for content, fname in zip(contents, filenames):
         try:
