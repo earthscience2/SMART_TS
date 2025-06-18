@@ -53,7 +53,7 @@ def parse_frd(filename):
             disp_section = True
             continue
         if disp_section:
-            if l.startswith('-5') or l.startswith('-3') or l.startswith('1PSTEP') or l.startswith('100CL'):
+            if l.startswith('-4') or l.startswith('1PSTEP') or l.startswith('100CL'):
                 disp_section = False
                 continue
             if l.startswith('-1'):
@@ -74,16 +74,18 @@ def parse_frd(filename):
             stress_section = True
             continue
         if stress_section:
-            if l.startswith('-5') or l.startswith('-3') or l.startswith('1PSTEP') or l.startswith('100CL'):
+            if l.startswith('-4') or l.startswith('1PSTEP') or l.startswith('100CL'):
                 stress_section = False
                 continue
             if l.startswith('-1'):
                 parts = l.split()
-                if len(parts) >= 3:
+                if len(parts) == 8:
                     try:
-                        elem_id = int(parts[1])
-                        stress_value = float(parts[2])  # 첫 번째 값 사용 (예: Von Mises)
-                        stresses[elem_id] = stress_value
+                        node_id = int(parts[1])
+                        # SXX, SYY, SZZ, SXY, SYZ, SZX = map(float, parts[2:8])
+                        # 예시: Von Mises 계산 대신 SXX만 저장
+                        sxx = float(parts[2])
+                        stresses[node_id] = sxx
                     except:
                         continue
 
@@ -99,7 +101,7 @@ def write_vtk(nodes, elements, outname, displacements=None, stresses=None):
         for node_id in sorted(nodes):
             f.write(f"{nodes[node_id][0]} {nodes[node_id][1]} {nodes[node_id][2]}\n")
         total_indices = sum([len(e) for e in elements])
-        f.write(f'CELLS {len(elements)} {len(elements) + len(elements)}\n')
+        f.write(f'CELLS {len(elements)} {len(elements) + total_indices}\n')
         for elem in elements:
             f.write(f"{len(elem)} {' '.join(str(n-1) for n in elem)}\n")
         f.write(f'CELL_TYPES {len(elements)}\n')
@@ -111,7 +113,7 @@ def write_vtk(nodes, elements, outname, displacements=None, stresses=None):
             else:
                 f.write('7\n')   # Default: POLYGON
 
-        # 변위 출력
+        # POINT_DATA (변위)
         if displacements and len(displacements) > 0:
             f.write(f'\nPOINT_DATA {len(nodes)}\n')
             f.write('VECTORS displacement float\n')
@@ -119,7 +121,7 @@ def write_vtk(nodes, elements, outname, displacements=None, stresses=None):
                 dx, dy, dz = displacements.get(node_id, (0.0, 0.0, 0.0))
                 f.write(f"{dx} {dy} {dz}\n")
 
-        # 스트레스 출력
+        # CELL_DATA (응력)
         if stresses and len(stresses) > 0:
             f.write(f'\nCELL_DATA {len(elements)}\n')
             f.write('SCALARS stress float 1\n')
@@ -145,5 +147,18 @@ def convert_all_frd_to_vtk(frd_root_dir, vtk_root_dir):
                 write_vtk(nodes, elements, vtk_path, displacements, stresses)
 
 if __name__ == "__main__":
+    # 샘플 파일로 파싱 결과 확인 (C000001/2025061215.frd가 있다고 가정)
+    sample_frd = os.path.join('frd', 'C000001', '2025061215.frd')
+    if os.path.exists(sample_frd):
+        nodes, elements, displacements, stresses = parse_frd(sample_frd)
+        print("[샘플 변위] 앞 5개:")
+        for k in list(displacements.keys())[:5]:
+            print(f"노드 {k}: {displacements[k]}")
+        print("[샘플 스트레스] 앞 5개:")
+        for k in list(stresses.keys())[:5]:
+            print(f"요소/노드 {k}: {stresses[k]}")
+    else:
+        print(f"샘플 파일 {sample_frd} 없음")
+    # 전체 변환 실행
     convert_all_frd_to_vtk('frd', 'vtk')
 
