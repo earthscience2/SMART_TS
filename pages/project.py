@@ -764,7 +764,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             style_table={"width": "60%", "margin": "auto"},
             page_size=10,
             row_selectable=False,
-            cell_selectable=False,
+            cell_selectable=True,
         )
         return html.Div([
             table,
@@ -772,9 +772,10 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         ]), f"inp 파일 {len(files)}개"
     return html.Div(), current_file_title
 
-# inp 파일 다운로드 콜백 (다운로드 셀 클릭 시)
+# inp 파일 다운로드 콜백 (다운로드 셀 클릭 시, active_cell 리셋)
 @callback(
     Output("inp-file-download", "data"),
+    Output("inp-file-table", "active_cell"),
     Input("inp-file-table", "active_cell"),
     State("inp-file-table", "data"),
     State("tbl-concrete", "selected_rows"),
@@ -795,7 +796,7 @@ def download_inp_file(active_cell, table_data, selected_rows, tbl_data):
     try:
         if not os.path.exists(inp_path):
             raise PreventUpdate
-        return dcc.send_file(inp_path)
+        return dcc.send_file(inp_path), None
     except Exception:
         raise PreventUpdate
 
