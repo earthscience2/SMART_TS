@@ -12,6 +12,8 @@ def parse_frd(filename):
         lines = f.readlines()
 
     # 노드 파싱
+    nodes = {}
+    node_order = []
     for line in lines:
         l = line.strip()
         if l.startswith('-1'):
@@ -21,11 +23,13 @@ def parse_frd(filename):
                     node_id = int(parts[1])
                     x, y, z = map(float, parts[2:5])
                     nodes[node_id] = (x, y, z)
+                    node_order.append(node_id)
                 except:
                     continue
 
     # 요소 파싱
     elements = []
+    element_ids = []
     elem_section = False
     for i, line in enumerate(lines):
         l = line.strip()
@@ -34,6 +38,11 @@ def parse_frd(filename):
             continue
         if elem_section:
             if l.startswith('-1'):
+                try:
+                    elem_id = int(l.split()[1])
+                    element_ids.append(elem_id)
+                except:
+                    continue
                 continue
             elif l.startswith('-2'):
                 parts = l.split()
@@ -47,6 +56,7 @@ def parse_frd(filename):
                 break
 
     # 변위 파싱
+    displacements = {}
     disp_section = False
     for line in lines:
         l = line.strip()
@@ -68,6 +78,7 @@ def parse_frd(filename):
                         continue
 
     # 스트레스 파싱
+    stresses = {}
     stress_section = False
     for line in lines:
         l = line.strip()
@@ -82,25 +93,25 @@ def parse_frd(filename):
                 parts = l.split()
                 if len(parts) == 8:
                     try:
-                        node_id = int(parts[1])
-                        # SXX, SYY, SZZ, SXY, SYZ, SZX = map(float, parts[2:8])
-                        # 예시: Von Mises 계산 대신 SXX만 저장
+                        elem_id = int(parts[1])
                         sxx = float(parts[2])
-                        stresses[node_id] = sxx
+                        stresses[elem_id] = sxx
                     except:
                         continue
 
     return nodes, elements, displacements, stresses
 
-def write_vtk(nodes, elements, outname, displacements=None, stresses=None):
+def write_vtk(nodes, elements, outname, displacements=None, stresses=None, node_order=None, element_ids=None):
     with open(outname, 'w') as f:
         f.write('# vtk DataFile Version 3.0\n')
         f.write('Converted from FRD\n')
         f.write('ASCII\n')
         f.write('DATASET UNSTRUCTURED_GRID\n')
+        # 노드 순서대로 기록
         f.write(f'POINTS {len(nodes)} float\n')
-        for node_id in sorted(nodes):
-            f.write(f"{nodes[node_id][0]} {nodes[node_id][1]} {nodes[node_id][2]}\n")
+        for node_id in node_order:
+            x, y, z = nodes[node_id]
+            f.write(f"{x} {y} {z}\n")
         total_indices = sum([len(e) for e in elements])
         f.write(f'CELLS {len(elements)} {len(elements) + total_indices}\n')
         for elem in elements:
@@ -118,18 +129,16 @@ def write_vtk(nodes, elements, outname, displacements=None, stresses=None):
         if displacements and len(displacements) > 0:
             f.write(f'\nPOINT_DATA {len(nodes)}\n')
             f.write('VECTORS displacement float\n')
-            for node_id in sorted(nodes):
+            for node_id in node_order:
                 dx, dy, dz = displacements.get(node_id, (0.0, 0.0, 0.0))
                 f.write(f"{dx} {dy} {dz}\n")
 
-        # CELL_DATA (응력)
-        if stresses and len(stresses) > 0:
-            f.write(f'\nCELL_DATA {len(elements)}\n')
-            f.write('SCALARS stress float 1\n')
+        # POINT_DATA (응력, 노드별)
+        if stresses and len(stresses) > 0 and node_order is not None:
+            f.write(f'\nSCALARS stress float 1\n')
             f.write('LOOKUP_TABLE default\n')
-            for i in range(len(elements)):
-                elem_id = i + 1
-                s = stresses.get(elem_id, 0.0)
+            for node_id in node_order:
+                s = stresses.get(node_id, 0.0)
                 f.write(f"{s}\n")
 
 def convert_all_frd_to_vtk(frd_root_dir, vtk_root_dir):
@@ -148,7 +157,10 @@ def convert_all_frd_to_vtk(frd_root_dir, vtk_root_dir):
                 vtk_path = os.path.join(vtk_pk_path, fname[:-4] + '.vtk')
                 print(f"변환: {frd_path} -> {vtk_path}")
                 nodes, elements, displacements, stresses = parse_frd(frd_path)
-                write_vtk(nodes, elements, vtk_path, displacements, stresses)
+                # 노드/요소 순서 정보 추가
+                node_order = sorted(nodes.keys())
+                element_ids = list(range(1, len(elements)+1))
+                write_vtk(nodes, elements, vtk_path, displacements, stresses, node_order, element_ids)
                 # assets 폴더에도 복사
                 assets_vtk_path = os.path.join(assets_vtk_pk_path, fname[:-4] + '.vtk')
                 shutil.copyfile(vtk_path, assets_vtk_path)
