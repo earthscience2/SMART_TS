@@ -733,21 +733,21 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             ]),
         ]), "전체 파일"
     elif active_tab == "tab-analysis":
-        # 수치해석 탭: frd/{concrete_pk} 폴더의 VTK 파일을 시간 슬라이더와 함께 3D로 보여줌
+        # 수치해석 탭: frd/{concrete_pk} 폴더의 FRD 파일을 시간 슬라이더와 함께 3D로 보여줌
         if not (selected_rows and tbl_data):
             return html.Div("콘크리트를 선택하세요."), ""
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
         concrete_pk = row["concrete_pk"]
-        vtk_dir = f"frd/{concrete_pk}"
-        if not os.path.exists(vtk_dir):
+        frd_dir = f"frd/{concrete_pk}"
+        if not os.path.exists(frd_dir):
             return html.Div("frd 폴더가 존재하지 않습니다."), ""
-        vtk_files = sorted([f for f in os.listdir(vtk_dir) if f.endswith('.vtk')])
-        if not vtk_files:
-            return html.Div("VTK 파일이 없습니다."), ""
-        # 시간 파싱 (3D뷰와 동일: YYYYMMDDHH.vtk)
+        frd_files = sorted([f for f in os.listdir(frd_dir) if f.endswith('.frd')])
+        if not frd_files:
+            return html.Div("FRD 파일이 없습니다."), ""
+        # 시간 파싱 (3D뷰와 동일: YYYYMMDDHH.frd)
         from datetime import datetime
         times = []
-        for f in vtk_files:
+        for f in frd_files:
             try:
                 time_str = os.path.splitext(f)[0]
                 dt = datetime.strptime(time_str, "%Y%m%d%H")
@@ -755,7 +755,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             except:
                 continue
         if not times:
-            return html.Div("시간 정보가 포함된 VTK 파일이 없습니다."), ""
+            return html.Div("시간 정보가 포함된 FRD 파일이 없습니다."), ""
         times.sort()
         marks = {}
         for i, (dt, f) in enumerate(times):
@@ -766,45 +766,46 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         if (len(times)-1) not in marks:
             marks[len(times)-1] = times[-1][0].strftime("%m/%d")
         max_idx = len(times)-1
-        # 기본값: 마지막 파일
         slider_value = max_idx
-        # 3D VTK 파일 파싱(간단 예시: 노드/요소만, Plotly Mesh3d)
-        def parse_vtk_mesh(filepath):
-            # VTK ASCII UnstructuredGrid 예시만 지원
+        # FRD 파일 파싱 (간단 예시: 노드/요소만)
+        def parse_frd_mesh(filepath):
             nodes = []
             faces = []
             with open(filepath, 'r') as f:
                 lines = f.readlines()
-            pts_section = False
-            cell_section = False
+            node_section = False
+            elem_section = False
             for line in lines:
-                if line.startswith('POINTS'):
-                    pts_section = True
-                    n_pts = int(line.split()[1])
+                if line.startswith('    1C'):  # 노드 시작
+                    node_section = True
                     continue
-                if pts_section:
-                    if len(nodes) < n_pts:
-                        nodes.extend([list(map(float, l.split())) for l in line.strip().split('\n') if l.strip()])
-                        if len(nodes) >= n_pts:
-                            pts_section = False
+                if node_section and line.startswith(' -1'):
+                    node_section = False
                     continue
-                if line.startswith('CELLS'):
-                    cell_section = True
-                    continue
-                if cell_section:
-                    if line.startswith('CELL_TYPES'):
-                        break
+                if node_section:
                     parts = line.strip().split()
-                    if len(parts) > 1:
-                        # 삼각형(3), 사면체(4) 등
-                        faces.append([int(i) for i in parts[1:]])
+                    if len(parts) >= 4:
+                        nodes.append([float(parts[1]), float(parts[2]), float(parts[3])])
+                    continue
+                if line.startswith('    2C'):  # 요소 시작
+                    elem_section = True
+                    continue
+                if elem_section and line.startswith(' -1'):
+                    elem_section = False
+                    continue
+                if elem_section:
+                    parts = line.strip().split()
+                    # 삼각형(3), 사면체(4) 등
+                    if len(parts) >= 5:
+                        faces.append([int(i)-1 for i in parts[2:]])  # 0-based
             if not nodes or not faces:
                 return None, None
+            import numpy as np
             nodes = np.array(nodes)
             faces = np.array([f for f in faces if len(f)==3 or len(f)==4])
             return nodes, faces
-        # 3D 뷰 생성 (기본: 마지막 시간)
-        nodes, faces = parse_vtk_mesh(os.path.join(vtk_dir, times[slider_value][1]))
+        nodes, faces = parse_frd_mesh(os.path.join(frd_dir, times[slider_value][1]))
+        import plotly.graph_objects as go
         if nodes is None or faces is None:
             fig = go.Figure()
         else:
@@ -816,7 +817,6 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     color='lightblue', opacity=0.5
                 ))
             elif faces.shape[1] == 4:
-                # 사면체 mesh는 4개씩 삼각형으로 분할
                 for f in faces:
                     fig.add_trace(go.Mesh3d(
                         x=nodes[f,0], y=nodes[f,1], z=nodes[f,2],
@@ -837,13 +837,13 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             fig.update_layout(
                 scene=dict(aspectmode='data', bgcolor='white'),
                 margin=dict(l=0, r=0, t=0, b=0),
-                title=f"{times[slider_value][0].strftime('%Y-%m-%d %H시')} VTK Mesh"
+                title=f"{times[slider_value][0].strftime('%Y-%m-%d %H시')} FRD Mesh"
             )
         return html.Div([
             html.Div([
                 html.Label("시간", className="form-label"),
                 dcc.Slider(
-                    id="vtk-time-slider",
+                    id="frd-time-slider",
                     min=0,
                     max=max_idx,
                     step=1,
@@ -852,8 +852,8 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
             ], className="mb-3"),
-            dcc.Graph(id="vtk-3d-viewer", figure=fig, style={"height": "60vh", "border": "2px solid #dee2e6", "borderRadius": "8px"}, config={"scrollZoom": True}),
-        ]), f"{times[slider_value][0].strftime('%Y-%m-%d %H시')} VTK Mesh"
+            dcc.Graph(id="frd-3d-viewer", figure=fig, style={"height": "60vh", "border": "2px solid #dee2e6", "borderRadius": "8px"}, config={"scrollZoom": True}),
+        ]), f"{times[slider_value][0].strftime('%Y-%m-%d %H시')} FRD Mesh"
     elif active_tab == "tab-inp-files":
         # inp 파일 목록 탭
         if not (selected_rows and tbl_data):
@@ -1522,30 +1522,30 @@ def save_frd_files(contents, filenames, selected_rows, tbl_data):
         html.Ul([html.Li(f) for f in saved_files])
     ], style={"color": "green"})
 
-# VTK 시간 슬라이더 콜백 (슬라이더 이동 시 3D 뷰 갱신)
+# FRD 시간 슬라이더 콜백 (슬라이더 이동 시 3D 뷰 갱신)
 @callback(
-    Output("vtk-3d-viewer", "figure"),
+    Output("frd-3d-viewer", "figure"),
     Output("current-file-title", "children", allow_duplicate=True),
-    Input("vtk-time-slider", "value"),
+    Input("frd-time-slider", "value"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def update_vtk_viewer(slider_value, selected_rows, tbl_data):
+def update_frd_viewer(slider_value, selected_rows, tbl_data):
     import os, numpy as np, plotly.graph_objects as go
     from datetime import datetime
     if not selected_rows or not tbl_data:
         return go.Figure(), ""
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
-    vtk_dir = f"frd/{concrete_pk}"
-    if not os.path.exists(vtk_dir):
+    frd_dir = f"frd/{concrete_pk}"
+    if not os.path.exists(frd_dir):
         return go.Figure(), "frd 폴더가 존재하지 않습니다."
-    vtk_files = sorted([f for f in os.listdir(vtk_dir) if f.endswith('.vtk')])
-    if not vtk_files:
-        return go.Figure(), "VTK 파일이 없습니다."
+    frd_files = sorted([f for f in os.listdir(frd_dir) if f.endswith('.frd')])
+    if not frd_files:
+        return go.Figure(), "FRD 파일이 없습니다."
     times = []
-    for f in vtk_files:
+    for f in frd_files:
         try:
             time_str = os.path.splitext(f)[0]
             dt = datetime.strptime(time_str, "%Y%m%d%H")
@@ -1553,43 +1553,44 @@ def update_vtk_viewer(slider_value, selected_rows, tbl_data):
         except:
             continue
     if not times:
-        return go.Figure(), "시간 정보가 포함된 VTK 파일이 없습니다."
+        return go.Figure(), "시간 정보가 포함된 FRD 파일이 없습니다."
     times.sort()
     slider_value = min(slider_value, len(times)-1)
-    def parse_vtk_mesh(filepath):
+    def parse_frd_mesh(filepath):
         nodes = []
         faces = []
         with open(filepath, 'r') as f:
             lines = f.readlines()
-        pts_section = False
-        cell_section = False
+        node_section = False
+        elem_section = False
         for line in lines:
-            if line.startswith('POINTS'):
-                pts_section = True
-                n_pts = int(line.split()[1])
+            if line.startswith('    1C'):
+                node_section = True
                 continue
-            if pts_section:
-                if len(nodes) < n_pts:
-                    nodes.extend([list(map(float, l.split())) for l in line.strip().split('\n') if l.strip()])
-                    if len(nodes) >= n_pts:
-                        pts_section = False
+            if node_section and line.startswith(' -1'):
+                node_section = False
                 continue
-            if line.startswith('CELLS'):
-                cell_section = True
-                continue
-            if cell_section:
-                if line.startswith('CELL_TYPES'):
-                    break
+            if node_section:
                 parts = line.strip().split()
-                if len(parts) > 1:
-                    # 삼각형(3), 사면체(4) 등
-                    faces.append([int(i) for i in parts[1:]])
+                if len(parts) >= 4:
+                    nodes.append([float(parts[1]), float(parts[2]), float(parts[3])])
+                continue
+            if line.startswith('    2C'):
+                elem_section = True
+                continue
+            if elem_section and line.startswith(' -1'):
+                elem_section = False
+                continue
+            if elem_section:
+                parts = line.strip().split()
+                if len(parts) >= 5:
+                    faces.append([int(i)-1 for i in parts[2:]])
         if not nodes or not faces:
             return None, None
         nodes = np.array(nodes)
         faces = np.array([f for f in faces if len(f)==3 or len(f)==4])
         return nodes, faces
-    nodes, faces = parse_vtk_mesh(os.path.join(vtk_dir, times[slider_value][1]))
+    nodes, faces = parse_frd_mesh(os.path.join(frd_dir, times[slider_value][1]))
     if nodes is None or faces is None:
         fig = go.Figure()
     else:
@@ -1601,7 +1602,6 @@ def update_vtk_viewer(slider_value, selected_rows, tbl_data):
                 color='lightblue', opacity=0.5
             ))
         elif faces.shape[1] == 4:
-            # 사면체 mesh는 4개씩 삼각형으로 분할
             for f in faces:
                 fig.add_trace(go.Mesh3d(
                     x=nodes[f,0], y=nodes[f,1], z=nodes[f,2],
@@ -1622,6 +1622,6 @@ def update_vtk_viewer(slider_value, selected_rows, tbl_data):
         fig.update_layout(
             scene=dict(aspectmode='data', bgcolor='white'),
             margin=dict(l=0, r=0, t=0, b=0),
-            title=f"{times[slider_value][0].strftime('%Y-%m-%d %H시')} VTK Mesh"
+            title=f"{times[slider_value][0].strftime('%Y-%m-%d %H시')} FRD Mesh"
         )
-    return fig, f"{times[slider_value][0].strftime('%Y-%m-%d %H시')} VTK Mesh"
+    return fig, f"{times[slider_value][0].strftime('%Y-%m-%d %H시')} FRD Mesh"
