@@ -758,7 +758,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 {"name": "파일명", "id": "filename"},
                 {"name": "다운로드", "id": "download_btn"}
             ],
-            data=[{"filename": f, "download_btn": '<span class="download-btn-cell">다운로드</span>'} for f in files],
+            data=[{"filename": f, "download_btn": "다운로드"} for f in files],
             style_cell={"textAlign": "center"},
             style_header={"backgroundColor": "#f1f3f5", "fontWeight": 600},
             style_table={"width": "60%", "margin": "auto"},
@@ -772,12 +772,23 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     "cursor": "pointer",
                     "textAlign": "center",
                     "fontSize": "1rem",
+                    "boxShadow": "0 2px 6px rgba(0,0,0,0.08)",
+                    "border": "1px solid #145c2c",
+                },
+                {
+                    "if": {"state": "active", "column_id": "download_btn"},
+                    "backgroundColor": "#145c2c",
+                    "color": "white",
+                },
+                {
+                    "if": {"state": "selected", "column_id": "download_btn"},
+                    "backgroundColor": "#145c2c",
+                    "color": "white",
                 },
             ],
             page_size=10,
             row_selectable=False,
             cell_selectable=True,
-            dangerously_allow_html=True,
         )
         return html.Div([
             table,
