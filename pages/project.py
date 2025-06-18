@@ -755,16 +755,15 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             id="inp-file-table",
             columns=[
                 {"name": "파일명", "id": "filename"},
-                {"name": "다운로드", "id": "download_btn", "presentation": "markdown"}
+                {"name": "다운로드", "id": "download_btn", "presentation": "input"}
             ],
-            data=[{"filename": f, "download_btn": f"[다운로드](#/download/{f})"} for f in files],
+            data=[{"filename": f, "download_btn": f"다운로드"} for f in files],
             style_cell={"textAlign": "center"},
             style_header={"backgroundColor": "#f1f3f5", "fontWeight": 600},
             style_table={"width": "60%", "margin": "auto"},
             page_size=10,
             row_selectable=False,
             cell_selectable=False,
-            markdown_options={"link_target": "_self"},
         )
         # 다운로드 버튼 클릭 시 dcc.Download 트리거 (다운로드 버튼은 별도 콜백에서 처리)
         return html.Div([
