@@ -1578,8 +1578,12 @@ def update_frd_viewer(slider_value, selected_rows, tbl_data):
                 continue
             if node_section:
                 parts = line.strip().split()
-                if len(parts) >= 4:
-                    nodes.append([float(parts[1]), float(parts[2]), float(parts[3])])
+                # 노드 데이터: -1로 시작하고 5개 값이 있는 경우만
+                if len(parts) == 5 and parts[0] == '-1':
+                    try:
+                        nodes.append([float(parts[2]), float(parts[3]), float(parts[4])])
+                    except Exception:
+                        continue
                 continue
             if line.startswith('    2C'):
                 elem_section = True
@@ -1590,7 +1594,10 @@ def update_frd_viewer(slider_value, selected_rows, tbl_data):
             if elem_section:
                 parts = line.strip().split()
                 if len(parts) >= 5:
-                    faces.append([int(i)-1 for i in parts[2:]])
+                    try:
+                        faces.append([int(i)-1 for i in parts[2:]])
+                    except Exception:
+                        continue
         if not nodes or not faces:
             return None, None
         nodes = np.array(nodes)
