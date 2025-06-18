@@ -816,7 +816,9 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     except ValueError:
                         continue
                 elif mode == 'displacement':
-                    displacement.append([float(x) for x in line.strip().split()])
+                    parts = line.strip().split()
+                    if len(parts) == 3:
+                        displacement.append([float(x) for x in parts])
                 elif mode == 'stress':
                     try:
                         stress.append(float(line.strip()))
