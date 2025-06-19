@@ -130,11 +130,41 @@ layout = dbc.Container(
                             placeholder="노드 목록 (예: [(1,0),(1,1),(0,1),(0,0)])",
                             rows=3, className="mb-2"),
                 dbc.Input(id="add-h", placeholder="높이 H", type="number", className="mb-2"),
-                # ▼ 추가된 필드
                 dbc.Input(id="add-unit", placeholder="해석 단위(con_unit, m)", type="number", className="mb-2"),
-                dbc.Input(id="add-e",    placeholder="탄성계수(con_e)",    type="number", className="mb-2"),
-                dbc.Input(id="add-b",    placeholder="베타 상수(con_b)",     type="number", className="mb-2"),
-                dbc.Input(id="add-n",    placeholder="N 상수(con_n)",       type="number", className="mb-2"),
+                html.Hr(),
+                html.H6("콘크리트 물성치", className="mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label("베타 상수 (0.1 ~ 1.0)"),
+                        dbc.Input(id="add-b", type="number", min=0.1, max=1.0, step=0.1, placeholder="베타 상수(con_b)")
+                    ], width=6),
+                    dbc.Col([
+                        dbc.Label("N 상수 (0.5 ~ 0.7)"),
+                        dbc.Input(id="add-n", type="number", min=0.5, max=0.7, step=0.1, placeholder="N 상수(con_n)")
+                    ], width=6),
+                ], className="mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label("타설 시간"),
+                        dbc.Input(id="add-t", type="datetime-local", placeholder="타설 시간(con_t)")
+                    ], width=12),
+                ], className="mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label("열팽창계수 (0.1 ~ 10.0) [×10⁻⁵/°C]"),
+                        dbc.Input(id="add-a", type="number", min=0.1, max=10.0, step=0.1, placeholder="열팽창계수(con_a)")
+                    ], width=6),
+                    dbc.Col([
+                        dbc.Label("포아송비 (0.01 ~ 1.00)"),
+                        dbc.Input(id="add-p", type="number", min=0.01, max=1.00, step=0.01, placeholder="포아송비(con_p)")
+                    ], width=6),
+                ], className="mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label("밀도 (500 ~ 5000) [kg/m³]"),
+                        dbc.Input(id="add-d", type="number", min=500, max=5000, step=10, placeholder="밀도(con_d)")
+                    ], width=12),
+                ], className="mb-2"),
                 dcc.Graph(id="add-preview", style={"height": "45vh"}, className="border"),
             ]),
             dbc.ModalFooter([
@@ -152,13 +182,42 @@ layout = dbc.Container(
                 dbc.Input(id="edit-name", placeholder="이름", className="mb-2"),
                 dbc.Alert(id="edit-alert", is_open=False, duration=3000, color="danger"),
                 dbc.Textarea(id="edit-nodes", rows=3, placeholder="노드 목록", className="mb-2"),
-                dbc.Input(id="edit-h",    type="number", placeholder="높이 H",      className="mb-2"),
-                # ───── 여기에 추가된 필드 ─────
+                dbc.Input(id="edit-h", type="number", placeholder="높이 H", className="mb-2"),
                 dbc.Input(id="edit-unit", type="number", placeholder="해석 단위(con_unit, m)", className="mb-2"),
-                dbc.Input(id="edit-e",    type="number", placeholder="탄성계수(con_e)",      className="mb-2"),
-                dbc.Input(id="edit-b",    type="number", placeholder="베타 상수(con_b)",       className="mb-2"),
-                dbc.Input(id="edit-n",    type="number", placeholder="N 상수(con_n)",         className="mb-2"),
-                # ────────────────────────────────
+                html.Hr(),
+                html.H6("콘크리트 물성치", className="mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label("베타 상수 (0.1 ~ 1.0)"),
+                        dbc.Input(id="edit-b", type="number", min=0.1, max=1.0, step=0.1, placeholder="베타 상수(con_b)")
+                    ], width=6),
+                    dbc.Col([
+                        dbc.Label("N 상수 (0.5 ~ 0.7)"),
+                        dbc.Input(id="edit-n", type="number", min=0.5, max=0.7, step=0.1, placeholder="N 상수(con_n)")
+                    ], width=6),
+                ], className="mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label("타설 시간"),
+                        dbc.Input(id="edit-t", type="datetime-local", placeholder="타설 시간(con_t)")
+                    ], width=12),
+                ], className="mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label("열팽창계수 (0.1 ~ 10.0) [×10⁻⁵/°C]"),
+                        dbc.Input(id="edit-a", type="number", min=0.1, max=10.0, step=0.1, placeholder="열팽창계수(con_a)")
+                    ], width=6),
+                    dbc.Col([
+                        dbc.Label("포아송비 (0.01 ~ 1.00)"),
+                        dbc.Input(id="edit-p", type="number", min=0.01, max=1.00, step=0.01, placeholder="포아송비(con_p)")
+                    ], width=6),
+                ], className="mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label("밀도 (500 ~ 5000) [kg/m³]"),
+                        dbc.Input(id="edit-d", type="number", min=500, max=5000, step=10, placeholder="밀도(con_d)")
+                    ], width=12),
+                ], className="mb-2"),
                 dcc.Graph(id="edit-preview", style={"height": "45vh"}, className="border"),
             ]),
             dbc.ModalFooter([
@@ -187,11 +246,14 @@ def refresh_table(n, project_pk, _data_ts):
     else:
         df = pd.DataFrame(columns=df_all.columns)
     cols = [
-        {"name": "이름",             "id": "name"},
-        {"name": "해석 단위(m)",     "id": "con_unit"},
-        {"name": "탄성계수",         "id": "con_e"},
-        {"name": "베타",             "id": "con_b"},
-        {"name": "N",               "id": "con_n"},
+        {"name": "이름", "id": "name"},
+        {"name": "해석 단위(m)", "id": "con_unit"},
+        {"name": "베타", "id": "con_b", "type": "numeric", "format": {"specifier": ".1f"}},
+        {"name": "N", "id": "con_n", "type": "numeric", "format": {"specifier": ".1f"}},
+        {"name": "타설 시간", "id": "con_t"},
+        {"name": "열팽창계수\n(×10⁻⁵/°C)", "id": "con_a", "type": "numeric", "format": {"specifier": ".1f"}},
+        {"name": "포아송비", "id": "con_p", "type": "numeric", "format": {"specifier": ".2f"}},
+        {"name": "밀도\n(kg/m³)", "id": "con_d", "type": "numeric", "format": {"specifier": ".0f"}},
     ]
     sel = [0] if not df.empty else []
     return df.to_dict("records"), cols, sel
@@ -285,12 +347,15 @@ def add_preview(_, nodes_txt, h):
     State("add-nodes",   "value"),
     State("add-h",       "value"),
     State("add-unit",    "value"),
-    State("add-e",       "value"),
     State("add-b",       "value"),
     State("add-n",       "value"),
+    State("add-t",       "value"),
+    State("add-a",       "value"),
+    State("add-p",       "value"),
+    State("add-d",       "value"),
     prevent_initial_call=True
 )
-def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, e, b, n):
+def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t, a, p, d):
     if not n_clicks:
         raise PreventUpdate
 
@@ -301,9 +366,12 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, e, b, n):
     if not nodes_txt:  missing.append("노드 목록")
     if h    is None:   missing.append("높이 H")
     if unit is None:   missing.append("해석 단위")
-    if e    is None:   missing.append("탄성계수")
     if b    is None:   missing.append("베타 상수")
     if n    is None:   missing.append("N 상수")
+    if t    is None:   missing.append("타설 시간")
+    if a    is None:   missing.append("열팽창계수")
+    if p    is None:   missing.append("포아송비")
+    if d    is None:   missing.append("밀도")
     if missing:
         return (
             f"{', '.join(missing)}을(를) 입력해주세요.",  # add-alert.children
@@ -330,16 +398,19 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, e, b, n):
             False
         )
 
-    # 3) DB 저장 (activate=0 고정)
+    # 3) DB 저장 (activate=1 고정)
     dims = {"nodes": nodes, "h": float(h)}
     api_db.add_concrete_data(
         project_pk=project_pk,
         name=name.strip(),
         dims=dims,
         con_unit=float(unit),
-        con_e=float(e),
         con_b=float(b),
         con_n=float(n),
+        con_t=t,  # datetime-local 값 그대로 전달
+        con_a=float(a),
+        con_p=float(p),
+        con_d=float(d),
         activate=1
     )
 
@@ -492,12 +563,15 @@ def edit_preview(_, nodes_txt, h):
     State("edit-nodes",   "value"),
     State("edit-h",       "value"),
     State("edit-unit",    "value"),
-    State("edit-e",       "value"),
     State("edit-b",       "value"),
     State("edit-n",       "value"),
+    State("edit-t",       "value"),
+    State("edit-a",       "value"),
+    State("edit-p",       "value"),
+    State("edit-d",       "value"),
     prevent_initial_call=True
 )
-def save_edit(n_clicks, cid, name, nodes_txt, h, unit, e, b, n):
+def save_edit(n_clicks, cid, name, nodes_txt, h, unit, e, b, n, t, a, p, d):
     if not n_clicks:
         raise PreventUpdate
 
@@ -511,6 +585,10 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, e, b, n):
     if e    is None:   missing.append("탄성계수")
     if b    is None:   missing.append("베타 상수")
     if n    is None:   missing.append("N 상수")
+    if t    is None:   missing.append("타설 시간")
+    if a    is None:   missing.append("열팽창계수")
+    if p    is None:   missing.append("포아송비")
+    if d    is None:   missing.append("밀도")
     if missing:
         return (
             f"{', '.join(missing)}을(를) 입력해주세요.",
@@ -533,16 +611,19 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, e, b, n):
             "", "", False
         )
 
-    # 3) DB 업데이트 (activate=0 고정)
+    # 3) DB 업데이트
     dims = {"nodes": nodes, "h": float(h)}
     api_db.update_concrete_data(
         cid,
         name=name.strip(),
         dims=dims,
         con_unit=float(unit),
-        con_e=float(e),
         con_b=float(b),
         con_n=float(n),
+        con_t=t,  # datetime-local 값 그대로 전달
+        con_a=float(a),
+        con_p=float(p),
+        con_d=float(d),
         activate=1
     )
 
