@@ -1889,17 +1889,37 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 html.P("점이 없는 데이터셋입니다.")
             ]), f"파일: {selected_file}", go.Figure(), 0.0, 1.0
         
-        # 바운딩 박스 정보 추출 (단면 슬라이더용)
+        # 바운딩 박스 정보 추출 (단면 슬라이더용) - 콘크리트 전체 범위 사용
         bounds = ds.GetBounds()  # (xmin,xmax,ymin,ymax,zmin,zmax)
         xmin, xmax, ymin, ymax, zmin, zmax = bounds
         
-        # 선택된 축에 따른 슬라이더 범위 결정
-        if slice_axis == "X":
-            slice_min, slice_max = xmin, xmax
-        elif slice_axis == "Y":
-            slice_min, slice_max = ymin, ymax
-        else:  # Z
-            slice_min, slice_max = zmin, zmax
+        # 콘크리트 dims에서 실제 범위 가져오기
+        try:
+            row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+            dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
+            poly_nodes = np.array(dims["nodes"])
+            poly_h = float(dims["h"])
+            
+            # 콘크리트 실제 범위 사용
+            concrete_xmin, concrete_xmax = float(np.min(poly_nodes[:,0])), float(np.max(poly_nodes[:,0]))
+            concrete_ymin, concrete_ymax = float(np.min(poly_nodes[:,1])), float(np.max(poly_nodes[:,1]))
+            concrete_zmin, concrete_zmax = 0.0, float(poly_h)
+            
+            # 슬라이더 범위는 콘크리트 범위 사용
+            if slice_axis == "X":
+                slice_min, slice_max = concrete_xmin, concrete_xmax
+            elif slice_axis == "Y":
+                slice_min, slice_max = concrete_ymin, concrete_ymax
+            else:  # Z
+                slice_min, slice_max = concrete_zmin, concrete_zmax
+        except Exception:
+            # dims 파싱 실패시 VTK 바운딩 박스 사용
+            if slice_axis == "X":
+                slice_min, slice_max = xmin, xmax
+            elif slice_axis == "Y":
+                slice_min, slice_max = ymin, ymax
+            else:  # Z
+                slice_min, slice_max = zmin, zmax
         
         # 필드 데이터 검증
         if field_name:
@@ -1941,45 +1961,96 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 
                 # 클리핑이 성공했는지 확인
                 if clipped_data.GetNumberOfCells() > 0:
-                    # 빈 공간을 채우기 위해 Delaunay 3D 사용
+                    ds_for_vis = clipped_data
+                    print(f"클리핑 성공: {slice_axis}축, 셀 개수: {clipped_data.GetNumberOfCells()}")
+                    
+                    # 단면 결과 개선을 위한 선택적 후처리
                     try:
-                        # 먼저 점들로부터 3D 메쉬 생성
-                        delaunay3d = vtk.vtkDelaunay3D()
-                        delaunay3d.SetInputData(clipped_data)
-                        delaunay3d.SetTolerance(0.001)
-                        delaunay3d.SetAlpha(0.0)  # 모든 점 포함
-                        delaunay3d.Update()
-                        
-                        # 3D 메쉬에서 표면 추출
-                        surface_filter = vtk.vtkGeometryFilter()
-                        surface_filter.SetInputData(delaunay3d.GetOutput())
-                        surface_filter.Update()
-                        
-                        filled_data = surface_filter.GetOutput()
-                        
-                        # 결과가 있으면 사용, 없으면 원본 클리핑 결과 사용
-                        if filled_data.GetNumberOfCells() > 0:
-                            ds_for_vis = filled_data
-                        else:
-                            ds_for_vis = clipped_data
+                        # 클리핑된 데이터의 품질 확인
+                        if clipped_data.GetNumberOfCells() < 10:
+                            # 셀이 적으면 더 관대한 클리핑 시도
+                            plane2 = vtk.vtkPlane()
+                            margin = (slice_max - slice_min) * 0.01  # 1% 여유
                             
-                    except Exception as delaunay_error:
-                        print(f"Delaunay 3D 오류: {delaunay_error}")
-                        # Delaunay가 실패하면 단순히 클리핑 결과 사용
-                        ds_for_vis = clipped_data
+                            if slice_axis == "X":
+                                plane2.SetOrigin(slice_value - margin, 0, 0)
+                                plane2.SetNormal(-1, 0, 0)
+                            elif slice_axis == "Y":
+                                plane2.SetOrigin(0, slice_value - margin, 0) 
+                                plane2.SetNormal(0, -1, 0)
+                            else:  # Z
+                                plane2.SetOrigin(0, 0, slice_value - margin)
+                                plane2.SetNormal(0, 0, -1)
+                            
+                            clipper2 = vtk.vtkTableBasedClipDataSet()
+                            clipper2.SetInputData(ds)
+                            clipper2.SetClipFunction(plane2)
+                            clipper2.SetInsideOut(False)
+                            clipper2.Update()
+                            
+                            geom_filter2 = vtk.vtkGeometryFilter()
+                            geom_filter2.SetInputData(clipper2.GetOutput())
+                            geom_filter2.Update()
+                            
+                            improved_data = geom_filter2.GetOutput()
+                            if improved_data.GetNumberOfCells() > clipped_data.GetNumberOfCells():
+                                ds_for_vis = improved_data
+                                print(f"개선된 클리핑: 셀 개수 {improved_data.GetNumberOfCells()}")
+                            
+                    except Exception as improve_error:
+                        print(f"클리핑 개선 오류: {improve_error}")
+                        # 개선 실패해도 원본 클리핑 결과 사용
                 
                 else:
-                    # 클리핑 실패시 다중 방법 시도
+                    # 클리핑 실패시 다른 방법들 시도
+                    print(f"평면 클리핑 실패: {slice_axis}축, 다른 방법 시도 중...")
+                    
                     try:
-                        # 방법 2: Box를 이용한 클리핑 + 볼륨 필링
-                        box = vtk.vtkBox()
-                        if slice_axis == "X":
-                            box.SetBounds(slice_value, xmax+0.1, ymin-0.1, ymax+0.1, zmin-0.1, zmax+0.1)
-                        elif slice_axis == "Y":
-                            box.SetBounds(xmin-0.1, xmax+0.1, slice_value, ymax+0.1, zmin-0.1, zmax+0.1)
-                        else:  # Z
-                            box.SetBounds(xmin-0.1, xmax+0.1, ymin-0.1, ymax+0.1, slice_value, zmax+0.1)
+                        # 방법 2: 더 관대한 Box 클리핑 (각 축별 적절한 범위 사용)
+                        try:
+                            # 콘크리트 실제 범위 다시 계산
+                            row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+                            dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
+                            poly_nodes = np.array(dims["nodes"])
+                            poly_h = float(dims["h"])
+                            
+                            concrete_xmin, concrete_xmax = float(np.min(poly_nodes[:,0])), float(np.max(poly_nodes[:,0]))
+                            concrete_ymin, concrete_ymax = float(np.min(poly_nodes[:,1])), float(np.max(poly_nodes[:,1]))
+                            concrete_zmin, concrete_zmax = 0.0, float(poly_h)
+                            
+                            margin = 0.1  # 고정 여유값
+                            
+                            box = vtk.vtkBox()
+                            if slice_axis == "X":
+                                box.SetBounds(slice_value - margin, concrete_xmax + margin, 
+                                            concrete_ymin - margin, concrete_ymax + margin,
+                                            concrete_zmin - margin, concrete_zmax + margin)
+                            elif slice_axis == "Y":
+                                box.SetBounds(concrete_xmin - margin, concrete_xmax + margin,
+                                            slice_value - margin, concrete_ymax + margin,
+                                            concrete_zmin - margin, concrete_zmax + margin)
+                            else:  # Z
+                                box.SetBounds(concrete_xmin - margin, concrete_xmax + margin,
+                                            concrete_ymin - margin, concrete_ymax + margin,
+                                            slice_value - margin, concrete_zmax + margin)
+                        except Exception:
+                            # dims 파싱 실패시 VTK 범위 사용
+                            margin = 0.1
+                            box = vtk.vtkBox()
+                            if slice_axis == "X":
+                                box.SetBounds(slice_value - margin, xmax + margin, 
+                                            ymin - margin, ymax + margin,
+                                            zmin - margin, zmax + margin)
+                            elif slice_axis == "Y":
+                                box.SetBounds(xmin - margin, xmax + margin,
+                                            slice_value - margin, ymax + margin,
+                                            zmin - margin, zmax + margin)
+                            else:  # Z
+                                box.SetBounds(xmin - margin, xmax + margin,
+                                            ymin - margin, ymax + margin,
+                                            slice_value - margin, zmax + margin)
                         
+                        # Box 클리핑 시도
                         box_clipper = vtk.vtkTableBasedClipDataSet()
                         box_clipper.SetInputData(ds)
                         box_clipper.SetClipFunction(box)
@@ -1987,51 +2058,85 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                         box_clipper.Update()
                         
                         box_result = box_clipper.GetOutput()
+                        print(f"Box 클리핑 결과: 셀 개수 {box_result.GetNumberOfCells()}")
                         
                         if box_result.GetNumberOfCells() > 0:
-                            # Box 클리핑 성공 - 표면 생성
                             box_geom = vtk.vtkGeometryFilter()
                             box_geom.SetInputData(box_result)
                             box_geom.Update()
-                            
-                            # 빈 공간을 채우기 위해 contour 필터 추가
-                            try:
-                                # 좀 더 조밀한 메쉬 생성
-                                tessellator = vtk.vtkTessellatorFilter()
-                                tessellator.SetInputData(box_result)
-                                tessellator.Update()
-                                
-                                tess_geom = vtk.vtkGeometryFilter()
-                                tess_geom.SetInputData(tessellator.GetOutput())
-                                tess_geom.Update()
-                                
-                                ds_for_vis = tess_geom.GetOutput()
-                                
-                            except Exception:
-                                # Tessellator 실패시 기본 geometry filter 결과 사용
-                                ds_for_vis = box_geom.GetOutput()
+                            ds_for_vis = box_geom.GetOutput()
                         else:
-                            # 방법 3: 임계값 기반 필터링 (마지막 수단)
-                            # 원본 데이터에서 해당 영역의 점들만 추출
-                            extract = vtk.vtkExtractGeometry()
-                            extract.SetInputData(ds)
-                            extract.SetImplicitFunction(box)
-                            extract.SetExtractInside(True)
-                            extract.SetExtractBoundaryCells(True)
-                            extract.Update()
+                            # 방법 3: 단순 임계값 필터링
+                            print(f"Box 클리핑도 실패, 임계값 필터링 시도...")
                             
-                            extract_geom = vtk.vtkGeometryFilter()
-                            extract_geom.SetInputData(extract.GetOutput())
-                            extract_geom.Update()
+                            # 원본을 먼저 PolyData로 변환
+                            orig_geom = vtk.vtkGeometryFilter()
+                            orig_geom.SetInputData(ds)
+                            orig_geom.Update()
+                            orig_poly = orig_geom.GetOutput()
                             
-                            ds_for_vis = extract_geom.GetOutput()
+                            # 점 기반 필터링
+                            points = vtk.vtkPoints()
+                            vertices = vtk.vtkCellArray()
+                            point_data_arrays = []
+                            
+                            # 기존 포인트 데이터 준비
+                            for i in range(orig_poly.GetPointData().GetNumberOfArrays()):
+                                arr = orig_poly.GetPointData().GetArray(i)
+                                if arr:
+                                    new_arr = vtk.vtkFloatArray()
+                                    new_arr.SetName(arr.GetName())
+                                    new_arr.SetNumberOfComponents(arr.GetNumberOfComponents())
+                                    point_data_arrays.append((new_arr, arr))
+                            
+                            # 조건에 맞는 점들만 추가
+                            point_count = 0
+                            for i in range(orig_poly.GetNumberOfPoints()):
+                                pt = orig_poly.GetPoint(i)
+                                include = False
+                                
+                                if slice_axis == "X" and pt[0] >= slice_value:
+                                    include = True
+                                elif slice_axis == "Y" and pt[1] >= slice_value:
+                                    include = True
+                                elif slice_axis == "Z" and pt[2] >= slice_value:
+                                    include = True
+                                
+                                if include:
+                                    points.InsertNextPoint(pt)
+                                    
+                                    # 포인트 데이터 복사
+                                    for new_arr, orig_arr in point_data_arrays:
+                                        if orig_arr.GetNumberOfComponents() == 1:
+                                            new_arr.InsertNextValue(orig_arr.GetValue(i))
+                                        else:
+                                            tuple_data = [0] * orig_arr.GetNumberOfComponents()
+                                            orig_arr.GetTuple(i, tuple_data)
+                                            new_arr.InsertNextTuple(tuple_data)
+                                    
+                                    # 점을 vertex로 추가
+                                    vertices.InsertNextCell(1, [point_count])
+                                    point_count += 1
+                            
+                            if point_count > 0:
+                                filtered_poly = vtk.vtkPolyData()
+                                filtered_poly.SetPoints(points)
+                                filtered_poly.SetVerts(vertices)
+                                
+                                # 포인트 데이터 설정
+                                for new_arr, _ in point_data_arrays:
+                                    filtered_poly.GetPointData().AddArray(new_arr)
+                                    if new_arr.GetName() and field_name == new_arr.GetName():
+                                        filtered_poly.GetPointData().SetScalars(new_arr)
+                                
+                                ds_for_vis = filtered_poly
+                                print(f"임계값 필터링 성공: 점 개수 {point_count}")
+                            else:
+                                ds_for_vis = ds
+                                print("모든 필터링 방법 실패, 원본 사용")
                         
-                        # 여전히 결과가 없으면 원본 사용
-                        if ds_for_vis.GetNumberOfCells() == 0:
-                            ds_for_vis = ds
-                            
-                    except Exception as box_error:
-                        print(f"고급 클리핑 오류: {box_error}")
+                    except Exception as fallback_error:
+                        print(f"fallback 클리핑 오류: {fallback_error}")
                         ds_for_vis = ds
                     
             except Exception as slice_error:
