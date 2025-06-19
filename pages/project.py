@@ -1774,11 +1774,13 @@ def select_deselect_all_vtp(n_all, n_none, table_data):
         return []
     raise dash.exceptions.PreventUpdate
 
-# 수치해석 3D 뷰 콜백 (필드/프리셋/시간)
+# 수치해석 3D 뷰 콜백 (필드/프리셋/시간/단면)
 @callback(
     Output("analysis-3d-viewer", "children"),
     Output("analysis-current-file-label", "children"),
     Output("analysis-colorbar", "figure"),
+    Output("slice-slider", "min"),
+    Output("slice-slider", "max"),
     Input("analysis-field-dropdown", "value"),
     Input("analysis-preset-dropdown", "value"),
     Input("analysis-time-slider", "value"),
@@ -1787,7 +1789,7 @@ def select_deselect_all_vtp(n_all, n_none, table_data):
     Input("slice-slider", "value"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
-    prevent_initial_call=True,
+    prevent_initial_call=False,
 )
 def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_axis, slice_slider, selected_rows, tbl_data):
     import os
@@ -1795,7 +1797,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
     from dash_vtk.utils import to_mesh_state
     
     if not selected_rows or not tbl_data:
-        return html.Div("콘크리트를 선택하세요."), "", go.Figure()
+        return html.Div("콘크리트를 선택하세요."), "", go.Figure(), 0.0, 1.0
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
@@ -1810,7 +1812,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         vtp_files = sorted([f for f in os.listdir(assets_vtp_dir) if f.endswith('.vtp')])
     
     if not vtk_files and not vtp_files:
-        return html.Div("VTK/VTP 파일이 없습니다."), "", go.Figure()
+        return html.Div("VTK/VTP 파일이 없습니다."), "", go.Figure(), 0.0, 1.0
     
     from datetime import datetime
     times = []
@@ -1833,12 +1835,12 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             continue
     
     if not times:
-        return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다."), "", go.Figure()
+        return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다."), "", go.Figure(), 0.0, 1.0
     
     times.sort()
     max_idx = len(times) - 1
     
-    # 시간 인덱스 처리
+    # 시간 인덱스 처리 (처음 로드시에는 최신 파일)
     if time_idx is None:
         idx = max_idx
     else:
@@ -1872,7 +1874,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             return html.Div([
                 html.H5("VTK 파일 읽기 실패", style={"color": "red"}),
                 html.P(f"파일: {selected_file}")
-            ]), f"파일: {selected_file}", go.Figure()
+            ]), f"파일: {selected_file}", go.Figure(), 0.0, 1.0
         
         # 점의 개수 확인
         num_points = ds.GetNumberOfPoints()
@@ -1881,7 +1883,19 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 html.H5("빈 데이터셋", style={"color": "red"}),
                 html.P(f"파일: {selected_file}"),
                 html.P("점이 없는 데이터셋입니다.")
-            ]), f"파일: {selected_file}", go.Figure()
+            ]), f"파일: {selected_file}", go.Figure(), 0.0, 1.0
+        
+        # 바운딩 박스 정보 추출 (단면 슬라이더용)
+        bounds = ds.GetBounds()  # (xmin,xmax,ymin,ymax,zmin,zmax)
+        xmin, xmax, ymin, ymax, zmin, zmax = bounds
+        
+        # 선택된 축에 따른 슬라이더 범위 결정
+        if slice_axis == "X":
+            slice_min, slice_max = xmin, xmax
+        elif slice_axis == "Y":
+            slice_min, slice_max = ymin, ymax
+        else:  # Z
+            slice_min, slice_max = zmin, zmax
         
         # 필드 데이터 검증
         if field_name:
