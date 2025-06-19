@@ -326,15 +326,10 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
             continue
     if not times:
         return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0, ""
-    marks = {}
-    for i, t in enumerate(times):
-        if t.hour == 0:
-            marks[i] = t.strftime("%m/%d")
-    if 0 not in marks:
-        marks[0] = times[0].strftime("%m/%d")
-    if (len(times)-1) not in marks:
-        marks[len(times)-1] = times[-1].strftime("%m/%d")
-    max_idx = len(times)-1
+    # 슬라이더 마크: 시작과 끝만 표시
+    max_idx = len(times) - 1
+    marks = {0: times[0].strftime("%m/%d"), max_idx: times[-1].strftime("%m/%d")}
+    
     # value가 max보다 크거나 None/NaN이면 max로 맞춤
     import math
     if time_idx is None or (isinstance(time_idx, float) and math.isnan(time_idx)) or (isinstance(time_idx, str) and not time_idx.isdigit()):
@@ -455,12 +450,24 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     temps = np.array(temps)
     fig_3d = go.Figure(data=go.Volume(
         x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
-        opacity=0.1, surface_count=15, 
-        colorscale=[[0, 'blue'], [1, 'red']],
-        colorbar=dict(title='Temperature (°C)', thickness=10),
-        cmin=np.nanmin(temps), cmax=np.nanmax(temps),
-        showscale=True
+        opacity=0.1, surface_count=15, colorscale=[[0, 'blue'], [1, 'red']],
+        colorbar=None, cmin=tmin, cmax=tmax, showscale=False
     ))
+    # XYZ 축 화살표 추가
+    try:
+        L_axis = max(x_max - x_min, y_max - y_min, z_max - z_min) * 0.15
+        ox, oy, oz = x_min, y_min, z_min
+        fig_3d.add_trace(go.Scatter3d(x=[ox, ox+L_axis], y=[oy, oy], z=[oz, oz],
+                                      mode='lines', line=dict(color='red', width=4), showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(x=[ox+L_axis], y=[oy], z=[oz], mode='text', text=['X'], showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(x=[ox, ox], y=[oy, oy+L_axis], z=[oz, oz],
+                                      mode='lines', line=dict(color='green', width=4), showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(x=[ox], y=[oy+L_axis], z=[oz], mode='text', text=['Y'], showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(x=[ox, ox], y=[oy, oy], z=[oz, oz+L_axis],
+                                      mode='lines', line=dict(color='blue', width=4), showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(x=[ox], y=[oy], z=[oz+L_axis], mode='text', text=['Z'], showlegend=False, hoverinfo='skip'))
+    except Exception:
+        pass
     # 3D 뷰 시점 고정 및 경계선 추가
     fig_3d.update_layout(
         uirevision='constant',  # 시점 고정
@@ -846,11 +853,8 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             {"label": "Plasma", "value": "plasma"}
         ]
         
-        # 시간 슬라이더 마크
-        time_marks = {}
-        for i, (dt, _) in enumerate(times):
-            if dt.hour == 0 or i == 0 or i == max_idx:
-                time_marks[i] = dt.strftime("%m/%d")
+        # 시간 슬라이더 마크: 시작과 끝만 표시
+        time_marks = {0: times[0][0].strftime("%m/%d"), max_idx: times[-1][0].strftime("%m/%d")}
         
         return html.Div([
             # 컨트롤 패널
@@ -1170,18 +1174,10 @@ def update_time_slider(selected_rows, tbl_data, current_value):
     if not times:
         return 0, 5, {}, 0
     
-    # 날짜의 00시만 마크 표시, 텍스트는 MM/DD
-    marks = {}
-    for i, t in enumerate(times):
-        if t.hour == 0:
-            marks[i] = t.strftime("%m/%d")
-    # 첫번째와 마지막은 항상 표시
-    if 0 not in marks:
-        marks[0] = times[0].strftime("%m/%d")
-    if (len(times)-1) not in marks:
-        marks[len(times)-1] = times[-1].strftime("%m/%d")
+    # 슬라이더 마크: 시작과 끝만 표시
+    max_idx = len(times) - 1
+    marks = {0: times[0].strftime("%m/%d"), max_idx: times[-1].strftime("%m/%d")}
     
-    max_idx = len(times)-1
     if trigger_id == "tbl-concrete":
         value = max_idx
     else:
@@ -1542,6 +1538,21 @@ def update_temp_tab(store_data, x, y, z, selected_rows, tbl_data):
         fig_3d.add_trace(go.Scatter3d(
             x=[x0s[i], x0s[i]], y=[y0s[i], y0s[i]], z=[z0s[i], z1[i]],
             mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
+    # XYZ 축 화살표 추가
+    try:
+        xmin, xmax = float(np.min(x0s)), float(np.max(x0s))
+        ymin, ymax = float(np.min(y0s)), float(np.max(y0s))
+        zmin, zmax = 0.0, float(poly_h)
+        L_axis = max(xmax - xmin, ymax - ymin, zmax - zmin) * 0.15
+        ox, oy, oz = xmin, ymin, zmin
+        fig_3d.add_trace(go.Scatter3d(x=[ox, ox+L_axis], y=[oy, oy], z=[oz, oz], mode='lines', line=dict(color='red', width=4), showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(x=[ox+L_axis], y=[oy], z=[oz], mode='text', text=['X'], showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(x=[ox, ox], y=[oy, oy+L_axis], z=[oz, oz], mode='lines', line=dict(color='green', width=4), showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(x=[ox], y=[oy+L_axis], z=[oz], mode='text', text=['Y'], showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(x=[ox, ox], y=[oy, oy], z=[oz, oz+L_axis], mode='lines', line=dict(color='blue', width=4), showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(x=[ox], y=[oy], z=[oz+L_axis], mode='text', text=['Z'], showlegend=False, hoverinfo='skip'))
+    except Exception:
+        pass
     # 입력 위치 표시 + 보조선
     if x is not None and y is not None and z is not None:
         # 점
