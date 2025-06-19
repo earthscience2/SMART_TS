@@ -894,25 +894,27 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             dbc.Row([
                 dbc.Col([
                     dbc.Checklist(
-                        options=[{"label": "단면 활성", "value": "on"}],
+                        options=[{"label": "단면 보기", "value": "on"}],
                         value=[],
                         id="slice-enable",
                         switch=True,
                     )
                 ], md=2),
                 dbc.Col([
+                    html.Label("축 선택", style={"fontSize": "12px", "marginBottom": "2px"}),
                     dcc.Dropdown(
                         id="slice-axis",
                         options=[
-                            {"label": "X", "value": "X"},
-                            {"label": "Y", "value": "Y"},
-                            {"label": "Z", "value": "Z"},
+                            {"label": "X축 (좌→우)", "value": "X"},
+                            {"label": "Y축 (앞→뒤)", "value": "Y"},
+                            {"label": "Z축 (아래→위)", "value": "Z"},
                         ],
                         value="Z",
                         clearable=False,
                     )
                 ], md=2),
                 dbc.Col([
+                    html.Label("절단 위치 (선택 위치 이상 영역 표시)", style={"fontSize": "12px", "marginBottom": "2px"}),
                     dcc.Slider(
                         id="slice-slider",
                         min=0, max=1, step=0.02, value=0.5,
@@ -1909,27 +1911,35 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         ds_for_vis = ds
         if slice_enable and "on" in slice_enable:
             try:
-                # 평면 생성
+                # 평면 생성 (해당 위치부터 한쪽 방향 전체를 보여주는 방식)
                 plane = vtk.vtkPlane()
-                if slice_axis == "X":
-                    slice_value = slice_min + (slice_max - slice_min) * slice_slider
-                    plane.SetOrigin(slice_value, 0, 0)
-                    plane.SetNormal(1, 0, 0)
-                elif slice_axis == "Y":
-                    slice_value = slice_min + (slice_max - slice_min) * slice_slider
-                    plane.SetOrigin(0, slice_value, 0)
-                    plane.SetNormal(0, 1, 0)
-                else:  # Z
-                    slice_value = slice_min + (slice_max - slice_min) * slice_slider
-                    plane.SetOrigin(0, 0, slice_value)
-                    plane.SetNormal(0, 0, 1)
+                slice_value = slice_min + (slice_max - slice_min) * slice_slider
                 
-                # 절단기 적용
-                cutter = vtk.vtkCutter()
-                cutter.SetInputData(ds)
-                cutter.SetCutFunction(plane)
-                cutter.Update()
-                ds_for_vis = cutter.GetOutput()
+                if slice_axis == "X":
+                    # X축: 선택한 위치보다 큰 X값 영역만 보여주기
+                    plane.SetOrigin(slice_value, 0, 0)
+                    plane.SetNormal(-1, 0, 0)  # 음의 방향으로 자르기 (큰 X값 영역 유지)
+                elif slice_axis == "Y":
+                    # Y축: 선택한 위치보다 큰 Y값 영역만 보여주기
+                    plane.SetOrigin(0, slice_value, 0)
+                    plane.SetNormal(0, -1, 0)  # 음의 방향으로 자르기 (큰 Y값 영역 유지)
+                else:  # Z
+                    # Z축: 선택한 위치보다 큰 Z값 영역만 보여주기 (위쪽 영역)
+                    plane.SetOrigin(0, 0, slice_value)
+                    plane.SetNormal(0, 0, -1)  # 음의 방향으로 자르기 (큰 Z값 영역 유지)
+                
+                # 클리핑 적용 (잘라내기)
+                clipper = vtk.vtkClipDataSet()
+                clipper.SetInputData(ds)
+                clipper.SetClipFunction(plane)
+                clipper.SetInsideOut(False)  # 평면의 양의 방향 쪽을 유지
+                clipper.Update()
+                
+                # UnstructuredGrid가 나오므로 PolyData로 변환
+                geom_filter = vtk.vtkGeometryFilter()
+                geom_filter.SetInputData(clipper.GetOutput())
+                geom_filter.Update()
+                ds_for_vis = geom_filter.GetOutput()
                 
                 if ds_for_vis.GetNumberOfPoints() == 0:
                     # 절단된 결과가 없으면 원본 사용
@@ -2057,9 +2067,10 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 poly.SetPoints(pts)
                 poly.SetLines(lines)
                 bbox_state = to_mesh_state(poly)
+                
+                # dash_vtk 0.0.9 버전에서는 opacity가 지원되지 않으므로 제거
                 bbox_rep = dash_vtk.GeometryRepresentation(
-                    color=[0,0,0],  # black
-                    opacity=0.3,
+                    color=[0.3, 0.3, 0.3],  # 어두운 회색으로 변경
                     children=[dash_vtk.Mesh(state=bbox_state)]
                 )
                 view_children.append(bbox_rep)
@@ -2073,7 +2084,12 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 label += f" | 값 범위: {color_range[0]:.2f} ~ {color_range[1]:.2f}"
             if slice_enable and "on" in slice_enable:
                 slice_value = slice_min + (slice_max - slice_min) * slice_slider
-                label += f" | {slice_axis} 단면: {slice_value:.2f}"
+                if slice_axis == "X":
+                    label += f" | X ≥ {slice_value:.2f} 영역"
+                elif slice_axis == "Y":
+                    label += f" | Y ≥ {slice_value:.2f} 영역"
+                else:  # Z
+                    label += f" | Z ≥ {slice_value:.2f} 영역"
                 
             return vtk_viewer, label, colorbar_fig, slice_min, slice_max
             
