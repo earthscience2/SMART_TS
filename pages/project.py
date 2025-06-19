@@ -887,6 +887,9 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 ], md=6),
             ], className="mb-3"),
             
+            # 현재 파일/범위 표시
+            html.Div(id="analysis-current-file-label", style={"marginBottom":"8px", "fontWeight":"500"}),
+            
             # 3D 뷰어
             html.Div(id="analysis-3d-viewer", style={"height": "60vh"})
             
@@ -1740,6 +1743,7 @@ def select_deselect_all_vtp(n_all, n_none, table_data):
 # 수치해석 3D 뷰 콜백 (필드/프리셋/시간)
 @callback(
     Output("analysis-3d-viewer", "children"),
+    Output("analysis-current-file-label", "children"),
     Input("analysis-field-dropdown", "value"),
     Input("analysis-preset-dropdown", "value"),
     Input("analysis-time-slider", "value"),
@@ -1753,7 +1757,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_dat
     from dash_vtk.utils import to_mesh_state
     
     if not selected_rows or not tbl_data:
-        return html.Div("콘크리트를 선택하세요.")
+        return html.Div("콘크리트를 선택하세요."), ""
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
@@ -1768,7 +1772,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_dat
         vtp_files = sorted([f for f in os.listdir(assets_vtp_dir) if f.endswith('.vtp')])
     
     if not vtk_files and not vtp_files:
-        return html.Div("VTK/VTP 파일이 없습니다.")
+        return html.Div("VTK/VTP 파일이 없습니다."), ""
     
     from datetime import datetime
     times = []
@@ -1872,7 +1876,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_dat
                 html.P(f"점 개수: {num_points}"),
                 html.Hr(),
                 html.P("VTK 파일 형식을 확인해주세요. FRD → VTK 변환이 올바르게 되었는지 점검이 필요합니다.", style={"color": "gray"})
-            ])
+            ]), f"파일: {selected_file}"
         
         # 컬러 데이터 범위 추출
         color_range = None
@@ -1900,7 +1904,10 @@ def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_dat
             
             vtk_viewer = dash_vtk.View([geometry_rep], style={"height": "60vh", "width": "100%"})
             
-            return vtk_viewer
+            label = f"파일: {selected_file}"
+            if color_range:
+                label += f" | 값 범위: {color_range[0]:.2f} ~ {color_range[1]:.2f}"
+            return vtk_viewer, label
             
         except Exception as vtk_error:
             print(f"dash_vtk 컴포넌트 생성 오류: {vtk_error}")
@@ -1910,7 +1917,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_dat
                 html.P(f"오류: {str(vtk_error)}"),
                 html.Hr(),
                 html.P("브라우저를 새로고침하거나 다른 파일을 선택해보세요.", style={"color": "gray"})
-            ])
+            ]), f"파일: {selected_file}"
         
     except Exception as e:
         print(f"VTK 처리 전체 오류: {e}")
@@ -1921,4 +1928,4 @@ def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_dat
             html.P(f"오류: {str(e)}"),
             html.Hr(),
             html.P("다른 파일을 선택하거나 VTK 파일을 확인해주세요.", style={"color": "gray"})
-        ])
+        ]), f"파일: {selected_file}"
