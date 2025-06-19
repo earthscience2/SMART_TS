@@ -737,9 +737,9 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             ]),
         ]), "전체 파일"
     elif active_tab == "tab-analysis":
-        # 수치해석 탭: 서버에서 VTK/VTP 파일을 파싱하여 dash_vtk.Mesh로 시각화
+        # 수치해석 탭: 서버에서 VTK/VTP 파일을 파싱하여 dash_vtk.Mesh로 시각화 + 컬러맵 필드/프리셋 선택
         import vtk
-        from dash_vtk.utils import to_mesh_state
+        from dash_vtk.utils import to_mesh_state, preset_as_options
         if not (selected_rows and tbl_data):
             return html.Div("콘크리트를 선택하세요."), ""
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
@@ -788,7 +788,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         slider_value = min(slider_value, len(times)-1)
         selected_file = times[slider_value][1]
         file_path = os.path.join(assets_vtk_dir if file_type=='vtk' else assets_vtp_dir, selected_file)
-        # VTK/VTP 파일 파싱 및 mesh_state 변환
+        # VTK/VTP 파일 파싱 및 필드명 추출
         try:
             if file_type == 'vtk':
                 reader = vtk.vtkUnstructuredGridReader()
@@ -800,20 +800,45 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 reader.SetFileName(file_path)
                 reader.Update()
                 ds = reader.GetOutput()
-            mesh_state = to_mesh_state(ds)
+            # 필드명 추출 (PointData)
+            pointdata = ds.GetPointData()
+            field_names = []
+            for i in range(pointdata.GetNumberOfArrays()):
+                arr = pointdata.GetArray(i)
+                if arr is not None:
+                    field_names.append(arr.GetName())
+            if not field_names:
+                field_names = [None]
         except Exception as e:
             return html.Div([
                 html.H5("VTK/VTP 파싱 오류", style={"color": "red"}),
                 html.P(f"파일: {selected_file}"),
                 html.P(f"오류: {str(e)}")
             ]), ""
-        # dash_vtk.Mesh로 시각화
-        vtk_viewer = dash_vtk.View([
-            dash_vtk.GeometryRepresentation([
-                dash_vtk.Mesh(state=mesh_state)
-            ])
-        ], style={"height": "60vh", "width": "100%"})
+        # 기본 필드 선택: 첫 번째 필드
+        default_field = field_names[0] if field_names[0] else None
+        # UI: 필드/프리셋 선택 + 시간 슬라이더 + 3D 뷰
+        import dash
+        from dash import dcc, html
         return html.Div([
+            html.Div([
+                html.Label("컬러맵 필드 선택", style={"marginRight": "10px"}),
+                dcc.Dropdown(
+                    id="analysis-field-dropdown",
+                    options=[{"label": f, "value": f} for f in field_names if f],
+                    value=default_field,
+                    clearable=False,
+                    style={"width": "200px", "display": "inline-block", "marginRight": "20px"}
+                ),
+                html.Label("컬러맵 프리셋", style={"marginRight": "10px"}),
+                dcc.Dropdown(
+                    id="analysis-preset-dropdown",
+                    options=preset_as_options,
+                    value="erdc_rainbow_bright",
+                    clearable=False,
+                    style={"width": "200px", "display": "inline-block"}
+                ),
+            ], style={"marginBottom": "16px"}),
             html.Div([
                 html.Label("시간", className="form-label"),
                 dcc.Slider(
@@ -826,7 +851,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
             ], className="mb-3"),
-            vtk_viewer
+            html.Div(id="analysis-3d-viewer")
         ]), f"{times[slider_value][0].strftime('%Y-%m-%d %H시')} {file_type.upper()} 결과"
     elif active_tab == "tab-inp-files":
         # inp 파일 목록 탭
@@ -1673,3 +1698,89 @@ def select_deselect_all_vtp(n_all, n_none, table_data):
     elif trig == "btn-vtp-deselect-all":
         return []
     raise dash.exceptions.PreventUpdate
+
+# 수치해석 3D 뷰 콜백 (필드/프리셋/시간)
+@callback(
+    Output("analysis-3d-viewer", "children"),
+    Input("analysis-field-dropdown", "value"),
+    Input("analysis-preset-dropdown", "value"),
+    Input("frd-time-slider", "value"),
+    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    prevent_initial_call=True,
+)
+def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_data):
+    import os
+    import vtk
+    from dash_vtk.utils import to_mesh_state
+    if not selected_rows or not tbl_data:
+        return html.Div("콘크리트를 선택하세요.")
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    assets_vtk_dir = f"assets/vtk/{concrete_pk}"
+    assets_vtp_dir = f"assets/vtp/{concrete_pk}"
+    vtk_files = []
+    vtp_files = []
+    if os.path.exists(assets_vtk_dir):
+        vtk_files = sorted([f for f in os.listdir(assets_vtk_dir) if f.endswith('.vtk')])
+    if os.path.exists(assets_vtp_dir):
+        vtp_files = sorted([f for f in os.listdir(assets_vtp_dir) if f.endswith('.vtp')])
+    if not vtk_files and not vtp_files:
+        return html.Div("VTK/VTP 파일이 없습니다.")
+    from datetime import datetime
+    times = []
+    file_type = None
+    files = []
+    if vtk_files:
+        files = vtk_files
+        file_type = 'vtk'
+    elif vtp_files:
+        files = vtp_files
+        file_type = 'vtp'
+    for f in files:
+        try:
+            time_str = os.path.splitext(f)[0]
+            dt = datetime.strptime(time_str, "%Y%m%d%H")
+            times.append((dt, f))
+        except:
+            continue
+    if not times:
+        return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다.")
+    times.sort()
+    max_idx = len(times)-1
+    idx = max_idx if time_idx is None else min(int(time_idx), max_idx)
+    selected_file = times[idx][1]
+    file_path = os.path.join(assets_vtk_dir if file_type=='vtk' else assets_vtp_dir, selected_file)
+    try:
+        if file_type == 'vtk':
+            reader = vtk.vtkUnstructuredGridReader()
+            reader.SetFileName(file_path)
+            reader.Update()
+            ds = reader.GetOutput()
+        else:
+            reader = vtk.vtkXMLPolyDataReader()
+            reader.SetFileName(file_path)
+            reader.Update()
+            ds = reader.GetOutput()
+        mesh_state = to_mesh_state(ds, field_name) if field_name else to_mesh_state(ds)
+        # 컬러 데이터 범위 추출
+        color_range = None
+        if field_name:
+            arr = ds.GetPointData().GetArray(field_name)
+            if arr is not None:
+                color_range = [arr.GetRange()[0], arr.GetRange()[1]]
+        # dash_vtk.Mesh로 시각화
+        vtk_viewer = dash_vtk.View([
+            dash_vtk.GeometryRepresentation(
+                colorMapPreset=preset,
+                colorDataRange=color_range,
+                children=[dash_vtk.Mesh(state=mesh_state)]
+            )
+        ], style={"height": "60vh", "width": "100%"})
+        return vtk_viewer
+    except Exception as e:
+        return html.Div([
+            html.H5("VTK/VTP 파싱 오류", style={"color": "red"}),
+            html.P(f"파일: {selected_file}"),
+            html.P(f"오류: {str(e)}")
+        ])
