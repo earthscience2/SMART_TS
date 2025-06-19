@@ -1902,7 +1902,43 @@ def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_dat
             if color_range:
                 geometry_rep.colorDataRange = color_range
             
-            vtk_viewer = dash_vtk.View([geometry_rep], style={"height": "60vh", "width": "100%"})
+            # --- Bounding box wireframe 추가 ---
+            try:
+                bounds = ds.GetBounds()  # (xmin,xmax,ymin,ymax,zmin,zmax)
+                xmin,xmax,ymin,ymax,zmin,zmax = bounds
+                import vtk
+                pts = vtk.vtkPoints()
+                corners = [
+                    (xmin,ymin,zmin), (xmax,ymin,zmin), (xmax,ymax,zmin), (xmin,ymax,zmin),
+                    (xmin,ymin,zmax), (xmax,ymin,zmax), (xmax,ymax,zmax), (xmin,ymax,zmax)
+                ]
+                for p in corners:
+                    pts.InsertNextPoint(*p)
+                lines = vtk.vtkCellArray()
+                edges = [
+                    (0,1),(1,2),(2,3),(3,0),  # bottom
+                    (4,5),(5,6),(6,7),(7,4),  # top
+                    (0,4),(1,5),(2,6),(3,7)   # vertical
+                ]
+                for a,b in edges:
+                    line = vtk.vtkLine()
+                    line.GetPointIds().SetId(0,a)
+                    line.GetPointIds().SetId(1,b)
+                    lines.InsertNextCell(line)
+                poly = vtk.vtkPolyData()
+                poly.SetPoints(pts)
+                poly.SetLines(lines)
+                bbox_state = to_mesh_state(poly)
+                bbox_rep = dash_vtk.GeometryRepresentation(
+                    color=[0,0,0],  # black
+                    opacity=0.3,
+                    children=[dash_vtk.Mesh(state=bbox_state)]
+                )
+                view_children = [geometry_rep, bbox_rep]
+            except Exception:
+                view_children = [geometry_rep]
+            
+            vtk_viewer = dash_vtk.View(view_children, style={"height": "60vh", "width": "100%"})
             
             label = f"파일: {selected_file}"
             if color_range:
