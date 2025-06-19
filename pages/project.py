@@ -739,7 +739,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
     elif active_tab == "tab-analysis":
         # 수치해석 탭: 서버에서 VTK/VTP 파일을 파싱하여 dash_vtk.Mesh로 시각화 + 컬러맵 필드/프리셋 선택
         import vtk
-        from dash_vtk.utils import to_mesh_state, preset_as_options
+        from dash_vtk.utils import to_mesh_state
         if not (selected_rows and tbl_data):
             return html.Div("콘크리트를 선택하세요."), ""
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
@@ -773,22 +773,12 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             except:
                 continue
         if not times:
-            return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다."), ""
+            return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다.")
         times.sort()
-        marks = {}
-        for i, (dt, f) in enumerate(times):
-            if dt.hour == 0:
-                marks[i] = dt.strftime("%m/%d")
-        if 0 not in marks:
-            marks[0] = times[0][0].strftime("%m/%d")
-        if (len(times)-1) not in marks:
-            marks[len(times)-1] = times[-1][0].strftime("%m/%d")
         max_idx = len(times)-1
-        slider_value = max_idx
-        slider_value = min(slider_value, len(times)-1)
-        selected_file = times[slider_value][1]
+        idx = max_idx if time_idx is None else min(int(time_idx), max_idx)
+        selected_file = times[idx][1]
         file_path = os.path.join(assets_vtk_dir if file_type=='vtk' else assets_vtp_dir, selected_file)
-        # VTK/VTP 파일 파싱 및 필드명 추출
         try:
             if file_type == 'vtk':
                 reader = vtk.vtkUnstructuredGridReader()
@@ -800,59 +790,27 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 reader.SetFileName(file_path)
                 reader.Update()
                 ds = reader.GetOutput()
-            # 필드명 추출 (PointData)
-            pointdata = ds.GetPointData()
-            field_names = []
-            for i in range(pointdata.GetNumberOfArrays()):
-                arr = pointdata.GetArray(i)
-                if arr is not None:
-                    field_names.append(arr.GetName())
-            if not field_names:
-                field_names = [None]
+            mesh_state = to_mesh_state(ds)
+            # 컬러 데이터 범위 추출
+            color_range = None
+            arr = ds.GetPointData().GetArray("Temperature")
+            if arr is not None:
+                color_range = [arr.GetRange()[0], arr.GetRange()[1]]
+            # dash_vtk.Mesh로 시각화
+            vtk_viewer = dash_vtk.View([
+                dash_vtk.GeometryRepresentation(
+                    colorMapPreset="erdc_rainbow_bright",
+                    colorDataRange=color_range,
+                    children=[dash_vtk.Mesh(state=mesh_state)]
+                )
+            ], style={"height": "60vh", "width": "100%"})
+            return vtk_viewer
         except Exception as e:
             return html.Div([
                 html.H5("VTK/VTP 파싱 오류", style={"color": "red"}),
                 html.P(f"파일: {selected_file}"),
                 html.P(f"오류: {str(e)}")
-            ]), ""
-        # 기본 필드 선택: 첫 번째 필드
-        default_field = field_names[0] if field_names[0] else None
-        # UI: 필드/프리셋 선택 + 시간 슬라이더 + 3D 뷰
-        import dash
-        from dash import dcc, html
-        return html.Div([
-            html.Div([
-                html.Label("컬러맵 필드 선택", style={"marginRight": "10px"}),
-                dcc.Dropdown(
-                    id="analysis-field-dropdown",
-                    options=[{"label": f, "value": f} for f in field_names if f],
-                    value=default_field,
-                    clearable=False,
-                    style={"width": "200px", "display": "inline-block", "marginRight": "20px"}
-                ),
-                html.Label("컬러맵 프리셋", style={"marginRight": "10px"}),
-                dcc.Dropdown(
-                    id="analysis-preset-dropdown",
-                    options=preset_as_options,
-                    value="erdc_rainbow_bright",
-                    clearable=False,
-                    style={"width": "200px", "display": "inline-block"}
-                ),
-            ], style={"marginBottom": "16px"}),
-            html.Div([
-                html.Label("시간", className="form-label"),
-                dcc.Slider(
-                    id="frd-time-slider",
-                    min=0,
-                    max=max_idx,
-                    step=1,
-                    value=slider_value,
-                    marks=marks,
-                    tooltip={"placement": "bottom", "always_visible": True},
-                ),
-            ], className="mb-3"),
-            html.Div(id="analysis-3d-viewer")
-        ]), f"{times[slider_value][0].strftime('%Y-%m-%d %H시')} {file_type.upper()} 결과"
+            ])
     elif active_tab == "tab-inp-files":
         # inp 파일 목록 탭
         if not (selected_rows and tbl_data):
