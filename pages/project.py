@@ -737,13 +737,10 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         ]), "전체 파일"
     elif active_tab == "tab-analysis":
         # 수치해석 탭: dash-vtk로 VTK 파일을 보여줌
-        # import dash_vtk
-        # import dash_html_components as html
         if not (selected_rows and tbl_data):
             return html.Div("콘크리트를 선택하세요."), ""
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
         concrete_pk = row["concrete_pk"]
-        vtk_dir = f"vtk/{concrete_pk}"
         assets_vtk_dir = f"assets/vtk/{concrete_pk}"
         if not os.path.exists(assets_vtk_dir):
             return html.Div("assets/vtk 폴더가 존재하지 않습니다."), ""
@@ -776,14 +773,42 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         slider_value = min(slider_value, len(times)-1)
         vtk_rel_path = f"vtk/{concrete_pk}/{times[slider_value][1]}"
         vtk_url = f"/assets/{vtk_rel_path}"
-        vtk_viewer = dash_vtk.View([
-            dash_vtk.GeometryRepresentation([
-                dash_vtk.Reader(
-                    id="vtk-reader",
-                    url=vtk_url
-                )
-            ])
-        ], style={"height": "60vh", "width": "100%"})
+        
+        # VTK 파일 검증
+        vtk_file_path = os.path.join(assets_vtk_dir, times[slider_value][1])
+        try:
+            with open(vtk_file_path, 'r') as f:
+                first_lines = f.readlines()[:5]
+            if not first_lines or not first_lines[0].startswith('# vtk DataFile'):
+                return html.Div([
+                    html.H5("VTK 파일 오류", style={"color": "red"}),
+                    html.P(f"파일: {times[slider_value][1]}"),
+                    html.P("VTK 파일 형식이 올바르지 않습니다.")
+                ]), ""
+        except Exception as e:
+            return html.Div([
+                html.H5("VTK 파일 읽기 오류", style={"color": "red"}),
+                html.P(f"파일: {times[slider_value][1]}"),
+                html.P(f"오류: {str(e)}")
+            ]), ""
+        
+        # VTK 뷰어 생성 (오류 처리 포함)
+        try:
+            vtk_viewer = dash_vtk.View([
+                dash_vtk.GeometryRepresentation([
+                    dash_vtk.Reader(
+                        id="vtk-reader",
+                        url=vtk_url
+                    )
+                ])
+            ], style={"height": "60vh", "width": "100%"})
+        except Exception as e:
+            return html.Div([
+                html.H5("VTK 뷰어 생성 오류", style={"color": "red"}),
+                html.P(f"오류: {str(e)}"),
+                html.P("VTK 파일을 다시 생성해주세요.")
+            ]), ""
+        
         return html.Div([
             html.Div([
                 html.Label("시간", className="form-label"),

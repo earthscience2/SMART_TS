@@ -225,6 +225,65 @@ def compare_frd_vtk(frd_path, vtk_path):
         print("응력 비교 생략")
 
 
+def validate_vtk_file(vtk_path):
+    """VTK 파일이 올바른 형식인지 검증"""
+    try:
+        with open(vtk_path, 'r') as f:
+            lines = f.readlines()
+        
+        if len(lines) < 10:
+            return False, "파일이 너무 짧습니다"
+        
+        # 헤더 확인
+        if not lines[0].startswith('# vtk DataFile'):
+            return False, "VTK 헤더가 없습니다"
+        
+        # DATASET 확인
+        dataset_found = False
+        for line in lines:
+            if line.startswith('DATASET UNSTRUCTURED_GRID'):
+                dataset_found = True
+                break
+        
+        if not dataset_found:
+            return False, "UNSTRUCTURED_GRID가 없습니다"
+        
+        # POINTS 확인
+        points_found = False
+        n_points = 0
+        for i, line in enumerate(lines):
+            if line.startswith('POINTS'):
+                parts = line.split()
+                if len(parts) >= 2:
+                    try:
+                        n_points = int(parts[1])
+                        points_found = True
+                        # POINTS 데이터 확인
+                        if i + 1 + n_points > len(lines):
+                            return False, f"POINTS 데이터가 부족합니다 (예상: {n_points}, 실제: {len(lines) - i - 1})"
+                        break
+                    except ValueError:
+                        return False, "POINTS 개수가 숫자가 아닙니다"
+        
+        if not points_found:
+            return False, "POINTS 섹션이 없습니다"
+        
+        # CELLS 확인
+        cells_found = False
+        for line in lines:
+            if line.startswith('CELLS'):
+                cells_found = True
+                break
+        
+        if not cells_found:
+            return False, "CELLS 섹션이 없습니다"
+        
+        return True, f"검증 통과 (노드: {n_points}개)"
+        
+    except Exception as e:
+        return False, f"파일 읽기 오류: {e}"
+
+
 def convert_all_frd_to_vtk(frd_root_dir="frd", vtk_root_dir="assets/vtk"):
     """frd 폴더의 모든 .frd 파일을 assets/vtk에 동일한 경로로 변환"""
     if not os.path.exists(frd_root_dir):
@@ -236,6 +295,7 @@ def convert_all_frd_to_vtk(frd_root_dir="frd", vtk_root_dir="assets/vtk"):
     
     converted_count = 0
     error_count = 0
+    validation_errors = []
     
     # frd 폴더 내 모든 하위 폴더와 파일을 재귀적으로 탐색
     for root, dirs, files in os.walk(frd_root_dir):
@@ -258,14 +318,29 @@ def convert_all_frd_to_vtk(frd_root_dir="frd", vtk_root_dir="assets/vtk"):
                 try:
                     print(f"변환 중: {frd_path} → {vtk_path}")
                     convert_frd_to_vtk(frd_path, vtk_path)
-                    converted_count += 1
+                    
+                    # VTK 파일 검증
+                    is_valid, message = validate_vtk_file(vtk_path)
+                    if is_valid:
+                        converted_count += 1
+                        print(f"✅ 성공: {message}")
+                    else:
+                        error_count += 1
+                        validation_errors.append(f"{vtk_path}: {message}")
+                        print(f"❌ 검증 실패: {message}")
+                        
                 except Exception as e:
-                    print(f"❌ 변환 실패: {frd_path} - {e}")
                     error_count += 1
+                    print(f"❌ 변환 실패: {frd_path} - {e}")
     
     print(f"\n🎉 변환 완료!")
     print(f"✅ 성공: {converted_count}개")
     print(f"❌ 실패: {error_count}개")
+    
+    if validation_errors:
+        print(f"\n⚠️ 검증 오류:")
+        for error in validation_errors:
+            print(f"  - {error}")
 
 
 if __name__ == "__main__":
