@@ -1800,13 +1800,15 @@ def select_deselect_all_vtp(n_all, n_none, table_data):
         return []
     raise dash.exceptions.PreventUpdate
 
-# 수치해석 3D 뷰 콜백 (필드/프리셋/시간/단면) - 간단하고 안정적인 버전
+# 수치해석 3D 뷰 콜백 (필드/프리셋/시간/단면) - 안정화 버전
 @callback(
     Output("analysis-3d-viewer", "children"),
     Output("analysis-current-file-label", "children"),
     Output("analysis-colorbar", "figure"),
     Output("slice-slider", "min"),
     Output("slice-slider", "max"),
+    Output("slice-slider", "value"),
+    Output("slice-slider", "step"),
     Input("analysis-field-dropdown", "value"),
     Input("analysis-preset-dropdown", "value"),
     Input("analysis-time-slider", "value"),
@@ -1817,41 +1819,32 @@ def select_deselect_all_vtp(n_all, n_none, table_data):
     State("tbl-concrete", "data"),
     prevent_initial_call=False,
 )
-def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_axis, slice_slider, selected_rows, tbl_data):
+def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_axis, slice_slider_value, selected_rows, tbl_data):
     import os
     import vtk
     from dash_vtk.utils import to_mesh_state
     
     if not selected_rows or not tbl_data:
-        return html.Div("콘크리트를 선택하세요."), "", go.Figure(), 0.0, 1.0
+        return html.Div("콘크리트를 선택하세요."), "", go.Figure(), 0.0, 1.0, 0.5, 0.01
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
     assets_vtk_dir = f"assets/vtk/{concrete_pk}"
     assets_vtp_dir = f"assets/vtp/{concrete_pk}"
     
-    vtk_files = []
-    vtp_files = []
+    vtk_files, vtp_files = [], []
     if os.path.exists(assets_vtk_dir):
         vtk_files = sorted([f for f in os.listdir(assets_vtk_dir) if f.endswith('.vtk')])
     if os.path.exists(assets_vtp_dir):
         vtp_files = sorted([f for f in os.listdir(assets_vtp_dir) if f.endswith('.vtp')])
     
     if not vtk_files and not vtp_files:
-        return html.Div("VTK/VTP 파일이 없습니다."), "", go.Figure(), 0.0, 1.0
+        return html.Div("VTK/VTP 파일이 없습니다."), "", go.Figure(), 0.0, 1.0, 0.5, 0.01
     
-    from datetime import datetime
+    files = vtk_files if vtk_files else vtp_files
+    file_type = 'vtk' if vtk_files else 'vtp'
+    
     times = []
-    file_type = None
-    files = []
-    
-    if vtk_files:
-        files = vtk_files
-        file_type = 'vtk'
-    elif vtp_files:
-        files = vtp_files
-        file_type = 'vtp'
-    
     for f in files:
         try:
             time_str = os.path.splitext(f)[0]
@@ -1861,262 +1854,121 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             continue
     
     if not times:
-        return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다."), "", go.Figure(), 0.0, 1.0
+        return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다."), "", go.Figure(), 0.0, 1.0, 0.5, 0.01
     
     times.sort()
     max_idx = len(times) - 1
-    
-    # 시간 인덱스 처리 (처음 로드시에는 최신 파일)
-    if time_idx is None:
-        idx = max_idx
-    else:
-        idx = min(int(time_idx), max_idx)
-    
+    idx = min(int(time_idx), max_idx) if time_idx is not None else max_idx
     selected_file = times[idx][1]
     file_path = os.path.join(assets_vtk_dir if file_type=='vtk' else assets_vtp_dir, selected_file)
     
     try:
-        # VTK 파일 읽기
-        if file_type == 'vtk':
-            reader = vtk.vtkUnstructuredGridReader()
-            reader.SetFileName(file_path)
-            reader.Update()
-            ds = reader.GetOutput()
-        else:
-            reader = vtk.vtkXMLPolyDataReader()
-            reader.SetFileName(file_path)
-            reader.Update()
-            ds = reader.GetOutput()
+        reader = vtk.vtkUnstructuredGridReader() if file_type == 'vtk' else vtk.vtkXMLPolyDataReader()
+        reader.SetFileName(file_path)
+        reader.Update()
+        ds = reader.GetOutput()
         
-        # UnstructuredGrid → PolyData 변환 (GeometryFilter)
         if isinstance(ds, vtk.vtkUnstructuredGrid):
             geom_filter = vtk.vtkGeometryFilter()
             geom_filter.SetInputData(ds)
             geom_filter.Update()
             ds = geom_filter.GetOutput()
         
-        # 데이터 검증
         if ds is None or ds.GetNumberOfPoints() == 0:
-            return html.Div([
-                html.H5("빈 데이터셋", style={"color": "red"}),
-                html.P(f"파일: {selected_file}")
-            ]), f"파일: {selected_file}", go.Figure(), 0.0, 1.0
+            return html.Div(f"빈 데이터셋: {selected_file}", style={"color": "red"}), f"파일: {selected_file}", go.Figure(), 0.0, 1.0, 0.5, 0.01
         
-        # 콘크리트 dims 정보에서 실제 범위 추출 (우선순위 1)
         try:
-            dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
-            poly_nodes = np.array(dims["nodes"])
-            poly_h = float(dims["h"])
-            
-            # 콘크리트 실제 범위
+            dims = ast.literal_eval(row["dims"])
+            poly_nodes, poly_h = np.array(dims["nodes"]), float(dims["h"])
             concrete_xmin, concrete_xmax = float(np.min(poly_nodes[:,0])), float(np.max(poly_nodes[:,0]))
             concrete_ymin, concrete_ymax = float(np.min(poly_nodes[:,1])), float(np.max(poly_nodes[:,1]))
             concrete_zmin, concrete_zmax = 0.0, float(poly_h)
-            
-            print(f"콘크리트 범위: X({concrete_xmin:.2f}~{concrete_xmax:.2f}), Y({concrete_ymin:.2f}~{concrete_ymax:.2f}), Z({concrete_zmin:.2f}~{concrete_zmax:.2f})")
-            
-            # 슬라이더 범위는 콘크리트 범위 사용
-            if slice_axis == "X":
-                slice_min, slice_max = concrete_xmin, concrete_xmax
-            elif slice_axis == "Y":
-                slice_min, slice_max = concrete_ymin, concrete_ymax
-            else:  # Z
-                slice_min, slice_max = concrete_zmin, concrete_zmax
-                
-        except Exception as dims_error:
-            print(f"콘크리트 dims 파싱 실패: {dims_error}, VTK 바운딩 박스 사용")
-            # dims 파싱 실패시 VTK 바운딩 박스 사용 (fallback)
-            bounds = ds.GetBounds()  # (xmin,xmax,ymin,ymax,zmin,zmax)
-            xmin, xmax, ymin, ymax, zmin, zmax = bounds
-            
-            if slice_axis == "X":
-                slice_min, slice_max = xmin, xmax
-            elif slice_axis == "Y":
-                slice_min, slice_max = ymin, ymax
-            else:  # Z
-                slice_min, slice_max = zmin, zmax
+        except Exception:
+            bounds = ds.GetBounds()
+            concrete_xmin, concrete_xmax, concrete_ymin, concrete_ymax, concrete_zmin, concrete_zmax = bounds
+
+        if slice_axis == "X":
+            slice_min, slice_max = concrete_xmin, concrete_xmax
+        elif slice_axis == "Y":
+            slice_min, slice_max = concrete_ymin, concrete_ymax
+        else:
+            slice_min, slice_max = concrete_zmin, concrete_zmax
         
-        # 필드 데이터 검증
-        if field_name:
-            arr = ds.GetPointData().GetArray(field_name)
-            if arr is None:
-                field_name = None  # 필드가 없으면 기본 시각화로 변경
+        slice_step = (slice_max - slice_min) / 100.0
+
+        ctx = dash.callback_context
+        triggered_id = ctx.triggered[0]["prop_id"].split(".")[0] if ctx.triggered else 'initial'
         
-        # 단면 적용 (간단하고 안정적인 방식)
+        if triggered_id != 'slice-slider' or slice_slider_value is None or not (slice_min <= slice_slider_value <= slice_max):
+            slice_value = (slice_min + slice_max) / 2
+        else:
+            slice_value = slice_slider_value
+
+        if field_name and ds.GetPointData().GetArray(field_name) is None:
+            field_name = None
+        
         ds_for_vis = ds
         if slice_enable and "on" in slice_enable:
             try:
-                slice_value = slice_min + (slice_max - slice_min) * slice_slider
-                
-                # 간단한 평면 클리핑만 사용 (문제가 잘 안 생기는 방식)
                 plane = vtk.vtkPlane()
                 if slice_axis == "X":
                     plane.SetOrigin(slice_value, 0, 0)
-                    plane.SetNormal(-1, 0, 0)  # X >= slice_value 영역 유지
+                    plane.SetNormal(-1, 0, 0)
                 elif slice_axis == "Y":
                     plane.SetOrigin(0, slice_value, 0) 
-                    plane.SetNormal(0, -1, 0)  # Y >= slice_value 영역 유지
-                else:  # Z
+                    plane.SetNormal(0, -1, 0)
+                else:
                     plane.SetOrigin(0, 0, slice_value)
-                    plane.SetNormal(0, 0, -1)  # Z >= slice_value 영역 유지
+                    plane.SetNormal(0, 0, -1)
                 
-                # vtkClipDataSet 사용 (더 안정적)
-                clipper = vtk.vtkClipDataSet()
+                clipper = vtk.vtkClipPolyData()
                 clipper.SetInputData(ds)
                 clipper.SetClipFunction(plane)
                 clipper.SetInsideOut(False)
                 clipper.Update()
                 
-                clipped_data = clipper.GetOutput()
+                cleaner = vtk.vtkCleanPolyData()
+                cleaner.SetInputData(clipper.GetOutput())
+                cleaner.Update()
                 
-                # 클리핑 결과 확인
+                clipped_data = cleaner.GetOutput()
+
                 if clipped_data.GetNumberOfCells() > 0:
-                    # PolyData로 변환
-                    geom_filter = vtk.vtkGeometryFilter()
-                    geom_filter.SetInputData(clipped_data)
-                    geom_filter.Update()
-                    ds_for_vis = geom_filter.GetOutput()
-                    print(f"단면 클리핑 성공: {slice_axis}축, 셀 개수: {ds_for_vis.GetNumberOfCells()}")
+                    ds_for_vis = clipped_data
                 else:
-                    print(f"단면 클리핑 실패: {slice_axis}축, 원본 사용")
-                    ds_for_vis = ds
-                    
+                    print("클리핑 결과 셀이 없습니다. 원본을 표시합니다.")
             except Exception as slice_error:
                 print(f"단면 적용 오류: {slice_error}")
-                ds_for_vis = ds
         
-        # 메시 상태 생성
-        try:
-            if field_name:
-                mesh_state = to_mesh_state(ds_for_vis, field_name)
-            else:
-                mesh_state = to_mesh_state(ds_for_vis)
-            
-            # mesh_state 검증
-            if mesh_state is None or not isinstance(mesh_state, dict):
-                raise ValueError("mesh_state가 올바르지 않습니다")
-            
-            # mesh_state 구조 확인
-            if not (('mesh' in mesh_state) or ('points' in mesh_state)):
-                raise ValueError("mesh_state에 필수 데이터가 없습니다")
-            
-        except Exception as mesh_error:
-            print(f"mesh_state 생성 오류: {mesh_error}")
-            return html.Div([
-                html.H5("메시 생성 오류", style={"color": "red"}),
-                html.P(f"파일: {selected_file}"),
-                html.P(f"오류: {str(mesh_error)}")
-            ]), f"파일: {selected_file}", go.Figure(), slice_min, slice_max
+        mesh_state = to_mesh_state(ds_for_vis, field_name) if field_name else to_mesh_state(ds_for_vis)
         
-        # 컬러 데이터 범위 추출
-        color_range = None
-        colorbar_fig = go.Figure()
+        color_range, colorbar_fig = None, go.Figure()
         if field_name:
             arr = ds_for_vis.GetPointData().GetArray(field_name)
-            if arr is not None:
-                range_val = arr.GetRange()
-                if range_val[0] != range_val[1]:  # 값이 모두 같지 않을 때만 범위 설정
-                    color_range = [range_val[0], range_val[1]]
-                    
-                    # 컬러바 생성
-                    try:
-                        # 프리셋에 따른 컬러스케일 매핑
-                        colorscale_map = {
-                            "rainbow": [[0, 'blue'], [0.25, 'cyan'], [0.5, 'green'], [0.75, 'yellow'], [1, 'red']],
-                            "Cool to Warm": [[0, 'blue'], [0.5, 'white'], [1, 'red']],
-                            "Grayscale": [[0, 'black'], [1, 'white']],
-                            "viridis": 'viridis',
-                            "plasma": 'plasma'
-                        }
-                        
-                        colorbar_fig = go.Figure(data=go.Scatter(
-                            x=[None], y=[None],
-                            mode='markers',
-                            marker=dict(
-                                colorscale=colorscale_map.get(preset, 'viridis'),
-                                cmin=color_range[0],
-                                cmax=color_range[1],
-                                colorbar=dict(
-                                    title=dict(text="값", font=dict(size=14)),
-                                    thickness=15,
-                                    len=0.7,
-                                    x=0.5,
-                                    xanchor="center",
-                                    tickfont=dict(size=12)
-                                ),
-                                showscale=True
-                            )
-                        ))
-                        colorbar_fig.update_layout(
-                            showlegend=False,
-                            xaxis=dict(visible=False),
-                            yaxis=dict(visible=False),
-                            margin=dict(l=0, r=0, t=10, b=0),
-                            height=120,
-                            plot_bgcolor='rgba(0,0,0,0)',
-                            paper_bgcolor='rgba(0,0,0,0)'
-                        )
-                    except Exception as colorbar_error:
-                        print(f"컬러바 생성 오류: {colorbar_error}")
+            if arr and arr.GetRange()[0] != arr.GetRange()[1]:
+                color_range = arr.GetRange()
+                colorscale_map = {"rainbow": [[0, 'blue'], [0.5, 'green'], [1, 'red']], "Cool to Warm": "coolwarm", "Grayscale": "greys"}
+                colorbar_fig = go.Figure(data=go.Scatter(x=[None], y=[None], mode='markers', marker=dict(
+                    colorscale=colorscale_map.get(preset, 'rainbow'), cmin=color_range[0], cmax=color_range[1],
+                    colorbar=dict(title="값", thickness=15), showscale=True
+                )))
+                colorbar_fig.update_layout(height=120, margin=dict(l=0,r=0,t=10,b=0))
+
+        geometry_rep_props = {"children": [dash_vtk.Mesh(state=mesh_state)]}
+        if preset: geometry_rep_props["colorMapPreset"] = preset
+        if color_range: geometry_rep_props["colorDataRange"] = color_range
         
-        # 기본 프리셋 설정
-        if not preset:
-            preset = "rainbow"
+        vtk_viewer = dash_vtk.View(children=[dash_vtk.GeometryRepresentation(**geometry_rep_props)], style={"height": "60vh", "width": "100%"})
         
-        # dash_vtk 컴포넌트 생성
-        try:
-            # Mesh 컴포넌트 생성
-            mesh_component = dash_vtk.Mesh(state=mesh_state)
+        label = f"파일: {selected_file}"
+        if color_range: label += f" | 값 범위: {color_range[0]:.2f} ~ {color_range[1]:.2f}"
+        if slice_enable and "on" in slice_enable: label += f" | {slice_axis} ≥ {slice_value:.2f} 영역"
             
-            # GeometryRepresentation 생성 (필수 속성만 사용)
-            geometry_rep_props = {
-                "children": [mesh_component]
-            }
-            
-            # 안전하게 속성 추가
-            if preset:
-                geometry_rep_props["colorMapPreset"] = preset
-            
-            if color_range and len(color_range) == 2:
-                geometry_rep_props["colorDataRange"] = color_range
-            
-            geometry_rep = dash_vtk.GeometryRepresentation(**geometry_rep_props)
-            
-            # View 컴포넌트 생성
-            vtk_viewer = dash_vtk.View(
-                children=[geometry_rep], 
-                style={"height": "60vh", "width": "100%"}
-            )
-            
-            label = f"파일: {selected_file}"
-            if color_range:
-                label += f" | 값 범위: {color_range[0]:.2f} ~ {color_range[1]:.2f}"
-            if slice_enable and "on" in slice_enable:
-                slice_value = slice_min + (slice_max - slice_min) * slice_slider
-                if slice_axis == "X":
-                    label += f" | X ≥ {slice_value:.2f} 영역"
-                elif slice_axis == "Y":
-                    label += f" | Y ≥ {slice_value:.2f} 영역"
-                else:  # Z
-                    label += f" | Z ≥ {slice_value:.2f} 영역"
-                
-            return vtk_viewer, label, colorbar_fig, slice_min, slice_max
-            
-        except Exception as vtk_error:
-            print(f"dash_vtk 컴포넌트 생성 오류: {vtk_error}")
-            return html.Div([
-                html.H5("3D 뷰어 생성 오류", style={"color": "red"}),
-                html.P(f"파일: {selected_file}"),
-                html.P(f"오류: {str(vtk_error)}")
-            ]), f"파일: {selected_file}", go.Figure(), slice_min, slice_max
+        return vtk_viewer, label, colorbar_fig, slice_min, slice_max, slice_value, slice_step
         
     except Exception as e:
         print(f"VTK 처리 전체 오류: {e}")
-        return html.Div([
-            html.H5("VTK/VTP 파싱 오류", style={"color": "red"}),
-            html.P(f"파일: {selected_file}"),
-            html.P(f"오류: {str(e)}")
-        ]), f"파일: {selected_file}", go.Figure(), 0.0, 1.0
+        return html.Div(f"오류 발생: {e}", style={"color": "red"}), "", go.Figure(), 0.0, 1.0, 0.5, 0.01
 
 # 수치해석 컬러바 표시/숨김 콜백
 @callback(
