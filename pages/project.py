@@ -453,6 +453,8 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         poly_h = None
 
     # 1. 3D 볼륨 렌더링 (기존 시각화 스타일로 복구)
+    # 좌표 배열 생성
+    coords = np.column_stack((x_coords, y_coords, z_coords))
     fig_3d = go.Figure(data=go.Volume(
         x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
         opacity=0.1, surface_count=15,  # 더 풍부한 컬러층
