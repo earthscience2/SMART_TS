@@ -778,7 +778,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 continue
         
         if not times:
-            return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다."), ""
+            return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다.")
         
         times.sort()
         max_idx = len(times) - 1
@@ -1795,6 +1795,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_dat
     file_path = os.path.join(assets_vtk_dir if file_type=='vtk' else assets_vtp_dir, selected_file)
     
     try:
+        # VTK 파일 읽기
         if file_type == 'vtk':
             reader = vtk.vtkUnstructuredGridReader()
             reader.SetFileName(file_path)
@@ -1806,34 +1807,82 @@ def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_dat
             reader.Update()
             ds = reader.GetOutput()
         
-        # 메시 상태 생성
-        mesh_state = to_mesh_state(ds, field_name) if field_name else to_mesh_state(ds)
+        # 데이터 검증
+        if ds is None:
+            return html.Div([
+                html.H5("VTK 파일 읽기 실패", style={"color": "red"}),
+                html.P(f"파일: {selected_file}")
+            ])
+        
+        # 점의 개수 확인
+        num_points = ds.GetNumberOfPoints()
+        if num_points == 0:
+            return html.Div([
+                html.H5("빈 데이터셋", style={"color": "red"}),
+                html.P(f"파일: {selected_file}"),
+                html.P("점이 없는 데이터셋입니다.")
+            ])
+        
+        # 필드 데이터 검증
+        if field_name:
+            arr = ds.GetPointData().GetArray(field_name)
+            if arr is None:
+                field_name = None  # 필드가 없으면 기본 시각화로 변경
+        
+        # 메시 상태 생성 (더 안전한 방식)
+        try:
+            if field_name:
+                mesh_state = to_mesh_state(ds, field_name)
+            else:
+                mesh_state = to_mesh_state(ds)
+            
+            # mesh_state 검증
+            if mesh_state is None or not isinstance(mesh_state, dict):
+                raise ValueError("mesh_state가 올바르지 않습니다")
+                
+        except Exception as mesh_error:
+            print(f"mesh_state 생성 오류: {mesh_error}")
+            return html.Div([
+                html.H5("메시 생성 오류", style={"color": "red"}),
+                html.P(f"파일: {selected_file}"),
+                html.P(f"오류: {str(mesh_error)}"),
+                html.P(f"점 개수: {num_points}")
+            ])
         
         # 컬러 데이터 범위 추출
         color_range = None
         if field_name:
             arr = ds.GetPointData().GetArray(field_name)
             if arr is not None:
-                color_range = [arr.GetRange()[0], arr.GetRange()[1]]
+                range_val = arr.GetRange()
+                if range_val[0] != range_val[1]:  # 값이 모두 같지 않을 때만 범위 설정
+                    color_range = [range_val[0], range_val[1]]
         
         # 기본 프리셋 설정
         if not preset:
             preset = "rainbow"
         
-        # dash_vtk.Mesh로 시각화
-        vtk_viewer = dash_vtk.View([
-            dash_vtk.GeometryRepresentation(
-                colorMapPreset=preset,
-                colorDataRange=color_range,
-                children=[dash_vtk.Mesh(state=mesh_state)]
-            )
-        ], style={"height": "60vh", "width": "100%"})
+        # dash_vtk 컴포넌트 생성
+        geometry_rep = dash_vtk.GeometryRepresentation(
+            colorMapPreset=preset,
+            children=[dash_vtk.Mesh(state=mesh_state)]
+        )
+        
+        # 컬러 범위가 있을 때만 설정
+        if color_range:
+            geometry_rep.colorDataRange = color_range
+        
+        vtk_viewer = dash_vtk.View([geometry_rep], style={"height": "60vh", "width": "100%"})
         
         return vtk_viewer
         
     except Exception as e:
+        print(f"VTK 처리 전체 오류: {e}")
         return html.Div([
             html.H5("VTK/VTP 파싱 오류", style={"color": "red"}),
             html.P(f"파일: {selected_file}"),
-            html.P(f"오류: {str(e)}")
+            html.P(f"파일 타입: {file_type}"),
+            html.P(f"오류: {str(e)}"),
+            html.Hr(),
+            html.P("다른 파일을 선택하거나 VTK 파일을 확인해주세요.", style={"color": "gray"})
         ])
