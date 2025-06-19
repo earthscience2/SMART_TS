@@ -737,21 +737,35 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             ]),
         ]), "전체 파일"
     elif active_tab == "tab-analysis":
-        # 수치해석 탭: dash-vtk로 VTP 파일을 보여줌
+        # 수치해석 탭: 서버에서 VTK/VTP 파일을 파싱하여 dash_vtk.Mesh로 시각화
+        import vtk
+        from dash_vtk.utils import to_mesh_state
         if not (selected_rows and tbl_data):
             return html.Div("콘크리트를 선택하세요."), ""
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
         concrete_pk = row["concrete_pk"]
+        assets_vtk_dir = f"assets/vtk/{concrete_pk}"
         assets_vtp_dir = f"assets/vtp/{concrete_pk}"
-        if not os.path.exists(assets_vtp_dir):
-            return html.Div("assets/vtp 폴더가 존재하지 않습니다."), ""
-        vtp_files = sorted([f for f in os.listdir(assets_vtp_dir) if f.endswith('.vtp')])
-        if not vtp_files:
-            return html.Div("VTP 파일이 없습니다."), ""
-        # 시간 파싱 (3D뷰와 동일: YYYYMMDDHH.vtp)
+        vtk_files = []
+        vtp_files = []
+        if os.path.exists(assets_vtk_dir):
+            vtk_files = sorted([f for f in os.listdir(assets_vtk_dir) if f.endswith('.vtk')])
+        if os.path.exists(assets_vtp_dir):
+            vtp_files = sorted([f for f in os.listdir(assets_vtp_dir) if f.endswith('.vtp')])
+        if not vtk_files and not vtp_files:
+            return html.Div("VTK/VTP 파일이 없습니다."), ""
+        # 시간 파싱 (YYYYMMDDHH)
         from datetime import datetime
         times = []
-        for f in vtp_files:
+        file_type = None
+        files = []
+        if vtk_files:
+            files = vtk_files
+            file_type = 'vtk'
+        elif vtp_files:
+            files = vtp_files
+            file_type = 'vtp'
+        for f in files:
             try:
                 time_str = os.path.splitext(f)[0]
                 dt = datetime.strptime(time_str, "%Y%m%d%H")
@@ -759,7 +773,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             except:
                 continue
         if not times:
-            return html.Div("시간 정보가 포함된 VTP 파일이 없습니다."), ""
+            return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다."), ""
         times.sort()
         marks = {}
         for i, (dt, f) in enumerate(times):
@@ -772,44 +786,33 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         max_idx = len(times)-1
         slider_value = max_idx
         slider_value = min(slider_value, len(times)-1)
-        vtp_rel_path = f"vtp/{concrete_pk}/{times[slider_value][1]}"
-        vtp_url = f"/assets/{vtp_rel_path}"
-        
-        # VTP 파일 검증
-        vtp_file_path = os.path.join(assets_vtp_dir, times[slider_value][1])
+        selected_file = times[slider_value][1]
+        file_path = os.path.join(assets_vtk_dir if file_type=='vtk' else assets_vtp_dir, selected_file)
+        # VTK/VTP 파일 파싱 및 mesh_state 변환
         try:
-            with open(vtp_file_path, 'r') as f:
-                first_lines = f.readlines()[:5]
-            if not first_lines or not first_lines[0].startswith('<?xml'):
-                return html.Div([
-                    html.H5("VTP 파일 오류", style={"color": "red"}),
-                    html.P(f"파일: {times[slider_value][1]}"),
-                    html.P("VTP 파일 형식이 올바르지 않습니다.")
-                ]), ""
+            if file_type == 'vtk':
+                reader = vtk.vtkUnstructuredGridReader()
+                reader.SetFileName(file_path)
+                reader.Update()
+                ds = reader.GetOutput()
+            else:
+                reader = vtk.vtkXMLPolyDataReader()
+                reader.SetFileName(file_path)
+                reader.Update()
+                ds = reader.GetOutput()
+            mesh_state = to_mesh_state(ds)
         except Exception as e:
             return html.Div([
-                html.H5("VTP 파일 읽기 오류", style={"color": "red"}),
-                html.P(f"파일: {times[slider_value][1]}"),
+                html.H5("VTK/VTP 파싱 오류", style={"color": "red"}),
+                html.P(f"파일: {selected_file}"),
                 html.P(f"오류: {str(e)}")
             ]), ""
-        
-        # VTP 뷰어 생성 (오류 처리 포함)
-        try:
-            vtp_viewer = dash_vtk.View([
-                dash_vtk.GeometryRepresentation([
-                    dash_vtk.Reader(
-                        id="vtp-reader",
-                        url=vtp_url
-                    )
-                ])
-            ], style={"height": "60vh", "width": "100%"})
-        except Exception as e:
-            return html.Div([
-                html.H5("VTP 뷰어 생성 오류", style={"color": "red"}),
-                html.P(f"오류: {str(e)}"),
-                html.P("VTP 파일을 다시 생성해주세요.")
-            ]), ""
-        
+        # dash_vtk.Mesh로 시각화
+        vtk_viewer = dash_vtk.View([
+            dash_vtk.GeometryRepresentation([
+                dash_vtk.Mesh(state=mesh_state)
+            ])
+        ], style={"height": "60vh", "width": "100%"})
         return html.Div([
             html.Div([
                 html.Label("시간", className="form-label"),
@@ -823,8 +826,8 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
             ], className="mb-3"),
-            vtp_viewer
-        ]), f"{times[slider_value][0].strftime('%Y-%m-%d %H시')} VTP 결과"
+            vtk_viewer
+        ]), f"{times[slider_value][0].strftime('%Y-%m-%d %H시')} {file_type.upper()} 결과"
     elif active_tab == "tab-inp-files":
         # inp 파일 목록 탭
         if not (selected_rows and tbl_data):
