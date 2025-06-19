@@ -1911,134 +1911,128 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         ds_for_vis = ds
         if slice_enable and "on" in slice_enable:
             try:
-                # 평면 생성 (해당 위치부터 한쪽 방향 전체를 보여주는 방식)
-                plane = vtk.vtkPlane()
                 slice_value = slice_min + (slice_max - slice_min) * slice_slider
                 
-                if slice_axis == "X":
-                    # X축: 선택한 위치보다 큰 X값 영역만 보여주기
-                    plane.SetOrigin(slice_value, 0, 0)
-                    plane.SetNormal(-1, 0, 0)  # 음의 방향으로 자르기 (큰 X값 영역 유지)
-                elif slice_axis == "Y":
-                    # Y축: 선택한 위치보다 큰 Y값 영역만 보여주기
-                    plane.SetOrigin(0, slice_value, 0)
-                    plane.SetNormal(0, -1, 0)  # 음의 방향으로 자르기 (큰 Y값 영역 유지)
-                else:  # Z
-                    # Z축: 선택한 위치보다 큰 Z값 영역만 보여주기 (위쪽 영역)
-                    plane.SetOrigin(0, 0, slice_value)
-                    plane.SetNormal(0, 0, -1)  # 음의 방향으로 자르기 (큰 Z값 영역 유지)
-                
-                # 방법 1: 단순 클리핑 (안전한 방식)
-                clipper = vtk.vtkClipDataSet()
+                # 방법 1: vtkTableBasedClipDataSet 사용 (더 안정적)
+                clipper = vtk.vtkTableBasedClipDataSet()
                 clipper.SetInputData(ds)
+                
+                # 평면 생성
+                plane = vtk.vtkPlane()
+                if slice_axis == "X":
+                    plane.SetOrigin(slice_value, 0, 0)
+                    plane.SetNormal(-1, 0, 0)  # X >= slice_value 영역 유지
+                elif slice_axis == "Y":
+                    plane.SetOrigin(0, slice_value, 0) 
+                    plane.SetNormal(0, -1, 0)  # Y >= slice_value 영역 유지
+                else:  # Z
+                    plane.SetOrigin(0, 0, slice_value)
+                    plane.SetNormal(0, 0, -1)  # Z >= slice_value 영역 유지
+                
                 clipper.SetClipFunction(plane)
-                clipper.SetInsideOut(False)  # 평면의 양의 방향 쪽을 유지
+                clipper.SetInsideOut(False)
                 clipper.Update()
                 
-                # 클리핑된 결과를 PolyData로 변환
+                # 클리핑 결과를 PolyData로 변환
                 geom_filter = vtk.vtkGeometryFilter()
                 geom_filter.SetInputData(clipper.GetOutput())
                 geom_filter.Update()
-                
                 clipped_data = geom_filter.GetOutput()
                 
-                # 클리핑 결과 사용 (항상 클리핑 결과 사용, threshold 제거)
-                ds_for_vis = clipped_data
-                
-                # 만약 클리핑 결과가 비어있으면 원본 데이터의 일부를 직접 필터링
-                if ds_for_vis.GetNumberOfCells() == 0 or ds_for_vis.GetNumberOfPoints() == 0:
+                # 클리핑이 성공했는지 확인
+                if clipped_data.GetNumberOfCells() > 0:
+                    # 빈 공간을 채우기 위해 Delaunay 3D 사용
                     try:
-                        # 원본 데이터를 먼저 PolyData로 변환
-                        orig_geom = vtk.vtkGeometryFilter()
-                        orig_geom.SetInputData(ds)
-                        orig_geom.Update()
-                        orig_poly = orig_geom.GetOutput()
+                        # 먼저 점들로부터 3D 메쉬 생성
+                        delaunay3d = vtk.vtkDelaunay3D()
+                        delaunay3d.SetInputData(clipped_data)
+                        delaunay3d.SetTolerance(0.001)
+                        delaunay3d.SetAlpha(0.0)  # 모든 점 포함
+                        delaunay3d.Update()
                         
-                        # 점들을 직접 필터링하여 새로운 PolyData 생성
-                        points = vtk.vtkPoints()
-                        cells = vtk.vtkCellArray()
-                        point_data_arrays = []
+                        # 3D 메쉬에서 표면 추출
+                        surface_filter = vtk.vtkGeometryFilter()
+                        surface_filter.SetInputData(delaunay3d.GetOutput())
+                        surface_filter.Update()
                         
-                        # 원본의 포인트 데이터 배열들 복사 준비
-                        orig_point_data = orig_poly.GetPointData()
-                        num_arrays = orig_point_data.GetNumberOfArrays()
-                        for i in range(num_arrays):
-                            arr = orig_point_data.GetArray(i)
-                            if arr:
-                                new_arr = vtk.vtkFloatArray()
-                                new_arr.SetName(arr.GetName())
-                                new_arr.SetNumberOfComponents(arr.GetNumberOfComponents())
-                                point_data_arrays.append((new_arr, arr))
+                        filled_data = surface_filter.GetOutput()
                         
-                        point_id_map = {}
-                        new_point_id = 0
-                        
-                        # 조건에 맞는 점들만 추가
-                        for i in range(orig_poly.GetNumberOfPoints()):
-                            pt = orig_poly.GetPoint(i)
+                        # 결과가 있으면 사용, 없으면 원본 클리핑 결과 사용
+                        if filled_data.GetNumberOfCells() > 0:
+                            ds_for_vis = filled_data
+                        else:
+                            ds_for_vis = clipped_data
                             
-                            # 축별 조건 확인
-                            include_point = False
-                            if slice_axis == "X" and pt[0] >= slice_value:
-                                include_point = True
-                            elif slice_axis == "Y" and pt[1] >= slice_value:
-                                include_point = True
-                            elif slice_axis == "Z" and pt[2] >= slice_value:
-                                include_point = True
-                            
-                            if include_point:
-                                points.InsertNextPoint(pt)
-                                point_id_map[i] = new_point_id
-                                
-                                # 포인트 데이터 복사
-                                for new_arr, orig_arr in point_data_arrays:
-                                    if orig_arr.GetNumberOfComponents() == 1:
-                                        new_arr.InsertNextValue(orig_arr.GetValue(i))
-                                    else:
-                                        tuple_data = [0] * orig_arr.GetNumberOfComponents()
-                                        orig_arr.GetTuple(i, tuple_data)
-                                        new_arr.InsertNextTuple(tuple_data)
-                                
-                                new_point_id += 1
-                        
-                        # 조건에 맞는 셀들만 추가
-                        for i in range(orig_poly.GetNumberOfCells()):
-                            cell = orig_poly.GetCell(i)
-                            cell_points = []
-                            all_points_valid = True
-                            
-                            for j in range(cell.GetNumberOfPoints()):
-                                old_id = cell.GetPointId(j)
-                                if old_id in point_id_map:
-                                    cell_points.append(point_id_map[old_id])
-                                else:
-                                    all_points_valid = False
-                                    break
-                            
-                            if all_points_valid and len(cell_points) >= 3:
-                                cells.InsertNextCell(len(cell_points), cell_points)
-                        
-                        # 새로운 PolyData 생성
-                        filtered_poly = vtk.vtkPolyData()
-                        filtered_poly.SetPoints(points)
-                        filtered_poly.SetPolys(cells)
-                        
-                        # 포인트 데이터 설정
-                        for new_arr, _ in point_data_arrays:
-                            filtered_poly.GetPointData().AddArray(new_arr)
-                            if new_arr.GetName() and field_name == new_arr.GetName():
-                                filtered_poly.GetPointData().SetScalars(new_arr)
-                        
-                        ds_for_vis = filtered_poly
-                        
-                    except Exception as filter_error:
-                        print(f"직접 필터링 오류: {filter_error}")
-                        # 모든 방법이 실패하면 원본 사용
-                        ds_for_vis = ds
+                    except Exception as delaunay_error:
+                        print(f"Delaunay 3D 오류: {delaunay_error}")
+                        # Delaunay가 실패하면 단순히 클리핑 결과 사용
+                        ds_for_vis = clipped_data
                 
-                if ds_for_vis.GetNumberOfPoints() == 0:
-                    # 절단된 결과가 없으면 원본 사용
-                    ds_for_vis = ds
+                else:
+                    # 클리핑 실패시 다중 방법 시도
+                    try:
+                        # 방법 2: Box를 이용한 클리핑 + 볼륨 필링
+                        box = vtk.vtkBox()
+                        if slice_axis == "X":
+                            box.SetBounds(slice_value, xmax+0.1, ymin-0.1, ymax+0.1, zmin-0.1, zmax+0.1)
+                        elif slice_axis == "Y":
+                            box.SetBounds(xmin-0.1, xmax+0.1, slice_value, ymax+0.1, zmin-0.1, zmax+0.1)
+                        else:  # Z
+                            box.SetBounds(xmin-0.1, xmax+0.1, ymin-0.1, ymax+0.1, slice_value, zmax+0.1)
+                        
+                        box_clipper = vtk.vtkTableBasedClipDataSet()
+                        box_clipper.SetInputData(ds)
+                        box_clipper.SetClipFunction(box)
+                        box_clipper.SetInsideOut(False)
+                        box_clipper.Update()
+                        
+                        box_result = box_clipper.GetOutput()
+                        
+                        if box_result.GetNumberOfCells() > 0:
+                            # Box 클리핑 성공 - 표면 생성
+                            box_geom = vtk.vtkGeometryFilter()
+                            box_geom.SetInputData(box_result)
+                            box_geom.Update()
+                            
+                            # 빈 공간을 채우기 위해 contour 필터 추가
+                            try:
+                                # 좀 더 조밀한 메쉬 생성
+                                tessellator = vtk.vtkTessellatorFilter()
+                                tessellator.SetInputData(box_result)
+                                tessellator.Update()
+                                
+                                tess_geom = vtk.vtkGeometryFilter()
+                                tess_geom.SetInputData(tessellator.GetOutput())
+                                tess_geom.Update()
+                                
+                                ds_for_vis = tess_geom.GetOutput()
+                                
+                            except Exception:
+                                # Tessellator 실패시 기본 geometry filter 결과 사용
+                                ds_for_vis = box_geom.GetOutput()
+                        else:
+                            # 방법 3: 임계값 기반 필터링 (마지막 수단)
+                            # 원본 데이터에서 해당 영역의 점들만 추출
+                            extract = vtk.vtkExtractGeometry()
+                            extract.SetInputData(ds)
+                            extract.SetImplicitFunction(box)
+                            extract.SetExtractInside(True)
+                            extract.SetExtractBoundaryCells(True)
+                            extract.Update()
+                            
+                            extract_geom = vtk.vtkGeometryFilter()
+                            extract_geom.SetInputData(extract.GetOutput())
+                            extract_geom.Update()
+                            
+                            ds_for_vis = extract_geom.GetOutput()
+                        
+                        # 여전히 결과가 없으면 원본 사용
+                        if ds_for_vis.GetNumberOfCells() == 0:
+                            ds_for_vis = ds
+                            
+                    except Exception as box_error:
+                        print(f"고급 클리핑 오류: {box_error}")
+                        ds_for_vis = ds
                     
             except Exception as slice_error:
                 print(f"단면 적용 오류: {slice_error}")
@@ -2046,6 +2040,23 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         
         # 메시 상태 생성 (더 안전한 방식)
         try:
+            # 단면이 활성화된 경우 추가 처리
+            if slice_enable and "on" in slice_enable and ds_for_vis.GetNumberOfCells() > 0:
+                # 단면에서 빈 공간을 최소화하기 위해 삼각형화
+                try:
+                    triangulator = vtk.vtkTriangleFilter()
+                    triangulator.SetInputData(ds_for_vis)
+                    triangulator.Update()
+                    
+                    triangulated = triangulator.GetOutput()
+                    if triangulated.GetNumberOfCells() > 0:
+                        ds_for_vis = triangulated
+                        
+                except Exception as tri_error:
+                    print(f"삼각형화 오류: {tri_error}")
+                    # 삼각형화 실패해도 원본 ds_for_vis 계속 사용
+            
+            # 메쉬 상태 생성
             if field_name:
                 mesh_state = to_mesh_state(ds_for_vis, field_name)
             else:
@@ -2067,6 +2078,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 html.P(f"파일: {selected_file}"),
                 html.P(f"오류: {str(mesh_error)}"),
                 html.P(f"점 개수: {num_points}"),
+                html.P(f"셀 개수: {ds_for_vis.GetNumberOfCells()}"),
                 html.Hr(),
                 html.P("VTK 파일 형식을 확인해주세요. FRD → VTK 변환이 올바르게 되었는지 점검이 필요합니다.", style={"color": "gray"})
             ]), f"파일: {selected_file}", go.Figure(), slice_min, slice_max
