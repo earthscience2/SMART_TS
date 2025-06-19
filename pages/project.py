@@ -1800,7 +1800,7 @@ def select_deselect_all_vtp(n_all, n_none, table_data):
         return []
     raise dash.exceptions.PreventUpdate
 
-# 수치해석 3D 뷰 콜백 (필드/프리셋/시간/단면) - 안정화 버전
+# 수치해석 3D 뷰 콜백 (필드/프리셋/시간/단면) - 안정화 강화 버전
 @callback(
     Output("analysis-3d-viewer", "children"),
     Output("analysis-current-file-label", "children"),
@@ -1894,15 +1894,19 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         else:
             slice_min, slice_max = concrete_zmin, concrete_zmax
         
-        slice_step = (slice_max - slice_min) / 100.0
-
+        slice_step = (slice_max - slice_min) / 100.0 if (slice_max - slice_min) > 0 else 0.01
+        
         ctx = dash.callback_context
         triggered_id = ctx.triggered[0]["prop_id"].split(".")[0] if ctx.triggered else 'initial'
         
+        # 슬라이더 값 유효성 검사 및 디버깅 로그 추가
         if triggered_id != 'slice-slider' or slice_slider_value is None or not (slice_min <= slice_slider_value <= slice_max):
             slice_value = (slice_min + slice_max) / 2
         else:
             slice_value = slice_slider_value
+        
+        print(f"Slider Range: min={slice_min:.4f}, max={slice_max:.4f}, step={slice_step:.4f}")
+        print(f"Slider Value: (from slider)={slice_slider_value}, (used)={slice_value:.4f}")
 
         if field_name and ds.GetPointData().GetArray(field_name) is None:
             field_name = None
@@ -1910,25 +1914,45 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         ds_for_vis = ds
         if slice_enable and "on" in slice_enable:
             try:
+                # 1. 모든 셀을 삼각형으로 변환하여 클리핑 안정성 확보
+                tri_filter = vtk.vtkTriangleFilter()
+                tri_filter.SetInputData(ds)
+                tri_filter.Update()
+                triangulated_ds = tri_filter.GetOutput()
+
                 plane = vtk.vtkPlane()
                 if slice_axis == "X":
                     plane.SetOrigin(slice_value, 0, 0)
-                    plane.SetNormal(-1, 0, 0)
+                    plane.SetNormal(1, 0, 0)  # X >= slice_value 영역 유지 (방향 수정)
                 elif slice_axis == "Y":
                     plane.SetOrigin(0, slice_value, 0) 
-                    plane.SetNormal(0, -1, 0)
+                    plane.SetNormal(0, 1, 0)  # Y >= slice_value 영역 유지 (방향 수정)
                 else:
                     plane.SetOrigin(0, 0, slice_value)
-                    plane.SetNormal(0, 0, -1)
+                    plane.SetNormal(0, 0, 1)  # Z >= slice_value 영역 유지 (방향 수정)
                 
+                # 2. vtkClipPolyData로 클리핑
                 clipper = vtk.vtkClipPolyData()
-                clipper.SetInputData(ds)
+                clipper.SetInputData(triangulated_ds)
                 clipper.SetClipFunction(plane)
-                clipper.SetInsideOut(False)
+                clipper.SetInsideOut(True) # Normal 방향으로 자르도록 InsideOut On
+                clipper.GenerateClippedOutputOn() # 절단면 경계 생성
                 clipper.Update()
-                
+
+                # 3. 절단면(Contour) 생성
+                cutter = vtk.vtkCutter()
+                cutter.SetCutFunction(plane)
+                cutter.SetInputData(triangulated_ds)
+                cutter.Update()
+
+                # 4. 결과 병합
+                append_filter = vtk.vtkAppendPolyData()
+                append_filter.AddInputData(clipper.GetOutput())
+                append_filter.AddInputData(cutter.GetOutput())
+                append_filter.Update()
+
                 cleaner = vtk.vtkCleanPolyData()
-                cleaner.SetInputData(clipper.GetOutput())
+                cleaner.SetInputData(append_filter.GetOutput())
                 cleaner.Update()
                 
                 clipped_data = cleaner.GetOutput()
