@@ -106,6 +106,33 @@ def delete_project_data(project_pk: str) -> None:
 # 콘크리트 DB
 # --------------------------------------------------
 
+def init_db():
+    """데이터베이스 초기화"""
+    with engine.connect() as conn:
+        # concrete 테이블 생성
+        conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS concrete (
+            concrete_pk TEXT PRIMARY KEY,
+            project_pk TEXT NOT NULL,
+            name TEXT NOT NULL,
+            dims TEXT NOT NULL,
+            con_unit REAL NOT NULL,
+            con_b REAL NOT NULL,
+            con_n REAL NOT NULL,
+            con_t TEXT NOT NULL,
+            con_a REAL NOT NULL,
+            con_p REAL NOT NULL,
+            con_d REAL NOT NULL,
+            activate INTEGER NOT NULL DEFAULT 1,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """))
+        conn.commit()
+
+# 데이터베이스 초기화 실행
+init_db()
+
 # 콘크리트 조회
 def get_concrete_data(concrete_pk: str = None,
                       project_pk: str = None,
@@ -131,8 +158,8 @@ def get_concrete_data(concrete_pk: str = None,
 
 # 콘크리트 추가
 def add_concrete_data(project_pk: str, name: str, dims: dict, 
-                     con_unit: float, con_e: float, 
-                     con_b: float, con_n: float,
+                     con_unit: float, con_b: float, con_n: float,
+                     con_t: str, con_a: float, con_p: float, con_d: float,
                      activate: int) -> None:
     # 1) 현재 가장 큰 concrete_pk 가져오기
     max_pk_sql = "SELECT MAX(concrete_pk) as max_pk FROM concrete"
@@ -149,9 +176,9 @@ def add_concrete_data(project_pk: str, name: str, dims: dict,
     # 3) INSERT 쿼리 실행
     sql = """
     INSERT INTO concrete 
-    (concrete_pk, project_pk, name, dims, con_unit, con_e, con_b, con_n, activate, created_at, updated_at) 
+    (concrete_pk, project_pk, name, dims, con_unit, con_b, con_n, con_t, con_a, con_p, con_d, activate, created_at, updated_at) 
     VALUES 
-    (:concrete_pk, :project_pk, :name, :dims, :con_unit, :con_e, :con_b, :con_n, :activate, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    (:concrete_pk, :project_pk, :name, :dims, :con_unit, :con_b, :con_n, :con_t, :con_a, :con_p, :con_d, :activate, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     """
     
     params = {
@@ -160,9 +187,12 @@ def add_concrete_data(project_pk: str, name: str, dims: dict,
         "name": name,
         "dims": json.dumps(dims),
         "con_unit": con_unit,
-        "con_e": con_e,
         "con_b": con_b,
         "con_n": con_n,
+        "con_t": con_t,
+        "con_a": con_a,
+        "con_p": con_p,
+        "con_d": con_d,
         "activate": activate
     }
     
@@ -428,9 +458,12 @@ if __name__ == "__main__":
         name="테스트 콘크리트",
         dims={"nodes": [[0,0,0], [1,0,0], [1,1,0], [0,1,0]], "h": 0.5},
         con_unit=0.1,
-        con_e=30000,
         con_b=0.2,
         con_n=1.0e-5,
+        con_t="",
+        con_a=0.0,
+        con_p=0.0,
+        con_d=0.0,
         activate=1
     )
     
