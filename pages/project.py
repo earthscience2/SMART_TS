@@ -1928,18 +1928,37 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                     plane.SetOrigin(0, 0, slice_value)
                     plane.SetNormal(0, 0, -1)  # 음의 방향으로 자르기 (큰 Z값 영역 유지)
                 
-                # 클리핑 적용 (잘라내기)
+                # 클리핑 적용 (잘라내기) - 면을 채우는 방식
                 clipper = vtk.vtkClipDataSet()
                 clipper.SetInputData(ds)
                 clipper.SetClipFunction(plane)
                 clipper.SetInsideOut(False)  # 평면의 양의 방향 쪽을 유지
+                clipper.GenerateClippedOutputOn()  # 잘린 부분 정보도 생성
                 clipper.Update()
                 
-                # UnstructuredGrid가 나오므로 PolyData로 변환
+                # 클리핑된 결과를 PolyData로 변환
                 geom_filter = vtk.vtkGeometryFilter()
                 geom_filter.SetInputData(clipper.GetOutput())
                 geom_filter.Update()
-                ds_for_vis = geom_filter.GetOutput()
+                
+                poly_data = geom_filter.GetOutput()
+                
+                # 면이 있는지 확인하고 필요시 삼각형화
+                if poly_data.GetNumberOfCells() > 0:
+                    # 면을 더 조밀하게 만들어 속을 채우는 효과
+                    subdivider = vtk.vtkLinearSubdivisionFilter()
+                    subdivider.SetInputData(poly_data)
+                    subdivider.SetNumberOfSubdivisions(1)
+                    subdivider.Update()
+                    
+                    ds_for_vis = subdivider.GetOutput()
+                else:
+                    # 면이 없으면 점 기반으로 면 생성 시도
+                    delaunay = vtk.vtkDelaunay2D()
+                    delaunay.SetInputData(poly_data)
+                    delaunay.Update()
+                    
+                    ds_for_vis = delaunay.GetOutput()
                 
                 if ds_for_vis.GetNumberOfPoints() == 0:
                     # 절단된 결과가 없으면 원본 사용
@@ -2033,6 +2052,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         
         # dash_vtk 컴포넌트 생성 (더 안전한 방식)
         try:
+            # 기본 GeometryRepresentation 생성 (버전 호환성을 위해 단순화)
             geometry_rep = dash_vtk.GeometryRepresentation(
                 colorMapPreset=preset,
                 children=[dash_vtk.Mesh(state=mesh_state)]
@@ -2068,9 +2088,9 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 poly.SetLines(lines)
                 bbox_state = to_mesh_state(poly)
                 
-                # dash_vtk 0.0.9 버전에서는 opacity가 지원되지 않으므로 제거
+                # dash_vtk 0.0.9 버전에서는 color, opacity 파라미터가 지원되지 않음
+                # 기본 색상으로 바운딩 박스 표시
                 bbox_rep = dash_vtk.GeometryRepresentation(
-                    color=[0.3, 0.3, 0.3],  # 어두운 회색으로 변경
                     children=[dash_vtk.Mesh(state=bbox_state)]
                 )
                 view_children.append(bbox_rep)
