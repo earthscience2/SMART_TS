@@ -116,7 +116,8 @@ layout = dbc.Container(
                             dbc.Tab(label="수치해석", tab_id="tab-analysis"),
                             dbc.Tab(label="inp 파일 목록", tab_id="tab-inp-files"),
                             dbc.Tab(label="frd 파일 업로드", tab_id="tab-frd-upload"),
-                            dbc.Tab(label="vtu 파일 목록", tab_id="tab-vtu-files"),
+                            dbc.Tab(label="vtk 파일 목록", tab_id="tab-vtk-files"),
+                            dbc.Tab(label="vtp 파일 목록", tab_id="tab-vtp-files"),
                         ], id="tabs-main", active_tab="tab-3d"),
                         # 탭 콘텐츠
                         html.Div(id="tab-content", children=[
@@ -736,21 +737,21 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             ]),
         ]), "전체 파일"
     elif active_tab == "tab-analysis":
-        # 수치해석 탭: dash-vtk로 VTU 파일을 보여줌
+        # 수치해석 탭: dash-vtk로 VTP 파일을 보여줌
         if not (selected_rows and tbl_data):
             return html.Div("콘크리트를 선택하세요."), ""
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
         concrete_pk = row["concrete_pk"]
-        assets_vtu_dir = f"assets/vtu/{concrete_pk}"
-        if not os.path.exists(assets_vtu_dir):
-            return html.Div("assets/vtu 폴더가 존재하지 않습니다."), ""
-        vtu_files = sorted([f for f in os.listdir(assets_vtu_dir) if f.endswith('.vtu')])
-        if not vtu_files:
-            return html.Div("VTU 파일이 없습니다."), ""
-        # 시간 파싱 (3D뷰와 동일: YYYYMMDDHH.vtu)
+        assets_vtp_dir = f"assets/vtp/{concrete_pk}"
+        if not os.path.exists(assets_vtp_dir):
+            return html.Div("assets/vtp 폴더가 존재하지 않습니다."), ""
+        vtp_files = sorted([f for f in os.listdir(assets_vtp_dir) if f.endswith('.vtp')])
+        if not vtp_files:
+            return html.Div("VTP 파일이 없습니다."), ""
+        # 시간 파싱 (3D뷰와 동일: YYYYMMDDHH.vtp)
         from datetime import datetime
         times = []
-        for f in vtu_files:
+        for f in vtp_files:
             try:
                 time_str = os.path.splitext(f)[0]
                 dt = datetime.strptime(time_str, "%Y%m%d%H")
@@ -758,7 +759,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             except:
                 continue
         if not times:
-            return html.Div("시간 정보가 포함된 VTU 파일이 없습니다."), ""
+            return html.Div("시간 정보가 포함된 VTP 파일이 없습니다."), ""
         times.sort()
         marks = {}
         for i, (dt, f) in enumerate(times):
@@ -771,42 +772,42 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         max_idx = len(times)-1
         slider_value = max_idx
         slider_value = min(slider_value, len(times)-1)
-        vtu_rel_path = f"vtu/{concrete_pk}/{times[slider_value][1]}"
-        vtu_url = f"/assets/{vtu_rel_path}"
+        vtp_rel_path = f"vtp/{concrete_pk}/{times[slider_value][1]}"
+        vtp_url = f"/assets/{vtp_rel_path}"
         
-        # VTU 파일 검증
-        vtu_file_path = os.path.join(assets_vtu_dir, times[slider_value][1])
+        # VTP 파일 검증
+        vtp_file_path = os.path.join(assets_vtp_dir, times[slider_value][1])
         try:
-            with open(vtu_file_path, 'r') as f:
+            with open(vtp_file_path, 'r') as f:
                 first_lines = f.readlines()[:5]
             if not first_lines or not first_lines[0].startswith('<?xml'):
                 return html.Div([
-                    html.H5("VTU 파일 오류", style={"color": "red"}),
+                    html.H5("VTP 파일 오류", style={"color": "red"}),
                     html.P(f"파일: {times[slider_value][1]}"),
-                    html.P("VTU 파일 형식이 올바르지 않습니다.")
+                    html.P("VTP 파일 형식이 올바르지 않습니다.")
                 ]), ""
         except Exception as e:
             return html.Div([
-                html.H5("VTU 파일 읽기 오류", style={"color": "red"}),
+                html.H5("VTP 파일 읽기 오류", style={"color": "red"}),
                 html.P(f"파일: {times[slider_value][1]}"),
                 html.P(f"오류: {str(e)}")
             ]), ""
         
-        # VTU 뷰어 생성 (오류 처리 포함)
+        # VTP 뷰어 생성 (오류 처리 포함)
         try:
-            vtu_viewer = dash_vtk.View([
+            vtp_viewer = dash_vtk.View([
                 dash_vtk.GeometryRepresentation([
                     dash_vtk.Reader(
-                        id="vtu-reader",
-                        url=vtu_url
+                        id="vtp-reader",
+                        url=vtp_url
                     )
                 ])
             ], style={"height": "60vh", "width": "100%"})
         except Exception as e:
             return html.Div([
-                html.H5("VTU 뷰어 생성 오류", style={"color": "red"}),
+                html.H5("VTP 뷰어 생성 오류", style={"color": "red"}),
                 html.P(f"오류: {str(e)}"),
-                html.P("VTU 파일을 다시 생성해주세요.")
+                html.P("VTP 파일을 다시 생성해주세요.")
             ]), ""
         
         return html.Div([
@@ -822,8 +823,8 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
             ], className="mb-3"),
-            vtu_viewer
-        ]), f"{times[slider_value][0].strftime('%Y-%m-%d %H시')} VTU 결과"
+            vtp_viewer
+        ]), f"{times[slider_value][0].strftime('%Y-%m-%d %H시')} VTP 결과"
     elif active_tab == "tab-inp-files":
         # inp 파일 목록 탭
         if not (selected_rows and tbl_data):
@@ -895,24 +896,24 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             html.H6("현재 업로드된 파일 목록", className="mt-4 mb-2"),
             html.Ul([html.Li(f) for f in file_list]) if file_list else html.Div("업로드된 파일이 없습니다.", style={"color": "#888"}),
         ]), "frd 파일 업로드"
-    elif active_tab == "tab-vtu-files":
-        # vtu 파일 목록 탭
+    elif active_tab == "tab-vtk-files":
+        # vtk 파일 목록 탭
         if not (selected_rows and tbl_data):
             return html.Div("콘크리트를 선택하세요."), ""
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
         concrete_pk = row["concrete_pk"]
-        vtu_dir = f"assets/vtu/{concrete_pk}"
+        vtk_dir = f"assets/vtk/{concrete_pk}"
         try:
-            if not os.path.exists(vtu_dir):
-                return html.Div("vtu 폴더가 존재하지 않습니다."), ""
-            files = sorted([f for f in os.listdir(vtu_dir) if f.endswith('.vtu')])
+            if not os.path.exists(vtk_dir):
+                return html.Div("vtk 폴더가 존재하지 않습니다."), ""
+            files = sorted([f for f in os.listdir(vtk_dir) if f.endswith('.vtk')])
         except Exception as e:
             return html.Div(f"파일 목록을 불러오는 중 오류 발생: {e}"), ""
         if not files:
-            return html.Div("vtu 파일이 없습니다."), ""
+            return html.Div("vtk 파일이 없습니다."), ""
         # 파일 목록 테이블 + 다운로드 버튼
         table = dash_table.DataTable(
-            id="vtu-file-table",
+            id="vtk-file-table",
             columns=[
                 {"name": "파일명", "id": "filename"},
             ],
@@ -927,12 +928,50 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         return html.Div([
             table,
             html.Div([
-                dbc.Button("전체 선택", id="btn-vtu-select-all", color="secondary", className="me-2 mt-3", n_clicks=0),
-                dbc.Button("전체 해제", id="btn-vtu-deselect-all", color="light", className="me-2 mt-3", n_clicks=0),
-                dbc.Button("선택 파일 다운로드", id="btn-vtu-download", color="success", className="mt-3", n_clicks=0),
-                dcc.Download(id="vtu-file-download")
+                dbc.Button("전체 선택", id="btn-vtk-select-all", color="secondary", className="me-2 mt-3", n_clicks=0),
+                dbc.Button("전체 해제", id="btn-vtk-deselect-all", color="light", className="me-2 mt-3", n_clicks=0),
+                dbc.Button("선택 파일 다운로드", id="btn-vtk-download", color="success", className="mt-3", n_clicks=0),
+                dcc.Download(id="vtk-file-download")
             ], style={"textAlign": "center"})
-        ]), f"vtu 파일 {len(files)}개"
+        ]), f"vtk 파일 {len(files)}개"
+    elif active_tab == "tab-vtp-files":
+        # vtp 파일 목록 탭
+        if not (selected_rows and tbl_data):
+            return html.Div("콘크리트를 선택하세요."), ""
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+        concrete_pk = row["concrete_pk"]
+        vtp_dir = f"assets/vtp/{concrete_pk}"
+        try:
+            if not os.path.exists(vtp_dir):
+                return html.Div("vtp 폴더가 존재하지 않습니다."), ""
+            files = sorted([f for f in os.listdir(vtp_dir) if f.endswith('.vtp')])
+        except Exception as e:
+            return html.Div(f"파일 목록을 불러오는 중 오류 발생: {e}"), ""
+        if not files:
+            return html.Div("vtp 파일이 없습니다."), ""
+        # 파일 목록 테이블 + 다운로드 버튼
+        table = dash_table.DataTable(
+            id="vtp-file-table",
+            columns=[
+                {"name": "파일명", "id": "filename"},
+            ],
+            data=[{"filename": f} for f in files],
+            style_cell={"textAlign": "center"},
+            style_header={"backgroundColor": "#f1f3f5", "fontWeight": 600},
+            style_table={"width": "60%", "margin": "auto"},
+            page_size=10,
+            row_selectable="multi",
+            cell_selectable=False,
+        )
+        return html.Div([
+            table,
+            html.Div([
+                dbc.Button("전체 선택", id="btn-vtp-select-all", color="secondary", className="me-2 mt-3", n_clicks=0),
+                dbc.Button("전체 해제", id="btn-vtp-deselect-all", color="light", className="me-2 mt-3", n_clicks=0),
+                dbc.Button("선택 파일 다운로드", id="btn-vtp-download", color="success", className="mt-3", n_clicks=0),
+                dcc.Download(id="vtp-file-download")
+            ], style={"textAlign": "center"})
+        ]), f"vtp 파일 {len(files)}개"
     return html.Div(), current_file_title
 
 # 선택 파일 zip 다운로드 콜백
@@ -1530,24 +1569,24 @@ def save_frd_files(contents, filenames, selected_rows, tbl_data):
         html.Ul([html.Li(f) for f in saved_files])
     ], style={"color": "green"})
 
-# vtu 파일 다운로드 콜백
+# vtk 파일 다운로드 콜백
 @callback(
-    Output("vtu-file-download", "data"),
-    Input("btn-vtu-download", "n_clicks"),
-    State("vtu-file-table", "selected_rows"),
-    State("vtu-file-table", "data"),
+    Output("vtk-file-download", "data"),
+    Input("btn-vtk-download", "n_clicks"),
+    State("vtk-file-table", "selected_rows"),
+    State("vtk-file-table", "data"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def download_selected_vtu_files(n_clicks, selected_rows, table_data, selected_conc_rows, tbl_data):
+def download_selected_vtk_files(n_clicks, selected_rows, table_data, selected_conc_rows, tbl_data):
     from dash.exceptions import PreventUpdate
     import io, zipfile, os
     if not n_clicks or not selected_rows or not selected_conc_rows or not tbl_data:
         raise PreventUpdate
     row = pd.DataFrame(tbl_data).iloc[selected_conc_rows[0]]
     concrete_pk = row["concrete_pk"]
-    vtu_dir = os.path.join("vtu", str(concrete_pk))
+    vtk_dir = os.path.join("assets/vtk", str(concrete_pk))
     files = [table_data[i]["filename"] for i in selected_rows]
     if not files:
         raise PreventUpdate
@@ -1555,28 +1594,79 @@ def download_selected_vtu_files(n_clicks, selected_rows, table_data, selected_co
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w") as zf:
         for fname in files:
-            fpath = os.path.join(vtu_dir, fname)
+            fpath = os.path.join(vtk_dir, fname)
             if os.path.exists(fpath):
                 zf.write(fpath, arcname=fname)
     zip_buffer.seek(0)
-    return dcc.send_bytes(zip_buffer.getvalue(), filename=f"vtu_files_{concrete_pk}.zip")
+    return dcc.send_bytes(zip_buffer.getvalue(), filename=f"vtk_files_{concrete_pk}.zip")
 
-# 전체 선택/해제 콜백 (vtu)
+# 전체 선택/해제 콜백 (vtk)
 @callback(
-    Output("vtu-file-table", "selected_rows"),
-    Input("btn-vtu-select-all", "n_clicks"),
-    Input("btn-vtu-deselect-all", "n_clicks"),
-    State("vtu-file-table", "data"),
+    Output("vtk-file-table", "selected_rows"),
+    Input("btn-vtk-select-all", "n_clicks"),
+    Input("btn-vtk-deselect-all", "n_clicks"),
+    State("vtk-file-table", "data"),
     prevent_initial_call=True,
 )
-def select_deselect_all_vtu(n_all, n_none, table_data):
+def select_deselect_all_vtk(n_all, n_none, table_data):
     import dash
     ctx = dash.callback_context
     if not ctx.triggered or not table_data:
         raise dash.exceptions.PreventUpdate
     trig = ctx.triggered_id
-    if trig == "btn-vtu-select-all":
+    if trig == "btn-vtk-select-all":
         return list(range(len(table_data)))
-    elif trig == "btn-vtu-deselect-all":
+    elif trig == "btn-vtk-deselect-all":
+        return []
+    raise dash.exceptions.PreventUpdate
+
+# vtp 파일 다운로드 콜백
+@callback(
+    Output("vtp-file-download", "data"),
+    Input("btn-vtp-download", "n_clicks"),
+    State("vtp-file-table", "selected_rows"),
+    State("vtp-file-table", "data"),
+    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    prevent_initial_call=True,
+)
+def download_selected_vtp_files(n_clicks, selected_rows, table_data, selected_conc_rows, tbl_data):
+    from dash.exceptions import PreventUpdate
+    import io, zipfile, os
+    if not n_clicks or not selected_rows or not selected_conc_rows or not tbl_data:
+        raise PreventUpdate
+    row = pd.DataFrame(tbl_data).iloc[selected_conc_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    vtp_dir = os.path.join("assets/vtp", str(concrete_pk))
+    files = [table_data[i]["filename"] for i in selected_rows]
+    if not files:
+        raise PreventUpdate
+    # zip 파일 메모리 생성
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w") as zf:
+        for fname in files:
+            fpath = os.path.join(vtp_dir, fname)
+            if os.path.exists(fpath):
+                zf.write(fpath, arcname=fname)
+    zip_buffer.seek(0)
+    return dcc.send_bytes(zip_buffer.getvalue(), filename=f"vtp_files_{concrete_pk}.zip")
+
+# 전체 선택/해제 콜백 (vtp)
+@callback(
+    Output("vtp-file-table", "selected_rows"),
+    Input("btn-vtp-select-all", "n_clicks"),
+    Input("btn-vtp-deselect-all", "n_clicks"),
+    State("vtp-file-table", "data"),
+    prevent_initial_call=True,
+)
+def select_deselect_all_vtp(n_all, n_none, table_data):
+    import dash
+    ctx = dash.callback_context
+    if not ctx.triggered or not table_data:
+        raise dash.exceptions.PreventUpdate
+    trig = ctx.triggered_id
+    if trig == "btn-vtp-select-all":
+        return list(range(len(table_data)))
+    elif trig == "btn-vtp-deselect-all":
         return []
     raise dash.exceptions.PreventUpdate
