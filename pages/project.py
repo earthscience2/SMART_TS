@@ -1928,12 +1928,11 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                     plane.SetOrigin(0, 0, slice_value)
                     plane.SetNormal(0, 0, -1)  # 음의 방향으로 자르기 (큰 Z값 영역 유지)
                 
-                # 클리핑 적용 (잘라내기) - 면을 채우는 방식
+                # 방법 1: 단순 클리핑 (안전한 방식)
                 clipper = vtk.vtkClipDataSet()
                 clipper.SetInputData(ds)
                 clipper.SetClipFunction(plane)
                 clipper.SetInsideOut(False)  # 평면의 양의 방향 쪽을 유지
-                clipper.GenerateClippedOutputOn()  # 잘린 부분 정보도 생성
                 clipper.Update()
                 
                 # 클리핑된 결과를 PolyData로 변환
@@ -1941,24 +1940,50 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 geom_filter.SetInputData(clipper.GetOutput())
                 geom_filter.Update()
                 
-                poly_data = geom_filter.GetOutput()
+                clipped_data = geom_filter.GetOutput()
                 
-                # 면이 있는지 확인하고 필요시 삼각형화
-                if poly_data.GetNumberOfCells() > 0:
-                    # 면을 더 조밀하게 만들어 속을 채우는 효과
-                    subdivider = vtk.vtkLinearSubdivisionFilter()
-                    subdivider.SetInputData(poly_data)
-                    subdivider.SetNumberOfSubdivisions(1)
-                    subdivider.Update()
+                # 만약 클리핑 결과가 비어있거나 면이 적으면 threshold 방식 시도
+                if clipped_data.GetNumberOfCells() == 0:
+                    # 방법 2: Threshold 필터 사용 (점 기반 필터링)
+                    # 먼저 원본 데이터를 PolyData로 변환
+                    orig_geom = vtk.vtkGeometryFilter()
+                    orig_geom.SetInputData(ds)
+                    orig_geom.Update()
+                    orig_poly = orig_geom.GetOutput()
                     
-                    ds_for_vis = subdivider.GetOutput()
+                    # 점 좌표 기반으로 필터링
+                    threshold = vtk.vtkThreshold()
+                    threshold.SetInputData(ds)
+                    
+                    # 축에 따라 좌표 필드 설정
+                    coord_array = vtk.vtkFloatArray()
+                    coord_array.SetNumberOfTuples(ds.GetNumberOfPoints())
+                    
+                    for i in range(ds.GetNumberOfPoints()):
+                        pt = ds.GetPoint(i)
+                        if slice_axis == "X":
+                            coord_array.SetValue(i, pt[0])
+                        elif slice_axis == "Y":
+                            coord_array.SetValue(i, pt[1])
+                        else:  # Z
+                            coord_array.SetValue(i, pt[2])
+                    
+                    coord_array.SetName("coord_filter")
+                    ds.GetPointData().AddArray(coord_array)
+                    
+                    threshold.SetInputArrayToProcess(0, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, "coord_filter")
+                    threshold.SetLowerThreshold(slice_value)
+                    threshold.SetUpperThreshold(slice_max + 1.0)
+                    threshold.Update()
+                    
+                    # Threshold 결과를 PolyData로 변환
+                    thresh_geom = vtk.vtkGeometryFilter()
+                    thresh_geom.SetInputData(threshold.GetOutput())
+                    thresh_geom.Update()
+                    
+                    ds_for_vis = thresh_geom.GetOutput()
                 else:
-                    # 면이 없으면 점 기반으로 면 생성 시도
-                    delaunay = vtk.vtkDelaunay2D()
-                    delaunay.SetInputData(poly_data)
-                    delaunay.Update()
-                    
-                    ds_for_vis = delaunay.GetOutput()
+                    ds_for_vis = clipped_data
                 
                 if ds_for_vis.GetNumberOfPoints() == 0:
                     # 절단된 결과가 없으면 원본 사용
