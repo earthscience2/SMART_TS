@@ -738,33 +738,37 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         ]), "전체 파일"
     elif active_tab == "tab-analysis":
         # 수치해석 탭: 서버에서 VTK/VTP 파일을 파싱하여 dash_vtk.Mesh로 시각화 + 컬러맵 필드/프리셋 선택
-        import vtk
-        from dash_vtk.utils import to_mesh_state
         if not (selected_rows and tbl_data):
             return html.Div("콘크리트를 선택하세요."), ""
+        
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
         concrete_pk = row["concrete_pk"]
         assets_vtk_dir = f"assets/vtk/{concrete_pk}"
         assets_vtp_dir = f"assets/vtp/{concrete_pk}"
+        
         vtk_files = []
         vtp_files = []
         if os.path.exists(assets_vtk_dir):
             vtk_files = sorted([f for f in os.listdir(assets_vtk_dir) if f.endswith('.vtk')])
         if os.path.exists(assets_vtp_dir):
             vtp_files = sorted([f for f in os.listdir(assets_vtp_dir) if f.endswith('.vtp')])
+        
         if not vtk_files and not vtp_files:
             return html.Div("VTK/VTP 파일이 없습니다."), ""
-        # 시간 파싱 (YYYYMMDDHH)
+        
+        # 시간 정보 파싱
         from datetime import datetime
         times = []
         file_type = None
         files = []
+        
         if vtk_files:
             files = vtk_files
             file_type = 'vtk'
         elif vtp_files:
             files = vtp_files
             file_type = 'vtp'
+        
         for f in files:
             try:
                 time_str = os.path.splitext(f)[0]
@@ -772,14 +776,20 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 times.append((dt, f))
             except:
                 continue
+        
         if not times:
-            return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다.")
+            return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다."), ""
+        
         times.sort()
-        max_idx = len(times)-1
-        idx = max_idx if time_idx is None else min(int(time_idx), max_idx)
-        selected_file = times[idx][1]
-        file_path = os.path.join(assets_vtk_dir if file_type=='vtk' else assets_vtp_dir, selected_file)
+        max_idx = len(times) - 1
+        
+        # 첫 번째 파일을 기본으로 사용하여 필드 정보 추출
+        first_file = times[-1][1]  # 최신 파일 사용
+        file_path = os.path.join(assets_vtk_dir if file_type=='vtk' else assets_vtp_dir, first_file)
+        
+        field_options = []
         try:
+            import vtk
             if file_type == 'vtk':
                 reader = vtk.vtkUnstructuredGridReader()
                 reader.SetFileName(file_path)
@@ -790,27 +800,86 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 reader.SetFileName(file_path)
                 reader.Update()
                 ds = reader.GetOutput()
-            mesh_state = to_mesh_state(ds)
-            # 컬러 데이터 범위 추출
-            color_range = None
-            arr = ds.GetPointData().GetArray("Temperature")
-            if arr is not None:
-                color_range = [arr.GetRange()[0], arr.GetRange()[1]]
-            # dash_vtk.Mesh로 시각화
-            vtk_viewer = dash_vtk.View([
-                dash_vtk.GeometryRepresentation(
-                    colorMapPreset="erdc_rainbow_bright",
-                    colorDataRange=color_range,
-                    children=[dash_vtk.Mesh(state=mesh_state)]
-                )
-            ], style={"height": "60vh", "width": "100%"})
-            return vtk_viewer
+            
+            # 사용 가능한 필드 추출
+            point_data = ds.GetPointData()
+            field_names = []
+            for i in range(point_data.GetNumberOfArrays()):
+                arr_name = point_data.GetArrayName(i)
+                if arr_name:
+                    field_names.append(arr_name)
+            
+            # 한글 필드명 매핑
+            field_mapping = {
+                'Temperature': '온도(Temperature)',
+                'Displacement': '변위(Displacement)', 
+                'Stress': '응력(Stress)',
+                'Strain': '변형률(Strain)',
+                'Velocity': '속도(Velocity)',
+                'Pressure': '압력(Pressure)'
+            }
+            
+            for name in field_names:
+                display_name = field_mapping.get(name, f"{name}")
+                field_options.append({"label": display_name, "value": name})
+            
         except Exception as e:
-            return html.Div([
-                html.H5("VTK/VTP 파싱 오류", style={"color": "red"}),
-                html.P(f"파일: {selected_file}"),
-                html.P(f"오류: {str(e)}")
-            ])
+            print(f"필드 추출 오류: {e}")
+        
+        # 컬러맵 프리셋 옵션 (5개로 제한)
+        preset_options = [
+            {"label": "무지개", "value": "rainbow"},
+            {"label": "블루-레드", "value": "Cool to Warm"},
+            {"label": "회색", "value": "Grayscale"},
+            {"label": "Viridis", "value": "viridis"},
+            {"label": "Plasma", "value": "plasma"}
+        ]
+        
+        # 시간 슬라이더 마크
+        time_marks = {}
+        for i, (dt, _) in enumerate(times):
+            if dt.hour == 0 or i == 0 or i == max_idx:
+                time_marks[i] = dt.strftime("%m/%d")
+        
+        return html.Div([
+            # 컨트롤 패널
+            dbc.Row([
+                dbc.Col([
+                    html.Label("컬러맵 필드"),
+                    dcc.Dropdown(
+                        id="analysis-field-dropdown",
+                        options=field_options,
+                        value=field_options[0]["value"] if field_options else None,
+                        placeholder="필드 선택"
+                    )
+                ], md=3),
+                dbc.Col([
+                    html.Label("컬러맵 프리셋"),
+                    dcc.Dropdown(
+                        id="analysis-preset-dropdown", 
+                        options=preset_options,
+                        value="rainbow",
+                        placeholder="프리셋 선택"
+                    )
+                ], md=3),
+                dbc.Col([
+                    html.Label("시간"),
+                    dcc.Slider(
+                        id="analysis-time-slider",
+                        min=0,
+                        max=max_idx,
+                        step=1,
+                        value=max_idx,
+                        marks=time_marks,
+                        tooltip={"placement": "bottom", "always_visible": True}
+                    )
+                ], md=6),
+            ], className="mb-3"),
+            
+            # 3D 뷰어
+            html.Div(id="analysis-3d-viewer", style={"height": "60vh"})
+            
+        ]), f"수치해석 결과 ({len(files)}개 파일)"
     elif active_tab == "tab-inp-files":
         # inp 파일 목록 탭
         if not (selected_rows and tbl_data):
@@ -1706,7 +1775,8 @@ def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_dat
         return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다.")
     times.sort()
     max_idx = len(times)-1
-    idx = max_idx if time_idx is None else min(int(time_idx), max_idx)
+    slider_value = max_idx  # ← time_idx 대신 slider_value 사용
+    idx = slider_value
     selected_file = times[idx][1]
     file_path = os.path.join(assets_vtk_dir if file_type=='vtk' else assets_vtp_dir, selected_file)
     try:
