@@ -922,7 +922,10 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             ], className="mb-2"),
             
             # 3D 뷰어
-            html.Div(id="analysis-3d-viewer", style={"height": "60vh"})
+            html.Div(id="analysis-3d-viewer", style={"height": "60vh"}),
+
+            # 컬러바
+            dcc.Graph(id="analysis-colorbar", style={"height":"120px"})
             
         ]), f"수치해석 결과 ({len(files)}개 파일)"
     elif active_tab == "tab-inp-files":
@@ -1775,6 +1778,7 @@ def select_deselect_all_vtp(n_all, n_none, table_data):
 @callback(
     Output("analysis-3d-viewer", "children"),
     Output("analysis-current-file-label", "children"),
+    Output("analysis-colorbar", "figure"),
     Input("analysis-field-dropdown", "value"),
     Input("analysis-preset-dropdown", "value"),
     Input("analysis-time-slider", "value"),
@@ -1791,7 +1795,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
     from dash_vtk.utils import to_mesh_state
     
     if not selected_rows or not tbl_data:
-        return html.Div("콘크리트를 선택하세요."), ""
+        return html.Div("콘크리트를 선택하세요."), "", go.Figure()
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
@@ -1806,7 +1810,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         vtp_files = sorted([f for f in os.listdir(assets_vtp_dir) if f.endswith('.vtp')])
     
     if not vtk_files and not vtp_files:
-        return html.Div("VTK/VTP 파일이 없습니다."), ""
+        return html.Div("VTK/VTP 파일이 없습니다."), "", go.Figure()
     
     from datetime import datetime
     times = []
@@ -1829,7 +1833,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             continue
     
     if not times:
-        return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다.")
+        return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다."), "", go.Figure()
     
     times.sort()
     max_idx = len(times) - 1
@@ -1868,7 +1872,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             return html.Div([
                 html.H5("VTK 파일 읽기 실패", style={"color": "red"}),
                 html.P(f"파일: {selected_file}")
-            ]), f"파일: {selected_file}"
+            ]), f"파일: {selected_file}", go.Figure()
         
         # 점의 개수 확인
         num_points = ds.GetNumberOfPoints()
@@ -1877,7 +1881,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 html.H5("빈 데이터셋", style={"color": "red"}),
                 html.P(f"파일: {selected_file}"),
                 html.P("점이 없는 데이터셋입니다.")
-            ])
+            ]), f"파일: {selected_file}", go.Figure()
         
         # 필드 데이터 검증
         if field_name:
@@ -1910,7 +1914,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 html.P(f"점 개수: {num_points}"),
                 html.Hr(),
                 html.P("VTK 파일 형식을 확인해주세요. FRD → VTK 변환이 올바르게 되었는지 점검이 필요합니다.", style={"color": "gray"})
-            ]), f"파일: {selected_file}"
+            ]), f"파일: {selected_file}", go.Figure()
         
         # 컬러 데이터 범위 추출
         color_range = None
@@ -1977,7 +1981,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             label = f"파일: {selected_file}"
             if color_range:
                 label += f" | 값 범위: {color_range[0]:.2f} ~ {color_range[1]:.2f}"
-            return vtk_viewer, label
+            return vtk_viewer, label, go.Figure()
             
         except Exception as vtk_error:
             print(f"dash_vtk 컴포넌트 생성 오류: {vtk_error}")
@@ -1987,7 +1991,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 html.P(f"오류: {str(vtk_error)}"),
                 html.Hr(),
                 html.P("브라우저를 새로고침하거나 다른 파일을 선택해보세요.", style={"color": "gray"})
-            ]), f"파일: {selected_file}"
+            ]), f"파일: {selected_file}", go.Figure()
         
     except Exception as e:
         print(f"VTK 처리 전체 오류: {e}")
@@ -1998,4 +2002,4 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             html.P(f"오류: {str(e)}"),
             html.Hr(),
             html.P("다른 파일을 선택하거나 VTK 파일을 확인해주세요.", style={"color": "gray"})
-        ]), f"파일: {selected_file}"
+        ]), f"파일: {selected_file}", go.Figure()
