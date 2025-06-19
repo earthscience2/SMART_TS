@@ -326,9 +326,16 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
             continue
     if not times:
         return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0, ""
-    # 슬라이더 마크: 시작과 끝만 표시
+    # 날짜의 00시(일 단위)만 마크 표시, 첫/마지막은 항상 표시
+    marks = {}
+    for i, t in enumerate(times):
+        if t.hour == 0:
+            marks[i] = t.strftime("%m/%d")
     max_idx = len(times) - 1
-    marks = {0: times[0].strftime("%m/%d"), max_idx: times[-1].strftime("%m/%d")}
+    if 0 not in marks:
+        marks[0] = times[0].strftime("%m/%d")
+    if max_idx not in marks:
+        marks[max_idx] = times[-1].strftime("%m/%d")
     
     # value가 max보다 크거나 None/NaN이면 max로 맞춤
     import math
