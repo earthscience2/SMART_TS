@@ -801,6 +801,13 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 reader.Update()
                 ds = reader.GetOutput()
             
+            # UnstructuredGrid → PolyData 변환 (GeometryFilter)  ⭐ 추가
+            if isinstance(ds, vtk.vtkUnstructuredGrid):
+                geom_filter = vtk.vtkGeometryFilter()
+                geom_filter.SetInputData(ds)
+                geom_filter.Update()
+                ds = geom_filter.GetOutput()
+            
             # 사용 가능한 필드 추출
             point_data = ds.GetPointData()
             field_names = []
@@ -1806,6 +1813,13 @@ def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_dat
             reader.SetFileName(file_path)
             reader.Update()
             ds = reader.GetOutput()
+        
+        # UnstructuredGrid → PolyData 변환 (GeometryFilter)  ⭐ 추가
+        if isinstance(ds, vtk.vtkUnstructuredGrid):
+            geom_filter = vtk.vtkGeometryFilter()
+            geom_filter.SetInputData(ds)
+            geom_filter.Update()
+            ds = geom_filter.GetOutput()
         
         # 데이터 검증
         if ds is None:

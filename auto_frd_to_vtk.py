@@ -230,7 +230,3 @@ if __name__ == "__main__":
     # 전체 frd → vtk 변환 실행
     print("🚀 frd → vtk 전체 변환 시작...")
     convert_all_frd_to_vtk()
-    
-    # 샘플 파일 검증
-    print(f"\n🔍 샘플 파일 검증:")
-    test_single_conversion()
