@@ -823,7 +823,11 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 'Stress': '응력(Stress)',
                 'Strain': '변형률(Strain)',
                 'Velocity': '속도(Velocity)',
-                'Pressure': '압력(Pressure)'
+                'Pressure': '압력(Pressure)',
+                'U': '변위(U)',
+                'S': '응력(S)',
+                'S_Mises': '미세스응력(S_Mises)',
+                'S_Principal': '주응력(S_Principal)'
             }
             
             for name in field_names:
