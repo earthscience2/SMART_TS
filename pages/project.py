@@ -1839,6 +1839,12 @@ def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_dat
             # mesh_state 검증
             if mesh_state is None or not isinstance(mesh_state, dict):
                 raise ValueError("mesh_state가 올바르지 않습니다")
+            
+            # 필수 키들이 있는지 확인
+            required_keys = ['points', 'cells']
+            for key in required_keys:
+                if key not in mesh_state:
+                    raise ValueError(f"mesh_state에 {key}가 없습니다")
                 
         except Exception as mesh_error:
             print(f"mesh_state 생성 오류: {mesh_error}")
@@ -1846,7 +1852,9 @@ def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_dat
                 html.H5("메시 생성 오류", style={"color": "red"}),
                 html.P(f"파일: {selected_file}"),
                 html.P(f"오류: {str(mesh_error)}"),
-                html.P(f"점 개수: {num_points}")
+                html.P(f"점 개수: {num_points}"),
+                html.Hr(),
+                html.P("VTK 파일 형식을 확인해주세요. FRD → VTK 변환이 올바르게 되었는지 점검이 필요합니다.", style={"color": "gray"})
             ])
         
         # 컬러 데이터 범위 추출
@@ -1862,19 +1870,30 @@ def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_dat
         if not preset:
             preset = "rainbow"
         
-        # dash_vtk 컴포넌트 생성
-        geometry_rep = dash_vtk.GeometryRepresentation(
-            colorMapPreset=preset,
-            children=[dash_vtk.Mesh(state=mesh_state)]
-        )
-        
-        # 컬러 범위가 있을 때만 설정
-        if color_range:
-            geometry_rep.colorDataRange = color_range
-        
-        vtk_viewer = dash_vtk.View([geometry_rep], style={"height": "60vh", "width": "100%"})
-        
-        return vtk_viewer
+        # dash_vtk 컴포넌트 생성 (더 안전한 방식)
+        try:
+            geometry_rep = dash_vtk.GeometryRepresentation(
+                colorMapPreset=preset,
+                children=[dash_vtk.Mesh(state=mesh_state)]
+            )
+            
+            # 컬러 범위가 있을 때만 설정
+            if color_range:
+                geometry_rep.colorDataRange = color_range
+            
+            vtk_viewer = dash_vtk.View([geometry_rep], style={"height": "60vh", "width": "100%"})
+            
+            return vtk_viewer
+            
+        except Exception as vtk_error:
+            print(f"dash_vtk 컴포넌트 생성 오류: {vtk_error}")
+            return html.Div([
+                html.H5("3D 뷰어 생성 오류", style={"color": "red"}),
+                html.P(f"파일: {selected_file}"),
+                html.P(f"오류: {str(vtk_error)}"),
+                html.Hr(),
+                html.P("브라우저를 새로고침하거나 다른 파일을 선택해보세요.", style={"color": "gray"})
+            ])
         
     except Exception as e:
         print(f"VTK 처리 전체 오류: {e}")
