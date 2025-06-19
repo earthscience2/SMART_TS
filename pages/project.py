@@ -1884,8 +1884,15 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 slice_value = min_b + (max_b - min_b) * slice_slider_value
 
                 plane = vtk.vtkPlane()
-                normal = (1,0,0) if slice_axis == 'X' else (0,1,0) if slice_axis == 'Y' else (0,0,1)
-                plane.SetOrigin(slice_value, slice_value, slice_value)
+                if slice_axis == 'X':
+                    plane.SetOrigin(slice_value, 0, 0)
+                    normal = (1,0,0)
+                elif slice_axis == 'Y':
+                    plane.SetOrigin(0, slice_value, 0)
+                    normal = (0,1,0)
+                else:
+                    plane.SetOrigin(0, 0, slice_value)
+                    normal = (0,0,1)
                 plane.SetNormal(normal)
                 
                 clipper = vtk.vtkClipDataSet()
@@ -1917,10 +1924,18 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             arr = ds_for_vis.GetPointData().GetArray(field_name)
             if arr and arr.GetRange()[0] != arr.GetRange()[1]:
                 color_range = arr.GetRange()
-                colorscale_map = {"rainbow": "Rainbow (matplotlib)", "Cool to Warm": "coolwarm", "Grayscale": "greys", "Viridis": "viridis", "Plasma": "plasma"}
+                colorscale_map = {
+                    "rainbow": "rainbow",
+                    "Cool to Warm": "rdbu",
+                    "Grayscale": "greys",
+                    "Viridis": "viridis",
+                    "Plasma": "plasma"
+                }
                 colorbar_fig = go.Figure(data=go.Scatter(x=[None], y=[None], mode='markers', marker=dict(
-                    colorscale=colorscale_map.get(preset, 'rainbow'), cmin=color_range[0], cmax=color_range[1],
-                    colorbar=dict(title=field_name, thickness=15), showscale=True
+                    colorscale=colorscale_map.get(preset, 'rainbow'),
+                    cmin=color_range[0], cmax=color_range[1],
+                    colorbar=dict(title=field_name, thickness=15),
+                    showscale=True
                 )))
                 colorbar_fig.update_layout(height=120, margin=dict(l=0,r=0,t=10,b=0))
 
