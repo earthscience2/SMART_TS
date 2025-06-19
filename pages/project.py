@@ -1538,21 +1538,6 @@ def update_temp_tab(store_data, x, y, z, selected_rows, tbl_data):
         fig_3d.add_trace(go.Scatter3d(
             x=[x0s[i], x0s[i]], y=[y0s[i], y0s[i]], z=[z0s[i], z1[i]],
             mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
-    # XYZ 축 화살표 추가
-    try:
-        xmin, xmax = float(np.min(x0s)), float(np.max(x0s))
-        ymin, ymax = float(np.min(y0s)), float(np.max(y0s))
-        zmin, zmax = 0.0, float(poly_h)
-        L_axis = max(xmax - xmin, ymax - ymin, zmax - zmin) * 0.15
-        ox, oy, oz = xmin, ymin, zmin
-        fig_3d.add_trace(go.Scatter3d(x=[ox, ox+L_axis], y=[oy, oy], z=[oz, oz], mode='lines', line=dict(color='red', width=4), showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(x=[ox+L_axis], y=[oy], z=[oz], mode='text', text=['X'], showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(x=[ox, ox], y=[oy, oy+L_axis], z=[oz, oz], mode='lines', line=dict(color='green', width=4), showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(x=[ox], y=[oy+L_axis], z=[oz], mode='text', text=['Y'], showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(x=[ox, ox], y=[oy, oy], z=[oz, oz+L_axis], mode='lines', line=dict(color='blue', width=4), showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(x=[ox], y=[oy], z=[oz+L_axis], mode='text', text=['Z'], showlegend=False, hoverinfo='skip'))
-    except Exception:
-        pass
     # 입력 위치 표시 + 보조선
     if x is not None and y is not None and z is not None:
         # 점
