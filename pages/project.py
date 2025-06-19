@@ -856,13 +856,11 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         except Exception as e:
             print(f"필드 추출 오류: {e}")
         
-        # 컬러맵 프리셋 옵션 (5개로 제한)
+        # 컬러맵 프리셋 옵션 (3개로 제한)
         preset_options = [
             {"label": "무지개", "value": "rainbow"},
             {"label": "블루-레드", "value": "Cool to Warm"},
             {"label": "회색", "value": "Grayscale"},
-            {"label": "Viridis", "value": "viridis"},
-            {"label": "Plasma", "value": "plasma"}
         ]
         
         # 시간 슬라이더 마크: 시작과 끝만 표시
@@ -933,7 +931,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     html.Label("절단 위치 (선택 위치 이상 영역 표시)", style={"fontSize": "12px", "marginBottom": "2px"}),
                     dcc.Slider(
                         id="slice-slider",
-                        min=0, max=1, step=0.1, value=0.5,
+                        min=0, max=1, step=0.05, value=0.5,
                         marks={0: '0.0', 1: '1.0'},
                         tooltip={"placement": "bottom", "always_visible": True},
                     )
@@ -2114,9 +2112,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                         colorscale_map = {
                             "rainbow": [[0, 'blue'], [0.25, 'cyan'], [0.5, 'green'], [0.75, 'yellow'], [1, 'red']],
                             "Cool to Warm": [[0, 'blue'], [0.5, 'white'], [1, 'red']],
-                            "Grayscale": [[0, 'black'], [1, 'white']],
-                            "viridis": 'viridis',
-                            "plasma": 'plasma'
+                            "Grayscale": [[0, 'black'], [1, 'white']]
                         }
                         
                         colorbar_fig = go.Figure(data=go.Scatter(
@@ -2217,11 +2213,11 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             if slice_enable and "on" in slice_enable:
                 slice_value = slice_slider
                 if slice_axis == "X":
-                    label += f" | X ≥ {slice_value:.2f} 영역"
+                    label += f" | X ≥ {slice_value:.1f} 영역"
                 elif slice_axis == "Y":
-                    label += f" | Y ≥ {slice_value:.2f} 영역"
+                    label += f" | Y ≥ {slice_value:.1f} 영역"
                 else:  # Z
-                    label += f" | Z ≥ {slice_value:.2f} 영역"
+                    label += f" | Z ≥ {slice_value:.1f} 영역"
                 
             return vtk_viewer, label, colorbar_fig, slice_min, slice_max
             
