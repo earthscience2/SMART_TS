@@ -890,6 +890,37 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             # 현재 파일/범위 표시
             html.Div(id="analysis-current-file-label", style={"marginBottom":"8px", "fontWeight":"500"}),
             
+            # 단면(slice) 컨트롤
+            dbc.Row([
+                dbc.Col([
+                    dbc.Checklist(
+                        options=[{"label": "단면 활성", "value": "on"}],
+                        value=[],
+                        id="slice-enable",
+                        switch=True,
+                    )
+                ], md=2),
+                dbc.Col([
+                    dcc.Dropdown(
+                        id="slice-axis",
+                        options=[
+                            {"label": "X", "value": "X"},
+                            {"label": "Y", "value": "Y"},
+                            {"label": "Z", "value": "Z"},
+                        ],
+                        value="Z",
+                        clearable=False,
+                    )
+                ], md=2),
+                dbc.Col([
+                    dcc.Slider(
+                        id="slice-slider",
+                        min=0, max=1, step=0.02, value=0.5,
+                        tooltip={"placement": "bottom", "always_visible": True},
+                    )
+                ], md=8),
+            ], className="mb-2"),
+            
             # 3D 뷰어
             html.Div(id="analysis-3d-viewer", style={"height": "60vh"})
             
@@ -1747,11 +1778,14 @@ def select_deselect_all_vtp(n_all, n_none, table_data):
     Input("analysis-field-dropdown", "value"),
     Input("analysis-preset-dropdown", "value"),
     Input("analysis-time-slider", "value"),
+    Input("slice-enable", "value"),
+    Input("slice-axis", "value"),
+    Input("slice-slider", "value"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_data):
+def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_axis, slice_slider, selected_rows, tbl_data):
     import os
     import vtk
     from dash_vtk.utils import to_mesh_state
@@ -1834,7 +1868,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_dat
             return html.Div([
                 html.H5("VTK 파일 읽기 실패", style={"color": "red"}),
                 html.P(f"파일: {selected_file}")
-            ])
+            ]), f"파일: {selected_file}"
         
         # 점의 개수 확인
         num_points = ds.GetNumberOfPoints()
