@@ -1942,48 +1942,99 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 
                 clipped_data = geom_filter.GetOutput()
                 
-                # 만약 클리핑 결과가 비어있거나 면이 적으면 threshold 방식 시도
-                if clipped_data.GetNumberOfCells() == 0:
-                    # 방법 2: Threshold 필터 사용 (점 기반 필터링)
-                    # 먼저 원본 데이터를 PolyData로 변환
-                    orig_geom = vtk.vtkGeometryFilter()
-                    orig_geom.SetInputData(ds)
-                    orig_geom.Update()
-                    orig_poly = orig_geom.GetOutput()
-                    
-                    # 점 좌표 기반으로 필터링
-                    threshold = vtk.vtkThreshold()
-                    threshold.SetInputData(ds)
-                    
-                    # 축에 따라 좌표 필드 설정
-                    coord_array = vtk.vtkFloatArray()
-                    coord_array.SetNumberOfTuples(ds.GetNumberOfPoints())
-                    
-                    for i in range(ds.GetNumberOfPoints()):
-                        pt = ds.GetPoint(i)
-                        if slice_axis == "X":
-                            coord_array.SetValue(i, pt[0])
-                        elif slice_axis == "Y":
-                            coord_array.SetValue(i, pt[1])
-                        else:  # Z
-                            coord_array.SetValue(i, pt[2])
-                    
-                    coord_array.SetName("coord_filter")
-                    ds.GetPointData().AddArray(coord_array)
-                    
-                    threshold.SetInputArrayToProcess(0, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, "coord_filter")
-                    threshold.SetLowerThreshold(slice_value)
-                    threshold.SetUpperThreshold(slice_max + 1.0)
-                    threshold.Update()
-                    
-                    # Threshold 결과를 PolyData로 변환
-                    thresh_geom = vtk.vtkGeometryFilter()
-                    thresh_geom.SetInputData(threshold.GetOutput())
-                    thresh_geom.Update()
-                    
-                    ds_for_vis = thresh_geom.GetOutput()
-                else:
-                    ds_for_vis = clipped_data
+                # 클리핑 결과 사용 (항상 클리핑 결과 사용, threshold 제거)
+                ds_for_vis = clipped_data
+                
+                # 만약 클리핑 결과가 비어있으면 원본 데이터의 일부를 직접 필터링
+                if ds_for_vis.GetNumberOfCells() == 0 or ds_for_vis.GetNumberOfPoints() == 0:
+                    try:
+                        # 원본 데이터를 먼저 PolyData로 변환
+                        orig_geom = vtk.vtkGeometryFilter()
+                        orig_geom.SetInputData(ds)
+                        orig_geom.Update()
+                        orig_poly = orig_geom.GetOutput()
+                        
+                        # 점들을 직접 필터링하여 새로운 PolyData 생성
+                        points = vtk.vtkPoints()
+                        cells = vtk.vtkCellArray()
+                        point_data_arrays = []
+                        
+                        # 원본의 포인트 데이터 배열들 복사 준비
+                        orig_point_data = orig_poly.GetPointData()
+                        num_arrays = orig_point_data.GetNumberOfArrays()
+                        for i in range(num_arrays):
+                            arr = orig_point_data.GetArray(i)
+                            if arr:
+                                new_arr = vtk.vtkFloatArray()
+                                new_arr.SetName(arr.GetName())
+                                new_arr.SetNumberOfComponents(arr.GetNumberOfComponents())
+                                point_data_arrays.append((new_arr, arr))
+                        
+                        point_id_map = {}
+                        new_point_id = 0
+                        
+                        # 조건에 맞는 점들만 추가
+                        for i in range(orig_poly.GetNumberOfPoints()):
+                            pt = orig_poly.GetPoint(i)
+                            
+                            # 축별 조건 확인
+                            include_point = False
+                            if slice_axis == "X" and pt[0] >= slice_value:
+                                include_point = True
+                            elif slice_axis == "Y" and pt[1] >= slice_value:
+                                include_point = True
+                            elif slice_axis == "Z" and pt[2] >= slice_value:
+                                include_point = True
+                            
+                            if include_point:
+                                points.InsertNextPoint(pt)
+                                point_id_map[i] = new_point_id
+                                
+                                # 포인트 데이터 복사
+                                for new_arr, orig_arr in point_data_arrays:
+                                    if orig_arr.GetNumberOfComponents() == 1:
+                                        new_arr.InsertNextValue(orig_arr.GetValue(i))
+                                    else:
+                                        tuple_data = [0] * orig_arr.GetNumberOfComponents()
+                                        orig_arr.GetTuple(i, tuple_data)
+                                        new_arr.InsertNextTuple(tuple_data)
+                                
+                                new_point_id += 1
+                        
+                        # 조건에 맞는 셀들만 추가
+                        for i in range(orig_poly.GetNumberOfCells()):
+                            cell = orig_poly.GetCell(i)
+                            cell_points = []
+                            all_points_valid = True
+                            
+                            for j in range(cell.GetNumberOfPoints()):
+                                old_id = cell.GetPointId(j)
+                                if old_id in point_id_map:
+                                    cell_points.append(point_id_map[old_id])
+                                else:
+                                    all_points_valid = False
+                                    break
+                            
+                            if all_points_valid and len(cell_points) >= 3:
+                                cells.InsertNextCell(len(cell_points), cell_points)
+                        
+                        # 새로운 PolyData 생성
+                        filtered_poly = vtk.vtkPolyData()
+                        filtered_poly.SetPoints(points)
+                        filtered_poly.SetPolys(cells)
+                        
+                        # 포인트 데이터 설정
+                        for new_arr, _ in point_data_arrays:
+                            filtered_poly.GetPointData().AddArray(new_arr)
+                            if new_arr.GetName() and field_name == new_arr.GetName():
+                                filtered_poly.GetPointData().SetScalars(new_arr)
+                        
+                        ds_for_vis = filtered_poly
+                        
+                    except Exception as filter_error:
+                        print(f"직접 필터링 오류: {filter_error}")
+                        # 모든 방법이 실패하면 원본 사용
+                        ds_for_vis = ds
                 
                 if ds_for_vis.GetNumberOfPoints() == 0:
                     # 절단된 결과가 없으면 원본 사용
@@ -2077,15 +2128,22 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         
         # dash_vtk 컴포넌트 생성 (더 안전한 방식)
         try:
-            # 기본 GeometryRepresentation 생성 (버전 호환성을 위해 단순화)
-            geometry_rep = dash_vtk.GeometryRepresentation(
-                colorMapPreset=preset,
-                children=[dash_vtk.Mesh(state=mesh_state)]
-            )
+            # Mesh 컴포넌트 먼저 생성
+            mesh_component = dash_vtk.Mesh(state=mesh_state)
             
-            # 컬러 범위가 있을 때만 설정
-            if color_range:
-                geometry_rep.colorDataRange = color_range
+            # GeometryRepresentation 생성 (필수 속성만 사용)
+            geometry_rep_props = {
+                "children": [mesh_component]
+            }
+            
+            # 안전하게 속성 추가
+            if preset:
+                geometry_rep_props["colorMapPreset"] = preset
+            
+            if color_range and len(color_range) == 2:
+                geometry_rep_props["colorDataRange"] = color_range
+            
+            geometry_rep = dash_vtk.GeometryRepresentation(**geometry_rep_props)
             
             # --- Bounding box wireframe 추가 (원본 데이터 기준) ---
             view_children = [geometry_rep]
@@ -2113,16 +2171,18 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 poly.SetLines(lines)
                 bbox_state = to_mesh_state(poly)
                 
-                # dash_vtk 0.0.9 버전에서는 color, opacity 파라미터가 지원되지 않음
-                # 기본 색상으로 바운딩 박스 표시
-                bbox_rep = dash_vtk.GeometryRepresentation(
-                    children=[dash_vtk.Mesh(state=bbox_state)]
-                )
+                # 바운딩 박스용 Mesh와 GeometryRepresentation 생성
+                bbox_mesh = dash_vtk.Mesh(state=bbox_state)
+                bbox_rep = dash_vtk.GeometryRepresentation(children=[bbox_mesh])
                 view_children.append(bbox_rep)
             except Exception as bbox_error:
                 print(f"바운딩 박스 생성 오류: {bbox_error}")
             
-            vtk_viewer = dash_vtk.View(view_children, style={"height": "60vh", "width": "100%"})
+            # View 컴포넌트 생성 (안전한 방식)
+            vtk_viewer = dash_vtk.View(
+                children=view_children, 
+                style={"height": "60vh", "width": "100%"}
+            )
             
             label = f"파일: {selected_file}"
             if color_range:
