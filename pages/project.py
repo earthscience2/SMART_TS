@@ -450,22 +450,34 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     temps = np.array(temps)
     fig_3d = go.Figure(data=go.Volume(
         x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
-        opacity=0.1, surface_count=15, colorscale=[[0, 'blue'], [1, 'red']],
-        colorbar=None, cmin=tmin, cmax=tmax, showscale=False
+        opacity=0.1, surface_count=15, 
+        colorscale=[[0, 'blue'], [1, 'red']],
+        colorbar=dict(title='Temperature (°C)', thickness=10),
+        cmin=np.nanmin(temps), cmax=np.nanmax(temps),
+        showscale=True
     ))
-    # XYZ 축 화살표 추가
+    # --- XYZ 축 화살표 추가 (빨강:X, 초록:Y, 파랑:Z) ---
     try:
-        L_axis = max(x_max - x_min, y_max - y_min, z_max - z_min) * 0.15
-        ox, oy, oz = x_min, y_min, z_min
-        fig_3d.add_trace(go.Scatter3d(x=[ox, ox+L_axis], y=[oy, oy], z=[oz, oz],
+        xmin, xmax = float(np.min(x_coords)), float(np.max(x_coords))
+        ymin, ymax = float(np.min(y_coords)), float(np.max(y_coords))
+        zmin, zmax = float(np.min(z_coords)), float(np.max(z_coords))
+        L = max(xmax - xmin, ymax - ymin, zmax - zmin) * 0.15
+        ox, oy, oz = xmin, ymin, zmin
+        # X
+        fig_3d.add_trace(go.Scatter3d(x=[ox, ox+L], y=[oy, oy], z=[oz, oz],
                                       mode='lines', line=dict(color='red', width=4), showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(x=[ox+L_axis], y=[oy], z=[oz], mode='text', text=['X'], showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(x=[ox, ox], y=[oy, oy+L_axis], z=[oz, oz],
+        fig_3d.add_trace(go.Scatter3d(x=[ox+L], y=[oy], z=[oz], mode='text', text=['X'],
+                                      textposition='top center', showlegend=False, hoverinfo='skip'))
+        # Y
+        fig_3d.add_trace(go.Scatter3d(x=[ox, ox], y=[oy, oy+L], z=[oz, oz],
                                       mode='lines', line=dict(color='green', width=4), showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(x=[ox], y=[oy+L_axis], z=[oz], mode='text', text=['Y'], showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(x=[ox, ox], y=[oy, oy], z=[oz, oz+L_axis],
+        fig_3d.add_trace(go.Scatter3d(x=[ox], y=[oy+L], z=[oz], mode='text', text=['Y'],
+                                      textposition='top center', showlegend=False, hoverinfo='skip'))
+        # Z
+        fig_3d.add_trace(go.Scatter3d(x=[ox, ox], y=[oy, oy], z=[oz, oz+L],
                                       mode='lines', line=dict(color='blue', width=4), showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(x=[ox], y=[oy], z=[oz+L_axis], mode='text', text=['Z'], showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(x=[ox], y=[oy], z=[oz+L], mode='text', text=['Z'],
+                                      textposition='top center', showlegend=False, hoverinfo='skip'))
     except Exception:
         pass
     # 3D 뷰 시점 고정 및 경계선 추가
