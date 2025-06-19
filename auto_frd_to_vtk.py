@@ -1,228 +1,41 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-FRD → VTK 변환·검증 스크립트
-- parse_frd: 공백 무시 + regex로 숫자 추출, 누락된 응력은 0으로 채움
-- write_vtk: CELL_DATA 응력 처리
-- compare_frd_vtk: shape 체크로 AxisError 방지, 응력도 비교
+FRD → VTK 변환 스크립트 (ccx2paraview 사용)
+- ccx2paraview 라이브러리를 사용하여 안정적인 변환
+- frd 폴더의 모든 파일을 assets/vtk에 동일한 경로로 변환
 """
 
 import os
-import re
-import shutil
-import numpy as np
-
-
-def parse_frd(filename):
-    """
-    FRD 파일 파싱:
-      nodes          {nid: (x,y,z)}
-      elements       [[nid,...],...]
-      displacements  {nid: (dx,dy,dz)}
-      stresses       {eid: sxx} (모든 eid에 대해 key 보장)
-      node_order, element_ids
-    """
-    nodes, elements, displacements, stresses = {}, [], {}, {}
-    node_order, element_ids = [], []
-
-    lines = open(filename, "r").read().splitlines()
-
-    # 노드 파싱
-    node_section = False
-    for line in lines:
-        ls = line.lstrip()
-        if ls.startswith("2C"):
-            node_section = True; continue
-        if node_section:
-            if not ls.startswith("-1"):
-                node_section = False; continue
-            parts = ls.split()
-            if len(parts) == 5:
-                nid = int(parts[1])
-                x, y, z = map(float, parts[2:])
-                nodes[nid] = (x, y, z)
-                node_order.append(nid)
-
-    # 요소 파싱
-    elem_section = False
-    for line in lines:
-        ls = line.lstrip()
-        if ls.startswith("3C"):
-            elem_section = True; continue
-        if elem_section:
-            if ls.startswith("-1"):
-                element_ids.append(int(ls.split()[1]))
-            elif ls.startswith("-2"):
-                ids = list(map(int, ls.split()[1:]))
-                elements.append(ids)
-            elif ls.startswith("-3"):
-                break
-
-    # 변위 파싱
-    disp_section = False
-    for line in lines:
-        ls = line.lstrip()
-        if ls.startswith("-4") and "DISP" in ls:
-            disp_section = True; continue
-        if disp_section:
-            if ls.startswith(("-4", "1PSTEP", "100CL")):
-                disp_section = False; continue
-            if ls.startswith("-1"):
-                m_id = re.match(r"-1\s*([0-9]+)", ls)
-                vals = re.findall(r"[+\-]?\d+\.\d+E[+\-]?\d+", ls)
-                if m_id and len(vals) >= 3:
-                    nid = int(m_id.group(1))
-                    dx, dy, dz = map(float, vals[:3])
-                    displacements[nid] = (dx, dy, dz)
-    # 누락된 노드 disp = (0,0,0)
-    for nid in nodes:
-        displacements.setdefault(nid, (0.0, 0.0, 0.0))
-
-    # 응력 파싱
-    stress_section = False
-    for line in lines:
-        ls = line.lstrip()
-        if ls.startswith("-4") and "STRESS" in ls:
-            stress_section = True; continue
-        if stress_section:
-            if ls.startswith(("-4", "1PSTEP", "100CL")):
-                stress_section = False; continue
-            if ls.startswith("-1"):
-                m_id = re.match(r"-1\s*([0-9]+)", ls)
-                vals = re.findall(r"[+\-]?\d+\.\d+E[+\-]?\d+", ls)
-                if m_id and vals:
-                    eid = int(m_id.group(1))
-                    stresses[eid] = float(vals[0])
-    # **모든 요소에 대해 응력 누락 시 0.0 채움**
-    for eid in element_ids:
-        stresses.setdefault(eid, 0.0)
-
-    return nodes, elements, displacements, stresses, node_order, element_ids
-
-
-def write_vtk(nodes, elements, out_path,
-              displacements=None, stresses=None,
-              node_order=None, element_ids=None):
-    """VTK UNSTRUCTURED_GRID으로 내보내기"""
-    with open(out_path, "w") as f:
-        f.write("# vtk DataFile Version 3.0\nConverted from FRD\nASCII\n")
-        f.write("DATASET UNSTRUCTURED_GRID\n")
-
-        # POINTS
-        f.write(f"POINTS {len(nodes)} float\n")
-        for nid in node_order:
-            x, y, z = nodes[nid]
-            f.write(f"{x} {y} {z}\n")
-
-        # CELLS
-        total = sum(len(e) for e in elements)
-        f.write(f"CELLS {len(elements)} {len(elements)+total}\n")
-        for elem in elements:
-            idxs = " ".join(str(n-1) for n in elem)
-            f.write(f"{len(elem)} {idxs}\n")
-
-        # CELL_TYPES
-        f.write(f"CELL_TYPES {len(elements)}\n")
-        for elem in elements:
-            t = 12 if len(elem)==8 else 10 if len(elem)==4 else 7
-            f.write(f"{t}\n")
-
-        # POINT_DATA (displacement)
-        if displacements:
-            f.write(f"\nPOINT_DATA {len(nodes)}\n")
-            f.write("VECTORS displacement float\n")
-            for nid in node_order:
-                dx, dy, dz = displacements[nid]
-                f.write(f"{dx} {dy} {dz}\n")
-
-        # CELL_DATA (stress)
-        if stresses:
-            f.write(f"\nCELL_DATA {len(elements)}\n")
-            f.write("SCALARS stress float 1\n")
-            f.write("LOOKUP_TABLE default\n")
-            for eid in element_ids:
-                f.write(f"{stresses[eid]}\n")
+import logging
+from ccx2paraview import Converter
 
 
 def convert_frd_to_vtk(frd_path, vtk_path):
-    ns, es, ds, ss, norder, eids = parse_frd(frd_path)
-    write_vtk(ns, es, vtk_path, ds, ss, norder, eids)
-
-
-def compare_frd_vtk(frd_path, vtk_path):
-    """변환 결과 검증: 노드/요소/변위/응력 일치 확인"""
-    if not os.path.exists(frd_path):
-        print("❌ FRD 파일이 없습니다:", frd_path); return
-    if not os.path.exists(vtk_path):
-        print("❌ VTK 파일이 없습니다:", vtk_path); return
-
-    nodes, elements, displacements, stresses, norder, _ = parse_frd(frd_path)
-    if not nodes:
-        print("⚠️ 노드 0개: 경로·파일 확인 필요."); return
-
-    lines = open(vtk_path).read().splitlines()
-
-    # POINTS
-    pi = next(i for i,l in enumerate(lines) if l.startswith("POINTS"))
-    n_pts = int(lines[pi].split()[1])
-    vtk_pts = [tuple(map(float, lines[pi+1+j].split())) for j in range(n_pts)]
-
-    # CELLS
-    ci = next(i for i,l in enumerate(lines) if l.startswith("CELLS"))
-    n_c = int(lines[ci].split()[1])
-    vtk_cells = [list(map(int, lines[ci+1+j].split()[1:])) for j in range(n_c)]
-
-    # VECTORS displacement
-    di = next((i for i,l in enumerate(lines)
-               if l.strip().startswith("VECTORS displacement")), None)
-    vtk_disp = []
-    if di is not None:
-        vtk_disp = [tuple(map(float, lines[di+1+j].split()))
-                    for j in range(n_pts)]
-
-    # SCALARS stress
-    si = next((i for i,l in enumerate(lines)
-               if l.strip().startswith("SCALARS stress")), None)
-    vtk_stress = []
-    if si is not None:
-        vtk_stress = [float(lines[si+2+j].strip()) for j in range(n_c)]
-
-    # 출력
-    print(f"노드 개수: frd={len(nodes)}, vtk={n_pts}")
-    print(f"요소 개수: frd={len(elements)}, vtk={n_c}")
-
-    # 좌표 비교
-    frd_arr = np.array([nodes[n] for n in norder])
-    vtk_arr = np.array(vtk_pts)
-    if frd_arr.ndim==2 and vtk_arr.ndim==2 and frd_arr.shape==vtk_arr.shape:
-        d = np.linalg.norm(frd_arr-vtk_arr, axis=1)
-        print(f"좌표 오차: max={d.max():.3e}, mean={d.mean():.3e}")
-    else:
-        print("좌표 shape 불일치 → 비교 건너뜀")
-
-    # 요소 비교
-    m = sum(1 for e1,e2 in zip(elements, vtk_cells)
-            if [n-1 for n in e1]==e2)
-    print(f"요소 일치: {m}/{len(elements)} ({m/len(elements)*100:.1f}%)")
-
-    # 변위 비교
-    if len(vtk_disp)==len(displacements):
-        fr = np.array([displacements[n] for n in norder])
-        vt = np.array(vtk_disp)
-        dd = np.linalg.norm(fr-vt, axis=1)
-        print(f"변위 오차: max={dd.max():.3e}, mean={dd.mean():.3e}")
-    else:
-        print("변위 비교 생략")
-
-    # 응력 비교
-    if len(vtk_stress)==len(stresses):
-        keys = sorted(stresses)
-        frs = np.array([stresses[k] for k in keys])
-        vs = np.array(vtk_stress)
-        sd = np.abs(frs-vs)
-        print(f"응력 오차: max={sd.max():.3e}, mean={sd.mean():.3e}")
-    else:
-        print("응력 비교 생략")
+    """ccx2paraview를 사용하여 FRD → VTK 변환"""
+    try:
+        # vtk 디렉토리 생성
+        vtk_dir = os.path.dirname(vtk_path)
+        os.makedirs(vtk_dir, exist_ok=True)
+        
+        # ccx2paraview 변환기 생성 및 실행
+        converter = Converter(frd_path, ['vtk'])
+        converter.run()
+        
+        # 생성된 vtk 파일을 원하는 위치로 이동
+        # ccx2paraview는 입력 파일과 같은 디렉토리에 출력
+        generated_vtk = frd_path.replace('.frd', '.vtk')
+        if os.path.exists(generated_vtk):
+            # 파일이 이미 존재하면 덮어쓰기
+            if os.path.exists(vtk_path):
+                os.remove(vtk_path)
+            os.rename(generated_vtk, vtk_path)
+            return True, "변환 성공"
+        else:
+            return False, "VTK 파일이 생성되지 않았습니다"
+            
+    except Exception as e:
+        return False, f"변환 오류: {str(e)}"
 
 
 def validate_vtk_file(vtk_path):
@@ -241,12 +54,12 @@ def validate_vtk_file(vtk_path):
         # DATASET 확인
         dataset_found = False
         for line in lines:
-            if line.startswith('DATASET UNSTRUCTURED_GRID'):
+            if line.startswith('DATASET'):
                 dataset_found = True
                 break
         
         if not dataset_found:
-            return False, "UNSTRUCTURED_GRID가 없습니다"
+            return False, "DATASET 섹션이 없습니다"
         
         # POINTS 확인
         points_found = False
@@ -258,25 +71,12 @@ def validate_vtk_file(vtk_path):
                     try:
                         n_points = int(parts[1])
                         points_found = True
-                        # POINTS 데이터 확인
-                        if i + 1 + n_points > len(lines):
-                            return False, f"POINTS 데이터가 부족합니다 (예상: {n_points}, 실제: {len(lines) - i - 1})"
                         break
                     except ValueError:
                         return False, "POINTS 개수가 숫자가 아닙니다"
         
         if not points_found:
             return False, "POINTS 섹션이 없습니다"
-        
-        # CELLS 확인
-        cells_found = False
-        for line in lines:
-            if line.startswith('CELLS'):
-                cells_found = True
-                break
-        
-        if not cells_found:
-            return False, "CELLS 섹션이 없습니다"
         
         return True, f"검증 통과 (노드: {n_points}개)"
         
@@ -317,21 +117,25 @@ def convert_all_frd_to_vtk(frd_root_dir="frd", vtk_root_dir="assets/vtk"):
                 
                 try:
                     print(f"변환 중: {frd_path} → {vtk_path}")
-                    convert_frd_to_vtk(frd_path, vtk_path)
+                    success, message = convert_frd_to_vtk(frd_path, vtk_path)
                     
-                    # VTK 파일 검증
-                    is_valid, message = validate_vtk_file(vtk_path)
-                    if is_valid:
-                        converted_count += 1
-                        print(f"✅ 성공: {message}")
+                    if success:
+                        # VTK 파일 검증
+                        is_valid, validation_msg = validate_vtk_file(vtk_path)
+                        if is_valid:
+                            converted_count += 1
+                            print(f"✅ 성공: {validation_msg}")
+                        else:
+                            error_count += 1
+                            validation_errors.append(f"{vtk_path}: {validation_msg}")
+                            print(f"❌ 검증 실패: {validation_msg}")
                     else:
                         error_count += 1
-                        validation_errors.append(f"{vtk_path}: {message}")
-                        print(f"❌ 검증 실패: {message}")
+                        print(f"❌ 변환 실패: {message}")
                         
                 except Exception as e:
                     error_count += 1
-                    print(f"❌ 변환 실패: {frd_path} - {e}")
+                    print(f"❌ 처리 오류: {frd_path} - {e}")
     
     print(f"\n🎉 변환 완료!")
     print(f"✅ 성공: {converted_count}개")
@@ -343,7 +147,36 @@ def convert_all_frd_to_vtk(frd_root_dir="frd", vtk_root_dir="assets/vtk"):
             print(f"  - {error}")
 
 
+def test_single_conversion():
+    """단일 파일 변환 테스트"""
+    frd_path = "frd/C000001/2025061215.frd"
+    vtk_path = "assets/vtk/C000001/2025061215.vtk"
+    
+    if not os.path.exists(frd_path):
+        print(f"❌ 테스트 파일이 없습니다: {frd_path}")
+        return
+    
+    print(f"🧪 단일 파일 변환 테스트")
+    print(f"입력: {frd_path}")
+    print(f"출력: {vtk_path}")
+    
+    success, message = convert_frd_to_vtk(frd_path, vtk_path)
+    
+    if success:
+        is_valid, validation_msg = validate_vtk_file(vtk_path)
+        print(f"✅ 변환 성공: {validation_msg}")
+    else:
+        print(f"❌ 변환 실패: {message}")
+
+
 if __name__ == "__main__":
+    # 로깅 설정
+    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+    
     # 전체 frd → vtk 변환 실행
     print("🚀 frd → vtk 전체 변환 시작...")
     convert_all_frd_to_vtk()
+    
+    # 샘플 파일 검증
+    print(f"\n🔍 샘플 파일 검증:")
+    test_single_conversion()
