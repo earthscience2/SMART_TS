@@ -846,12 +846,6 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             {"label": "Plasma", "value": "plasma"}
         ]
         
-        # 시간 슬라이더 마크
-        time_marks = {}
-        for i, (dt, _) in enumerate(times):
-            if dt.hour == 0 or i == 0 or i == max_idx:
-                time_marks[i] = dt.strftime("%m/%d")
-        
         return html.Div([
             # 컨트롤 패널
             dbc.Row([
@@ -881,7 +875,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         max=max_idx,
                         step=1,
                         value=max_idx,
-                        marks=time_marks,
+                        marks=None, # 숫자 제거
                         tooltip={"placement": "bottom", "always_visible": True}
                     )
                 ], md=6),
@@ -918,6 +912,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     dcc.Slider(
                         id="slice-slider",
                         min=0, max=1, step=0.02, value=0.5,
+                        marks=None, # 숫자 제거
                         tooltip={"placement": "bottom", "always_visible": True},
                     )
                 ], md=8),
@@ -925,11 +920,6 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             
             # 3D 뷰어
             html.Div(id="analysis-3d-viewer", style={"height": "60vh"}),
-
-            # 컬러바 (조건부 표시)
-            html.Div(id="analysis-colorbar-container", children=[
-                dcc.Graph(id="analysis-colorbar", style={"height":"120px", "display": "none"})
-            ])
             
         ]), f"수치해석 결과 ({len(files)}개 파일)"
     elif active_tab == "tab-inp-files":
