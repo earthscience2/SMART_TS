@@ -11,8 +11,56 @@ import logging
 from ccx2paraview import Converter
 
 
+def fix_vtk_format(vtk_path):
+    """ccx2paraview로 생성된 VTK 파일의 POINTS 형식을 수정"""
+    try:
+        with open(vtk_path, 'r') as f:
+            lines = f.readlines()
+        
+        fixed_lines = []
+        in_points_section = False
+        points_count = 0
+        
+        for line in lines:
+            # POINTS 섹션 시작 확인
+            if line.startswith('POINTS'):
+                in_points_section = True
+                parts = line.split()
+                if len(parts) >= 2:
+                    points_count = int(parts[1])
+                fixed_lines.append(line)
+                continue
+            
+            # POINTS 섹션 종료 조건
+            if in_points_section and (line.startswith('CELLS') or line.startswith('CELL_TYPES') or line.startswith('POINT_DATA')):
+                in_points_section = False
+                fixed_lines.append(line)
+                continue
+            
+            # POINTS 섹션 내 데이터 처리
+            if in_points_section and line.strip():
+                # 한 줄에 여러 점이 있으면 분리
+                coords = line.strip().split()
+                # 3개씩 묶어서 각각 새 줄로 만들기
+                for i in range(0, len(coords), 3):
+                    if i + 2 < len(coords):
+                        x, y, z = coords[i], coords[i+1], coords[i+2]
+                        fixed_lines.append(f"{x} {y} {z}\n")
+            else:
+                fixed_lines.append(line)
+        
+        # 수정된 내용을 파일에 다시 저장
+        with open(vtk_path, 'w') as f:
+            f.writelines(fixed_lines)
+        
+        return True, "VTK 형식 수정 완료"
+        
+    except Exception as e:
+        return False, f"VTK 형식 수정 오류: {str(e)}"
+
+
 def convert_frd_to_vtk(frd_path, vtk_path):
-    """ccx2paraview를 사용하여 FRD → VTK 변환"""
+    """ccx2paraview를 사용하여 FRD → VTK 변환 + 형식 수정"""
     try:
         # vtk 디렉토리 생성
         vtk_dir = os.path.dirname(vtk_path)
@@ -30,7 +78,13 @@ def convert_frd_to_vtk(frd_path, vtk_path):
             if os.path.exists(vtk_path):
                 os.remove(vtk_path)
             os.rename(generated_vtk, vtk_path)
-            return True, "변환 성공"
+            
+            # VTK 형식 수정
+            fix_success, fix_message = fix_vtk_format(vtk_path)
+            if fix_success:
+                return True, f"변환 성공 ({fix_message})"
+            else:
+                return True, f"변환 성공 (형식 수정 실패: {fix_message})"
         else:
             return False, "VTK 파일이 생성되지 않았습니다"
             
