@@ -130,7 +130,8 @@ layout = dbc.Container(
                             placeholder="노드 목록 (예: [(1,0),(1,1),(0,1),(0,0)])",
                             rows=3, className="mb-2"),
                 dbc.Input(id="add-h", placeholder="높이 H", type="number", className="mb-2"),
-                dbc.Input(id="add-unit", placeholder="해석 단위(con_unit, m)", type="number", className="mb-2"),
+                dbc.Input(id="add-unit", placeholder="해석 단위(con_unit, m)", type="number", 
+                         min=0.1, max=1.0, step=0.1, className="mb-2"),
                 html.Hr(),
                 html.H6("콘크리트 물성치", className="mb-2"),
                 dbc.Row([
@@ -183,7 +184,8 @@ layout = dbc.Container(
                 dbc.Alert(id="edit-alert", is_open=False, duration=3000, color="danger"),
                 dbc.Textarea(id="edit-nodes", rows=3, placeholder="노드 목록", className="mb-2"),
                 dbc.Input(id="edit-h", type="number", placeholder="높이 H", className="mb-2"),
-                dbc.Input(id="edit-unit", type="number", placeholder="해석 단위(con_unit, m)", className="mb-2"),
+                dbc.Input(id="edit-unit", type="number", placeholder="해석 단위(con_unit, m)", 
+                         min=0.1, max=1.0, step=0.1, className="mb-2"),
                 html.Hr(),
                 html.H6("콘크리트 물성치", className="mb-2"),
                 dbc.Row([
@@ -372,9 +374,36 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t, a, p, d):
     if a    is None:   missing.append("열팽창계수")
     if p    is None:   missing.append("포아송비")
     if d    is None:   missing.append("밀도")
+    
+    # 2) 범위 체크
+    range_errors = []
+    if unit is not None and (unit < 0.1 or unit > 1.0):
+        range_errors.append("해석 단위(0.1~1.0)")
+    if b is not None and (b < 0.1 or b > 1.0):
+        range_errors.append("베타 상수(0.1~1.0)")
+    if n is not None and (n < 0.5 or n > 0.7):
+        range_errors.append("N 상수(0.5~0.7)")
+    if a is not None and (a < 0.1 or a > 10.0):
+        range_errors.append("열팽창계수(0.1~10.0)")
+    if p is not None and (p < 0.01 or p > 1.0):
+        range_errors.append("포아송비(0.01~1.0)")
+    if d is not None and (d < 500 or d > 5000):
+        range_errors.append("밀도(500~5000)")
+
     if missing:
         return (
             f"{', '.join(missing)}을(를) 입력해주세요.",  # add-alert.children
+            True,                                       # add-alert.is_open
+            dash.no_update,                             # tbl.data_timestamp
+            True,                                       # modal-add.is_open
+            "",                                         # msg.children
+            "",                                         # msg.color
+            False                                       # msg.is_open
+        )
+    
+    if range_errors:
+        return (
+            f"다음 항목의 값이 허용 범위를 벗어났습니다: {', '.join(range_errors)}",
             True,                                       # add-alert.is_open
             dash.no_update,                             # tbl.data_timestamp
             True,                                       # modal-add.is_open
@@ -571,7 +600,7 @@ def edit_preview(_, nodes_txt, h):
     State("edit-d",       "value"),
     prevent_initial_call=True
 )
-def save_edit(n_clicks, cid, name, nodes_txt, h, unit, e, b, n, t, a, p, d):
+def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t, a, p, d):
     if not n_clicks:
         raise PreventUpdate
 
@@ -582,16 +611,40 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, e, b, n, t, a, p, d):
     if not nodes_txt:  missing.append("노드 목록")
     if h    is None:   missing.append("높이 H")
     if unit is None:   missing.append("해석 단위")
-    if e    is None:   missing.append("탄성계수")
     if b    is None:   missing.append("베타 상수")
     if n    is None:   missing.append("N 상수")
     if t    is None:   missing.append("타설 시간")
     if a    is None:   missing.append("열팽창계수")
     if p    is None:   missing.append("포아송비")
     if d    is None:   missing.append("밀도")
+    
+    # 2) 범위 체크
+    range_errors = []
+    if unit is not None and (unit < 0.1 or unit > 1.0):
+        range_errors.append("해석 단위(0.1~1.0)")
+    if b is not None and (b < 0.1 or b > 1.0):
+        range_errors.append("베타 상수(0.1~1.0)")
+    if n is not None and (n < 0.5 or n > 0.7):
+        range_errors.append("N 상수(0.5~0.7)")
+    if a is not None and (a < 0.1 or a > 10.0):
+        range_errors.append("열팽창계수(0.1~10.0)")
+    if p is not None and (p < 0.01 or p > 1.0):
+        range_errors.append("포아송비(0.01~1.0)")
+    if d is not None and (d < 500 or d > 5000):
+        range_errors.append("밀도(500~5000)")
+
     if missing:
         return (
             f"{', '.join(missing)}을(를) 입력해주세요.",
+            True,                  # edit-alert 열기
+            dash.no_update,        # 테이블 미갱신
+            True,                  # 모달 닫지 않음
+            "", "", False          # 전역 msg 없음
+        )
+    
+    if range_errors:
+        return (
+            f"다음 항목의 값이 허용 범위를 벗어났습니다: {', '.join(range_errors)}",
             True,                  # edit-alert 열기
             dash.no_update,        # 테이블 미갱신
             True,                  # 모달 닫지 않음
