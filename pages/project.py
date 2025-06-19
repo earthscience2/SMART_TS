@@ -244,7 +244,7 @@ def on_project_change(selected_proj):
     title = f"{proj_name} · 콘크리트 전체"
     return table_data, columns, [], True, True, title, 0, 5, 0, {}, None
 
-# ───────────────────── ③ 콘크리트 선택 콜백 ─────────────────────
+# ───────────────────── ③ 콘크리트 선택 콜백 ────────────────────
 @callback(
     Output("btn-concrete-del", "disabled", allow_duplicate=True),
     Output("btn-concrete-analyze", "disabled", allow_duplicate=True),
@@ -1402,7 +1402,12 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
         hoverinfo='skip', name='Z-section', showlegend=False
     ))
     # X 단면 (x ≈ x0, 리니어 보간, 컬러바 없음)
-    tol = 0.05
+    # 슬라이싱 허용 오차를 콘크리트 크기에 비례하도록 동적으로 계산
+    dx = x_max - x_min
+    dy = y_max - y_min
+    dz = z_max - z_min
+    tol = max(dx, dy, dz) * 0.02  # 전체 치수의 약 2%
+    tol = max(tol, 0.01)  # 최소 1 cm 보장
     mask_x = np.abs(x_coords - x0) < tol
     if np.any(mask_x):
         yb, zb, tb = y_coords[mask_x], z_coords[mask_x], temps[mask_x]
@@ -1911,7 +1916,8 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         ds_for_vis = ds
         if slice_enable and "on" in slice_enable:
             try:
-                slice_value = slice_min + (slice_max - slice_min) * slice_slider
+                # 슬라이더의 값을 절대 좌표로 직접 사용하도록 변경
+                slice_value = slice_slider
                 
                 # 방법 1: vtkTableBasedClipDataSet 사용 (더 안정적)
                 clipper = vtk.vtkTableBasedClipDataSet()
@@ -2200,7 +2206,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             if color_range:
                 label += f" | 값 범위: {color_range[0]:.2f} ~ {color_range[1]:.2f}"
             if slice_enable and "on" in slice_enable:
-                slice_value = slice_min + (slice_max - slice_min) * slice_slider
+                slice_value = slice_slider
                 if slice_axis == "X":
                     label += f" | X ≥ {slice_value:.2f} 영역"
                 elif slice_axis == "Y":
