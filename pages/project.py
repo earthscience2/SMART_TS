@@ -1854,12 +1854,11 @@ def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_dat
             if mesh_state is None or not isinstance(mesh_state, dict):
                 raise ValueError("mesh_state가 올바르지 않습니다")
             
-            # 필수 키들이 있는지 확인
-            required_keys = ['points', 'cells']
-            for key in required_keys:
-                if key not in mesh_state:
-                    raise ValueError(f"mesh_state에 {key}가 없습니다")
-                
+            # mesh_state 구조는 dash_vtk 버전에 따라 다릅니다.
+            # 'mesh' 키 또는 'points' 키 중 하나라도 있으면 정상으로 간주
+            if not (('mesh' in mesh_state) or ('points' in mesh_state)):
+                raise ValueError("mesh_state에 필수 데이터가 없습니다")
+            
         except Exception as mesh_error:
             print(f"mesh_state 생성 오류: {mesh_error}")
             return html.Div([
