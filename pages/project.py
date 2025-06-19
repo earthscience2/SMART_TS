@@ -933,7 +933,8 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     html.Label("절단 위치 (선택 위치 이상 영역 표시)", style={"fontSize": "12px", "marginBottom": "2px"}),
                     dcc.Slider(
                         id="slice-slider",
-                        min=0, max=1, step=0.02, value=0.5,
+                        min=0, max=1, step=0.1, value=0.5,
+                        marks={0: '0.0', 1: '1.0'},
                         tooltip={"placement": "bottom", "always_visible": True},
                     )
                 ], md=8),
