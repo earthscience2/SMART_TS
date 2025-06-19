@@ -924,8 +924,10 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             # 3D 뷰어
             html.Div(id="analysis-3d-viewer", style={"height": "60vh"}),
 
-            # 컬러바
-            dcc.Graph(id="analysis-colorbar", style={"height":"120px"})
+            # 컬러바 (조건부 표시)
+            html.Div(id="analysis-colorbar-container", children=[
+                dcc.Graph(id="analysis-colorbar", style={"height":"120px", "display": "none"})
+            ])
             
         ]), f"수치해석 결과 ({len(files)}개 파일)"
     elif active_tab == "tab-inp-files":
@@ -1903,12 +1905,46 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             if arr is None:
                 field_name = None  # 필드가 없으면 기본 시각화로 변경
         
+        # 단면 적용 (slice_enable에 "on"이 있으면 활성화)
+        ds_for_vis = ds
+        if slice_enable and "on" in slice_enable:
+            try:
+                # 평면 생성
+                plane = vtk.vtkPlane()
+                if slice_axis == "X":
+                    slice_value = slice_min + (slice_max - slice_min) * slice_slider
+                    plane.SetOrigin(slice_value, 0, 0)
+                    plane.SetNormal(1, 0, 0)
+                elif slice_axis == "Y":
+                    slice_value = slice_min + (slice_max - slice_min) * slice_slider
+                    plane.SetOrigin(0, slice_value, 0)
+                    plane.SetNormal(0, 1, 0)
+                else:  # Z
+                    slice_value = slice_min + (slice_max - slice_min) * slice_slider
+                    plane.SetOrigin(0, 0, slice_value)
+                    plane.SetNormal(0, 0, 1)
+                
+                # 절단기 적용
+                cutter = vtk.vtkCutter()
+                cutter.SetInputData(ds)
+                cutter.SetCutFunction(plane)
+                cutter.Update()
+                ds_for_vis = cutter.GetOutput()
+                
+                if ds_for_vis.GetNumberOfPoints() == 0:
+                    # 절단된 결과가 없으면 원본 사용
+                    ds_for_vis = ds
+                    
+            except Exception as slice_error:
+                print(f"단면 적용 오류: {slice_error}")
+                ds_for_vis = ds
+        
         # 메시 상태 생성 (더 안전한 방식)
         try:
             if field_name:
-                mesh_state = to_mesh_state(ds, field_name)
+                mesh_state = to_mesh_state(ds_for_vis, field_name)
             else:
-                mesh_state = to_mesh_state(ds)
+                mesh_state = to_mesh_state(ds_for_vis)
             
             # mesh_state 검증
             if mesh_state is None or not isinstance(mesh_state, dict):
@@ -1928,16 +1964,58 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 html.P(f"점 개수: {num_points}"),
                 html.Hr(),
                 html.P("VTK 파일 형식을 확인해주세요. FRD → VTK 변환이 올바르게 되었는지 점검이 필요합니다.", style={"color": "gray"})
-            ]), f"파일: {selected_file}", go.Figure()
+            ]), f"파일: {selected_file}", go.Figure(), slice_min, slice_max
         
         # 컬러 데이터 범위 추출
         color_range = None
+        colorbar_fig = go.Figure()
         if field_name:
-            arr = ds.GetPointData().GetArray(field_name)
+            arr = ds_for_vis.GetPointData().GetArray(field_name)
             if arr is not None:
                 range_val = arr.GetRange()
                 if range_val[0] != range_val[1]:  # 값이 모두 같지 않을 때만 범위 설정
                     color_range = [range_val[0], range_val[1]]
+                    
+                    # 컬러바 생성
+                    try:
+                        # 프리셋에 따른 컬러스케일 매핑
+                        colorscale_map = {
+                            "rainbow": [[0, 'blue'], [0.25, 'cyan'], [0.5, 'green'], [0.75, 'yellow'], [1, 'red']],
+                            "Cool to Warm": [[0, 'blue'], [0.5, 'white'], [1, 'red']],
+                            "Grayscale": [[0, 'black'], [1, 'white']],
+                            "viridis": 'viridis',
+                            "plasma": 'plasma'
+                        }
+                        
+                        colorbar_fig = go.Figure(data=go.Scatter(
+                            x=[None], y=[None],
+                            mode='markers',
+                            marker=dict(
+                                colorscale=colorscale_map.get(preset, 'viridis'),
+                                cmin=color_range[0],
+                                cmax=color_range[1],
+                                colorbar=dict(
+                                    title=dict(text="값", font=dict(size=14)),
+                                    thickness=15,
+                                    len=0.7,
+                                    x=0.5,
+                                    xanchor="center",
+                                    tickfont=dict(size=12)
+                                ),
+                                showscale=True
+                            )
+                        ))
+                        colorbar_fig.update_layout(
+                            showlegend=False,
+                            xaxis=dict(visible=False),
+                            yaxis=dict(visible=False),
+                            margin=dict(l=0, r=0, t=10, b=0),
+                            height=120,
+                            plot_bgcolor='rgba(0,0,0,0)',
+                            paper_bgcolor='rgba(0,0,0,0)'
+                        )
+                    except Exception as colorbar_error:
+                        print(f"컬러바 생성 오류: {colorbar_error}")
         
         # 기본 프리셋 설정
         if not preset:
@@ -1954,11 +2032,9 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             if color_range:
                 geometry_rep.colorDataRange = color_range
             
-            # --- Bounding box wireframe 추가 ---
+            # --- Bounding box wireframe 추가 (원본 데이터 기준) ---
+            view_children = [geometry_rep]
             try:
-                bounds = ds.GetBounds()  # (xmin,xmax,ymin,ymax,zmin,zmax)
-                xmin,xmax,ymin,ymax,zmin,zmax = bounds
-                import vtk
                 pts = vtk.vtkPoints()
                 corners = [
                     (xmin,ymin,zmin), (xmax,ymin,zmin), (xmax,ymax,zmin), (xmin,ymax,zmin),
@@ -1986,16 +2062,20 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                     opacity=0.3,
                     children=[dash_vtk.Mesh(state=bbox_state)]
                 )
-                view_children = [geometry_rep, bbox_rep]
-            except Exception:
-                view_children = [geometry_rep]
+                view_children.append(bbox_rep)
+            except Exception as bbox_error:
+                print(f"바운딩 박스 생성 오류: {bbox_error}")
             
             vtk_viewer = dash_vtk.View(view_children, style={"height": "60vh", "width": "100%"})
             
             label = f"파일: {selected_file}"
             if color_range:
                 label += f" | 값 범위: {color_range[0]:.2f} ~ {color_range[1]:.2f}"
-            return vtk_viewer, label, go.Figure()
+            if slice_enable and "on" in slice_enable:
+                slice_value = slice_min + (slice_max - slice_min) * slice_slider
+                label += f" | {slice_axis} 단면: {slice_value:.2f}"
+                
+            return vtk_viewer, label, colorbar_fig, slice_min, slice_max
             
         except Exception as vtk_error:
             print(f"dash_vtk 컴포넌트 생성 오류: {vtk_error}")
@@ -2005,7 +2085,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 html.P(f"오류: {str(vtk_error)}"),
                 html.Hr(),
                 html.P("브라우저를 새로고침하거나 다른 파일을 선택해보세요.", style={"color": "gray"})
-            ]), f"파일: {selected_file}", go.Figure()
+            ]), f"파일: {selected_file}", go.Figure(), slice_min, slice_max
         
     except Exception as e:
         print(f"VTK 처리 전체 오류: {e}")
@@ -2016,4 +2096,16 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             html.P(f"오류: {str(e)}"),
             html.Hr(),
             html.P("다른 파일을 선택하거나 VTK 파일을 확인해주세요.", style={"color": "gray"})
-        ]), f"파일: {selected_file}", go.Figure()
+        ]), f"파일: {selected_file}", go.Figure(), 0.0, 1.0
+
+# 수치해석 컬러바 표시/숨김 콜백
+@callback(
+    Output("analysis-colorbar", "style"),
+    Input("analysis-field-dropdown", "value"),
+    prevent_initial_call=True,
+)
+def toggle_colorbar_visibility(field_name):
+    if field_name:
+        return {"height": "120px", "display": "block"}
+    else:
+        return {"height": "120px", "display": "none"}
