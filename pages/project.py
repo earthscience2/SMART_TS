@@ -452,47 +452,29 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         poly_nodes = None
         poly_h = None
 
-    # 1. 3D 볼륨 렌더링 (기존 시각화 스타일로 복구)
-    # 좌표 배열 생성
-    coords = np.column_stack((x_coords, y_coords, z_coords))
+    # 1. 3D 볼륨 렌더링 (노드 기반, 원래 방식)
+    coords = np.array([[x, y, z] for x, y, z in zip(x_coords, y_coords, z_coords)])
+    temps = np.array(temps)
     fig_3d = go.Figure(data=go.Volume(
         x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
-        opacity=0.1, surface_count=15,  # 더 풍부한 컬러층
-        colorscale=[[0, 'blue'], [1, 'red']],
-        showscale=False, cmin=tmin, cmax=tmax
+        opacity=0.1, surface_count=15, colorscale=[[0, 'blue'], [1, 'red']],
+        colorbar=None, cmin=tmin, cmax=tmax, showscale=False
     ))
-
-    # --- XYZ 축 화살표 추가 (가시성 개선) ---
+    # XYZ 축 화살표 추가
     try:
-        # 좌표 범위 계산
-        x_min, x_max = float(np.min(x_coords)), float(np.max(x_coords))
-        y_min, y_max = float(np.min(y_coords)), float(np.max(y_coords))
-        z_min, z_max = float(np.min(z_coords)), float(np.max(z_coords))
-
         L_axis = max(x_max - x_min, y_max - y_min, z_max - z_min) * 0.15
         ox, oy, oz = x_min, y_min, z_min
-
-        # X
         fig_3d.add_trace(go.Scatter3d(x=[ox, ox+L_axis], y=[oy, oy], z=[oz, oz],
-                                      mode='lines', line=dict(color='red', width=5), showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(x=[ox+L_axis], y=[oy], z=[oz],
-                                      mode='markers+text', marker=dict(size=4, color='red'),
-                                      text=['X'], showlegend=False, hoverinfo='skip'))
-        # Y
+                                      mode='lines', line=dict(color='red', width=4), showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(x=[ox+L_axis], y=[oy], z=[oz], mode='text', text=['X'], showlegend=False, hoverinfo='skip'))
         fig_3d.add_trace(go.Scatter3d(x=[ox, ox], y=[oy, oy+L_axis], z=[oz, oz],
-                                      mode='lines', line=dict(color='green', width=5), showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(x=[ox], y=[oy+L_axis], z=[oz],
-                                      mode='markers+text', marker=dict(size=4, color='green'),
-                                      text=['Y'], showlegend=False, hoverinfo='skip'))
-        # Z
+                                      mode='lines', line=dict(color='green', width=4), showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(x=[ox], y=[oy+L_axis], z=[oz], mode='text', text=['Y'], showlegend=False, hoverinfo='skip'))
         fig_3d.add_trace(go.Scatter3d(x=[ox, ox], y=[oy, oy], z=[oz, oz+L_axis],
-                                      mode='lines', line=dict(color='blue', width=5), showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(x=[ox], y=[oy], z=[oz+L_axis],
-                                      mode='markers+text', marker=dict(size=4, color='blue'),
-                                      text=['Z'], showlegend=False, hoverinfo='skip'))
-    except Exception as axis_err:
-        print('축 렌더링 오류:', axis_err)
-
+                                      mode='lines', line=dict(color='blue', width=4), showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(x=[ox], y=[oy], z=[oz+L_axis], mode='text', text=['Z'], showlegend=False, hoverinfo='skip'))
+    except Exception:
+        pass
     # 3D 뷰 시점 고정 및 경계선 추가
     fig_3d.update_layout(
         uirevision='constant',  # 시점 고정
@@ -1570,21 +1552,12 @@ def update_temp_tab(store_data, x, y, z, selected_rows, tbl_data):
         zmin, zmax = 0.0, float(poly_h)
         L_axis = max(xmax - xmin, ymax - ymin, zmax - zmin) * 0.15
         ox, oy, oz = xmin, ymin, zmin
-        # X
-        fig_3d.add_trace(go.Scatter3d(x=[ox, ox+L_axis], y=[oy, oy], z=[oz, oz],
-                                      mode='lines', line=dict(color='red', width=5), showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(x=[ox+L_axis], y=[oy], z=[oz],
-                                      mode='markers+text', marker=dict(size=4, color='red'), text=['X'], showlegend=False, hoverinfo='skip'))
-        # Y
-        fig_3d.add_trace(go.Scatter3d(x=[ox, ox], y=[oy, oy+L_axis], z=[oz, oz],
-                                      mode='lines', line=dict(color='green', width=5), showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(x=[ox], y=[oy+L_axis], z=[oz],
-                                      mode='markers+text', marker=dict(size=4, color='green'), text=['Y'], showlegend=False, hoverinfo='skip'))
-        # Z
-        fig_3d.add_trace(go.Scatter3d(x=[ox, ox], y=[oy, oy], z=[oz, oz+L_axis],
-                                      mode='lines', line=dict(color='blue', width=5), showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(x=[ox], y=[oy], z=[oz+L_axis],
-                                      mode='markers+text', marker=dict(size=4, color='blue'), text=['Z'], showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(x=[ox, ox+L_axis], y=[oy, oy], z=[oz, oz], mode='lines', line=dict(color='red', width=4), showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(x=[ox+L_axis], y=[oy], z=[oz], mode='text', text=['X'], showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(x=[ox, ox], y=[oy, oy+L_axis], z=[oz, oz], mode='lines', line=dict(color='green', width=4), showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(x=[ox], y=[oy+L_axis], z=[oz], mode='text', text=['Y'], showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(x=[ox, ox], y=[oy, oy], z=[oz, oz+L_axis], mode='lines', line=dict(color='blue', width=4), showlegend=False, hoverinfo='skip'))
+        fig_3d.add_trace(go.Scatter3d(x=[ox], y=[oy], z=[oz+L_axis], mode='text', text=['Z'], showlegend=False, hoverinfo='skip'))
     except Exception:
         pass
     # 입력 위치 표시 + 보조선
@@ -1835,7 +1808,6 @@ def select_deselect_all_vtp(n_all, n_none, table_data):
     Output("analysis-colorbar", "figure"),
     Output("slice-slider", "min"),
     Output("slice-slider", "max"),
-    Output("slice-slider", "marks"),
     Input("analysis-field-dropdown", "value"),
     Input("analysis-preset-dropdown", "value"),
     Input("analysis-time-slider", "value"),
@@ -1852,7 +1824,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
     from dash_vtk.utils import to_mesh_state
     
     if not selected_rows or not tbl_data:
-        return html.Div("콘크리트를 선택하세요."), "", go.Figure(), 0.0, 1.0, {}
+        return html.Div("콘크리트를 선택하세요."), "", go.Figure(), 0.0, 1.0
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
@@ -1867,7 +1839,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         vtp_files = sorted([f for f in os.listdir(assets_vtp_dir) if f.endswith('.vtp')])
     
     if not vtk_files and not vtp_files:
-        return html.Div("VTK/VTP 파일이 없습니다."), "", go.Figure(), 0.0, 1.0, {}
+        return html.Div("VTK/VTP 파일이 없습니다."), "", go.Figure(), 0.0, 1.0
     
     from datetime import datetime
     times = []
@@ -1890,7 +1862,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             continue
     
     if not times:
-        return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다."), "", go.Figure(), 0.0, 1.0, {}
+        return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다."), "", go.Figure(), 0.0, 1.0
     
     times.sort()
     max_idx = len(times) - 1
@@ -1929,7 +1901,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             return html.Div([
                 html.H5("VTK 파일 읽기 실패", style={"color": "red"}),
                 html.P(f"파일: {selected_file}")
-            ]), f"파일: {selected_file}", go.Figure(), 0.0, 1.0, {}
+            ]), f"파일: {selected_file}", go.Figure(), 0.0, 1.0
         
         # 점의 개수 확인
         num_points = ds.GetNumberOfPoints()
@@ -1938,7 +1910,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 html.H5("빈 데이터셋", style={"color": "red"}),
                 html.P(f"파일: {selected_file}"),
                 html.P("점이 없는 데이터셋입니다.")
-            ]), f"파일: {selected_file}", go.Figure(), 0.0, 1.0, {}
+            ]), f"파일: {selected_file}", go.Figure(), 0.0, 1.0
         
         # 바운딩 박스 정보 추출 (단면 슬라이더용)
         bounds = ds.GetBounds()  # (xmin,xmax,ymin,ymax,zmin,zmax)
@@ -2133,7 +2105,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 html.P(f"셀 개수: {ds_for_vis.GetNumberOfCells()}"),
                 html.Hr(),
                 html.P("VTK 파일 형식을 확인해주세요. FRD → VTK 변환이 올바르게 되었는지 점검이 필요합니다.", style={"color": "gray"})
-            ]), f"파일: {selected_file}", go.Figure(), 0.0, 1.0, {}
+            ]), f"파일: {selected_file}", go.Figure(), slice_min, slice_max
         
         # 컬러 데이터 범위 추출
         color_range = None
@@ -2270,7 +2242,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 html.P(f"오류: {str(vtk_error)}"),
                 html.Hr(),
                 html.P("브라우저를 새로고침하거나 다른 파일을 선택해보세요.", style={"color": "gray"})
-            ]), f"파일: {selected_file}", go.Figure(), slice_min, slice_max, {}
+            ]), f"파일: {selected_file}", go.Figure(), slice_min, slice_max
         
     except Exception as e:
         print(f"VTK 처리 전체 오류: {e}")
@@ -2281,7 +2253,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             html.P(f"오류: {str(e)}"),
             html.Hr(),
             html.P("다른 파일을 선택하거나 VTK 파일을 확인해주세요.", style={"color": "gray"})
-        ]), f"파일: {selected_file}", go.Figure(), 0.0, 1.0, {}
+        ]), f"파일: {selected_file}", go.Figure(), 0.0, 1.0
 
 # 수치해석 컬러바 표시/숨김 콜백
 @callback(
