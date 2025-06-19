@@ -1731,7 +1731,7 @@ def select_deselect_all_vtp(n_all, n_none, table_data):
     Output("analysis-3d-viewer", "children"),
     Input("analysis-field-dropdown", "value"),
     Input("analysis-preset-dropdown", "value"),
-    Input("frd-time-slider", "value"),
+    Input("analysis-time-slider", "value"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
@@ -1740,30 +1740,37 @@ def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_dat
     import os
     import vtk
     from dash_vtk.utils import to_mesh_state
+    
     if not selected_rows or not tbl_data:
         return html.Div("콘크리트를 선택하세요.")
+    
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
     assets_vtk_dir = f"assets/vtk/{concrete_pk}"
     assets_vtp_dir = f"assets/vtp/{concrete_pk}"
+    
     vtk_files = []
     vtp_files = []
     if os.path.exists(assets_vtk_dir):
         vtk_files = sorted([f for f in os.listdir(assets_vtk_dir) if f.endswith('.vtk')])
     if os.path.exists(assets_vtp_dir):
         vtp_files = sorted([f for f in os.listdir(assets_vtp_dir) if f.endswith('.vtp')])
+    
     if not vtk_files and not vtp_files:
         return html.Div("VTK/VTP 파일이 없습니다.")
+    
     from datetime import datetime
     times = []
     file_type = None
     files = []
+    
     if vtk_files:
         files = vtk_files
         file_type = 'vtk'
     elif vtp_files:
         files = vtp_files
         file_type = 'vtp'
+    
     for f in files:
         try:
             time_str = os.path.splitext(f)[0]
@@ -1771,14 +1778,22 @@ def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_dat
             times.append((dt, f))
         except:
             continue
+    
     if not times:
         return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다.")
+    
     times.sort()
-    max_idx = len(times)-1
-    slider_value = max_idx  # ← time_idx 대신 slider_value 사용
-    idx = slider_value
+    max_idx = len(times) - 1
+    
+    # 시간 인덱스 처리
+    if time_idx is None:
+        idx = max_idx
+    else:
+        idx = min(int(time_idx), max_idx)
+    
     selected_file = times[idx][1]
     file_path = os.path.join(assets_vtk_dir if file_type=='vtk' else assets_vtp_dir, selected_file)
+    
     try:
         if file_type == 'vtk':
             reader = vtk.vtkUnstructuredGridReader()
@@ -1790,13 +1805,21 @@ def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_dat
             reader.SetFileName(file_path)
             reader.Update()
             ds = reader.GetOutput()
+        
+        # 메시 상태 생성
         mesh_state = to_mesh_state(ds, field_name) if field_name else to_mesh_state(ds)
+        
         # 컬러 데이터 범위 추출
         color_range = None
         if field_name:
             arr = ds.GetPointData().GetArray(field_name)
             if arr is not None:
                 color_range = [arr.GetRange()[0], arr.GetRange()[1]]
+        
+        # 기본 프리셋 설정
+        if not preset:
+            preset = "rainbow"
+        
         # dash_vtk.Mesh로 시각화
         vtk_viewer = dash_vtk.View([
             dash_vtk.GeometryRepresentation(
@@ -1805,7 +1828,9 @@ def update_analysis_3d_view(field_name, preset, time_idx, selected_rows, tbl_dat
                 children=[dash_vtk.Mesh(state=mesh_state)]
             )
         ], style={"height": "60vh", "width": "100%"})
+        
         return vtk_viewer
+        
     except Exception as e:
         return html.Div([
             html.H5("VTK/VTP 파싱 오류", style={"color": "red"}),
