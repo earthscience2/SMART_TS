@@ -611,6 +611,11 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 title="콘크리트를 선택하고 시간을 조절하세요"
             )
             slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
+        # 현재 파일 제목이 없으면 viewer_data에서 가져오기
+        display_title = current_file_title
+        if not display_title and viewer_data and 'current_file_title' in viewer_data:
+            display_title = viewer_data['current_file_title']
+        
         return html.Div([
             # 시간 슬라이더 (3D 뷰 위에 배치)
             html.Div([
@@ -624,7 +629,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     marks=slider_marks,
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
-                html.Div(current_file_title, style={"textAlign": "center", "fontSize": "14px", "color": "#666", "marginTop": "8px"}),
+                html.Div(id="main-file-title", children=display_title, style={"textAlign": "center", "fontSize": "14px", "color": "#666", "marginTop": "8px"}),
             ], className="mb-3"),
             dbc.Row([
                 dbc.Col([
@@ -649,6 +654,12 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             slider_value = slider.get('value', 0)
         else:
             slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
+        
+        # 현재 파일 제목이 없으면 viewer_data에서 가져오기
+        section_display_title = current_file_title
+        if not section_display_title and viewer_data and 'current_file_title' in viewer_data:
+            section_display_title = viewer_data['current_file_title']
+        
         return html.Div([
             # 시간 슬라이더 (상단)
             html.Div([
@@ -662,7 +673,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     marks=slider_marks,
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
-                html.Div(id="section-file-title", children=current_file_title, style={"textAlign": "center", "fontSize": "14px", "color": "#666", "marginTop": "8px"}),
+                html.Div(id="section-file-title", children=section_display_title, style={"textAlign": "center", "fontSize": "14px", "color": "#666", "marginTop": "8px"}),
             ], className="mb-3"),
             # 입력창 (x, y, z)
             html.Div([
@@ -1508,6 +1519,15 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
         current_file_title = f"{os.path.basename(current_file)}"
     # step=0.1로 반환
     return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, current_file_title
+
+# 3D 뷰 탭 시간 정보 업데이트 콜백
+@callback(
+    Output("main-file-title", "children"),
+    Input("current-file-title-store", "data"),
+    prevent_initial_call=True,
+)
+def update_main_file_title(current_file_title):
+    return current_file_title if current_file_title else ""
 
 # 단면도 탭 시간 정보 업데이트 콜백
 @callback(
