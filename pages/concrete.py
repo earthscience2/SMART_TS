@@ -324,19 +324,38 @@ def show_selected(sel, data):
         con_t_formatted = 'N/A'
     
     # 상세 정보를 포함한 제목 생성
-    title_parts = [
-        f"{row['name']}",
-        f"해석단위: {row.get('con_unit', 'N/A')}m",
-        f"베타: {row.get('con_b', 'N/A')}",
-        f"N: {row.get('con_n', 'N/A')}",
-        f"타설시간: {con_t_formatted}",
-        f"열팽창계수: {row.get('con_a', 'N/A')}×10⁻⁵/°C",
-        f"포아송비: {row.get('con_p', 'N/A')}",
-        f"밀도: {row.get('con_d', 'N/A')}kg/m³"
-    ]
     title = html.Div([
-        html.H5(title_parts[0], className="mb-2"),
-        html.P(" | ".join(title_parts[1:]), className="text-muted small mb-0")
+        html.H5(f"{row['name']}", className="mb-3"),
+        dbc.Row([
+            dbc.Col([
+                html.Small("해석단위", className="text-muted d-block"),
+                html.Strong(f"{row.get('con_unit', 'N/A')}m")
+            ], width=2),
+            dbc.Col([
+                html.Small("베타", className="text-muted d-block"),
+                html.Strong(f"{row.get('con_b', 'N/A')}")
+            ], width=1),
+            dbc.Col([
+                html.Small("N", className="text-muted d-block"),
+                html.Strong(f"{row.get('con_n', 'N/A')}")
+            ], width=1),
+            dbc.Col([
+                html.Small("포아송비", className="text-muted d-block"),
+                html.Strong(f"{row.get('con_p', 'N/A')}")
+            ], width=2),
+            dbc.Col([
+                html.Small("밀도", className="text-muted d-block"),
+                html.Strong(f"{row.get('con_d', 'N/A')}kg/m³")
+            ], width=2),
+            dbc.Col([
+                html.Small("열팽창계수", className="text-muted d-block"),
+                html.Strong(f"{row.get('con_a', 'N/A')}×10⁻⁵/°C")
+            ], width=2),
+            dbc.Col([
+                html.Small("타설시간", className="text-muted d-block"),
+                html.Strong(con_t_formatted, className="small")
+            ], width=2),
+        ], className="g-2")
     ])
 
     # activate 체크 (없으면 1로 간주)
