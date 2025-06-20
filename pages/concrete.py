@@ -85,7 +85,7 @@ layout = dbc.Container(
     fluid=True,
     children=[
         dbc.Row([
-            # 좌측: 프로젝트 드롭다운 + 콘크리트 목록 + 상세정보
+            # 좌측: 프로젝트 드롭다운 + 상세정보 + 콘크리트 목록
             dbc.Col([
                 dcc.Dropdown(
                     id="project-dropdown",
@@ -94,11 +94,13 @@ layout = dbc.Container(
                     clearable=False,
                     className="mb-3"
                 ),
+                html.Div(id="concrete-details", className="mb-3"),
+                html.Hr(className="my-2"),
                 dash_table.DataTable(
                     id="tbl",
-                    page_size=15,
+                    page_size=5,
                     row_selectable="single",
-                    style_table={"overflowY": "auto", "height": "40vh"},
+                    style_table={"overflowY": "auto", "height": "30vh"},
                     style_cell={"whiteSpace": "nowrap", "textAlign": "center"},
                     style_header={"backgroundColor": "#f1f3f5", "fontWeight": 600},
                 ),
@@ -107,8 +109,6 @@ layout = dbc.Container(
                     dbc.Button("수정", id="btn-edit", color="secondary", className="mt-2", disabled=True),
                     dbc.Button("삭제", id="btn-del",  color="danger", className="mt-2", disabled=True),
                 ], size="sm", vertical=True, className="w-100 mt-2"),
-                html.Hr(className="my-3"),
-                html.Div(id="concrete-details", className="mt-3"),
             ], md=4),
             # 우측: 3D 뷰
             dbc.Col([
