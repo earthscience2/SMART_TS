@@ -201,9 +201,13 @@ layout = dbc.Container(
                 ], className="mb-2"),
                 dbc.Row([
                     dbc.Col([
-                        dbc.Label("타설 시간 (YYYY-MM-DDTHH:MM)"),
-                        dbc.Input(id="edit-t", type="text", placeholder="예: 2024-01-15T14:30")
-                    ], width=12),
+                        dbc.Label("타설 날짜"),
+                        dbc.Input(id="edit-t-date", type="date", className="mb-1")
+                    ], width=6),
+                    dbc.Col([
+                        dbc.Label("타설 시간"),
+                        dbc.Input(id="edit-t-time", type="time", className="mb-1")
+                    ], width=6),
                 ], className="mb-2"),
                 dbc.Row([
                     dbc.Col([
@@ -579,19 +583,20 @@ def open_edit(b1, b2, sel, data):
 
 # ───────────────────── ⑧ 수정 필드 채우기
 @callback(
-    Output("edit-name",    "value"),
-    Output("edit-nodes",   "value"),
-    Output("edit-h",       "value"),
-    Output("edit-unit",    "value"),
-    Output("edit-b",       "value"),
-    Output("edit-n",       "value"),
-    Output("edit-t",       "value"),
-    Output("edit-a",       "value"),
-    Output("edit-p",       "value"),
-    Output("edit-d",       "value"),
-    Output("edit-preview", "figure"),
-    Input("modal-edit",    "is_open"),
-    State("edit-id",       "data"),
+    Output("edit-name",     "value"),
+    Output("edit-nodes",    "value"),
+    Output("edit-h",        "value"),
+    Output("edit-unit",     "value"),
+    Output("edit-b",        "value"),
+    Output("edit-n",        "value"),
+    Output("edit-t-date",   "value"),
+    Output("edit-t-time",   "value"),
+    Output("edit-a",        "value"),
+    Output("edit-p",        "value"),
+    Output("edit-d",        "value"),
+    Output("edit-preview",  "figure"),
+    Input("modal-edit",     "is_open"),
+    State("edit-id",        "data"),
     prevent_initial_call=True
 )
 def fill_edit(opened: bool, cid):
@@ -634,24 +639,27 @@ def fill_edit(opened: bool, cid):
     con_p    = row.get("con_p", "")
     con_d    = row.get("con_d", "")
     
-    # 타설 시간 포맷팅 (datetime-local 형식으로 변환)
+    # 타설 시간 포맷팅 (날짜와 시간 분리)
     con_t_raw = row.get("con_t", "")
     print(f"DEBUG: con_t_raw = {con_t_raw}, type = {type(con_t_raw)}")  # 디버깅
     
-    con_t = ""
+    con_t_date = ""
+    con_t_time = ""
+    
     if con_t_raw and con_t_raw not in ["", "N/A", None]:
         try:
             # 이미 datetime-local 형태인 경우 (예: 2024-01-01T10:00)
             if 'T' in str(con_t_raw) and not str(con_t_raw).startswith('P'):
                 from datetime import datetime
-                # ISO 형식인지 확인하고 datetime-local 형식으로 변환
+                # ISO 형식인지 확인하고 분리
                 if str(con_t_raw).endswith('Z'):
                     # UTC 시간인 경우 Z 제거
                     dt = datetime.fromisoformat(str(con_t_raw)[:-1])
                 else:
                     dt = datetime.fromisoformat(str(con_t_raw))
-                con_t = dt.strftime('%Y-%m-%dT%H:%M')
-                print(f"DEBUG: datetime format converted to {con_t}")
+                con_t_date = dt.strftime('%Y-%m-%d')
+                con_t_time = dt.strftime('%H:%M')
+                print(f"DEBUG: datetime format converted to date={con_t_date}, time={con_t_time}")
             # ISO 8601 duration 형태인 경우 (예: P0DT22H50M0S)
             elif str(con_t_raw).startswith('P'):
                 import re
@@ -674,32 +682,39 @@ def fill_edit(opened: bool, cid):
                 duration = timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
                 casting_time = now - duration
                 
-                # datetime-local 형식으로 변환
-                con_t = casting_time.strftime('%Y-%m-%dT%H:%M')
-                print(f"DEBUG: duration format converted to {con_t}")
+                # 날짜와 시간 분리
+                con_t_date = casting_time.strftime('%Y-%m-%d')
+                con_t_time = casting_time.strftime('%H:%M')
+                print(f"DEBUG: duration format converted to date={con_t_date}, time={con_t_time}")
             # 단순 문자열인 경우 기본값 설정
             else:
                 # 기본 현재 시간으로 설정
                 from datetime import datetime
-                con_t = datetime.now().strftime('%Y-%m-%dT%H:%M')
-                print(f"DEBUG: default time set to {con_t}")
+                now = datetime.now()
+                con_t_date = now.strftime('%Y-%m-%d')
+                con_t_time = now.strftime('%H:%M')
+                print(f"DEBUG: default time set to date={con_t_date}, time={con_t_time}")
         except Exception as e:
             print(f"DEBUG: Error parsing con_t: {e}")
             # 오류 발생 시 현재 시간으로 설정
             from datetime import datetime
-            con_t = datetime.now().strftime('%Y-%m-%dT%H:%M')
+            now = datetime.now()
+            con_t_date = now.strftime('%Y-%m-%d')
+            con_t_time = now.strftime('%H:%M')
     else:
         # 값이 없으면 현재 시간으로 설정
         from datetime import datetime
-        con_t = datetime.now().strftime('%Y-%m-%dT%H:%M')
-        print(f"DEBUG: no value, set to current time {con_t}")
+        now = datetime.now()
+        con_t_date = now.strftime('%Y-%m-%d')
+        con_t_time = now.strftime('%H:%M')
+        print(f"DEBUG: no value, set to current date={con_t_date}, time={con_t_time}")
     
-    print(f"DEBUG: Final con_t = {con_t}")
+    print(f"DEBUG: Final con_t_date = {con_t_date}, con_t_time = {con_t_time}")
 
     # 7) 3D 미리보기 생성
     fig = make_fig(dims.get("nodes", []), dims.get("h", 0))
 
-    return name, nodes, h_value, con_unit, con_b, con_n, con_t, con_a, con_p, con_d, fig
+    return name, nodes, h_value, con_unit, con_b, con_n, con_t_date, con_t_time, con_a, con_p, con_d, fig
 
 
 # ───────────────────── ⑨ 수정 미리보기
@@ -742,15 +757,27 @@ def edit_preview(_, nodes_txt, h):
     State("edit-unit",    "value"),
     State("edit-b",       "value"),
     State("edit-n",       "value"),
-    State("edit-t",       "value"),
+    State("edit-t-date",  "value"),
+    State("edit-t-time",  "value"),
     State("edit-a",       "value"),
     State("edit-p",       "value"),
     State("edit-d",       "value"),
     prevent_initial_call=True
 )
-def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t, a, p, d):
+def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, p, d):
     if not n_clicks:
         raise PreventUpdate
+
+    # 날짜와 시간 합치기
+    t = None
+    if t_date and t_time:
+        t = f"{t_date}T{t_time}"
+    elif t_date:
+        t = f"{t_date}T00:00"
+    elif t_time:
+        from datetime import datetime
+        today = datetime.now().strftime('%Y-%m-%d')
+        t = f"{today}T{t_time}"
 
     # 1) 빈값 체크
     missing = []
@@ -761,7 +788,7 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t, a, p, d):
     if unit is None:   missing.append("해석 단위")
     if b    is None:   missing.append("베타 상수")
     if n    is None:   missing.append("N 상수")
-    if t    is None:   missing.append("타설 시간")
+    if not t:          missing.append("타설 시간")
     if a    is None:   missing.append("열팽창계수")
     if p    is None:   missing.append("포아송비")
     if d    is None:   missing.append("밀도")
