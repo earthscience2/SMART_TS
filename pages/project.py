@@ -662,7 +662,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     marks=slider_marks,
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
-                html.Div(current_file_title, style={"textAlign": "center", "fontSize": "14px", "color": "#666", "marginTop": "8px"}),
+                html.Div(id="section-file-title", children=current_file_title, style={"textAlign": "center", "fontSize": "14px", "color": "#666", "marginTop": "8px"}),
             ], className="mb-3"),
             # 입력창 (x, y, z)
             html.Div([
@@ -1301,6 +1301,7 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     Output("section-x-input", "min"), Output("section-x-input", "max"), Output("section-x-input", "value"),
     Output("section-y-input", "min"), Output("section-y-input", "max"), Output("section-y-input", "value"),
     Output("section-z-input", "min"), Output("section-z-input", "max"), Output("section-z-input", "value"),
+    Output("current-file-title-store", "data", allow_duplicate=True),
     Input("time-slider-section", "value"),
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
@@ -1506,7 +1507,39 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
     except Exception:
         current_file_title = f"{os.path.basename(current_file)}"
     # step=0.1로 반환
-    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0
+    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, current_file_title
+
+# 단면도 탭 시간 정보 업데이트 콜백
+@callback(
+    Output("section-file-title", "children"),
+    Input("current-file-title-store", "data"),
+    prevent_initial_call=True,
+)
+def update_section_file_title(current_file_title):
+    return current_file_title if current_file_title else ""
+
+# 시간 슬라이더 동기화 콜백 (메인 3D 뷰 ↔ 단면도 탭)
+@callback(
+    Output("time-slider-section", "value", allow_duplicate=True),
+    Output("time-slider-section", "min", allow_duplicate=True),
+    Output("time-slider-section", "max", allow_duplicate=True),
+    Output("time-slider-section", "marks", allow_duplicate=True),
+    Input("time-slider", "value"),
+    Input("time-slider", "min"),
+    Input("time-slider", "max"),
+    Input("time-slider", "marks"),
+    prevent_initial_call=True,
+)
+def sync_time_sliders_to_section(main_value, main_min, main_max, main_marks):
+    return main_value, main_min, main_max, main_marks
+
+@callback(
+    Output("time-slider", "value", allow_duplicate=True),
+    Input("time-slider-section", "value"),
+    prevent_initial_call=True,
+)
+def sync_section_slider_to_main(section_value):
+    return section_value
 
 # 온도분포 탭 콜백: 입력값 변경 시 3D 뷰와 온도 정보 갱신
 @callback(
