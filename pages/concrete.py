@@ -583,7 +583,6 @@ def open_edit(b1, b2, sel, data):
     Output("edit-nodes",   "value"),
     Output("edit-h",       "value"),
     Output("edit-unit",    "value"),
-    Output("edit-e",       "value"),
     Output("edit-b",       "value"),
     Output("edit-n",       "value"),
     Output("edit-preview", "figure"),
@@ -625,14 +624,13 @@ def fill_edit(opened: bool, cid):
 
     # 6) 수정된 콘크리트의 속성들
     con_unit = row.get("con_unit", "")
-    con_e    = row.get("con_e", "")
     con_b    = row.get("con_b", "")
     con_n    = row.get("con_n", "")
 
     # 7) 3D 미리보기 생성
     fig = make_fig(dims.get("nodes", []), dims.get("h", 0))
 
-    return name, nodes, h_value, con_unit, con_e, con_b, con_n, fig
+    return name, nodes, h_value, con_unit, con_b, con_n, fig
 
 
 # ───────────────────── ⑨ 수정 미리보기
