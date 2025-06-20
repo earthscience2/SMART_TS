@@ -201,7 +201,6 @@ layout = dbc.Container(
                 ),
                 dbc.Col(
                     [
-                        html.H6(id="sensor-title", className="mb-2"),
                         dcc.Graph(
                             id="viewer-sensor",
                             style={"height": "75vh"},
@@ -332,7 +331,6 @@ def init_dropdown(selected_value):
 # ───────────────────── ② 콘크리트 선택 콜백 ─────────────────────
 @callback(
     Output("viewer-sensor", "figure"),
-    Output("sensor-title", "children"),
     Output("tbl-sensor", "data"),
     Output("tbl-sensor", "columns"),
     Output("tbl-sensor", "selected_rows"),
@@ -347,7 +345,7 @@ def init_dropdown(selected_value):
 )
 def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
     if not selected_conc:
-        return go.Figure(), "", [], [], [], True, True, True
+        return go.Figure(), [], [], [], True, True, True
 
     # ────────────────────────────────────────────────────────
     # 1) 콘크리트 정보 로드
@@ -358,7 +356,7 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
         conc_nodes, conc_h = dims["nodes"], dims["h"]
 
     except Exception:
-        return go.Figure(), "콘크리트 정보를 불러올 수 없음", [], [], [], True, True, True
+        return go.Figure(), [], [], [], True, True, True
 
     # 2) 기본 메쉬 생성
     fig = make_concrete_fig(conc_nodes, conc_h)
@@ -466,24 +464,21 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
         {"name": "위치 (x,y,z)",   "id": "position"},
     ]
 
-    title = f"{selected_conc} · 센서 전체"
-    
     # activate가 0이면 모든 버튼 비활성화
     if activate == 0:
-        return fig, title, table_data, columns, selected_indices, True, True, True
+        return fig, table_data, columns, selected_indices, True, True, True
     
     # activate가 1이면 센서 선택 여부에 따라 버튼 활성화/비활성화
     edit_disabled = not bool(selected_indices)
     del_disabled = not bool(selected_indices)
     add_disabled = False  # 추가 버튼은 항상 활성화 (activate=1일 때)
 
-    return fig, title, table_data, columns, selected_indices, edit_disabled, del_disabled, add_disabled
+    return fig, table_data, columns, selected_indices, edit_disabled, del_disabled, add_disabled
 
 
 # ───────────────────── ③ 센서 선택 콜백 ─────────────────────
 @callback(
     Output("viewer-sensor", "figure", allow_duplicate=True),
-    Output("sensor-title", "children", allow_duplicate=True),
     Output("btn-sensor-edit", "disabled", allow_duplicate=True),
     Output("btn-sensor-del", "disabled", allow_duplicate=True),
 
@@ -542,24 +537,18 @@ def on_sensor_select(selected_rows, tbl_data, current_fig, cam_store, selected_c
             base_title = fig.layout.title.text if (fig.layout and fig.layout.title) else ""
             base_conc = base_title.split("·")[0].strip() if base_title else ""
             # 센서 정보 가져오기
-            sensor_info = api_db.get_sensors_data(sensor_pk=sel_id).iloc[0]
-            title = f"{base_conc} · {sensor_info['device_id']} (채널: {sensor_info['channel']})"
         else:
             edit_disabled = True
             del_disabled = True
-            base_title = fig.layout.title.text if (fig.layout and fig.layout.title) else ""
-            title = base_title
     else:
         edit_disabled = True
         del_disabled = True
-        base_title = fig.layout.title.text if (fig.layout and fig.layout.title) else ""
-        title = base_title
 
     # 5) trace 업데이트
     sensor_trace.marker.color = new_colors
     sensor_trace.marker.size = new_sizes
 
-    return fig, title, edit_disabled, del_disabled
+    return fig, edit_disabled, del_disabled
 
 
 # ───────────────────── ④ 카메라 정보 저장 콜백 ────────────────────
