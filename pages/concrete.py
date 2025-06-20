@@ -201,8 +201,8 @@ layout = dbc.Container(
                 ], className="mb-2"),
                 dbc.Row([
                     dbc.Col([
-                        dbc.Label("타설 시간"),
-                        dbc.Input(id="edit-t", type="datetime-local", placeholder="타설 시간(con_t)")
+                        dbc.Label("타설 시간 (YYYY-MM-DDTHH:MM)"),
+                        dbc.Input(id="edit-t", type="text", placeholder="예: 2024-01-15T14:30")
                     ], width=12),
                 ], className="mb-2"),
                 dbc.Row([
@@ -636,15 +636,22 @@ def fill_edit(opened: bool, cid):
     
     # 타설 시간 포맷팅 (datetime-local 형식으로 변환)
     con_t_raw = row.get("con_t", "")
+    print(f"DEBUG: con_t_raw = {con_t_raw}, type = {type(con_t_raw)}")  # 디버깅
+    
     con_t = ""
-    if con_t_raw:
+    if con_t_raw and con_t_raw not in ["", "N/A", None]:
         try:
             # 이미 datetime-local 형태인 경우 (예: 2024-01-01T10:00)
             if 'T' in str(con_t_raw) and not str(con_t_raw).startswith('P'):
                 from datetime import datetime
                 # ISO 형식인지 확인하고 datetime-local 형식으로 변환
-                dt = datetime.fromisoformat(str(con_t_raw))
+                if str(con_t_raw).endswith('Z'):
+                    # UTC 시간인 경우 Z 제거
+                    dt = datetime.fromisoformat(str(con_t_raw)[:-1])
+                else:
+                    dt = datetime.fromisoformat(str(con_t_raw))
                 con_t = dt.strftime('%Y-%m-%dT%H:%M')
+                print(f"DEBUG: datetime format converted to {con_t}")
             # ISO 8601 duration 형태인 경우 (예: P0DT22H50M0S)
             elif str(con_t_raw).startswith('P'):
                 import re
@@ -669,10 +676,25 @@ def fill_edit(opened: bool, cid):
                 
                 # datetime-local 형식으로 변환
                 con_t = casting_time.strftime('%Y-%m-%dT%H:%M')
+                print(f"DEBUG: duration format converted to {con_t}")
+            # 단순 문자열인 경우 기본값 설정
             else:
-                con_t = str(con_t_raw)
-        except Exception:
-            con_t = ""
+                # 기본 현재 시간으로 설정
+                from datetime import datetime
+                con_t = datetime.now().strftime('%Y-%m-%dT%H:%M')
+                print(f"DEBUG: default time set to {con_t}")
+        except Exception as e:
+            print(f"DEBUG: Error parsing con_t: {e}")
+            # 오류 발생 시 현재 시간으로 설정
+            from datetime import datetime
+            con_t = datetime.now().strftime('%Y-%m-%dT%H:%M')
+    else:
+        # 값이 없으면 현재 시간으로 설정
+        from datetime import datetime
+        con_t = datetime.now().strftime('%Y-%m-%dT%H:%M')
+        print(f"DEBUG: no value, set to current time {con_t}")
+    
+    print(f"DEBUG: Final con_t = {con_t}")
 
     # 7) 3D 미리보기 생성
     fig = make_fig(dims.get("nodes", []), dims.get("h", 0))
