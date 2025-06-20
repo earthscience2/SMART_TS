@@ -253,15 +253,13 @@ def on_project_change(selected_proj):
     Output("time-slider", "max", allow_duplicate=True),
     Output("time-slider", "value", allow_duplicate=True),
     Output("time-slider", "marks", allow_duplicate=True),
-    Output("main-file-title", "children", allow_duplicate=True),
-    Output("section-file-title", "children", allow_duplicate=True),
     Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
 def on_concrete_select(selected_rows, tbl_data):
     if not selected_rows:
-        return True, True, "", "", 0, 5, 0, {}, "", ""
+        return True, True, "", "", 0, 5, 0, {}
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     is_active = row["activate"] == "활성"
@@ -342,7 +340,7 @@ def on_concrete_select(selected_rows, tbl_data):
                     print(f"온도 데이터 파싱 오류: {e}")
                     current_file_title = f"{os.path.basename(latest_file)}"
             
-    return False, not is_active, title, current_file_title, slider_min, slider_max, slider_value, slider_marks, current_file_title, current_file_title
+    return False, not is_active, title, current_file_title, slider_min, slider_max, slider_value, slider_marks
 
 # ───────────────────── 3D 뷰 클릭 → 단면 위치 저장 ────────────────────
 @callback(
@@ -632,13 +630,13 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
 @callback(
     Output("tab-content", "children"),
     Input("tabs-main", "active_tab"),
+    Input("current-file-title-store", "data"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     State("viewer-3d-store", "data"),
-    State("current-file-title-store", "data"),
     prevent_initial_call=True,
 )
-def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_title):
+def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_data):
     # 안내 문구만 보여야 하는 경우(분석 시작 안내, 데이터 없음)
     guide_message = None
     if selected_rows and tbl_data:
@@ -1594,20 +1592,20 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
 
 # 3D 뷰 탭 시간 정보 업데이트 콜백
 @callback(
-    Output("main-file-title", "children"),
+    Output("main-file-title", "children", allow_duplicate=True),
     Input("current-file-title-store", "data"),
-    prevent_initial_call=True,
+    prevent_initial_call=False,
 )
-def update_main_file_title(current_file_title):
+def update_main_file_title_from_slider(current_file_title):
     return current_file_title if current_file_title else ""
 
 # 단면도 탭 시간 정보 업데이트 콜백
 @callback(
-    Output("section-file-title", "children"),
+    Output("section-file-title", "children", allow_duplicate=True),
     Input("current-file-title-store", "data"),
-    prevent_initial_call=True,
+    prevent_initial_call=False,
 )
-def update_section_file_title(current_file_title):
+def update_section_file_title_from_slider(current_file_title):
     return current_file_title if current_file_title else ""
 
 # 시간 슬라이더 동기화 콜백 (메인 3D 뷰 ↔ 단면도 탭)
