@@ -106,33 +106,6 @@ def delete_project_data(project_pk: str) -> None:
 # 콘크리트 DB
 # --------------------------------------------------
 
-def init_db():
-    """데이터베이스 초기화"""
-    with engine.connect() as conn:
-        # concrete 테이블 생성
-        conn.execute(text("""
-        CREATE TABLE IF NOT EXISTS concrete (
-            concrete_pk TEXT PRIMARY KEY,
-            project_pk TEXT NOT NULL,
-            name TEXT NOT NULL,
-            dims TEXT NOT NULL,
-            con_unit REAL NOT NULL,
-            con_b REAL NOT NULL,
-            con_n REAL NOT NULL,
-            con_t TEXT NOT NULL,
-            con_a REAL NOT NULL,
-            con_p REAL NOT NULL,
-            con_d REAL NOT NULL,
-            activate INTEGER NOT NULL DEFAULT 1,
-            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        )
-        """))
-        conn.commit()
-
-# 데이터베이스 초기화 실행
-init_db()
-
 # 콘크리트 조회
 def get_concrete_data(concrete_pk: str = None,
                       project_pk: str = None,

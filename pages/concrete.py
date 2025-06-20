@@ -249,13 +249,6 @@ def refresh_table(n, project_pk, _data_ts):
         df = pd.DataFrame(columns=df_all.columns)
     cols = [
         {"name": "이름", "id": "name"},
-        {"name": "해석 단위(m)", "id": "con_unit"},
-        {"name": "베타", "id": "con_b", "type": "numeric", "format": {"specifier": ".1f"}},
-        {"name": "N", "id": "con_n", "type": "numeric", "format": {"specifier": ".1f"}},
-        {"name": "타설 시간", "id": "con_t"},
-        {"name": "열팽창계수\n(×10⁻⁵/°C)", "id": "con_a", "type": "numeric", "format": {"specifier": ".1f"}},
-        {"name": "포아송비", "id": "con_p", "type": "numeric", "format": {"specifier": ".2f"}},
-        {"name": "밀도\n(kg/m³)", "id": "con_d", "type": "numeric", "format": {"specifier": ".0f"}},
     ]
     sel = [0] if not df.empty else []
     return df.to_dict("records"), cols, sel
@@ -284,8 +277,23 @@ def show_selected(sel, data):
         raise PreventUpdate
 
     # 3D 뷰와 타이틀 준비
-    fig   = make_fig(dims["nodes"], dims["h"])
-    title = f"{row['concrete_pk']} · {row['name']}"
+    fig = make_fig(dims["nodes"], dims["h"])
+    
+    # 상세 정보를 포함한 제목 생성
+    title_parts = [
+        f"{row['concrete_pk']} · {row['name']}",
+        f"해석단위: {row.get('con_unit', 'N/A')}m",
+        f"베타: {row.get('con_b', 'N/A')}",
+        f"N: {row.get('con_n', 'N/A')}",
+        f"타설시간: {row.get('con_t', 'N/A')}",
+        f"열팽창계수: {row.get('con_a', 'N/A')}×10⁻⁵/°C",
+        f"포아송비: {row.get('con_p', 'N/A')}",
+        f"밀도: {row.get('con_d', 'N/A')}kg/m³"
+    ]
+    title = html.Div([
+        html.H5(title_parts[0], className="mb-2"),
+        html.P(" | ".join(title_parts[1:]), className="text-muted small mb-0")
+    ])
 
     # activate 체크 (없으면 1로 간주)
     is_active = row.get("activate", 1) == 1
