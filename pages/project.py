@@ -248,31 +248,99 @@ def on_project_change(selected_proj):
     Output("btn-concrete-del", "disabled", allow_duplicate=True),
     Output("btn-concrete-analyze", "disabled", allow_duplicate=True),
     Output("concrete-title", "children", allow_duplicate=True),
+    Output("current-file-title-store", "data", allow_duplicate=True),
+    Output("time-slider", "min", allow_duplicate=True),
+    Output("time-slider", "max", allow_duplicate=True),
+    Output("time-slider", "value", allow_duplicate=True),
+    Output("time-slider", "marks", allow_duplicate=True),
     Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
 def on_concrete_select(selected_rows, tbl_data):
     if not selected_rows:
-        return True, True, ""
+        return True, True, "", "", 0, 5, 0, {}
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     is_active = row["activate"] == "활성"
+    concrete_pk = row["concrete_pk"]
+    
+    # 초기값 설정
+    current_file_title = ""
+    slider_min, slider_max, slider_value = 0, 5, 0
+    slider_marks = {}
     
     # 안내 메시지 생성
     if is_active:
         title = "⚠️ 분석을 시작하려면 왼쪽의 '분석 시작' 버튼을 클릭하세요."
     else:
-        # 비활성 상태일 때 데이터 존재 여부 확인
-        concrete_pk = row["concrete_pk"]
+        # 비활성 상태일 때 데이터 존재 여부 확인 및 초기 파일 정보 로드
         inp_dir = f"inp/{concrete_pk}"
-        inp_files = glob.glob(f"{inp_dir}/*.inp")
+        inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
         if not inp_files:
             title = "⏳ 아직 수집된 데이터가 없습니다. 잠시 후 다시 확인해주세요."
         else:
             title = ""
             
-    return False, not is_active, title
+            # 시간 파싱 및 슬라이더 설정
+            times = []
+            for f in inp_files:
+                try:
+                    time_str = os.path.basename(f).split(".")[0]
+                    dt = datetime.strptime(time_str, "%Y%m%d%H")
+                    times.append(dt)
+                except:
+                    continue
+            
+            if times:
+                max_idx = len(times) - 1
+                slider_min, slider_max = 0, max_idx
+                slider_value = max_idx  # 최신 파일로 초기화
+                slider_marks = {0: times[0].strftime("%m/%d"), max_idx: times[-1].strftime("%m/%d")}
+                
+                # 최신 파일의 온도 통계 계산
+                latest_file = inp_files[max_idx]
+                try:
+                    # 시간 형식을 읽기 쉽게 변환
+                    time_str = os.path.basename(latest_file).split(".")[0]
+                    dt = datetime.strptime(time_str, "%Y%m%d%H")
+                    formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
+                    
+                    # 온도 데이터 파싱
+                    with open(latest_file, 'r') as f:
+                        lines = f.readlines()
+                    
+                    current_temps = []
+                    temp_section = False
+                    for line in lines:
+                        if line.startswith('*TEMPERATURE'):
+                            temp_section = True
+                            continue
+                        elif line.startswith('*'):
+                            temp_section = False
+                            continue
+                        if temp_section and ',' in line:
+                            parts = line.strip().split(',')
+                            if len(parts) >= 2:
+                                try:
+                                    temp = float(parts[1])
+                                    current_temps.append(temp)
+                                except:
+                                    continue
+                    
+                    if current_temps:
+                        current_min = float(np.nanmin(current_temps))
+                        current_max = float(np.nanmax(current_temps))
+                        current_avg = float(np.nanmean(current_temps))
+                        current_file_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)"
+                    else:
+                        current_file_title = f"{formatted_time}"
+                        
+                except Exception as e:
+                    print(f"온도 데이터 파싱 오류: {e}")
+                    current_file_title = f"{os.path.basename(latest_file)}"
+            
+    return False, not is_active, title, current_file_title, slider_min, slider_max, slider_value, slider_marks
 
 # ───────────────────── 3D 뷰 클릭 → 단면 위치 저장 ────────────────────
 @callback(
@@ -1168,53 +1236,7 @@ def select_deselect_all(n_all, n_none, table_data):
         return []
     raise dash.exceptions.PreventUpdate
 
-# 시간 슬라이더 마크: 날짜의 00시만 표시, 텍스트는 MM/DD 형식
-@callback(
-    Output("time-slider", "min", allow_duplicate=True),
-    Output("time-slider", "max", allow_duplicate=True),
-    Output("time-slider", "marks", allow_duplicate=True),
-    Output("time-slider", "value", allow_duplicate=True),
-    Input("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
-    State("time-slider", "value"),
-    prevent_initial_call=True,
-)
-def update_time_slider(selected_rows, tbl_data, current_value):
-    if not selected_rows:
-        return 0, 5, {}, 0
-    
-    ctx = dash.callback_context
-    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    
-    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-    concrete_pk = row["concrete_pk"]
-    inp_dir = f"inp/{concrete_pk}"
-    if not os.path.exists(inp_dir):
-        return 0, 5, {}, 0
-    inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
-    if not inp_files:
-        return 0, 5, {}, 0
-    
-    times = []
-    for f in inp_files:
-        try:
-            time_str = os.path.basename(f).split(".")[0]
-            dt = datetime.strptime(time_str, "%Y%m%d%H")
-            times.append(dt)
-        except:
-            continue
-    if not times:
-        return 0, 5, {}, 0
-    
-    # 슬라이더 마크: 시작과 끝만 표시
-    max_idx = len(times) - 1
-    marks = {0: times[0].strftime("%m/%d"), max_idx: times[-1].strftime("%m/%d")}
-    
-    if trigger_id == "tbl-concrete":
-        value = max_idx
-    else:
-        value = min(current_value if current_value is not None else 0, max_idx)
-    return 0, max_idx, marks, value
+
 
 # ───────────────────── ⑤ 분석 시작 콜백 ─────────────────────
 @callback(
