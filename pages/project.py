@@ -253,13 +253,15 @@ def on_project_change(selected_proj):
     Output("time-slider", "max", allow_duplicate=True),
     Output("time-slider", "value", allow_duplicate=True),
     Output("time-slider", "marks", allow_duplicate=True),
+    Output("main-file-title", "children", allow_duplicate=True),
+    Output("section-file-title", "children", allow_duplicate=True),
     Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
 def on_concrete_select(selected_rows, tbl_data):
     if not selected_rows:
-        return True, True, "", "", 0, 5, 0, {}
+        return True, True, "", "", 0, 5, 0, {}, "", ""
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     is_active = row["activate"] == "활성"
@@ -340,7 +342,7 @@ def on_concrete_select(selected_rows, tbl_data):
                     print(f"온도 데이터 파싱 오류: {e}")
                     current_file_title = f"{os.path.basename(latest_file)}"
             
-    return False, not is_active, title, current_file_title, slider_min, slider_max, slider_value, slider_marks
+    return False, not is_active, title, current_file_title, slider_min, slider_max, slider_value, slider_marks, current_file_title, current_file_title
 
 # ───────────────────── 3D 뷰 클릭 → 단면 위치 저장 ────────────────────
 @callback(
