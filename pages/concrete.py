@@ -349,45 +349,43 @@ def show_selected(sel, data):
     # 상세 정보 카드 생성
     details = dbc.Card([
         dbc.CardHeader([
-            html.H6(f"{row['name']}", className="mb-0 text-primary")
-        ]),
+            html.H6(f"{row['name']}", className="mb-0 text-primary", style={"fontSize": "1rem"})
+        ], className="py-2"),
         dbc.CardBody([
             dbc.Row([
                 dbc.Col([
-                    html.Small("해석단위", className="text-muted"),
-                    html.Div(f"{row.get('con_unit', 'N/A')}m", className="fw-bold")
-                ], width=6, className="mb-2"),
+                    html.Small("해석단위", className="text-muted", style={"fontSize": "0.7rem"}),
+                    html.Div(f"{row.get('con_unit', 'N/A')}m", className="fw-bold", style={"fontSize": "0.8rem"})
+                ], width=4, className="mb-1"),
                 dbc.Col([
-                    html.Small("베타", className="text-muted"),
-                    html.Div(f"{row.get('con_b', 'N/A')}", className="fw-bold")
-                ], width=6, className="mb-2"),
+                    html.Small("베타", className="text-muted", style={"fontSize": "0.7rem"}),
+                    html.Div(f"{row.get('con_b', 'N/A')}", className="fw-bold", style={"fontSize": "0.8rem"})
+                ], width=4, className="mb-1"),
+                dbc.Col([
+                    html.Small("N", className="text-muted", style={"fontSize": "0.7rem"}),
+                    html.Div(f"{row.get('con_n', 'N/A')}", className="fw-bold", style={"fontSize": "0.8rem"})
+                ], width=4, className="mb-1"),
             ]),
             dbc.Row([
                 dbc.Col([
-                    html.Small("N", className="text-muted"),
-                    html.Div(f"{row.get('con_n', 'N/A')}", className="fw-bold")
-                ], width=6, className="mb-2"),
+                    html.Small("포아송비", className="text-muted", style={"fontSize": "0.7rem"}),
+                    html.Div(f"{row.get('con_p', 'N/A')}", className="fw-bold", style={"fontSize": "0.8rem"})
+                ], width=6, className="mb-1"),
                 dbc.Col([
-                    html.Small("포아송비", className="text-muted"),
-                    html.Div(f"{row.get('con_p', 'N/A')}", className="fw-bold")
-                ], width=6, className="mb-2"),
+                    html.Small("밀도", className="text-muted", style={"fontSize": "0.7rem"}),
+                    html.Div(f"{row.get('con_d', 'N/A')}kg/m³", className="fw-bold", style={"fontSize": "0.8rem"})
+                ], width=6, className="mb-1"),
             ]),
             dbc.Row([
                 dbc.Col([
-                    html.Small("밀도", className="text-muted"),
-                    html.Div(f"{row.get('con_d', 'N/A')}kg/m³", className="fw-bold")
-                ], width=12, className="mb-2"),
+                    html.Small("열팽창계수", className="text-muted", style={"fontSize": "0.7rem"}),
+                    html.Div(f"{row.get('con_a', 'N/A')}×10⁻⁵/°C", className="fw-bold", style={"fontSize": "0.8rem"})
+                ], width=12, className="mb-1"),
             ]),
-            dbc.Row([
-                dbc.Col([
-                    html.Small("열팽창계수", className="text-muted"),
-                    html.Div(f"{row.get('con_a', 'N/A')}×10⁻⁵/°C", className="fw-bold")
-                ], width=12, className="mb-2"),
-            ]),
-            html.Hr(),
-            html.Small("타설시간", className="text-muted"),
-            html.Div(con_t_formatted, className="fw-bold small")
-        ])
+            html.Hr(className="my-2"),
+            html.Small("타설시간", className="text-muted", style={"fontSize": "0.7rem"}),
+            html.Div(con_t_formatted, className="fw-bold", style={"fontSize": "0.8rem", "lineHeight": "1.2"})
+        ], className="py-2")
     ], className="shadow-sm")
 
     # activate 체크 (없으면 1로 간주)
