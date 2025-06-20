@@ -370,17 +370,15 @@ def show_selected(sel, data):
                 dbc.Col([
                     html.Small("포아송비", className="text-muted", style={"fontSize": "0.7rem"}),
                     html.Div(f"{row.get('con_p', 'N/A')}", className="fw-bold", style={"fontSize": "0.8rem"})
-                ], width=6, className="mb-1"),
+                ], width=4, className="mb-1"),
                 dbc.Col([
                     html.Small("밀도", className="text-muted", style={"fontSize": "0.7rem"}),
                     html.Div(f"{row.get('con_d', 'N/A')}kg/m³", className="fw-bold", style={"fontSize": "0.8rem"})
-                ], width=6, className="mb-1"),
-            ]),
-            dbc.Row([
+                ], width=4, className="mb-1"),
                 dbc.Col([
                     html.Small("열팽창계수", className="text-muted", style={"fontSize": "0.7rem"}),
                     html.Div(f"{row.get('con_a', 'N/A')}×10⁻⁵/°C", className="fw-bold", style={"fontSize": "0.8rem"})
-                ], width=12, className="mb-1"),
+                ], width=4, className="mb-1"),
             ]),
             html.Hr(className="my-2"),
             html.Small("타설시간", className="text-muted", style={"fontSize": "0.7rem"}),
