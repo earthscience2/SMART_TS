@@ -631,7 +631,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     Output("tab-content", "children"),
     Input("tabs-main", "active_tab"),
     Input("current-file-title-store", "data"),
-    State("tbl-concrete", "selected_rows"),
+    Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     State("viewer-3d-store", "data"),
     prevent_initial_call=True,
@@ -679,13 +679,11 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                 title="콘크리트를 선택하고 시간을 조절하세요"
             )
             slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
-        # 현재 파일 제목이 없으면 viewer_data에서 가져오거나 직접 계산
+        # 시간 정보 계산 (콘크리트가 선택된 경우 항상 계산)
         display_title = current_file_title
-        if not display_title and viewer_data and 'current_file_title' in viewer_data:
-            display_title = viewer_data['current_file_title']
         
-        # 여전히 제목이 없고 콘크리트가 선택된 경우 직접 계산
-        if not display_title and selected_rows and tbl_data:
+        # 콘크리트가 선택된 경우 시간 정보를 직접 계산하여 확실히 표시
+        if selected_rows and tbl_data:
             try:
                 row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
                 concrete_pk = row["concrete_pk"]
@@ -730,7 +728,15 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                         display_title = f"{formatted_time}"
             except Exception as e:
                 print(f"3D 뷰 제목 계산 오류: {e}")
-                display_title = ""
+                # 계산 실패 시 viewer_data에서 가져오기 시도
+                if not display_title and viewer_data and 'current_file_title' in viewer_data:
+                    display_title = viewer_data['current_file_title']
+                else:
+                    display_title = ""
+        
+        # 콘크리트가 선택되지 않은 경우 viewer_data에서 가져오기 시도
+        if not selected_rows and not display_title and viewer_data and 'current_file_title' in viewer_data:
+            display_title = viewer_data['current_file_title']
         
         return html.Div([
             # 시간 슬라이더 (3D 뷰 위에 배치)
@@ -1594,7 +1600,7 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
 @callback(
     Output("main-file-title", "children", allow_duplicate=True),
     Input("current-file-title-store", "data"),
-    prevent_initial_call=False,
+    prevent_initial_call=True,
 )
 def update_main_file_title_from_slider(current_file_title):
     return current_file_title if current_file_title else ""
@@ -1603,7 +1609,7 @@ def update_main_file_title_from_slider(current_file_title):
 @callback(
     Output("section-file-title", "children", allow_duplicate=True),
     Input("current-file-title-store", "data"),
-    prevent_initial_call=False,
+    prevent_initial_call=True,
 )
 def update_section_file_title_from_slider(current_file_title):
     return current_file_title if current_file_title else ""
