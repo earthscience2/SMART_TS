@@ -659,80 +659,46 @@ def fill_edit(opened: bool, cid):
     
     # 타설 시간 포맷팅 (날짜와 시간 분리)
     con_t_raw = row.get("con_t", "")
-    print(f"DEBUG: con_t_raw = {con_t_raw}, type = {type(con_t_raw)}")  # 디버깅
-    
     con_t_date = ""
     con_t_time = ""
     
     if con_t_raw and con_t_raw not in ["", "N/A", None]:
         try:
-            # 이미 datetime-local 형태인 경우 (예: 2024-01-01T10:00)
-            if 'T' in str(con_t_raw) and not str(con_t_raw).startswith('P'):
-                from datetime import datetime
-                # ISO 형식인지 확인하고 분리
-                if str(con_t_raw).endswith('Z'):
-                    # UTC 시간인 경우 Z 제거
-                    dt = datetime.fromisoformat(str(con_t_raw)[:-1])
-                else:
-                    dt = datetime.fromisoformat(str(con_t_raw))
-                con_t_date = dt.strftime('%Y-%m-%d')
-                con_t_time = dt.strftime('%H:%M')
-                print(f"DEBUG: datetime format converted to date={con_t_date}, time={con_t_time}")
-            # ISO 8601 duration 형태인 경우 (예: P0DT22H50M0S)
-            elif str(con_t_raw).startswith('P'):
-                import re
-                from datetime import datetime, timedelta
-                duration_str = str(con_t_raw)
-                
-                # 일, 시간, 분, 초 추출
-                days = re.search(r'(\d+)D', duration_str)
-                hours = re.search(r'(\d+)H', duration_str)
-                minutes = re.search(r'(\d+)M', duration_str)
-                seconds = re.search(r'(\d+)S', duration_str)
-                
-                days = int(days.group(1)) if days else 0
-                hours = int(hours.group(1)) if hours else 0
-                minutes = int(minutes.group(1)) if minutes else 0
-                seconds = int(seconds.group(1)) if seconds else 0
-                
-                # 현재 시간에서 duration을 빼서 타설 시점 계산
-                now = datetime.now()
-                duration = timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
-                casting_time = now - duration
-                
-                # 날짜와 시간 분리
-                con_t_date = casting_time.strftime('%Y-%m-%d')
-                con_t_time = casting_time.strftime('%H:%M')
-                print(f"DEBUG: duration format converted to date={con_t_date}, time={con_t_time}")
-            # 단순 문자열인 경우 기본값 설정
-            else:
-                # 기본 현재 시간으로 설정
-                from datetime import datetime
-                now = datetime.now()
-                con_t_date = now.strftime('%Y-%m-%d')
-                con_t_time = now.strftime('%H:%M')
-                print(f"DEBUG: default time set to date={con_t_date}, time={con_t_time}")
-        except Exception as e:
-            print(f"DEBUG: Error parsing con_t: {e}")
-            # 오류 발생 시 현재 시간으로 설정
             from datetime import datetime
-            now = datetime.now()
-            con_t_date = now.strftime('%Y-%m-%d')
-            con_t_time = now.strftime('%H:%M')
+            # datetime 객체인 경우
+            if hasattr(con_t_raw, 'strftime'):
+                dt = con_t_raw
+            # 문자열인 경우 파싱
+            elif isinstance(con_t_raw, str):
+                if 'T' in con_t_raw:
+                    # ISO 형식 (2024-01-01T10:00 또는 2024-01-01T10:00:00)
+                    dt = datetime.fromisoformat(con_t_raw.replace('Z', ''))
+                else:
+                    # 다른 형식 시도
+                    dt = datetime.strptime(str(con_t_raw), '%Y-%m-%d %H:%M:%S')
+            else:
+                # 기타 형식 - 현재 시간으로 기본값 설정
+                dt = datetime.now()
+            
+            con_t_date = dt.strftime('%Y-%m-%d')
+            con_t_time = dt.strftime('%H:%M')
+            
+        except Exception as e:
+            # 파싱 실패 시 현재 시간으로 설정
+            from datetime import datetime
+            dt = datetime.now()
+            con_t_date = dt.strftime('%Y-%m-%d')
+            con_t_time = dt.strftime('%H:%M')
     else:
         # 값이 없으면 현재 시간으로 설정
         from datetime import datetime
-        now = datetime.now()
-        con_t_date = now.strftime('%Y-%m-%d')
-        con_t_time = now.strftime('%H:%M')
-        print(f"DEBUG: no value, set to current date={con_t_date}, time={con_t_time}")
-    
-    print(f"DEBUG: Final con_t_date = {con_t_date}, con_t_time = {con_t_time}")
+        dt = datetime.now()
+        con_t_date = dt.strftime('%Y-%m-%d')
+        con_t_time = dt.strftime('%H:%M')
 
     # 7) 3D 미리보기 생성
     fig = make_fig(dims.get("nodes", []), dims.get("h", 0))
 
-    print(f"DEBUG: Returning values: name={name}, con_t_date={con_t_date}, con_t_time={con_t_time}")
     return name, nodes, h_value, con_unit, con_b, con_n, con_t_date, con_t_time, con_a, con_p, con_d, fig
 
 
@@ -788,21 +754,15 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
         raise PreventUpdate
 
     # 날짜와 시간 합치기
-    print(f"DEBUG SAVE: t_date = {t_date}, t_time = {t_time}")
     t = None
     if t_date and t_time:
         t = f"{t_date}T{t_time}"
-        print(f"DEBUG SAVE: Combined datetime = {t}")
     elif t_date:
         t = f"{t_date}T00:00"
-        print(f"DEBUG SAVE: Date only, set to = {t}")
     elif t_time:
         from datetime import datetime
         today = datetime.now().strftime('%Y-%m-%d')
         t = f"{today}T{t_time}"
-        print(f"DEBUG SAVE: Time only, set to = {t}")
-    else:
-        print("DEBUG SAVE: No date/time provided")
 
     # 1) 빈값 체크
     missing = []
@@ -866,7 +826,6 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
 
     # 3) DB 업데이트
     dims = {"nodes": nodes, "h": float(h)}
-    print(f"DEBUG SAVE: About to update DB with con_t = {t}")
     api_db.update_concrete_data(
         cid,
         name=name.strip(),
@@ -874,13 +833,12 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
         con_unit=float(unit),
         con_b=float(b),
         con_n=float(n),
-        con_t=t,  # datetime-local 값 그대로 전달
+        con_t=t,  # datetime 값 전달
         con_a=float(a),
         con_p=float(p),
         con_d=float(d),
         activate=1
     )
-    print(f"DEBUG SAVE: DB update completed")
 
     # 4) 성공 처리
     return (
