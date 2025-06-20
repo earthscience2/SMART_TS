@@ -302,8 +302,9 @@ def on_concrete_select(selected_rows, tbl_data):
                 latest_file = inp_files[max_idx]
                 try:
                     # 시간 형식을 읽기 쉽게 변환
+                    from datetime import datetime as dt_module
                     time_str = os.path.basename(latest_file).split(".")[0]
-                    dt = datetime.strptime(time_str, "%Y%m%d%H")
+                    dt = dt_module.strptime(time_str, "%Y%m%d%H")
                     formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
                     
                     # 온도 데이터 파싱
@@ -685,6 +686,7 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
         # 콘크리트가 선택된 경우 시간 정보를 직접 계산하여 확실히 표시
         if selected_rows and tbl_data:
             try:
+                from datetime import datetime as dt_module
                 row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
                 concrete_pk = row["concrete_pk"]
                 inp_dir = f"inp/{concrete_pk}"
@@ -695,7 +697,7 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     file_idx = min(slider_value if slider_value is not None else len(inp_files)-1, len(inp_files)-1)
                     latest_file = inp_files[file_idx]
                     time_str = os.path.basename(latest_file).split(".")[0]
-                    dt = datetime.strptime(time_str, "%Y%m%d%H")
+                    dt = dt_module.strptime(time_str, "%Y%m%d%H")
                     formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
                     
                     # 온도 데이터 파싱
@@ -784,6 +786,7 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
         # 콘크리트가 선택된 경우 시간 정보를 직접 계산하여 확실히 표시
         if selected_rows and tbl_data:
             try:
+                from datetime import datetime as dt_module
                 row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
                 concrete_pk = row["concrete_pk"]
                 inp_dir = f"inp/{concrete_pk}"
@@ -794,7 +797,7 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     file_idx = min(slider_value if slider_value is not None else len(inp_files)-1, len(inp_files)-1)
                     current_file = inp_files[file_idx]
                     time_str = os.path.basename(current_file).split(".")[0]
-                    dt = datetime.strptime(time_str, "%Y%m%d%H")
+                    dt = dt_module.strptime(time_str, "%Y%m%d%H")
                     formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
                     
                     # 온도 데이터 파싱
