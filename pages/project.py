@@ -366,7 +366,7 @@ def store_section_coord(clickData):
     Output("current-file-title-store", "data", allow_duplicate=True),
     Input("time-slider", "value"),
     Input("section-coord-store", "data"),
-    State("tbl-concrete", "selected_rows"),
+    Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     State("current-time-store", "data"),
     prevent_initial_call=True,
@@ -679,10 +679,58 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 title="콘크리트를 선택하고 시간을 조절하세요"
             )
             slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
-        # 현재 파일 제목이 없으면 viewer_data에서 가져오기
+        # 현재 파일 제목이 없으면 viewer_data에서 가져오거나 직접 계산
         display_title = current_file_title
         if not display_title and viewer_data and 'current_file_title' in viewer_data:
             display_title = viewer_data['current_file_title']
+        
+        # 여전히 제목이 없고 콘크리트가 선택된 경우 직접 계산
+        if not display_title and selected_rows and tbl_data:
+            try:
+                row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+                concrete_pk = row["concrete_pk"]
+                inp_dir = f"inp/{concrete_pk}"
+                inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+                
+                if inp_files:
+                    # 최신 파일의 정보 로드
+                    latest_file = inp_files[-1]
+                    time_str = os.path.basename(latest_file).split(".")[0]
+                    dt = datetime.strptime(time_str, "%Y%m%d%H")
+                    formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
+                    
+                    # 온도 데이터 파싱
+                    with open(latest_file, 'r') as f:
+                        lines = f.readlines()
+                    
+                    current_temps = []
+                    temp_section = False
+                    for line in lines:
+                        if line.startswith('*TEMPERATURE'):
+                            temp_section = True
+                            continue
+                        elif line.startswith('*'):
+                            temp_section = False
+                            continue
+                        if temp_section and ',' in line:
+                            parts = line.strip().split(',')
+                            if len(parts) >= 2:
+                                try:
+                                    temp = float(parts[1])
+                                    current_temps.append(temp)
+                                except:
+                                    continue
+                    
+                    if current_temps:
+                        current_min = float(np.nanmin(current_temps))
+                        current_max = float(np.nanmax(current_temps))
+                        current_avg = float(np.nanmean(current_temps))
+                        display_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)"
+                    else:
+                        display_title = f"{formatted_time}"
+            except Exception as e:
+                print(f"3D 뷰 제목 계산 오류: {e}")
+                display_title = ""
         
         return html.Div([
             # 시간 슬라이더 (3D 뷰 위에 배치)
