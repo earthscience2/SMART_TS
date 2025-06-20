@@ -691,8 +691,9 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                 inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
                 
                 if inp_files:
-                    # 최신 파일의 정보 로드
-                    latest_file = inp_files[-1]
+                    # 현재 슬라이더 값에 해당하는 파일 선택
+                    file_idx = min(slider_value if slider_value is not None else len(inp_files)-1, len(inp_files)-1)
+                    latest_file = inp_files[file_idx]
                     time_str = os.path.basename(latest_file).split(".")[0]
                     dt = datetime.strptime(time_str, "%Y%m%d%H")
                     formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
@@ -777,9 +778,62 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
         else:
             slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
         
-        # 현재 파일 제목이 없으면 viewer_data에서 가져오기
+        # 단면도 탭에서도 시간 정보를 직접 계산
         section_display_title = current_file_title
-        if not section_display_title and viewer_data and 'current_file_title' in viewer_data:
+        
+        # 콘크리트가 선택된 경우 시간 정보를 직접 계산하여 확실히 표시
+        if selected_rows and tbl_data:
+            try:
+                row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+                concrete_pk = row["concrete_pk"]
+                inp_dir = f"inp/{concrete_pk}"
+                inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+                
+                if inp_files:
+                    # 현재 슬라이더 값에 해당하는 파일 선택
+                    file_idx = min(slider_value if slider_value is not None else len(inp_files)-1, len(inp_files)-1)
+                    current_file = inp_files[file_idx]
+                    time_str = os.path.basename(current_file).split(".")[0]
+                    dt = datetime.strptime(time_str, "%Y%m%d%H")
+                    formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
+                    
+                    # 온도 데이터 파싱
+                    with open(current_file, 'r') as f:
+                        lines = f.readlines()
+                    
+                    current_temps = []
+                    temp_section = False
+                    for line in lines:
+                        if line.startswith('*TEMPERATURE'):
+                            temp_section = True
+                            continue
+                        elif line.startswith('*'):
+                            temp_section = False
+                            continue
+                        if temp_section and ',' in line:
+                            parts = line.strip().split(',')
+                            if len(parts) >= 2:
+                                try:
+                                    temp = float(parts[1])
+                                    current_temps.append(temp)
+                                except:
+                                    continue
+                    
+                    if current_temps:
+                        current_min = float(np.nanmin(current_temps))
+                        current_max = float(np.nanmax(current_temps))
+                        current_avg = float(np.nanmean(current_temps))
+                        section_display_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)"
+                    else:
+                        section_display_title = f"{formatted_time}"
+            except Exception as e:
+                print(f"단면도 제목 계산 오류: {e}")
+                # 계산 실패 시 기존 값 또는 viewer_data 사용
+                if not section_display_title and viewer_data and 'current_file_title' in viewer_data:
+                    section_display_title = viewer_data['current_file_title']
+        
+        # 콘크리트가 선택되지 않은 경우 viewer_data에서 가져오기 시도
+        elif not section_display_title and viewer_data and 'current_file_title' in viewer_data:
             section_display_title = viewer_data['current_file_title']
         
         return html.Div([
@@ -1596,23 +1650,7 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
     # step=0.1로 반환
     return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, current_file_title
 
-# 3D 뷰 탭 시간 정보 업데이트 콜백
-@callback(
-    Output("main-file-title", "children", allow_duplicate=True),
-    Input("current-file-title-store", "data"),
-    prevent_initial_call=True,
-)
-def update_main_file_title_from_slider(current_file_title):
-    return current_file_title if current_file_title else ""
 
-# 단면도 탭 시간 정보 업데이트 콜백
-@callback(
-    Output("section-file-title", "children", allow_duplicate=True),
-    Input("current-file-title-store", "data"),
-    prevent_initial_call=True,
-)
-def update_section_file_title_from_slider(current_file_title):
-    return current_file_title if current_file_title else ""
 
 # 시간 슬라이더 동기화 콜백 (메인 3D 뷰 ↔ 단면도 탭)
 @callback(
