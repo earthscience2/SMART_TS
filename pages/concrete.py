@@ -630,10 +630,49 @@ def fill_edit(opened: bool, cid):
     con_unit = row.get("con_unit", "")
     con_b    = row.get("con_b", "")
     con_n    = row.get("con_n", "")
-    con_t    = row.get("con_t", "")
     con_a    = row.get("con_a", "")
     con_p    = row.get("con_p", "")
     con_d    = row.get("con_d", "")
+    
+    # 타설 시간 포맷팅 (datetime-local 형식으로 변환)
+    con_t_raw = row.get("con_t", "")
+    con_t = ""
+    if con_t_raw:
+        try:
+            # 이미 datetime-local 형태인 경우 (예: 2024-01-01T10:00)
+            if 'T' in str(con_t_raw) and not str(con_t_raw).startswith('P'):
+                from datetime import datetime
+                # ISO 형식인지 확인하고 datetime-local 형식으로 변환
+                dt = datetime.fromisoformat(str(con_t_raw))
+                con_t = dt.strftime('%Y-%m-%dT%H:%M')
+            # ISO 8601 duration 형태인 경우 (예: P0DT22H50M0S)
+            elif str(con_t_raw).startswith('P'):
+                import re
+                from datetime import datetime, timedelta
+                duration_str = str(con_t_raw)
+                
+                # 일, 시간, 분, 초 추출
+                days = re.search(r'(\d+)D', duration_str)
+                hours = re.search(r'(\d+)H', duration_str)
+                minutes = re.search(r'(\d+)M', duration_str)
+                seconds = re.search(r'(\d+)S', duration_str)
+                
+                days = int(days.group(1)) if days else 0
+                hours = int(hours.group(1)) if hours else 0
+                minutes = int(minutes.group(1)) if minutes else 0
+                seconds = int(seconds.group(1)) if seconds else 0
+                
+                # 현재 시간에서 duration을 빼서 타설 시점 계산
+                now = datetime.now()
+                duration = timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
+                casting_time = now - duration
+                
+                # datetime-local 형식으로 변환
+                con_t = casting_time.strftime('%Y-%m-%dT%H:%M')
+            else:
+                con_t = str(con_t_raw)
+        except Exception:
+            con_t = ""
 
     # 7) 3D 미리보기 생성
     fig = make_fig(dims.get("nodes", []), dims.get("h", 0))
