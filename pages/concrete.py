@@ -732,6 +732,7 @@ def fill_edit(opened: bool, cid):
     # 7) 3D 미리보기 생성
     fig = make_fig(dims.get("nodes", []), dims.get("h", 0))
 
+    print(f"DEBUG: Returning values: name={name}, con_t_date={con_t_date}, con_t_time={con_t_time}")
     return name, nodes, h_value, con_unit, con_b, con_n, con_t_date, con_t_time, con_a, con_p, con_d, fig
 
 
@@ -787,15 +788,21 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
         raise PreventUpdate
 
     # 날짜와 시간 합치기
+    print(f"DEBUG SAVE: t_date = {t_date}, t_time = {t_time}")
     t = None
     if t_date and t_time:
         t = f"{t_date}T{t_time}"
+        print(f"DEBUG SAVE: Combined datetime = {t}")
     elif t_date:
         t = f"{t_date}T00:00"
+        print(f"DEBUG SAVE: Date only, set to = {t}")
     elif t_time:
         from datetime import datetime
         today = datetime.now().strftime('%Y-%m-%d')
         t = f"{today}T{t_time}"
+        print(f"DEBUG SAVE: Time only, set to = {t}")
+    else:
+        print("DEBUG SAVE: No date/time provided")
 
     # 1) 빈값 체크
     missing = []
@@ -859,6 +866,7 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
 
     # 3) DB 업데이트
     dims = {"nodes": nodes, "h": float(h)}
+    print(f"DEBUG SAVE: About to update DB with con_t = {t}")
     api_db.update_concrete_data(
         cid,
         name=name.strip(),
@@ -872,6 +880,7 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
         con_d=float(d),
         activate=1
     )
+    print(f"DEBUG SAVE: DB update completed")
 
     # 4) 성공 처리
     return (
