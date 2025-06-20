@@ -85,7 +85,7 @@ layout = dbc.Container(
     fluid=True,
     children=[
         dbc.Row([
-            # 좌측: 프로젝트 드롭다운 + 콘크리트 목록
+            # 좌측: 프로젝트 드롭다운 + 콘크리트 목록 + 상세정보
             dbc.Col([
                 dcc.Dropdown(
                     id="project-dropdown",
@@ -96,9 +96,9 @@ layout = dbc.Container(
                 ),
                 dash_table.DataTable(
                     id="tbl",
-                    page_size=20,
+                    page_size=15,
                     row_selectable="single",
-                    style_table={"overflowY": "auto", "height": "60vh"},
+                    style_table={"overflowY": "auto", "height": "40vh"},
                     style_cell={"whiteSpace": "nowrap", "textAlign": "center"},
                     style_header={"backgroundColor": "#f1f3f5", "fontWeight": 600},
                 ),
@@ -107,12 +107,13 @@ layout = dbc.Container(
                     dbc.Button("수정", id="btn-edit", color="secondary", className="mt-2", disabled=True),
                     dbc.Button("삭제", id="btn-del",  color="danger", className="mt-2", disabled=True),
                 ], size="sm", vertical=True, className="w-100 mt-2"),
-            ], md=3),
+                html.Hr(className="my-3"),
+                html.Div(id="concrete-details", className="mt-3"),
+            ], md=4),
             # 우측: 3D 뷰
             dbc.Col([
-                dbc.Row([dbc.Col(html.H5(id="sel-title"), align="center")], className="mb-1 g-2"),
-                dcc.Graph(id="viewer", style={"height": "80vh"}),
-            ], md=9),
+                dcc.Graph(id="viewer", style={"height": "85vh"}),
+            ], md=8),
         ], className="g-3"),
 
         # 알림, 인터벌, 삭제 확인
@@ -255,12 +256,12 @@ def refresh_table(n, project_pk, _data_ts):
 
 # ───────────────────── ② 선택된 행 → 3-D 뷰
 @callback(
-    Output("viewer",    "figure"),
-    Output("sel-title", "children"),
-    Output("btn-edit",  "disabled"),
-    Output("btn-del",   "disabled"),
-    Input("tbl",        "selected_rows"),
-    State("tbl",        "data"),
+    Output("viewer",           "figure"),
+    Output("concrete-details", "children"),
+    Output("btn-edit",         "disabled"),
+    Output("btn-del",          "disabled"),
+    Input("tbl",               "selected_rows"),
+    State("tbl",               "data"),
     prevent_initial_call=True
 )
 def show_selected(sel, data):
@@ -276,7 +277,7 @@ def show_selected(sel, data):
     except Exception:
         raise PreventUpdate
 
-    # 3D 뷰와 타이틀 준비
+    # 3D 뷰 준비
     fig = make_fig(dims["nodes"], dims["h"])
     
     # 타설 시간 포맷팅
@@ -323,48 +324,57 @@ def show_selected(sel, data):
     else:
         con_t_formatted = 'N/A'
     
-    # 상세 정보를 포함한 제목 생성
-    title = html.Div([
-        html.H5(f"{row['name']}", className="mb-3"),
-        dbc.Row([
-            dbc.Col([
-                html.Small("해석단위", className="text-muted d-block"),
-                html.Strong(f"{row.get('con_unit', 'N/A')}m")
-            ], width=2),
-            dbc.Col([
-                html.Small("베타", className="text-muted d-block"),
-                html.Strong(f"{row.get('con_b', 'N/A')}")
-            ], width=1),
-            dbc.Col([
-                html.Small("N", className="text-muted d-block"),
-                html.Strong(f"{row.get('con_n', 'N/A')}")
-            ], width=1),
-            dbc.Col([
-                html.Small("포아송비", className="text-muted d-block"),
-                html.Strong(f"{row.get('con_p', 'N/A')}")
-            ], width=2),
-            dbc.Col([
-                html.Small("밀도", className="text-muted d-block"),
-                html.Strong(f"{row.get('con_d', 'N/A')}kg/m³")
-            ], width=2),
-            dbc.Col([
-                html.Small("열팽창계수", className="text-muted d-block"),
-                html.Strong(f"{row.get('con_a', 'N/A')}×10⁻⁵/°C")
-            ], width=2),
-            dbc.Col([
-                html.Small("타설시간", className="text-muted d-block"),
-                html.Strong(con_t_formatted, className="small")
-            ], width=2),
-        ], className="g-2")
-    ])
+    # 상세 정보 카드 생성
+    details = dbc.Card([
+        dbc.CardHeader([
+            html.H6(f"{row['name']}", className="mb-0 text-primary")
+        ]),
+        dbc.CardBody([
+            dbc.Row([
+                dbc.Col([
+                    html.Small("해석단위", className="text-muted"),
+                    html.Div(f"{row.get('con_unit', 'N/A')}m", className="fw-bold")
+                ], width=6, className="mb-2"),
+                dbc.Col([
+                    html.Small("베타", className="text-muted"),
+                    html.Div(f"{row.get('con_b', 'N/A')}", className="fw-bold")
+                ], width=6, className="mb-2"),
+            ]),
+            dbc.Row([
+                dbc.Col([
+                    html.Small("N", className="text-muted"),
+                    html.Div(f"{row.get('con_n', 'N/A')}", className="fw-bold")
+                ], width=6, className="mb-2"),
+                dbc.Col([
+                    html.Small("포아송비", className="text-muted"),
+                    html.Div(f"{row.get('con_p', 'N/A')}", className="fw-bold")
+                ], width=6, className="mb-2"),
+            ]),
+            dbc.Row([
+                dbc.Col([
+                    html.Small("밀도", className="text-muted"),
+                    html.Div(f"{row.get('con_d', 'N/A')}kg/m³", className="fw-bold")
+                ], width=12, className="mb-2"),
+            ]),
+            dbc.Row([
+                dbc.Col([
+                    html.Small("열팽창계수", className="text-muted"),
+                    html.Div(f"{row.get('con_a', 'N/A')}×10⁻⁵/°C", className="fw-bold")
+                ], width=12, className="mb-2"),
+            ]),
+            html.Hr(),
+            html.Small("타설시간", className="text-muted"),
+            html.Div(con_t_formatted, className="fw-bold small")
+        ])
+    ], className="shadow-sm")
 
     # activate 체크 (없으면 1로 간주)
     is_active = row.get("activate", 1) == 1
     # activate가 0이면 Edit, Delete 버튼 모두 비활성화
     if not is_active:
-        return fig, title, True, True
+        return fig, details, True, True
     # 둘 다 활성화
-    return fig, title, False, False
+    return fig, details, False, False
 
 # ───────────────────── ③ 추가 모달 토글
 @callback(
