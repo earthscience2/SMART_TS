@@ -367,6 +367,13 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     current_file = inp_files[value]
     current_time = os.path.basename(current_file).split(".")[0]
     
+    # 시간 형식을 읽기 쉽게 변환
+    try:
+        dt = datetime.strptime(current_time, "%Y%m%d%H")
+        formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
+    except:
+        formatted_time = current_time
+    
     # 현재 파일의 온도 통계 계산
     current_temps = []
     with open(current_file, 'r') as f:
@@ -392,9 +399,9 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         current_min = float(np.nanmin(current_temps))
         current_max = float(np.nanmax(current_temps))
         current_avg = float(np.nanmean(current_temps))
-        current_file_title = f"현재 파일: {current_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)"
+        current_file_title = f"현재 파일: {formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)"
     else:
-        current_file_title = f"현재 파일: {current_time}"
+        current_file_title = f"현재 파일: {formatted_time}"
 
     # inp 파일 파싱 (노드, 온도)
     with open(current_file, 'r') as f:
@@ -1486,10 +1493,17 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
     # 현재 파일명/온도 통계 계산
     try:
         time_str = os.path.basename(current_file).split(".")[0]
+        # 시간 형식을 읽기 쉽게 변환
+        try:
+            dt = datetime.strptime(time_str, "%Y%m%d%H")
+            formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
+        except:
+            formatted_time = time_str
+        
         current_min = float(np.nanmin(temps))
         current_max = float(np.nanmax(temps))
         current_avg = float(np.nanmean(temps))
-        current_file_title = f"현재 파일: {time_str} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)"
+        current_file_title = f"현재 파일: {formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)"
     except Exception:
         current_file_title = f"현재 파일: {os.path.basename(current_file)}"
     # step=0.1로 반환
