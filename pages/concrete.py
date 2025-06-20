@@ -123,16 +123,32 @@ layout = dbc.Container(
 
         # 추가 모달
         dbc.Modal(id="modal-add", is_open=False, size="lg", children=[
-        dbc.ModalHeader("콘크리트 추가"),
+            dbc.ModalHeader("콘크리트 추가"),
             dbc.ModalBody([
-                dbc.Input(id="add-name", placeholder="이름", className="mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label("콘크리트 이름"),
+                        dbc.Input(id="add-name", placeholder="콘크리트 이름을 입력하세요")
+                    ], width=12),
+                ], className="mb-2"),
                 dbc.Alert(id="add-alert", is_open=False, duration=3000, color="danger"),
-                dbc.Textarea(id="add-nodes",
-                            placeholder="노드 목록 (예: [(1,0),(1,1),(0,1),(0,0)])",
-                            rows=3, className="mb-2"),
-                dbc.Input(id="add-h", placeholder="높이 H", type="number", className="mb-2"),
-                dbc.Input(id="add-unit", placeholder="해석 단위(con_unit, m)", type="number", 
-                         min=0.1, max=1.0, step=0.1, className="mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label("노드 목록 (예: [(1,0),(1,1),(0,1),(0,0)])"),
+                        dbc.Textarea(id="add-nodes", rows=3, placeholder="노드 좌표를 입력하세요")
+                    ], width=12),
+                ], className="mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label("높이 (m)"),
+                        dbc.Input(id="add-h", type="number", placeholder="높이를 입력하세요", step=0.1)
+                    ], width=6),
+                    dbc.Col([
+                        dbc.Label("해석 단위 (0.1 ~ 1.0) [m]"),
+                        dbc.Input(id="add-unit", type="number", placeholder="해석 단위", 
+                                 min=0.1, max=1.0, step=0.1)
+                    ], width=6),
+                ], className="mb-2"),
                 html.Hr(),
                 html.H6("콘크리트 물성치", className="mb-2"),
                 dbc.Row([
@@ -147,9 +163,13 @@ layout = dbc.Container(
                 ], className="mb-2"),
                 dbc.Row([
                     dbc.Col([
+                        dbc.Label("타설 날짜"),
+                        dbc.Input(id="add-t-date", type="date", className="mb-1")
+                    ], width=6),
+                    dbc.Col([
                         dbc.Label("타설 시간"),
-                        dbc.Input(id="add-t", type="datetime-local", placeholder="타설 시간(con_t)")
-                    ], width=12),
+                        dbc.Input(id="add-t-time", type="time", className="mb-1")
+                    ], width=6),
                 ], className="mb-2"),
                 dbc.Row([
                     dbc.Col([
@@ -461,15 +481,27 @@ def add_preview(_, nodes_txt, h):
     State("add-unit",    "value"),
     State("add-b",       "value"),
     State("add-n",       "value"),
-    State("add-t",       "value"),
+    State("add-t-date",  "value"),
+    State("add-t-time",  "value"),
     State("add-a",       "value"),
     State("add-p",       "value"),
     State("add-d",       "value"),
     prevent_initial_call=True
 )
-def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t, a, p, d):
+def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t_date, t_time, a, p, d):
     if not n_clicks:
         raise PreventUpdate
+
+    # 날짜와 시간 합치기
+    t = None
+    if t_date and t_time:
+        t = f"{t_date}T{t_time}"
+    elif t_date:
+        t = f"{t_date}T00:00"
+    elif t_time:
+        from datetime import datetime
+        today = datetime.now().strftime('%Y-%m-%d')
+        t = f"{today}T{t_time}"
 
     # 1) 빈값 체크
     missing = []
@@ -480,7 +512,7 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t, a, p, d):
     if unit is None:   missing.append("해석 단위")
     if b    is None:   missing.append("베타 상수")
     if n    is None:   missing.append("N 상수")
-    if t    is None:   missing.append("타설 시간")
+    if not t:          missing.append("타설 시간")
     if a    is None:   missing.append("열팽창계수")
     if p    is None:   missing.append("포아송비")
     if d    is None:   missing.append("밀도")
@@ -546,7 +578,7 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t, a, p, d):
         con_unit=float(unit),
         con_b=float(b),
         con_n=float(n),
-        con_t=t,  # datetime-local 값 그대로 전달
+        con_t=t,  # datetime 값 전달
         con_a=float(a),
         con_p=float(p),
         con_d=float(d),
