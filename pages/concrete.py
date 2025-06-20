@@ -279,13 +279,39 @@ def show_selected(sel, data):
     # 3D 뷰와 타이틀 준비
     fig = make_fig(dims["nodes"], dims["h"])
     
+    # 타설 시간 포맷팅
+    con_t_raw = row.get('con_t', 'N/A')
+    if con_t_raw and con_t_raw != 'N/A':
+        try:
+            # datetime-local 형태인 경우 (예: 2024-01-01T10:00)
+            if 'T' in str(con_t_raw) and not con_t_raw.startswith('P'):
+                from datetime import datetime
+                dt = datetime.fromisoformat(str(con_t_raw))
+                con_t_formatted = dt.strftime('%Y년 %m월 %d일 %H:%M')
+            # ISO 8601 duration 형태인 경우 (예: P0DT22H50M0S)
+            elif str(con_t_raw).startswith('P'):
+                import re
+                duration_str = str(con_t_raw)
+                # 시간과 분 추출
+                hours = re.search(r'(\d+)H', duration_str)
+                minutes = re.search(r'(\d+)M', duration_str)
+                hours = int(hours.group(1)) if hours else 0
+                minutes = int(minutes.group(1)) if minutes else 0
+                con_t_formatted = f"{hours}시간 {minutes}분"
+            else:
+                con_t_formatted = str(con_t_raw)
+        except Exception:
+            con_t_formatted = str(con_t_raw)
+    else:
+        con_t_formatted = 'N/A'
+    
     # 상세 정보를 포함한 제목 생성
     title_parts = [
         f"{row['concrete_pk']} · {row['name']}",
         f"해석단위: {row.get('con_unit', 'N/A')}m",
         f"베타: {row.get('con_b', 'N/A')}",
         f"N: {row.get('con_n', 'N/A')}",
-        f"타설시간: {row.get('con_t', 'N/A')}",
+        f"타설시간: {con_t_formatted}",
         f"열팽창계수: {row.get('con_a', 'N/A')}×10⁻⁵/°C",
         f"포아송비: {row.get('con_p', 'N/A')}",
         f"밀도: {row.get('con_d', 'N/A')}kg/m³"
