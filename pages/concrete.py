@@ -85,8 +85,9 @@ layout = dbc.Container(
     fluid=True,
     children=[
         dbc.Row([
-            # 좌측: 프로젝트 드롭다운 + 상세정보 + 콘크리트 목록
+            # 좌측: 상세정보 + 프로젝트 드롭다운 + 콘크리트 목록
             dbc.Col([
+                html.Div(id="concrete-details", className="mb-3"),
                 dcc.Dropdown(
                     id="project-dropdown",
                     options=[{"label": row["name"], "value": row["project_pk"]} for _, row in projects_df.iterrows()],
@@ -94,7 +95,6 @@ layout = dbc.Container(
                     clearable=False,
                     className="mb-3"
                 ),
-                html.Div(id="concrete-details", className="mb-3"),
                 html.Hr(className="my-2"),
                 dash_table.DataTable(
                     id="tbl",
