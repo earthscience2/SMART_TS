@@ -585,6 +585,10 @@ def open_edit(b1, b2, sel, data):
     Output("edit-unit",    "value"),
     Output("edit-b",       "value"),
     Output("edit-n",       "value"),
+    Output("edit-t",       "value"),
+    Output("edit-a",       "value"),
+    Output("edit-p",       "value"),
+    Output("edit-d",       "value"),
     Output("edit-preview", "figure"),
     Input("modal-edit",    "is_open"),
     State("edit-id",       "data"),
@@ -626,11 +630,15 @@ def fill_edit(opened: bool, cid):
     con_unit = row.get("con_unit", "")
     con_b    = row.get("con_b", "")
     con_n    = row.get("con_n", "")
+    con_t    = row.get("con_t", "")
+    con_a    = row.get("con_a", "")
+    con_p    = row.get("con_p", "")
+    con_d    = row.get("con_d", "")
 
     # 7) 3D 미리보기 생성
     fig = make_fig(dims.get("nodes", []), dims.get("h", 0))
 
-    return name, nodes, h_value, con_unit, con_b, con_n, fig
+    return name, nodes, h_value, con_unit, con_b, con_n, con_t, con_a, con_p, con_d, fig
 
 
 # ───────────────────── ⑨ 수정 미리보기
