@@ -755,7 +755,6 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     value=slider_value,
                     marks=slider_marks,
                     tooltip={"placement": "bottom", "always_visible": True},
-                    keyboard=True,
                 ),
             ], className="mb-3"),
             dbc.Row([
@@ -853,7 +852,6 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     value=slider_value,
                     marks=slider_marks,
                     tooltip={"placement": "bottom", "always_visible": True},
-                    keyboard=True,
                 ),
             ], className="mb-3"),
             # 입력창 (x, y, z)
