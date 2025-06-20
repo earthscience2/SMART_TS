@@ -106,8 +106,6 @@ layout = dbc.Container(
                 dbc.Col(
                     [
                         html.H6(id="concrete-title", className="mb-2"),
-                        # 현재 파일명 표시
-                        html.H6(id="current-file-title", className="mb-2"),
                         # 탭 메뉴
                         dbc.Tabs([
                             dbc.Tab(label="3D뷰", tab_id="tab-3d"),
@@ -132,6 +130,7 @@ layout = dbc.Container(
                                     marks={},
                                     tooltip={"placement": "bottom", "always_visible": True},
                                 ),
+                                html.Div("", style={"textAlign": "center", "fontSize": "14px", "color": "#666", "marginTop": "8px"}),
                             ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
@@ -291,7 +290,6 @@ def store_section_coord(clickData):
 @callback(
     Output("viewer-3d", "figure"),
     Output("current-time-store", "data", allow_duplicate=True),
-    Output("current-file-title", "children"),
     Output("viewer-3d-store", "data"),
     Output("time-slider", "min", allow_duplicate=True),
     Output("time-slider", "max", allow_duplicate=True),
@@ -399,9 +397,9 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         current_min = float(np.nanmin(current_temps))
         current_max = float(np.nanmax(current_temps))
         current_avg = float(np.nanmean(current_temps))
-        current_file_title = f"현재 파일: {formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)"
+        current_file_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)"
     else:
-        current_file_title = f"현재 파일: {formatted_time}"
+        current_file_title = f"{formatted_time}"
 
     # inp 파일 파싱 (노드, 온도)
     with open(current_file, 'r') as f:
@@ -558,12 +556,11 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         }
     }
     
-    return fig_3d, current_time, current_file_title, viewer_data, 0, max_idx, marks, value, current_file_title
+    return fig_3d, current_time, viewer_data, 0, max_idx, marks, value, current_file_title
 
 # 탭 콘텐츠 처리 콜백 (수정)
 @callback(
     Output("tab-content", "children"),
-    Output("current-file-title", "children", allow_duplicate=True),
     Input("tabs-main", "active_tab"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
@@ -591,7 +588,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             html.Div(guide_message, style={
                 "textAlign": "center", "fontSize": "1.3rem", "color": "#555", "marginTop": "120px"
             })
-        ]), ""
+        ])
     # 이하 기존 코드 유지
     if active_tab == "tab-3d":
         # 저장된 3D 뷰 정보가 있으면 복원, 없으면 기본 뷰
@@ -627,6 +624,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     marks=slider_marks,
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
+                html.Div(current_file_title, style={"textAlign": "center", "fontSize": "14px", "color": "#666", "marginTop": "8px"}),
             ], className="mb-3"),
             dbc.Row([
                 dbc.Col([
@@ -640,7 +638,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     ], style={"padding": "10px"}),
                 ], md=12),
             ]),
-        ]), current_file_title
+        ])
     elif active_tab == "tab-section":
         # 단면도 탭: 2x2 배열 배치, 입력창 상단, 3D 뷰/단면도
         if viewer_data and 'slider' in viewer_data:
@@ -664,6 +662,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     marks=slider_marks,
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
+                html.Div(current_file_title, style={"textAlign": "center", "fontSize": "14px", "color": "#666", "marginTop": "8px"}),
             ], className="mb-3"),
             # 입력창 (x, y, z)
             html.Div([
@@ -707,7 +706,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     ]),
                 ], md=12),
             ]),
-        ]), current_file_title
+        ])
     elif active_tab == "tab-temp":
         # 온도 변화 탭: 입력창(맨 위), 3D 뷰(왼쪽, 콘크리트 모양만, 온도 없음, 입력 위치 표시), 오른쪽 시간에 따른 온도 정보(그래프)
         # 기본값 계산용
@@ -764,11 +763,11 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     dcc.Graph(id="temp-time-graph", style={"height": "50vh"}),
                 ], md=6),
             ]),
-        ]), "전체 파일"
+        ])
     elif active_tab == "tab-analysis":
         # 수치해석 탭: 서버에서 VTK/VTP 파일을 파싱하여 dash_vtk.Mesh로 시각화 + 컬러맵 필드/프리셋 선택
         if not (selected_rows and tbl_data):
-            return html.Div("콘크리트를 선택하세요."), ""
+            return html.Div("콘크리트를 선택하세요.")
         
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
         concrete_pk = row["concrete_pk"]
@@ -783,13 +782,14 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             vtp_files = sorted([f for f in os.listdir(assets_vtp_dir) if f.endswith('.vtp')])
         
         if not vtk_files and not vtp_files:
-            return html.Div("VTK/VTP 파일이 없습니다."), ""
+            return html.Div("VTK/VTP 파일이 없습니다.")
         
         # 시간 정보 파싱
         from datetime import datetime
         times = []
         file_type = None
         files = []
+        
         
         if vtk_files:
             files = vtk_files
@@ -1301,7 +1301,6 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     Output("section-x-input", "min"), Output("section-x-input", "max"), Output("section-x-input", "value"),
     Output("section-y-input", "min"), Output("section-y-input", "max"), Output("section-y-input", "value"),
     Output("section-z-input", "min"), Output("section-z-input", "max"), Output("section-z-input", "value"),
-    Output("current-file-title", "children", allow_duplicate=True),
     Input("time-slider-section", "value"),
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
@@ -1503,11 +1502,11 @@ def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data)
         current_min = float(np.nanmin(temps))
         current_max = float(np.nanmax(temps))
         current_avg = float(np.nanmean(temps))
-        current_file_title = f"현재 파일: {formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)"
+        current_file_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)"
     except Exception:
-        current_file_title = f"현재 파일: {os.path.basename(current_file)}"
+        current_file_title = f"{os.path.basename(current_file)}"
     # step=0.1로 반환
-    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, current_file_title
+    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0
 
 # 온도분포 탭 콜백: 입력값 변경 시 3D 뷰와 온도 정보 갱신
 @callback(
@@ -1830,7 +1829,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
     from dash_vtk.utils import to_mesh_state
     
     if not selected_rows or not tbl_data:
-        return html.Div("콘크리트를 선택하세요."), "", go.Figure(), 0.0, 1.0
+        return html.Div("콘크리트를 선택하세요."), go.Figure(), 0.0, 1.0
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
@@ -1845,7 +1844,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         vtp_files = sorted([f for f in os.listdir(assets_vtp_dir) if f.endswith('.vtp')])
     
     if not vtk_files and not vtp_files:
-        return html.Div("VTK/VTP 파일이 없습니다."), "", go.Figure(), 0.0, 1.0
+        return html.Div("VTK/VTP 파일이 없습니다."), go.Figure(), 0.0, 1.0
     
     from datetime import datetime
     times = []
@@ -1868,7 +1867,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             continue
     
     if not times:
-        return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다."), "", go.Figure(), 0.0, 1.0
+        return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다."), go.Figure(), 0.0, 1.0
     
     times.sort()
     max_idx = len(times) - 1
@@ -1907,7 +1906,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             return html.Div([
                 html.H5("VTK 파일 읽기 실패", style={"color": "red"}),
                 html.P(f"파일: {selected_file}")
-            ]), f"파일: {selected_file}", go.Figure(), 0.0, 1.0
+            ]), go.Figure(), 0.0, 1.0
         
         # 점의 개수 확인
         num_points = ds.GetNumberOfPoints()
@@ -1916,7 +1915,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 html.H5("빈 데이터셋", style={"color": "red"}),
                 html.P(f"파일: {selected_file}"),
                 html.P("점이 없는 데이터셋입니다.")
-            ]), f"파일: {selected_file}", go.Figure(), 0.0, 1.0
+            ]), go.Figure(), 0.0, 1.0
         
         # 바운딩 박스 정보 추출 (단면 슬라이더용)
         bounds = ds.GetBounds()  # (xmin,xmax,ymin,ymax,zmin,zmax)
@@ -2111,7 +2110,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 html.P(f"셀 개수: {ds_for_vis.GetNumberOfCells()}"),
                 html.Hr(),
                 html.P("VTK 파일 형식을 확인해주세요. FRD → VTK 변환이 올바르게 되었는지 점검이 필요합니다.", style={"color": "gray"})
-            ]), f"파일: {selected_file}", go.Figure(), slice_min, slice_max
+            ]), go.Figure(), slice_min, slice_max
         
         # 컬러 데이터 범위 추출
         color_range = None
@@ -2246,7 +2245,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 html.P(f"오류: {str(vtk_error)}"),
                 html.Hr(),
                 html.P("브라우저를 새로고침하거나 다른 파일을 선택해보세요.", style={"color": "gray"})
-            ]), f"파일: {selected_file}", go.Figure(), slice_min, slice_max
+            ]), go.Figure(), slice_min, slice_max
         
     except Exception as e:
         print(f"VTK 처리 전체 오류: {e}")
@@ -2257,7 +2256,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             html.P(f"오류: {str(e)}"),
             html.Hr(),
             html.P("다른 파일을 선택하거나 VTK 파일을 확인해주세요.", style={"color": "gray"})
-        ]), f"파일: {selected_file}", go.Figure(), 0.0, 1.0
+        ]), go.Figure(), 0.0, 1.0
 
 # 수치해석 컬러바 표시/숨김 콜백
 @callback(
