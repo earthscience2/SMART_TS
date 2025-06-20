@@ -56,8 +56,8 @@ navbar = dbc.NavbarSimple(
     children=[
         dbc.NavItem(dcc.Link("Home", href="/", className="nav-link", id="nav-home")),
         dbc.NavItem(dcc.Link("Project", href="/project", className="nav-link", id="nav-project")),
-        dbc.NavItem(dcc.Link("Concrete", href="/concrete", className="nav-link", id="nav-concrete")),
         dbc.NavItem(dcc.Link("Sensor", href="/sensor", className="nav-link", id="nav-sensor")),
+        dbc.NavItem(dcc.Link("Concrete", href="/concrete", className="nav-link", id="nav-concrete")),
         # Logout: dcc.Link + refresh=True 로 강제 풀 리프레시
         """
         dbc.NavItem(
@@ -88,8 +88,8 @@ from dash.dependencies import Input, Output
 @app.callback(
     [Output("nav-home", "className"),
      Output("nav-project", "className"),
-     Output("nav-concrete", "className"),
-     Output("nav-sensor", "className")],
+     Output("nav-sensor", "className"),
+     Output("nav-concrete", "className")],
     Input("url", "pathname")
 )
 def update_nav_active(pathname):
@@ -98,9 +98,9 @@ def update_nav_active(pathname):
         classes[0] += " active"
     elif pathname.startswith("/project"):
         classes[1] += " active"
-    elif pathname.startswith("/concrete"):
-        classes[2] += " active"
     elif pathname.startswith("/sensor"):
+        classes[2] += " active"
+    elif pathname.startswith("/concrete"):
         classes[3] += " active"
     return classes
 
