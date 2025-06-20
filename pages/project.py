@@ -39,6 +39,61 @@ import api_db
 
 register_page(__name__, path="/project")
 
+# 방향키 이벤트 처리를 위한 클라이언트사이드 콜백 추가
+dash.clientside_callback(
+    """
+    function(id) {
+        if (!window.sliderKeyListener) {
+            window.sliderKeyListener = function(event) {
+                const activeElement = document.activeElement;
+                const isSlider = activeElement && activeElement.className && 
+                    activeElement.className.includes('rc-slider-handle');
+                
+                if (!isSlider) return;
+                
+                const slider = activeElement.closest('.rc-slider');
+                if (!slider) return;
+                
+                let sliderId = null;
+                if (slider.closest('#time-slider')) {
+                    sliderId = 'time-slider';
+                } else if (slider.closest('#time-slider-section')) {
+                    sliderId = 'time-slider-section';
+                } else {
+                    return;
+                }
+                
+                const sliderInput = document.querySelector(`#${sliderId} input[type="range"]`);
+                if (!sliderInput) return;
+                
+                const currentValue = parseInt(sliderInput.value);
+                const min = parseInt(sliderInput.min);
+                const max = parseInt(sliderInput.max);
+                
+                if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+                    if (currentValue > min) {
+                        sliderInput.value = currentValue - 1;
+                        sliderInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                    event.preventDefault();
+                } else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+                    if (currentValue < max) {
+                        sliderInput.value = currentValue + 1;
+                        sliderInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                    event.preventDefault();
+                }
+            };
+            
+            document.addEventListener('keydown', window.sliderKeyListener);
+        }
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output("project-url", "search"),
+    Input("project-url", "pathname")
+)
+
 # ────────────────────────────── 레이아웃 ────────────────────────────
 layout = dbc.Container(
     fluid=True,
@@ -744,7 +799,10 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
         return html.Div([
             # 시간 슬라이더 (3D 뷰 위에 배치)
             html.Div([
-                html.Label("시간", className="form-label"),
+                html.Div([
+                    html.Span("시간", className="form-label", style={"marginRight": "10px"}),
+                    html.Span(id="main-file-title", children=display_title, style={"fontSize": "14px", "color": "#666"}),
+                ], style={"display": "flex", "alignItems": "center", "marginBottom": "5px"}),
                 dcc.Slider(
                     id="time-slider",
                     min=slider_min,
@@ -753,9 +811,9 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     value=slider_value,
                     marks=slider_marks,
                     tooltip={"placement": "bottom", "always_visible": True},
+                    updatemode="drag",
                 ),
-                html.Div(id="main-file-title", children=display_title, style={"textAlign": "center", "fontSize": "14px", "color": "#666", "marginTop": "8px"}),
-            ], className="mb-3"),
+            ], className="mb-3", tabIndex=0, style={"outline": "none"}),
             dbc.Row([
                 dbc.Col([
                     html.Div([
@@ -842,7 +900,10 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
         return html.Div([
             # 시간 슬라이더 (상단)
             html.Div([
-                html.Label("시간", className="form-label"),
+                html.Div([
+                    html.Span("시간", className="form-label", style={"marginRight": "10px"}),
+                    html.Span(id="section-file-title", children=section_display_title, style={"fontSize": "14px", "color": "#666"}),
+                ], style={"display": "flex", "alignItems": "center", "marginBottom": "5px"}),
                 dcc.Slider(
                     id="time-slider-section",
                     min=slider_min,
@@ -851,9 +912,9 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     value=slider_value,
                     marks=slider_marks,
                     tooltip={"placement": "bottom", "always_visible": True},
+                    updatemode="drag",
                 ),
-                html.Div(id="section-file-title", children=section_display_title, style={"textAlign": "center", "fontSize": "14px", "color": "#666", "marginTop": "8px"}),
-            ], className="mb-3"),
+            ], className="mb-3", tabIndex=0, style={"outline": "none"}),
             # 입력창 (x, y, z)
             html.Div([
                 html.Label("단면 위치 설정", className="mb-2"),
