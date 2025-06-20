@@ -325,7 +325,7 @@ def show_selected(sel, data):
     
     # 상세 정보를 포함한 제목 생성
     title_parts = [
-        f"{row['concrete_pk']} · {row['name']}",
+        f"{row['name']}",
         f"해석단위: {row.get('con_unit', 'N/A')}m",
         f"베타: {row.get('con_b', 'N/A')}",
         f"N: {row.get('con_n', 'N/A')}",
