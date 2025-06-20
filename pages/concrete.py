@@ -306,41 +306,52 @@ def show_selected(sel, data):
     con_t_raw = row.get('con_t', 'N/A')
     if con_t_raw and con_t_raw != 'N/A':
         try:
-            # datetime-local 형태인 경우 (예: 2024-01-01T10:00)
-            if 'T' in str(con_t_raw) and not con_t_raw.startswith('P'):
-                from datetime import datetime
-                dt = datetime.fromisoformat(str(con_t_raw))
-                con_t_formatted = dt.strftime('%Y년 %m월 %d일 %H:%M')
-            # ISO 8601 duration 형태인 경우 (예: P0DT22H50M0S)
-            elif str(con_t_raw).startswith('P'):
-                import re
-                from datetime import datetime, timedelta
-                duration_str = str(con_t_raw)
-                
-                # 일, 시간, 분, 초 추출
-                days = re.search(r'(\d+)D', duration_str)
-                hours = re.search(r'(\d+)H', duration_str)
-                minutes = re.search(r'(\d+)M', duration_str)
-                seconds = re.search(r'(\d+)S', duration_str)
-                
-                days = int(days.group(1)) if days else 0
-                hours = int(hours.group(1)) if hours else 0
-                minutes = int(minutes.group(1)) if minutes else 0
-                seconds = int(seconds.group(1)) if seconds else 0
-                
-                # 현재 시간에서 duration을 빼서 타설 시점 계산
-                now = datetime.now()
-                duration = timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
-                casting_time = now - duration
-                
-                con_t_formatted = casting_time.strftime('%Y년 %m월 %d일 %H:%M')
-                # 추가 정보로 경과 시간도 표시
-                if days > 0:
-                    con_t_formatted += f" ({days}일 {hours}시간 {minutes}분 경과)"
+            from datetime import datetime
+            dt = None
+            
+            # datetime 객체인 경우
+            if hasattr(con_t_raw, 'strftime'):
+                dt = con_t_raw
+            # 문자열인 경우 파싱
+            elif isinstance(con_t_raw, str):
+                if 'T' in con_t_raw:
+                    # ISO 형식 (2024-01-01T10:00 또는 2024-01-01T10:00:00)
+                    dt = datetime.fromisoformat(con_t_raw.replace('Z', ''))
                 else:
-                    con_t_formatted += f" ({hours}시간 {minutes}분 경과)"
+                    # 다른 형식 시도
+                    dt = datetime.strptime(str(con_t_raw), '%Y-%m-%d %H:%M:%S')
+            
+            if dt:
+                # 기본 날짜/시간 포맷
+                con_t_formatted = dt.strftime('%Y년 %m월 %d일 %H:%M')
+                
+                # 경과 시간 계산
+                now = datetime.now()
+                time_diff = now - dt
+                
+                # 경과 시간 포맷팅
+                total_seconds = int(time_diff.total_seconds())
+                days = total_seconds // 86400
+                hours = (total_seconds % 86400) // 3600
+                minutes = (total_seconds % 3600) // 60
+                
+                if days > 0:
+                    if hours > 0:
+                        con_t_formatted += f" ({days}일 {hours}시간 경과)"
+                    else:
+                        con_t_formatted += f" ({days}일 경과)"
+                elif hours > 0:
+                    if minutes > 30:  # 30분 이상이면 분도 표시
+                        con_t_formatted += f" ({hours}시간 {minutes}분 경과)"
+                    else:
+                        con_t_formatted += f" ({hours}시간 경과)"
+                elif minutes > 0:
+                    con_t_formatted += f" ({minutes}분 경과)"
+                else:
+                    con_t_formatted += " (방금 전)"
             else:
                 con_t_formatted = str(con_t_raw)
+                
         except Exception:
             con_t_formatted = str(con_t_raw)
     else:
