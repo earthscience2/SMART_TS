@@ -181,12 +181,30 @@ layout = dbc.Container(
             dbc.ModalHeader("콘크리트 수정"),
             dbc.ModalBody([
                 dcc.Store(id="edit-id"),
-                dbc.Input(id="edit-name", placeholder="이름", className="mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label("콘크리트 이름"),
+                        dbc.Input(id="edit-name", placeholder="콘크리트 이름을 입력하세요")
+                    ], width=12),
+                ], className="mb-2"),
                 dbc.Alert(id="edit-alert", is_open=False, duration=3000, color="danger"),
-                dbc.Textarea(id="edit-nodes", rows=3, placeholder="노드 목록", className="mb-2"),
-                dbc.Input(id="edit-h", type="number", placeholder="높이 H", className="mb-2"),
-                dbc.Input(id="edit-unit", type="number", placeholder="해석 단위(con_unit, m)", 
-                         min=0.1, max=1.0, step=0.1, className="mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label("노드 목록 (예: [(1,0),(1,1),(0,1),(0,0)])"),
+                        dbc.Textarea(id="edit-nodes", rows=3, placeholder="노드 좌표를 입력하세요")
+                    ], width=12),
+                ], className="mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label("높이 (m)"),
+                        dbc.Input(id="edit-h", type="number", placeholder="높이를 입력하세요", step=0.1)
+                    ], width=6),
+                    dbc.Col([
+                        dbc.Label("해석 단위 (0.1 ~ 1.0) [m]"),
+                        dbc.Input(id="edit-unit", type="number", placeholder="해석 단위", 
+                                 min=0.1, max=1.0, step=0.1)
+                    ], width=6),
+                ], className="mb-2"),
                 html.Hr(),
                 html.H6("콘크리트 물성치", className="mb-2"),
                 dbc.Row([
