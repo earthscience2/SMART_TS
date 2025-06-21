@@ -15,8 +15,8 @@ def inp_to_frd(concrete_pk, inp_path):
     base = os.path.splitext(os.path.basename(inp_path))[0]
     work_dir = os.path.dirname(inp_path)
 
-    # 1) CCX 실행 (.frd, .dat, .cvg, .sta 생성)
-    subprocess.run(['ccx', inp_path], cwd=work_dir, check=True)
+    # 1) CCX 실행 (.frd, .dat, .cvg, .sta 생성) - 파일명만 사용, 확장자 제외
+    subprocess.run(['ccx', base], cwd=work_dir, check=True)
     
     # 2) 대상 디렉토리 생성
     frd_dir = os.path.join('frd', concrete_pk)
@@ -60,8 +60,8 @@ def convert_all_inp_to_frd():
             concrete_pk = os.path.basename(root)
             base        = os.path.splitext(fname)[0]
 
-            # 1) CCX 실행
-            subprocess.run(['ccx', inp_path], cwd=root, check=True)
+            # 1) CCX 실행 (파일명만 사용, 확장자 제외)
+            subprocess.run(['ccx', base], cwd=root, check=True)
 
             # 2) 대상 디렉토리 생성
             frd_dir = os.path.join('frd', concrete_pk)
