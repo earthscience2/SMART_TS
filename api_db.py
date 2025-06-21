@@ -133,7 +133,7 @@ def get_concrete_data(concrete_pk: str = None,
 def add_concrete_data(project_pk: str, name: str, dims: dict, 
                      con_unit: float, con_b: float, con_n: float,
                      con_t: str, con_a: float, con_p: float, con_d: float,
-                     activate: int) -> None:
+                     con_e: float, activate: int) -> None:
     # 1) 현재 가장 큰 concrete_pk 가져오기
     max_pk_sql = "SELECT MAX(concrete_pk) as max_pk FROM concrete"
     max_pk_df = pd.read_sql(text(max_pk_sql), con=engine)
@@ -149,9 +149,9 @@ def add_concrete_data(project_pk: str, name: str, dims: dict,
     # 3) INSERT 쿼리 실행
     sql = """
     INSERT INTO concrete 
-    (concrete_pk, project_pk, name, dims, con_unit, con_b, con_n, con_t, con_a, con_p, con_d, activate, created_at, updated_at) 
+    (concrete_pk, project_pk, name, dims, con_unit, con_b, con_n, con_t, con_a, con_p, con_d, con_e, activate, created_at, updated_at) 
     VALUES 
-    (:concrete_pk, :project_pk, :name, :dims, :con_unit, :con_b, :con_n, :con_t, :con_a, :con_p, :con_d, :activate, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    (:concrete_pk, :project_pk, :name, :dims, :con_unit, :con_b, :con_n, :con_t, :con_a, :con_p, :con_d, :con_e, :activate, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     """
     
     params = {
@@ -166,6 +166,7 @@ def add_concrete_data(project_pk: str, name: str, dims: dict,
         "con_a": con_a,
         "con_p": con_p,
         "con_d": con_d,
+        "con_e": con_e,
         "activate": activate
     }
     
