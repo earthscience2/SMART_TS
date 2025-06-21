@@ -418,6 +418,9 @@ def show_selected(sel, data):
     else:
         con_t_formatted = 'N/A'
     
+    # activate 체크 (없으면 1로 간주)
+    is_active = row.get("activate", 1) == 1
+    
     # 상태 정보 준비
     status_text = "수정가능" if is_active else "분석중"
     status_color = "success" if is_active else "warning"
@@ -467,9 +470,6 @@ def show_selected(sel, data):
         ], className="py-2")
     ], className="shadow-sm")
 
-    # activate 체크 (없으면 1로 간주)
-    is_active = row.get("activate", 1) == 1
-    
     if not is_active:
         # 비활성화된 경우: 수정/삭제 비활성화
         return fig, details, True, True
