@@ -394,7 +394,7 @@ def show_selected(sel, data):
         dbc.CardHeader([
             html.Div([
                 html.Span(f"{row['name']}", className="text-primary", style={"fontSize": "1rem", "fontWeight": "600"}),
-                html.Span(f" ({row.get('con_unit', 'N/A')}m)", className="text-muted", style={"fontSize": "0.9rem", "marginLeft": "8px"})
+                html.Span(f" [해석단위: {row.get('con_unit', 'N/A')}m]", className="text-muted", style={"fontSize": "0.85rem", "marginLeft": "8px"})
             ])
         ], className="py-2"),
         dbc.CardBody([
