@@ -163,6 +163,12 @@ layout = dbc.Container(
                 ], className="mb-2"),
                 dbc.Row([
                     dbc.Col([
+                        dbc.Label("28일 후 탄성계수 (1 ~ 100) [GPa]"),
+                        dbc.Input(id="add-e", type="number", min=1, max=100, step=0.1, placeholder="탄성계수(con_e)")
+                    ], width=12),
+                ], className="mb-2"),
+                dbc.Row([
+                    dbc.Col([
                         dbc.Label("타설 날짜"),
                         dbc.Input(id="add-t-date", type="date", className="mb-1")
                     ], width=6),
@@ -236,6 +242,12 @@ layout = dbc.Container(
                         dbc.Label("N 상수 (0.5 ~ 0.7)"),
                         dbc.Input(id="edit-n", type="number", min=0.5, max=0.7, step=0.1, placeholder="N 상수(con_n)")
                     ], width=6),
+                ], className="mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label("28일 후 탄성계수 (1 ~ 100) [GPa]"),
+                        dbc.Input(id="edit-e", type="number", min=1, max=100, step=0.1, placeholder="탄성계수(con_e)")
+                    ], width=12),
                 ], className="mb-2"),
                 dbc.Row([
                     dbc.Col([
@@ -387,15 +399,19 @@ def show_selected(sel, data):
                 dbc.Col([
                     html.Small("해석단위", className="text-muted", style={"fontSize": "0.7rem"}),
                     html.Div(f"{row.get('con_unit', 'N/A')}m", className="fw-bold", style={"fontSize": "0.8rem"})
-                ], width=4, className="mb-1"),
+                ], width=3, className="mb-1"),
                 dbc.Col([
                     html.Small("베타", className="text-muted", style={"fontSize": "0.7rem"}),
                     html.Div(f"{row.get('con_b', 'N/A')}", className="fw-bold", style={"fontSize": "0.8rem"})
-                ], width=4, className="mb-1"),
+                ], width=3, className="mb-1"),
                 dbc.Col([
                     html.Small("N", className="text-muted", style={"fontSize": "0.7rem"}),
                     html.Div(f"{row.get('con_n', 'N/A')}", className="fw-bold", style={"fontSize": "0.8rem"})
-                ], width=4, className="mb-1"),
+                ], width=3, className="mb-1"),
+                dbc.Col([
+                    html.Small("탄성계수", className="text-muted", style={"fontSize": "0.7rem"}),
+                    html.Div(f"{row.get('con_e', 'N/A')}GPa", className="fw-bold", style={"fontSize": "0.8rem"})
+                ], width=3, className="mb-1"),
             ]),
             dbc.Row([
                 dbc.Col([
@@ -486,9 +502,10 @@ def add_preview(_, nodes_txt, h):
     State("add-a",       "value"),
     State("add-p",       "value"),
     State("add-d",       "value"),
+    State("add-e",       "value"),
     prevent_initial_call=True
 )
-def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t_date, t_time, a, p, d):
+def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t_date, t_time, a, p, d, e):
     if not n_clicks:
         raise PreventUpdate
 
@@ -516,6 +533,7 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t_date, t_tim
     if a    is None:   missing.append("열팽창계수")
     if p    is None:   missing.append("포아송비")
     if d    is None:   missing.append("밀도")
+    if e    is None:   missing.append("탄성계수")
     
     # 2) 범위 체크
     range_errors = []
@@ -531,6 +549,8 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t_date, t_tim
         range_errors.append("포아송비(0.01~1.0)")
     if d is not None and (d < 500 or d > 5000):
         range_errors.append("밀도(500~5000)")
+    if e is not None and (e < 1 or e > 100):
+        range_errors.append("탄성계수(1~100)")
 
     if missing:
         return (
@@ -582,6 +602,7 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t_date, t_tim
         con_a=float(a),
         con_p=float(p),
         con_d=float(d),
+        con_e=float(e),
         activate=1
     )
 
@@ -651,6 +672,7 @@ def open_edit(b1, b2, sel, data):
     Output("edit-a",        "value"),
     Output("edit-p",        "value"),
     Output("edit-d",        "value"),
+    Output("edit-e",        "value"),
     Output("edit-preview",  "figure"),
     Input("modal-edit",     "is_open"),
     State("edit-id",        "data"),
@@ -695,6 +717,7 @@ def fill_edit(opened: bool, cid):
     con_a    = row.get("con_a", "")
     con_p    = row.get("con_p", "")
     con_d    = row.get("con_d", "")
+    con_e    = row.get("con_e", "")
     
     # 타설 시간 포맷팅 (날짜와 시간 분리)
     con_t_raw = row.get("con_t", "")
@@ -738,7 +761,7 @@ def fill_edit(opened: bool, cid):
     # 7) 3D 미리보기 생성
     fig = make_fig(dims.get("nodes", []), dims.get("h", 0))
 
-    return name, nodes, h_value, con_unit, con_b, con_n, con_t_date, con_t_time, con_a, con_p, con_d, fig
+    return name, nodes, h_value, con_unit, con_b, con_n, con_t_date, con_t_time, con_a, con_p, con_d, con_e, fig
 
 
 # ───────────────────── ⑨ 수정 미리보기
@@ -786,9 +809,10 @@ def edit_preview(_, nodes_txt, h):
     State("edit-a",       "value"),
     State("edit-p",       "value"),
     State("edit-d",       "value"),
+    State("edit-e",       "value"),
     prevent_initial_call=True
 )
-def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, p, d):
+def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, p, d, e):
     if not n_clicks:
         raise PreventUpdate
 
@@ -816,6 +840,7 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
     if a    is None:   missing.append("열팽창계수")
     if p    is None:   missing.append("포아송비")
     if d    is None:   missing.append("밀도")
+    if e    is None:   missing.append("탄성계수")
     
     # 2) 범위 체크
     range_errors = []
@@ -831,6 +856,8 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
         range_errors.append("포아송비(0.01~1.0)")
     if d is not None and (d < 500 or d > 5000):
         range_errors.append("밀도(500~5000)")
+    if e is not None and (e < 1 or e > 100):
+        range_errors.append("탄성계수(1~100)")
 
     if missing:
         return (
@@ -876,6 +903,7 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
         con_a=float(a),
         con_p=float(p),
         con_d=float(d),
+        con_e=float(e),
         activate=1
     )
 
