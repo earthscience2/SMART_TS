@@ -565,7 +565,7 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t_date, t_tim
     
     if range_errors:
         return (
-            f"다음 항목의 값이 허용 범위를 벗어났습니다: {', '.join(range_errors)}",
+            f"다음 항목에 올바른 범위값을 입력해주세요: {', '.join(range_errors)}",
             True,                                       # add-alert.is_open
             dash.no_update,                             # tbl.data_timestamp
             True,                                       # modal-add.is_open
@@ -870,7 +870,7 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
     
     if range_errors:
         return (
-            f"다음 항목의 값이 허용 범위를 벗어났습니다: {', '.join(range_errors)}",
+            f"다음 항목에 올바른 범위값을 입력해주세요: {', '.join(range_errors)}",
             True,                  # edit-alert 열기
             dash.no_update,        # 테이블 미갱신
             True,                  # 모달 닫지 않음
