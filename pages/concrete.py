@@ -392,26 +392,26 @@ def show_selected(sel, data):
     # 상세 정보 카드 생성
     details = dbc.Card([
         dbc.CardHeader([
-            html.H6(f"{row['name']}", className="mb-0 text-primary", style={"fontSize": "1rem"})
+            html.Div([
+                html.Span(f"{row['name']}", className="text-primary", style={"fontSize": "1rem", "fontWeight": "600"}),
+                html.Span(f" ({row.get('con_unit', 'N/A')}m)", className="text-muted", style={"fontSize": "0.9rem", "marginLeft": "8px"})
+            ])
         ], className="py-2"),
         dbc.CardBody([
+            # 2x3 물성치 레이아웃
             dbc.Row([
-                dbc.Col([
-                    html.Small("해석단위", className="text-muted", style={"fontSize": "0.7rem"}),
-                    html.Div(f"{row.get('con_unit', 'N/A')}m", className="fw-bold", style={"fontSize": "0.8rem"})
-                ], width=3, className="mb-1"),
                 dbc.Col([
                     html.Small("베타", className="text-muted", style={"fontSize": "0.7rem"}),
                     html.Div(f"{row.get('con_b', 'N/A')}", className="fw-bold", style={"fontSize": "0.8rem"})
-                ], width=3, className="mb-1"),
+                ], width=4, className="mb-1"),
                 dbc.Col([
                     html.Small("N", className="text-muted", style={"fontSize": "0.7rem"}),
                     html.Div(f"{row.get('con_n', 'N/A')}", className="fw-bold", style={"fontSize": "0.8rem"})
-                ], width=3, className="mb-1"),
+                ], width=4, className="mb-1"),
                 dbc.Col([
                     html.Small("탄성계수", className="text-muted", style={"fontSize": "0.7rem"}),
                     html.Div(f"{row.get('con_e', 'N/A')}GPa", className="fw-bold", style={"fontSize": "0.8rem"})
-                ], width=3, className="mb-1"),
+                ], width=4, className="mb-1"),
             ]),
             dbc.Row([
                 dbc.Col([
