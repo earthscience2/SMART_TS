@@ -199,70 +199,44 @@ def update_concrete_data(concrete_pk: str, **kwargs) -> None:
         conn.execute(text(sql), params)
         conn.commit()
 
-# 콘크리트 삭제 (관련 센서 확인 후 처리)
+# 콘크리트 삭제 (관련 센서도 함께 삭제)
 def delete_concrete_data(concrete_pk: str) -> dict:
     """
-    콘크리트 삭제 함수
+    콘크리트 삭제 함수 - 관련 센서도 함께 삭제
     Returns:
-        dict: {"success": bool, "message": str, "related_sensors": int}
+        dict: {"success": bool, "message": str, "deleted_sensors": int}
     """
-    # 1) 관련된 센서가 있는지 확인
-    sensor_check_sql = "SELECT COUNT(*) as count FROM sensor WHERE concrete_pk = :concrete_pk"
     with engine.connect() as conn:
+        # 1) 관련된 센서 개수 확인
+        sensor_check_sql = "SELECT COUNT(*) as count FROM sensor WHERE concrete_pk = :concrete_pk"
         result = conn.execute(text(sensor_check_sql), {"concrete_pk": concrete_pk})
         sensor_count = result.fetchone()[0]
         
+        # 2) 관련 센서 먼저 삭제
         if sensor_count > 0:
-            # 관련 센서가 있으면 soft delete (activate = 0)
-            update_sql = "UPDATE concrete SET activate = 0, updated_at = CURRENT_TIMESTAMP WHERE concrete_pk = :concrete_pk"
-            conn.execute(text(update_sql), {"concrete_pk": concrete_pk})
-            conn.commit()
-            
+            delete_sensors_sql = "DELETE FROM sensor WHERE concrete_pk = :concrete_pk"
+            conn.execute(text(delete_sensors_sql), {"concrete_pk": concrete_pk})
+        
+        # 3) 콘크리트 삭제
+        delete_concrete_sql = "DELETE FROM concrete WHERE concrete_pk = :concrete_pk"
+        conn.execute(text(delete_concrete_sql), {"concrete_pk": concrete_pk})
+        
+        conn.commit()
+        
+        if sensor_count > 0:
             return {
                 "success": True,
-                "message": f"콘크리트가 비활성화되었습니다. (관련 센서 {sensor_count}개 존재)",
-                "related_sensors": sensor_count
+                "message": f"콘크리트와 관련 센서 {sensor_count}개가 삭제되었습니다.",
+                "deleted_sensors": sensor_count
             }
         else:
-            # 관련 센서가 없으면 실제 삭제
-            delete_sql = "DELETE FROM concrete WHERE concrete_pk = :concrete_pk"
-            conn.execute(text(delete_sql), {"concrete_pk": concrete_pk})
-            conn.commit()
-            
             return {
                 "success": True,
                 "message": "콘크리트가 삭제되었습니다.",
-                "related_sensors": 0
+                "deleted_sensors": 0
             }
 
-# 콘크리트 활성화
-def activate_concrete_data(concrete_pk: str) -> dict:
-    """
-    콘크리트 활성화 함수
-    Returns:
-        dict: {"success": bool, "message": str}
-    """
-    try:
-        update_sql = "UPDATE concrete SET activate = 1, updated_at = CURRENT_TIMESTAMP WHERE concrete_pk = :concrete_pk"
-        with engine.connect() as conn:
-            result = conn.execute(text(update_sql), {"concrete_pk": concrete_pk})
-            conn.commit()
-            
-            if result.rowcount > 0:
-                return {
-                    "success": True,
-                    "message": "콘크리트가 활성화되었습니다."
-                }
-            else:
-                return {
-                    "success": False,
-                    "message": "콘크리트를 찾을 수 없습니다."
-                }
-    except Exception as e:
-        return {
-            "success": False,
-            "message": f"활성화 중 오류 발생: {str(e)}"
-        }
+
 
 
 # --------------------------------------------------
