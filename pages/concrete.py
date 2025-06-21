@@ -165,7 +165,7 @@ layout = dbc.Container(
                 dbc.Alert(id="add-alert", is_open=False, duration=3000, color="danger"),
                 dbc.Row([
                     dbc.Col([
-                        dbc.Label("노드 목록 (예: [(1,0),(1,1),(0,1),(0,0)])"),
+                        dbc.Label("노드 목록 (예: [[1,0],[1,1],[0,1],[0,0]])"),
                         dbc.Textarea(id="add-nodes", rows=3, placeholder="노드 좌표를 입력하세요")
                     ], width=12),
                 ], className="mb-2"),
