@@ -103,6 +103,26 @@ layout = dbc.Container(
                     style_table={"overflowY": "auto", "height": "30vh"},
                     style_cell={"whiteSpace": "nowrap", "textAlign": "center"},
                     style_header={"backgroundColor": "#f1f3f5", "fontWeight": 600},
+                    style_data_conditional=[
+                        {
+                            'if': {
+                                'filter_query': '{status} = 분석중',
+                                'column_id': 'status'
+                            },
+                            'backgroundColor': '#fff3cd',
+                            'color': '#856404',
+                            'fontWeight': 'bold'
+                        },
+                        {
+                            'if': {
+                                'filter_query': '{status} = 수정가능',
+                                'column_id': 'status'
+                            },
+                            'backgroundColor': '#d1ecf1',
+                            'color': '#0c5460',
+                            'fontWeight': 'bold'
+                        }
+                    ],
                 ),
                 dbc.ButtonGroup([
                     dbc.Button("+ 추가", id="btn-add", color="success", className="mt-2"),
@@ -306,8 +326,13 @@ def refresh_table(n, project_pk, _data_ts):
     else:
         df = pd.DataFrame(columns=df_all.columns)
     
+    # 상태 정보 추가
+    if not df.empty:
+        df["status"] = df["activate"].apply(lambda x: "수정가능" if x == 1 else "분석중")
+    
     cols = [
         {"name": "이름", "id": "name"},
+        {"name": "상태", "id": "status", "type": "text"},
     ]
     sel = [0] if not df.empty else []
     return df.to_dict("records"), cols, sel
@@ -393,12 +418,17 @@ def show_selected(sel, data):
     else:
         con_t_formatted = 'N/A'
     
+    # 상태 정보 준비
+    status_text = "수정가능" if is_active else "분석중"
+    status_color = "success" if is_active else "warning"
+    
     # 상세 정보 카드 생성
     details = dbc.Card([
         dbc.CardHeader([
             html.Div([
                 html.Span(f"{row['name']}", className="text-primary", style={"fontSize": "1rem", "fontWeight": "600"}),
-                html.Span(f" [해석단위: {row.get('con_unit', 'N/A')}m]", className="text-muted", style={"fontSize": "0.85rem", "marginLeft": "8px"})
+                html.Span(f" [해석단위: {row.get('con_unit', 'N/A')}m]", className="text-muted", style={"fontSize": "0.85rem", "marginLeft": "8px"}),
+                dbc.Badge(status_text, color=status_color, className="ms-2", style={"fontSize": "0.7rem"})
             ])
         ], className="py-2"),
         dbc.CardBody([
