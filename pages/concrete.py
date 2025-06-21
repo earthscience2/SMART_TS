@@ -108,6 +108,7 @@ layout = dbc.Container(
                     dbc.Button("+ 추가", id="btn-add", color="success", className="mt-2"),
                     dbc.Button("수정", id="btn-edit", color="secondary", className="mt-2", disabled=True),
                     dbc.Button("삭제", id="btn-del",  color="danger", className="mt-2", disabled=True),
+                    dbc.Button("활성화", id="btn-activate", color="info", className="mt-2", disabled=True),
                 ], size="sm", vertical=True, className="w-100 mt-2"),
             ], md=4),
             # 우측: 3D 뷰
@@ -119,7 +120,10 @@ layout = dbc.Container(
         # 알림, 인터벌, 삭제 확인
         dbc.Alert(id="msg", is_open=False, duration=4000),
         dcc.Interval(id="init", interval=500, n_intervals=0, max_intervals=1),
-        dcc.ConfirmDialog(id="confirm-del", message="선택한 콘크리트를 정말 삭제하시겠습니까?"),
+        dcc.ConfirmDialog(
+            id="confirm-del", 
+            message="선택한 콘크리트를 정말 삭제하시겠습니까?\n\n※ 관련 센서가 있는 경우 비활성화됩니다."
+        ),
 
         # 추가 모달
         dbc.Modal(id="modal-add", is_open=False, size="lg", children=[
@@ -302,8 +306,14 @@ def refresh_table(n, project_pk, _data_ts):
         df = df_all[df_all["project_pk"] == project_pk]
     else:
         df = pd.DataFrame(columns=df_all.columns)
+    
+    # 상태 정보 추가
+    if not df.empty:
+        df["status"] = df["activate"].apply(lambda x: "활성" if x == 1 else "비활성")
+    
     cols = [
         {"name": "이름", "id": "name"},
+        {"name": "상태", "id": "status", "type": "text"},
     ]
     sel = [0] if not df.empty else []
     return df.to_dict("records"), cols, sel
@@ -314,6 +324,7 @@ def refresh_table(n, project_pk, _data_ts):
     Output("concrete-details", "children"),
     Output("btn-edit",         "disabled"),
     Output("btn-del",          "disabled"),
+    Output("btn-activate",     "disabled"),
     Input("tbl",               "selected_rows"),
     State("tbl",               "data"),
     prevent_initial_call=True
@@ -321,7 +332,7 @@ def refresh_table(n, project_pk, _data_ts):
 def show_selected(sel, data):
     # 아무 것도 선택 안 됐으면 모두 비활성
     if not sel:
-        return go.Figure(), "", True, True
+        return go.Figure(), "", True, True, True
 
     # 선택된 레코드 가져오기
     row = pd.DataFrame(data).iloc[sel[0]]
@@ -435,11 +446,13 @@ def show_selected(sel, data):
 
     # activate 체크 (없으면 1로 간주)
     is_active = row.get("activate", 1) == 1
-    # activate가 0이면 Edit, Delete 버튼 모두 비활성화
+    
     if not is_active:
-        return fig, details, True, True
-    # 둘 다 활성화
-    return fig, details, False, False
+        # 비활성화된 경우: 수정/삭제 비활성화, 활성화 버튼 활성화
+        return fig, details, True, True, False
+    else:
+        # 활성화된 경우: 수정/삭제 활성화, 활성화 버튼 비활성화
+        return fig, details, False, False, True
 
 # ───────────────────── ③ 추가 모달 토글
 @callback(
@@ -640,9 +653,29 @@ def ask_delete(n, sel):
 def delete_row(_, sel, data):
     if not sel:
         raise PreventUpdate
+    
     cid = data[sel[0]]["concrete_pk"]
-    api_db.delete_concrete_data(cid)
-    return pd.Timestamp.utcnow().value, f"{cid} 삭제 완료", "warning", True
+    concrete_name = data[sel[0]].get("name", cid)
+    
+    try:
+        result = api_db.delete_concrete_data(cid)
+        
+        if result["success"]:
+            if result["related_sensors"] > 0:
+                # 관련 센서가 있어서 비활성화된 경우
+                msg_color = "warning"
+                msg_text = f"'{concrete_name}' {result['message']}"
+            else:
+                # 완전히 삭제된 경우
+                msg_color = "success"
+                msg_text = f"'{concrete_name}' {result['message']}"
+            
+            return pd.Timestamp.utcnow().value, msg_text, msg_color, True
+        else:
+            return dash.no_update, f"'{concrete_name}' 삭제 실패", "danger", True
+            
+    except Exception as e:
+        return dash.no_update, f"'{concrete_name}' 삭제 중 오류 발생: {str(e)}", "danger", True
 
 # ───────────────────── ⑦ 수정 모달 열기
 @callback(
@@ -917,4 +950,48 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
         "success",                      # 전역 msg 색상
         True                            # 전역 msg 열기
     )
+
+# ───────────────────── 활성화 수행
+@callback(
+    Output("tbl", "data_timestamp", allow_duplicate=True),
+    Output("msg", "children", allow_duplicate=True),
+    Output("msg", "color", allow_duplicate=True),
+    Output("msg", "is_open", allow_duplicate=True),
+    Input("btn-activate", "n_clicks"),
+    State("tbl", "selected_rows"),
+    State("tbl", "data"),
+    prevent_initial_call=True
+)
+def activate_concrete(n_clicks, sel, data):
+    if not n_clicks or not sel:
+        raise PreventUpdate
+    
+    cid = data[sel[0]]["concrete_pk"]
+    concrete_name = data[sel[0]].get("name", cid)
+    
+    try:
+        result = api_db.activate_concrete_data(cid)
+        
+        if result["success"]:
+            return (
+                pd.Timestamp.utcnow().value,
+                f"'{concrete_name}' {result['message']}",
+                "success",
+                True
+            )
+        else:
+            return (
+                dash.no_update,
+                f"'{concrete_name}' {result['message']}",
+                "danger",
+                True
+            )
+            
+    except Exception as e:
+        return (
+            dash.no_update,
+            f"'{concrete_name}' 활성화 중 오류 발생: {str(e)}",
+            "danger",
+            True
+        )
 
