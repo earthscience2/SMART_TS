@@ -121,6 +121,11 @@ layout = dbc.Container(
                             'backgroundColor': '#d1ecf1',
                             'color': '#0c5460',
                             'fontWeight': 'bold'
+                        },
+                        {
+                            'if': {'column_id': 'pour_date'},
+                            'fontSize': '0.85rem',
+                            'color': '#6c757d'
                         }
                     ],
                 ),
@@ -326,12 +331,40 @@ def refresh_table(n, project_pk, _data_ts):
     else:
         df = pd.DataFrame(columns=df_all.columns)
     
-    # 상태 정보 추가
+    # 상태 정보와 타설 날짜 추가
     if not df.empty:
         df["status"] = df["activate"].apply(lambda x: "수정가능" if x == 1 else "분석중")
+        
+        # 타설 날짜를 YY.MM.DD 형식으로 변환
+        def format_date(con_t):
+            if con_t and con_t not in ["", "N/A", None]:
+                try:
+                    from datetime import datetime
+                    # datetime 객체인 경우
+                    if hasattr(con_t, 'strftime'):
+                        dt = con_t
+                    # 문자열인 경우 파싱
+                    elif isinstance(con_t, str):
+                        if 'T' in con_t:
+                            # ISO 형식 (2024-01-01T10:00 또는 2024-01-01T10:00:00)
+                            dt = datetime.fromisoformat(con_t.replace('Z', ''))
+                        else:
+                            # 다른 형식 시도
+                            dt = datetime.strptime(str(con_t), '%Y-%m-%d %H:%M:%S')
+                    else:
+                        return 'N/A'
+                    
+                    return dt.strftime('%y.%m.%d')
+                except Exception:
+                    return 'N/A'
+            else:
+                return 'N/A'
+        
+        df["pour_date"] = df["con_t"].apply(format_date)
     
     cols = [
         {"name": "이름", "id": "name"},
+        {"name": "타설일", "id": "pour_date", "type": "text"},
         {"name": "상태", "id": "status", "type": "text"},
     ]
     sel = [0] if not df.empty else []
