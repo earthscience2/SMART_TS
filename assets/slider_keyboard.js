@@ -58,4 +58,34 @@ window.addEventListener('load', () => {
       if (track) track.style.width = percentage + '%';
     }
   });
+
+  // 추가: 슬라이더 값 변경 시 다른 슬라이더들도 동일 값으로 동기화
+  function syncOtherSliders(sourceId, newValue) {
+    const ids = ['time-slider', 'time-slider-section', 'analysis-time-slider'];
+    ids.forEach(id => {
+      if (id === sourceId) return;
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (window.dash_clientside && window.dash_clientside.set_props) {
+        window.dash_clientside.set_props(id, { value: newValue });
+      }
+    });
+  }
+
+  // candidate slider 변경 감지하여 동기화
+  ['time-slider', 'time-slider-section', 'analysis-time-slider'].forEach(sid => {
+    document.addEventListener('change', (ev) => {
+      const t = ev.target;
+      if (!t) return;
+      // rc-slider는 handle 내부 span이 change 이벤트를 발생시키지 않을 수 있어 부모 슬라이더 체크
+      let sliderEl = t.closest?.('.rc-slider');
+      if (!sliderEl) return;
+      if (sliderEl.id !== sid) return;
+      const handle = sliderEl.querySelector('.rc-slider-handle');
+      if (!handle) return;
+      const newVal = parseInt(handle.getAttribute('aria-valuenow'));
+      if (isNaN(newVal)) return;
+      syncOtherSliders(sliderEl.id, newVal);
+    });
+  });
 }); 
