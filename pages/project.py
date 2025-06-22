@@ -1123,6 +1123,8 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                 "borderRadius": "6px",
                 "border": "1px solid #dee2e6"
             }),
+            # 숨김용 3D 메인 뷰(단면도에서도 콜백 대상 유지)
+            dcc.Graph(id="viewer-3d", style={"display": "none"}, config={"scrollZoom": True}),
             # 입력창 (x, y, z)
             html.Div([
                 html.Label("단면 위치 설정", className="mb-2"),
