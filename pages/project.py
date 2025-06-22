@@ -1941,9 +1941,13 @@ def update_section_views(time_idx,
     Input("time-slider", "min"),
     Input("time-slider", "max"),
     Input("time-slider", "marks"),
+    Input("tabs-main", "active_tab"),  # 추가: 현재 활성 탭
     prevent_initial_call=True,
 )
-def sync_time_sliders_to_section(main_value, main_min, main_max, main_marks):
+def sync_time_sliders_to_section(main_value, main_min, main_max, main_marks, active_tab):
+    # 단면도 탭이 활성화되어 있을 때는 메인 슬라이더 변경을 섹션 슬라이더에 반영하지 않음
+    if active_tab == "tab-section":
+        raise PreventUpdate
     return main_value, main_min, main_max, main_marks
 
 @callback(
@@ -1955,9 +1959,13 @@ def sync_time_sliders_to_section(main_value, main_min, main_max, main_marks):
     State("time-slider-section", "min"),
     State("time-slider-section", "max"),
     State("time-slider-section", "marks"),
+    Input("tabs-main", "active_tab"),  # 추가: 현재 활성 탭
     prevent_initial_call=True,
 )
-def sync_section_slider_to_main(section_value, section_min, section_max, section_marks):
+def sync_section_slider_to_main(section_value, section_min, section_max, section_marks, active_tab):
+    # 단면도 탭이 아닐 때는 섹션 슬라이더의 변경을 메인 슬라이더에 반영하지 않음
+    if active_tab != "tab-section":
+        raise PreventUpdate
     return section_value, section_min, section_max, section_marks
 
 # 온도분포 탭 콜백: 입력값 변경 시 3D 뷰와 온도 정보 갱신
