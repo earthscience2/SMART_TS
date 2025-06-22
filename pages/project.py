@@ -239,6 +239,18 @@ layout = dbc.Container(
                                     ], style={"padding": "10px"}),
                                 ], md=12),
                             ]),
+                            # --- 단면도 콜백 대상 컴포넌트들(3D 탭에서도 항상 존재하도록 숨김) ---
+                            html.Div([
+                                # Section inputs
+                                dbc.Input(id="section-x-input", type="number", value=None),
+                                dbc.Input(id="section-y-input", type="number", value=None),
+                                dbc.Input(id="section-z-input", type="number", value=None),
+                                # Section graphs
+                                dcc.Graph(id="viewer-3d-section"),
+                                dcc.Graph(id="viewer-section-x"),
+                                dcc.Graph(id="viewer-section-y"),
+                                dcc.Graph(id="viewer-section-z"),
+                            ], style={"display": "none"}),
                         ]),
                     ],
                     md=9,  # 10에서 9로 변경 (3+9=12)
@@ -1022,6 +1034,18 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     ], style={"padding": "10px"}),
                 ], md=12),
             ]),
+            # --- 단면도 콜백 대상 컴포넌트들(3D 탭에서도 항상 존재하도록 숨김) ---
+            html.Div([
+                # Section inputs
+                dbc.Input(id="section-x-input", type="number", value=None),
+                dbc.Input(id="section-y-input", type="number", value=None),
+                dbc.Input(id="section-z-input", type="number", value=None),
+                # Section graphs
+                dcc.Graph(id="viewer-3d-section"),
+                dcc.Graph(id="viewer-section-x"),
+                dcc.Graph(id="viewer-section-y"),
+                dcc.Graph(id="viewer-section-z"),
+            ], style={"display": "none"}),
         ])
     elif active_tab == "tab-section":
         # 단면도 탭: 2x2 배열 배치, 입력창 상단, 3D 뷰/단면도
