@@ -585,33 +585,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         cmin=np.nanmin(temps), cmax=np.nanmax(temps),
         showscale=True
     ))
-    # --- XYZ 축 화살표 추가 (빨강:X, 초록:Y, 파랑:Z) ---
-    try:
-        xmin, xmax = float(np.min(x_coords)), float(np.max(x_coords))
-        ymin, ymax = float(np.min(y_coords)), float(np.max(y_coords))
-        zmin, zmax = float(np.min(z_coords)), float(np.max(z_coords))
-        L = max(xmax - xmin, ymax - ymin, zmax - zmin) * 0.2  # 축 길이 20%로 증가
-        ox, oy, oz = xmin, ymin, zmin
-        # X축 (빨강)
-        fig_3d.add_trace(go.Scatter3d(x=[ox, ox+L], y=[oy, oy], z=[oz, oz],
-                                      mode='lines', line=dict(color='red', width=6), showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(x=[ox+L], y=[oy], z=[oz], mode='text', text=['X'],
-                                      textposition='middle right', textfont=dict(size=16, color='red'),
-                                      showlegend=False, hoverinfo='skip'))
-        # Y축 (초록)
-        fig_3d.add_trace(go.Scatter3d(x=[ox, ox], y=[oy, oy+L], z=[oz, oz],
-                                      mode='lines', line=dict(color='green', width=6), showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(x=[ox], y=[oy+L], z=[oz], mode='text', text=['Y'],
-                                      textposition='middle center', textfont=dict(size=16, color='green'),
-                                      showlegend=False, hoverinfo='skip'))
-        # Z축 (파랑)
-        fig_3d.add_trace(go.Scatter3d(x=[ox, ox], y=[oy, oy], z=[oz, oz+L],
-                                      mode='lines', line=dict(color='blue', width=6), showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(x=[ox], y=[oy], z=[oz+L], mode='text', text=['Z'],
-                                      textposition='middle center', textfont=dict(size=16, color='blue'),
-                                      showlegend=False, hoverinfo='skip'))
-    except Exception:
-        pass
+
     # 3D 뷰 시점 고정 및 경계선 추가
     fig_3d.update_layout(
         uirevision='constant',  # 시점 고정
