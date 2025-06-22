@@ -239,13 +239,13 @@ def on_project_change(selected_proj):
         if row["activate"] == 1:  # 활성
             if has_sensors:
                 status = "분석 가능"
-                status_color = "#d1ecf1"  # 연한 파란색 (콘크리트 페이지와 동일)
+                status_color = "#cce5ff"  # 연한 파란색
             else:
                 status = "센서 부족"
-                status_color = "#ffeaa7"  # 연한 노란색
+                status_color = "#fff3cd"  # 연한 노란색
         else:  # 비활성 (activate == 0)
             status = "분석중"
-            status_color = "#fff3cd"  # 연한 노란색 (콘크리트 페이지와 동일)
+            status_color = "#d4edda"  # 연한 초록색
         
         table_data.append({
             "concrete_pk": row["concrete_pk"],
@@ -269,13 +269,13 @@ def on_project_change(selected_proj):
     # 테이블 스타일 설정 (상태별 색상)
     style_data_conditional = []
     for i, data in enumerate(table_data):
-        # 상태별 텍스트 색상 설정 (콘크리트 페이지와 동일)
+        # 상태별 텍스트 색상 설정
         if data['status'] == '분석중':
-            text_color = '#856404'  # 갈색
+            text_color = '#155724'  # 진한 초록색
         elif data['status'] == '분석 가능':
-            text_color = '#0c5460'  # 진한 파란색
+            text_color = '#004085'  # 진한 파란색
         elif data['status'] == '센서 부족':
-            text_color = '#d63031'  # 빨간색
+            text_color = '#856404'  # 진한 노란색(갈색)
         else:
             text_color = '#212529'  # 기본 색상
             
@@ -1471,7 +1471,7 @@ def start_analysis(n_clicks, selected_rows, tbl_data):
         updated_data = tbl_data.copy()
         updated_data[selected_rows[0]]["activate"] = "비활성"
         updated_data[selected_rows[0]]["status"] = "분석중"
-        updated_data[selected_rows[0]]["status_color"] = "#fff3cd"  # 연한 노란색 (콘크리트 페이지와 동일)
+        updated_data[selected_rows[0]]["status_color"] = "#d4edda"  # 연한 초록색
         
         return f"{concrete_pk} 분석이 시작되었습니다", "success", True, updated_data, True
     except Exception as e:
