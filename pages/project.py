@@ -999,6 +999,17 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                 "borderRadius": "6px",
                 "border": "1px solid #dee2e6"
             }),
+            # 숨김용 섹션 슬라이더 (3D 탭에서도 콜백 대상 유지)
+            html.Div([
+                dcc.Slider(
+                    id="time-slider-section",
+                    min=slider_min,
+                    max=slider_max,
+                    step=1,
+                    value=slider_value,
+                    marks=slider_marks,
+                )
+            ], style={"display": "none"}),
             dbc.Row([
                 dbc.Col([
                     html.Div([
