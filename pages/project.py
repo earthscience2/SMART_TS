@@ -1094,6 +1094,17 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     marks=slider_marks,
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
+                # 숨김용 메인 슬라이더 (단면도 탭에서도 컴포넌트 유지)
+                html.Div([
+                    dcc.Slider(
+                        id="time-slider",
+                        min=slider_min,
+                        max=slider_max,
+                        step=1,
+                        value=slider_value,
+                        marks=slider_marks,
+                    )
+                ], style={"display": "none"}),
             ], className="mb-2", style={
                 # 슬라이더 색상을 진하게 설정
                 "--slider-track-color": "#007bff",
