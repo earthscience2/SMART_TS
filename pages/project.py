@@ -514,9 +514,15 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
             continue
     if not times:
         return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0, ""
-    # 슬라이더 마크: 시작과 끝만 표시
+    # 슬라이더 마크: 모든 시간을 일 단위로 표시
     max_idx = len(times) - 1
-    marks = {0: times[0].strftime("%m/%d"), max_idx: times[-1].strftime("%m/%d")}
+    marks = {}
+    seen_dates = set()
+    for i, dt in enumerate(times):
+        date_str = dt.strftime("%-m/%-d")  # 6/13, 6/14 형식
+        if date_str not in seen_dates:
+            marks[i] = date_str
+            seen_dates.add(date_str)
     
     # value가 max보다 크거나 None/NaN이면 max로 맞춤
     import math
@@ -884,7 +890,12 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     marks=slider_marks,
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
-            ], className="mb-2"),
+            ], className="mb-2", style={
+                # 슬라이더 색상을 진하게 설정
+                "--slider-track-color": "#007bff",
+                "--slider-thumb-color": "#0056b3",
+                "--slider-mark-color": "#343a40"
+            }),
             # 시간 정보 (슬라이더 아래, 3D 뷰 위)
             html.Div(id="main-file-title", children=display_title, style={
                 "fontSize": "16px", 
@@ -983,7 +994,6 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
         return html.Div([
             # 시간 슬라이더 (상단)
             html.Div([
-                html.Div(id="section-file-title", children=section_display_title, style={"fontSize": "14px", "color": "#666", "marginBottom": "5px", "textAlign": "center"}),
                 dcc.Slider(
                     id="time-slider-section",
                     min=slider_min,
@@ -993,7 +1003,24 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     marks=slider_marks,
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
-            ], className="mb-3"),
+            ], className="mb-2", style={
+                # 슬라이더 색상을 진하게 설정
+                "--slider-track-color": "#007bff",
+                "--slider-thumb-color": "#0056b3",
+                "--slider-mark-color": "#343a40"
+            }),
+            # 시간 정보 (슬라이더 아래)
+            html.Div(id="section-file-title", children=section_display_title, style={
+                "fontSize": "16px", 
+                "color": "#495057", 
+                "marginBottom": "10px", 
+                "textAlign": "center",
+                "fontWeight": "500",
+                "padding": "8px",
+                "backgroundColor": "#f8f9fa",
+                "borderRadius": "6px",
+                "border": "1px solid #dee2e6"
+            }),
             # 입력창 (x, y, z)
             html.Div([
                 html.Label("단면 위치 설정", className="mb-2"),
@@ -1203,8 +1230,14 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
             {"label": "회색", "value": "Grayscale"},
         ]
         
-        # 시간 슬라이더 마크: 시작과 끝만 표시
-        time_marks = {0: times[0][0].strftime("%m/%d"), max_idx: times[-1][0].strftime("%m/%d")}
+        # 시간 슬라이더 마크: 모든 시간을 일 단위로 표시
+        time_marks = {}
+        seen_dates = set()
+        for i, (dt, _) in enumerate(times):
+            date_str = dt.strftime("%-m/%-d")  # 6/13, 6/14 형식
+            if date_str not in seen_dates:
+                time_marks[i] = date_str
+                seen_dates.add(date_str)
         
         return html.Div([
             # 컨트롤 패널
@@ -1229,15 +1262,22 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                 ], md=3),
                 dbc.Col([
                     html.Label("시간"),
-                    dcc.Slider(
-                        id="analysis-time-slider",
-                        min=0,
-                        max=max_idx,
-                        step=1,
-                        value=max_idx,
-                        marks=time_marks,
-                        tooltip={"placement": "bottom", "always_visible": True}
-                    )
+                    html.Div([
+                        dcc.Slider(
+                            id="analysis-time-slider",
+                            min=0,
+                            max=max_idx,
+                            step=1,
+                            value=max_idx,
+                            marks=time_marks,
+                            tooltip={"placement": "bottom", "always_visible": True}
+                        )
+                    ], style={
+                        # 슬라이더 색상을 진하게 설정
+                        "--slider-track-color": "#007bff",
+                        "--slider-thumb-color": "#0056b3",
+                        "--slider-mark-color": "#343a40"
+                    })
                 ], md=6),
             ], className="mb-3"),
             
