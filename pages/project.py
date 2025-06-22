@@ -73,9 +73,96 @@ layout = dbc.Container(
         # section-colorbar 항상 포함 (처음엔 숨김)
         dcc.Graph(id='section-colorbar', style={'display':'none'}),
         
-        # 키보드 이벤트를 위한 interval 컴포넌트
-        dcc.Interval(id="keyboard-interval", interval=100, n_intervals=0, disabled=True),
-        dcc.Store(id="keyboard-store", data={"key": None, "timestamp": 0}),
+        # 키보드 이벤트를 위한 JavaScript (서버 부하 없음)
+        html.Div([
+            html.Script("""
+                window.addEventListener('load', function() {
+                    if (!window.sliderKeyboardHandler) {
+                        window.sliderKeyboardHandler = true;
+                        
+                        document.addEventListener('keydown', function(event) {
+                            // 입력 필드에서는 무시
+                            if (event.target.tagName === 'INPUT' || 
+                                event.target.tagName === 'TEXTAREA' ||
+                                event.target.isContentEditable) {
+                                return;
+                            }
+                            
+                            if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                                event.preventDefault();
+                                
+                                // 현재 보이는 슬라이더 찾기
+                                const sliders = ['time-slider', 'time-slider-section', 'analysis-time-slider'];
+                                let activeSlider = null;
+                                
+                                for (const sliderId of sliders) {
+                                    const slider = document.getElementById(sliderId);
+                                    if (slider && slider.offsetParent !== null) { // 보이는 슬라이더
+                                        activeSlider = slider;
+                                        break;
+                                    }
+                                }
+                                
+                                if (activeSlider) {
+                                    const handle = activeSlider.querySelector('.rc-slider-handle');
+                                    if (handle) {
+                                        const current = parseInt(handle.getAttribute('aria-valuenow') || '0');
+                                        const min = parseInt(handle.getAttribute('aria-valuemin') || '0');
+                                        const max = parseInt(handle.getAttribute('aria-valuemax') || '100');
+                                        
+                                        let newValue = current;
+                                        if (event.key === 'ArrowLeft' && current > min) {
+                                            newValue = current - 1;
+                                        } else if (event.key === 'ArrowRight' && current < max) {
+                                            newValue = current + 1;
+                                        }
+                                        
+                                        if (newValue !== current) {
+                                            // 슬라이더 값 직접 설정
+                                            const percentage = (newValue - min) / (max - min) * 100;
+                                            
+                                            // 핸들 위치 업데이트
+                                            handle.style.left = percentage + '%';
+                                            handle.setAttribute('aria-valuenow', newValue);
+                                            
+                                            // 트랙 업데이트
+                                            const track = activeSlider.querySelector('.rc-slider-track');
+                                            if (track) {
+                                                track.style.width = percentage + '%';
+                                            }
+                                            
+                                            // 툴팁 업데이트
+                                            const tooltip = activeSlider.querySelector('.rc-slider-tooltip-content');
+                                            if (tooltip) {
+                                                tooltip.textContent = newValue;
+                                            }
+                                            
+                                            // Dash 콜백 트리거 (React 이벤트)
+                                            setTimeout(function() {
+                                                const changeEvent = new Event('input', { bubbles: true });
+                                                Object.defineProperty(changeEvent, 'target', {
+                                                    value: { value: newValue },
+                                                    enumerable: true
+                                                });
+                                                activeSlider.dispatchEvent(changeEvent);
+                                                
+                                                // 추가 이벤트
+                                                const changeEvent2 = new Event('change', { bubbles: true });
+                                                Object.defineProperty(changeEvent2, 'target', {
+                                                    value: { value: newValue },
+                                                    enumerable: true
+                                                });
+                                                activeSlider.dispatchEvent(changeEvent2);
+                                            }, 50);
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                });
+            """)
+        ], style={"display": "none"}),
 
         # 상단: 프로젝트 선택 → 콘크리트 테이블 + 버튼
         dbc.Row(
@@ -2632,87 +2719,4 @@ def toggle_colorbar_visibility(field_name):
     else:
         return {"height": "120px", "display": "none"}
 
-# 키보드 이벤트를 처리하는 clientside callback (간단한 버전)
-clientside_callback(
-    """
-    function(n_intervals) {
-        if (!window.keyboardHandler) {
-            window.keyboardHandler = true;
-            
-            document.addEventListener('keydown', function(event) {
-                if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-                    // 입력 필드에 포커스가 있으면 무시
-                    if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
-                        return;
-                    }
-                    
-                    event.preventDefault();
-                    
-                    // 현재 활성 탭의 슬라이더 찾기
-                    let sliderId = null;
-                    const activeTab = document.querySelector('.tab-content .active') || 
-                                    document.querySelector('#tab-content > div:not([style*="display: none"])');
-                    
-                    if (activeTab) {
-                        if (activeTab.querySelector('#time-slider')) {
-                            sliderId = 'time-slider';
-                        } else if (activeTab.querySelector('#time-slider-section')) {
-                            sliderId = 'time-slider-section';  
-                        } else if (activeTab.querySelector('#analysis-time-slider')) {
-                            sliderId = 'analysis-time-slider';
-                        }
-                    }
-                    
-                    if (sliderId) {
-                        const slider = document.getElementById(sliderId);
-                        if (slider) {
-                            const handle = slider.querySelector('.rc-slider-handle');
-                            if (handle) {
-                                const current = parseInt(handle.getAttribute('aria-valuenow'));
-                                const min = parseInt(handle.getAttribute('aria-valuemin'));
-                                const max = parseInt(handle.getAttribute('aria-valuemax'));
-                                
-                                let newValue = current;
-                                if (event.key === 'ArrowLeft' && current > min) {
-                                    newValue = current - 1;
-                                } else if (event.key === 'ArrowRight' && current < max) {
-                                    newValue = current + 1;
-                                }
-                                
-                                if (newValue !== current) {
-                                    // 클릭 이벤트로 슬라이더 값 변경
-                                    const sliderRect = slider.getBoundingClientRect();
-                                    const percentage = (newValue - min) / (max - min);
-                                    const clickX = sliderRect.left + (sliderRect.width * percentage);
-                                    
-                                    const clickEvent = new MouseEvent('click', {
-                                        bubbles: true,
-                                        clientX: clickX,
-                                        clientY: sliderRect.top + sliderRect.height / 2
-                                    });
-                                    
-                                    slider.dispatchEvent(clickEvent);
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-        
-        return window.dash_clientside.no_update;
-    }
-    """,
-    Output("keyboard-store", "data"),
-    Input("keyboard-interval", "n_intervals"),
-    prevent_initial_call=False,
-)
 
-# 키보드 이벤트 활성화 콜백
-@callback(
-    Output("keyboard-interval", "disabled"),
-    Input("ddl-project", "value"),
-    prevent_initial_call=False,
-)
-def enable_keyboard_events(project):
-    return False  # interval 활성화
