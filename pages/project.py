@@ -221,38 +221,46 @@ def on_project_change(selected_proj):
     # 2) 콘크리트 데이터 로드
     df_conc = api_db.get_concrete_data(project_pk=selected_proj)
     table_data = []
-    for _, row in df_conc.iterrows():
-        try:
-            dims = eval(row["dims"])
-            nodes = dims["nodes"]
-            h = dims["h"]
-            shape_info = f"{len(nodes)}각형 (높이: {h:.2f}m)"
-        except Exception:
-            shape_info = "파싱 오류"
-        
-        # 센서 데이터 확인
-        concrete_pk = row["concrete_pk"]
-        df_sensors = api_db.get_sensors_data(concrete_pk=concrete_pk)
-        has_sensors = not df_sensors.empty
-        
-        # 상태 결정
-        if row["activate"] == 1:  # 활성
-            if has_sensors:
-                status = "분석 가능"
-            else:
-                status = "센서 부족"
-        else:  # 비활성 (activate == 0)
-            status = "분석중"
-        
-        table_data.append({
-            "concrete_pk": row["concrete_pk"],
-            "name": row["name"],
-            "status": status,
-            "shape": shape_info,
-            "dims": row["dims"],
-            "activate": "활성" if row["activate"] == 1 else "비활성",
-            "has_sensors": has_sensors,
-        })
+    
+    # 데이터가 없는 경우 빈 리스트 반환
+    if df_conc is None or df_conc.empty:
+        table_data = []
+    else:
+        for _, row in df_conc.iterrows():
+            try:
+                dims = eval(row["dims"])
+                nodes = dims["nodes"]
+                h = dims["h"]
+                shape_info = f"{len(nodes)}각형 (높이: {h:.2f}m)"
+            except Exception:
+                shape_info = "파싱 오류"
+            
+            # 센서 데이터 확인
+            concrete_pk = row["concrete_pk"]
+            try:
+                df_sensors = api_db.get_sensors_data(concrete_pk=concrete_pk)
+                has_sensors = not df_sensors.empty if df_sensors is not None else False
+            except Exception:
+                has_sensors = False
+            
+            # 상태 결정
+            if row["activate"] == 1:  # 활성
+                if has_sensors:
+                    status = "분석 가능"
+                else:
+                    status = "센서 부족"
+            else:  # 비활성 (activate == 0)
+                status = "분석중"
+            
+            table_data.append({
+                "concrete_pk": row["concrete_pk"],
+                "name": row["name"],
+                "status": status,
+                "shape": shape_info,
+                "dims": row["dims"],
+                "activate": "활성" if row["activate"] == 1 else "비활성",
+                "has_sensors": has_sensors,
+            })
 
     # 3) 테이블 컬럼 정의
     columns = [
@@ -310,10 +318,13 @@ def on_project_change(selected_proj):
     prevent_initial_call=True,
 )
 def on_concrete_select(selected_rows, tbl_data):
-    if not selected_rows:
+    if not selected_rows or not tbl_data or len(tbl_data) == 0:
         return True, True, "", "", 0, 5, 0, {}
     
-    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    try:
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    except (IndexError, KeyError):
+        return True, True, "", "", 0, 5, 0, {}
     is_active = row["activate"] == "활성"
     has_sensors = row["has_sensors"]
     concrete_pk = row["concrete_pk"]
@@ -435,9 +446,13 @@ def store_section_coord(clickData):
     prevent_initial_call=True,
 )
 def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_time):
-    if not selected_rows:
+    if not selected_rows or not tbl_data or len(tbl_data) == 0:
         raise PreventUpdate
-    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    
+    try:
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    except (IndexError, KeyError):
+        raise PreventUpdate
     concrete_pk = row["concrete_pk"]
     inp_dir = f"inp/{concrete_pk}"
     inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
@@ -702,16 +717,20 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
 def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_data):
     # 안내 문구만 보여야 하는 경우(분석 시작 안내, 데이터 없음)
     guide_message = None
-    if selected_rows and tbl_data:
-        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-        is_active = row["activate"] == "활성"
-        concrete_pk = row["concrete_pk"]
-        inp_dir = f"inp/{concrete_pk}"
-        inp_files = glob.glob(f"{inp_dir}/*.inp")
-        if is_active:
-            guide_message = "⚠️ 분석을 시작하려면 왼쪽의 '분석 시작' 버튼을 클릭하세요."
-        elif not inp_files:
-            guide_message = "⏳ 아직 수집된 데이터가 없습니다. 잠시 후 다시 확인해주세요."
+    if selected_rows and tbl_data and len(tbl_data) > 0:
+        try:
+            row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+        except (IndexError, KeyError):
+            guide_message = "데이터를 불러오는 중 오류가 발생했습니다."
+        else:
+            is_active = row["activate"] == "활성"
+            concrete_pk = row["concrete_pk"]
+            inp_dir = f"inp/{concrete_pk}"
+            inp_files = glob.glob(f"{inp_dir}/*.inp")
+            if is_active:
+                guide_message = "⚠️ 분석을 시작하려면 왼쪽의 '분석 시작' 버튼을 클릭하세요."
+            elif not inp_files:
+                guide_message = "⏳ 아직 수집된 데이터가 없습니다. 잠시 후 다시 확인해주세요."
     elif tbl_data is not None and len(tbl_data) == 0:
         guide_message = "분석할 콘크리트를 추가하세요."
     if guide_message:
@@ -1458,10 +1477,13 @@ def select_deselect_all(n_all, n_none, table_data):
     prevent_initial_call=True,
 )
 def start_analysis(n_clicks, selected_rows, tbl_data):
-    if not selected_rows:
+    if not selected_rows or not tbl_data or len(tbl_data) == 0:
         return "콘크리트를 선택하세요", "warning", True, dash.no_update, dash.no_update
 
-    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    try:
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    except (IndexError, KeyError):
+        return "데이터 오류가 발생했습니다", "danger", True, dash.no_update, dash.no_update
     concrete_pk = row["concrete_pk"]
 
     try:
@@ -1505,10 +1527,13 @@ def ask_delete_concrete(n, sel):
     prevent_initial_call=True,
 )
 def delete_concrete_confirm(_click, sel, tbl_data):
-    if not sel:
+    if not sel or not tbl_data or len(tbl_data) == 0:
         raise PreventUpdate
 
-    row = pd.DataFrame(tbl_data).iloc[sel[0]]
+    try:
+        row = pd.DataFrame(tbl_data).iloc[sel[0]]
+    except (IndexError, KeyError):
+        return dash.no_update, "데이터 오류가 발생했습니다", "danger", True, dash.no_update
     concrete_pk = row["concrete_pk"]
 
     try:
