@@ -873,9 +873,8 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
             display_title = viewer_data['current_file_title']
         
         return html.Div([
-            # 시간 슬라이더 (3D 뷰 위에 배치)
+            # 시간 슬라이더
             html.Div([
-                html.Div(id="main-file-title", children=display_title, style={"fontSize": "14px", "color": "#666", "marginBottom": "5px", "textAlign": "center"}),
                 dcc.Slider(
                     id="time-slider",
                     min=slider_min,
@@ -885,7 +884,19 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     marks=slider_marks,
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
-            ], className="mb-3"),
+            ], className="mb-2"),
+            # 시간 정보 (슬라이더 아래, 3D 뷰 위)
+            html.Div(id="main-file-title", children=display_title, style={
+                "fontSize": "16px", 
+                "color": "#495057", 
+                "marginBottom": "10px", 
+                "textAlign": "center",
+                "fontWeight": "500",
+                "padding": "8px",
+                "backgroundColor": "#f8f9fa",
+                "borderRadius": "6px",
+                "border": "1px solid #dee2e6"
+            }),
             dbc.Row([
                 dbc.Col([
                     html.Div([
