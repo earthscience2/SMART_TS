@@ -20,7 +20,7 @@ from datetime import datetime, timedelta
 import dash
 from dash import (
     html, dcc, Input, Output, State,
-    dash_table, register_page, callback
+    dash_table, register_page, callback, clientside_callback
 )
 import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
