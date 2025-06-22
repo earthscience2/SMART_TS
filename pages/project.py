@@ -73,23 +73,9 @@ layout = dbc.Container(
         # section-colorbar 항상 포함 (처음엔 숨김)
         dcc.Graph(id='section-colorbar', style={'display':'none'}),
         
-        # 키보드 이벤트 감지를 위한 Store
-        dcc.Store(id="keyboard-event-store", data=None),
-        
-        # 키보드 이벤트를 감지하는 div (보이지 않음)
-        html.Div(
-            id="keyboard-listener",
-            tabIndex=0,
-            style={
-                "position": "fixed",
-                "top": 0,
-                "left": 0,
-                "width": "100%",
-                "height": "100%",
-                "zIndex": -1,
-                "outline": "none"
-            }
-        ),
+        # 키보드 이벤트를 위한 interval 컴포넌트
+        dcc.Interval(id="keyboard-interval", interval=100, n_intervals=0, disabled=True),
+        dcc.Store(id="keyboard-store", data={"key": None, "timestamp": 0}),
 
         # 상단: 프로젝트 선택 → 콘크리트 테이블 + 버튼
         dbc.Row(
@@ -2646,95 +2632,87 @@ def toggle_colorbar_visibility(field_name):
     else:
         return {"height": "120px", "display": "none"}
 
-# 키보드 이벤트를 처리하는 clientside callback
-from dash import clientside_callback, ClientsideFunction
-
+# 키보드 이벤트를 처리하는 clientside callback (간단한 버전)
 clientside_callback(
     """
-    function(id) {
-        // 키보드 이벤트 리스너 등록
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-                // 현재 활성화된 탭 확인
-                const tabs = document.querySelectorAll('.tab-pane');
-                let activeTabId = null;
-                
-                for (let tab of tabs) {
-                    if (tab.classList.contains('active') || tab.style.display !== 'none') {
-                        if (tab.querySelector('#time-slider')) {
-                            activeTabId = 'time-slider';
-                            break;
-                        } else if (tab.querySelector('#time-slider-section')) {
-                            activeTabId = 'time-slider-section';
-                            break;
-                        } else if (tab.querySelector('#analysis-time-slider')) {
-                            activeTabId = 'analysis-time-slider';
-                            break;
+    function(n_intervals) {
+        if (!window.keyboardHandler) {
+            window.keyboardHandler = true;
+            
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                    // 입력 필드에 포커스가 있으면 무시
+                    if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+                        return;
+                    }
+                    
+                    event.preventDefault();
+                    
+                    // 현재 활성 탭의 슬라이더 찾기
+                    let sliderId = null;
+                    const activeTab = document.querySelector('.tab-content .active') || 
+                                    document.querySelector('#tab-content > div:not([style*="display: none"])');
+                    
+                    if (activeTab) {
+                        if (activeTab.querySelector('#time-slider')) {
+                            sliderId = 'time-slider';
+                        } else if (activeTab.querySelector('#time-slider-section')) {
+                            sliderId = 'time-slider-section';  
+                        } else if (activeTab.querySelector('#analysis-time-slider')) {
+                            sliderId = 'analysis-time-slider';
                         }
                     }
-                }
-                
-                if (activeTabId) {
-                    const slider = document.getElementById(activeTabId);
-                    if (slider) {
-                        const handle = slider.querySelector('.rc-slider-handle');
-                        if (handle) {
-                            event.preventDefault();
-                            
-                            const currentValue = parseInt(handle.getAttribute('aria-valuenow') || '0');
-                            const min = parseInt(handle.getAttribute('aria-valuemin') || '0');
-                            const max = parseInt(handle.getAttribute('aria-valuemax') || '100');
-                            
-                            let newValue = currentValue;
-                            
-                            if (event.key === 'ArrowLeft') {
-                                newValue = Math.max(min, currentValue - 1);
-                            } else if (event.key === 'ArrowRight') {
-                                newValue = Math.min(max, currentValue + 1);
-                            }
-                            
-                            if (newValue !== currentValue) {
-                                // 슬라이더 값 직접 업데이트
-                                handle.setAttribute('aria-valuenow', newValue);
+                    
+                    if (sliderId) {
+                        const slider = document.getElementById(sliderId);
+                        if (slider) {
+                            const handle = slider.querySelector('.rc-slider-handle');
+                            if (handle) {
+                                const current = parseInt(handle.getAttribute('aria-valuenow'));
+                                const min = parseInt(handle.getAttribute('aria-valuemin'));
+                                const max = parseInt(handle.getAttribute('aria-valuemax'));
                                 
-                                // 슬라이더 트랙 업데이트
-                                const track = slider.querySelector('.rc-slider-track');
-                                if (track) {
-                                    const percentage = ((newValue - min) / (max - min)) * 100;
-                                    track.style.width = percentage + '%';
+                                let newValue = current;
+                                if (event.key === 'ArrowLeft' && current > min) {
+                                    newValue = current - 1;
+                                } else if (event.key === 'ArrowRight' && current < max) {
+                                    newValue = current + 1;
                                 }
                                 
-                                // 핸들 위치 업데이트
-                                const percentage = ((newValue - min) / (max - min)) * 100;
-                                handle.style.left = percentage + '%';
-                                
-                                // 마크 위치 확인 및 툴팁 업데이트
-                                const tooltip = handle.querySelector('.rc-slider-tooltip-content');
-                                if (tooltip) {
-                                    tooltip.textContent = newValue;
+                                if (newValue !== current) {
+                                    // 클릭 이벤트로 슬라이더 값 변경
+                                    const sliderRect = slider.getBoundingClientRect();
+                                    const percentage = (newValue - min) / (max - min);
+                                    const clickX = sliderRect.left + (sliderRect.width * percentage);
+                                    
+                                    const clickEvent = new MouseEvent('click', {
+                                        bubbles: true,
+                                        clientX: clickX,
+                                        clientY: sliderRect.top + sliderRect.height / 2
+                                    });
+                                    
+                                    slider.dispatchEvent(clickEvent);
                                 }
-                                
-                                // 변경 이벤트 발생
-                                const changeEvent = new Event('change', { bubbles: true });
-                                slider.dispatchEvent(changeEvent);
-                                
-                                // Dash 프로퍼티 업데이트
-                                setTimeout(() => {
-                                    if (window.dash_clientside && window.dash_clientside.set_props) {
-                                        window.dash_clientside.set_props(activeTabId, {value: newValue});
-                                    }
-                                }, 10);
                             }
                         }
                     }
                 }
-            }
-        });
+            });
+        }
         
         return window.dash_clientside.no_update;
     }
     """,
-    Output("keyboard-event-store", "data"),
-    Input("keyboard-listener", "id"),
+    Output("keyboard-store", "data"),
+    Input("keyboard-interval", "n_intervals"),
     prevent_initial_call=False,
 )
+
+# 키보드 이벤트 활성화 콜백
+@callback(
+    Output("keyboard-interval", "disabled"),
+    Input("ddl-project", "value"),
+    prevent_initial_call=False,
+)
+def enable_keyboard_events(project):
+    return False  # interval 활성화
