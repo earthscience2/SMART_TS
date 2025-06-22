@@ -656,6 +656,18 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
         guide_message = "분석할 콘크리트를 추가하세요."
     if guide_message:
         return html.Div([
+            # 시간 슬라이더 (항상 포함, 숨김 처리)
+            html.Div([
+                html.Label("시간", className="form-label"),
+                dcc.Slider(
+                    id="time-slider",
+                    min=0,
+                    step=1,
+                    value=0,
+                    marks={},
+                    tooltip={"placement": "bottom", "always_visible": True},
+                ),
+            ], className="mb-3", style={"display": "none"}),
             html.Div(guide_message, style={
                 "textAlign": "center", "fontSize": "1.3rem", "color": "#555", "marginTop": "120px"
             })
