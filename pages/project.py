@@ -72,6 +72,24 @@ layout = dbc.Container(
 
         # section-colorbar 항상 포함 (처음엔 숨김)
         dcc.Graph(id='section-colorbar', style={'display':'none'}),
+        
+        # 키보드 이벤트 감지를 위한 Store
+        dcc.Store(id="keyboard-event-store", data=None),
+        
+        # 키보드 이벤트를 감지하는 div (보이지 않음)
+        html.Div(
+            id="keyboard-listener",
+            tabIndex=0,
+            style={
+                "position": "fixed",
+                "top": 0,
+                "left": 0,
+                "width": "100%",
+                "height": "100%",
+                "zIndex": -1,
+                "outline": "none"
+            }
+        ),
 
         # 상단: 프로젝트 선택 → 콘크리트 테이블 + 버튼
         dbc.Row(
@@ -889,8 +907,6 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     value=slider_value,
                     marks=slider_marks,
                     tooltip={"placement": "bottom", "always_visible": True},
-                    keyboard=True,
-                    focus=True,
                 ),
             ], className="mb-2", style={
                 # 슬라이더 색상을 진하게 설정
@@ -1004,8 +1020,6 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     value=slider_value,
                     marks=slider_marks,
                     tooltip={"placement": "bottom", "always_visible": True},
-                    keyboard=True,
-                    focus=True,
                 ),
             ], className="mb-2", style={
                 # 슬라이더 색상을 진하게 설정
@@ -1275,8 +1289,6 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                             value=max_idx,
                             marks=time_marks,
                             tooltip={"placement": "bottom", "always_visible": True},
-                            keyboard=True,
-                            focus=True,
                         )
                     ], style={
                         # 슬라이더 색상을 진하게 설정
@@ -2633,3 +2645,96 @@ def toggle_colorbar_visibility(field_name):
         return {"height": "120px", "display": "block"}
     else:
         return {"height": "120px", "display": "none"}
+
+# 키보드 이벤트를 처리하는 clientside callback
+from dash import clientside_callback, ClientsideFunction
+
+clientside_callback(
+    """
+    function(id) {
+        // 키보드 이벤트 리스너 등록
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                // 현재 활성화된 탭 확인
+                const tabs = document.querySelectorAll('.tab-pane');
+                let activeTabId = null;
+                
+                for (let tab of tabs) {
+                    if (tab.classList.contains('active') || tab.style.display !== 'none') {
+                        if (tab.querySelector('#time-slider')) {
+                            activeTabId = 'time-slider';
+                            break;
+                        } else if (tab.querySelector('#time-slider-section')) {
+                            activeTabId = 'time-slider-section';
+                            break;
+                        } else if (tab.querySelector('#analysis-time-slider')) {
+                            activeTabId = 'analysis-time-slider';
+                            break;
+                        }
+                    }
+                }
+                
+                if (activeTabId) {
+                    const slider = document.getElementById(activeTabId);
+                    if (slider) {
+                        const handle = slider.querySelector('.rc-slider-handle');
+                        if (handle) {
+                            event.preventDefault();
+                            
+                            const currentValue = parseInt(handle.getAttribute('aria-valuenow') || '0');
+                            const min = parseInt(handle.getAttribute('aria-valuemin') || '0');
+                            const max = parseInt(handle.getAttribute('aria-valuemax') || '100');
+                            
+                            let newValue = currentValue;
+                            
+                            if (event.key === 'ArrowLeft') {
+                                newValue = Math.max(min, currentValue - 1);
+                            } else if (event.key === 'ArrowRight') {
+                                newValue = Math.min(max, currentValue + 1);
+                            }
+                            
+                            if (newValue !== currentValue) {
+                                // 슬라이더 값 직접 업데이트
+                                handle.setAttribute('aria-valuenow', newValue);
+                                
+                                // 슬라이더 트랙 업데이트
+                                const track = slider.querySelector('.rc-slider-track');
+                                if (track) {
+                                    const percentage = ((newValue - min) / (max - min)) * 100;
+                                    track.style.width = percentage + '%';
+                                }
+                                
+                                // 핸들 위치 업데이트
+                                const percentage = ((newValue - min) / (max - min)) * 100;
+                                handle.style.left = percentage + '%';
+                                
+                                // 마크 위치 확인 및 툴팁 업데이트
+                                const tooltip = handle.querySelector('.rc-slider-tooltip-content');
+                                if (tooltip) {
+                                    tooltip.textContent = newValue;
+                                }
+                                
+                                // 변경 이벤트 발생
+                                const changeEvent = new Event('change', { bubbles: true });
+                                slider.dispatchEvent(changeEvent);
+                                
+                                // Dash 프로퍼티 업데이트
+                                setTimeout(() => {
+                                    if (window.dash_clientside && window.dash_clientside.set_props) {
+                                        window.dash_clientside.set_props(activeTabId, {value: newValue});
+                                    }
+                                }, 10);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output("keyboard-event-store", "data"),
+    Input("keyboard-listener", "id"),
+    prevent_initial_call=False,
+)
