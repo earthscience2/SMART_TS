@@ -195,6 +195,7 @@ def init_dropdown(selected_value, search):
     Output("tbl-concrete", "data"),
     Output("tbl-concrete", "columns"),
     Output("tbl-concrete", "selected_rows"),
+    Output("tbl-concrete", "style_data_conditional"),
     Output("btn-concrete-del", "disabled"),
     Output("btn-concrete-analyze", "disabled"),
     Output("concrete-title", "children"),
@@ -208,14 +209,14 @@ def init_dropdown(selected_value, search):
 )
 def on_project_change(selected_proj):
     if not selected_proj:
-        return [], [], [], True, True, "", 0, 5, 0, {}, None
+        return [], [], [], [], True, True, "", 0, 5, 0, {}, None
 
     # 1) 프로젝트 정보 로드
     try:
         proj_row = api_db.get_project_data(project_pk=selected_proj).iloc[0]
         proj_name = proj_row["name"]
     except Exception:
-        return [], [], [], True, True, "프로젝트 정보를 불러올 수 없음", 0, 5, 0, {}, None
+        return [], [], [], [], True, True, "프로젝트 정보를 불러올 수 없음", 0, 5, 0, {}, None
 
     # 2) 콘크리트 데이터 로드
     df_conc = api_db.get_concrete_data(project_pk=selected_proj)
@@ -229,21 +230,53 @@ def on_project_change(selected_proj):
         except Exception:
             shape_info = "파싱 오류"
         
+        # 센서 데이터 확인
+        concrete_pk = row["concrete_pk"]
+        df_sensors = api_db.get_sensors_data(concrete_pk=concrete_pk)
+        has_sensors = not df_sensors.empty
+        
+        # 상태 결정
+        if row["activate"] == 1:  # 활성
+            if has_sensors:
+                status = "분석 가능"
+                status_color = "#28a745"  # 초록색
+            else:
+                status = "센서 부족"
+                status_color = "#ffc107"  # 노란색
+        else:  # 비활성 (activate == 0)
+            status = "분석중"
+            status_color = "#007bff"  # 파란색
+        
         table_data.append({
             "concrete_pk": row["concrete_pk"],
             "name": row["name"],
+            "status": status,
+            "status_color": status_color,
             "shape": shape_info,
             "dims": row["dims"],
             "activate": "활성" if row["activate"] == 1 else "비활성",
+            "has_sensors": has_sensors,
         })
 
     # 3) 테이블 컬럼 정의
     columns = [
         {"name": "이름", "id": "name"},
+        {"name": "상태", "id": "status"},
     ]
 
     title = f"{proj_name} · 콘크리트 전체"
-    return table_data, columns, [], True, True, title, 0, 5, 0, {}, None
+    
+    # 테이블 스타일 설정 (상태별 색상)
+    style_data_conditional = []
+    for i, data in enumerate(table_data):
+        style_data_conditional.append({
+            'if': {'row_index': i, 'column_id': 'status'},
+            'backgroundColor': data['status_color'],
+            'color': 'white',
+            'fontWeight': 'bold'
+        })
+    
+    return table_data, columns, [], style_data_conditional, True, True, title, 0, 5, 0, {}, None
 
 # ───────────────────── ③ 콘크리트 선택 콜백 ────────────────────
 @callback(
@@ -265,7 +298,15 @@ def on_concrete_select(selected_rows, tbl_data):
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     is_active = row["activate"] == "활성"
+    has_sensors = row["has_sensors"]
     concrete_pk = row["concrete_pk"]
+    
+    # 버튼 상태 결정
+    # 활성도가 1이고 센서가 있으면: 분석 시작 활성화, 삭제 비활성화
+    # 나머지 경우: 분석 시작 비활성화, 삭제 활성화
+    can_analyze = is_active and has_sensors
+    analyze_disabled = not can_analyze
+    delete_disabled = can_analyze
     
     # 초기값 설정
     current_file_title = ""
@@ -273,8 +314,10 @@ def on_concrete_select(selected_rows, tbl_data):
     slider_marks = {}
     
     # 안내 메시지 생성
-    if is_active:
+    if can_analyze:
         title = "⚠️ 분석을 시작하려면 왼쪽의 '분석 시작' 버튼을 클릭하세요."
+    elif is_active and not has_sensors:
+        title = "⚠️ 센서가 부족합니다. 센서를 추가한 후 분석을 시작하세요."
     else:
         # 비활성 상태일 때 데이터 존재 여부 확인 및 초기 파일 정보 로드
         inp_dir = f"inp/{concrete_pk}"
@@ -343,7 +386,7 @@ def on_concrete_select(selected_rows, tbl_data):
                     print(f"온도 데이터 파싱 오류: {e}")
                     current_file_title = f"{os.path.basename(latest_file)}"
             
-    return False, not is_active, title, current_file_title, slider_min, slider_max, slider_value, slider_marks
+    return delete_disabled, analyze_disabled, title, current_file_title, slider_min, slider_max, slider_value, slider_marks
 
 # ───────────────────── 3D 뷰 클릭 → 단면 위치 저장 ────────────────────
 @callback(
@@ -1417,6 +1460,8 @@ def start_analysis(n_clicks, selected_rows, tbl_data):
         # 테이블 데이터 업데이트
         updated_data = tbl_data.copy()
         updated_data[selected_rows[0]]["activate"] = "비활성"
+        updated_data[selected_rows[0]]["status"] = "분석중"
+        updated_data[selected_rows[0]]["status_color"] = "#007bff"  # 파란색
         
         return f"{concrete_pk} 분석이 시작되었습니다", "success", True, updated_data, True
     except Exception as e:
