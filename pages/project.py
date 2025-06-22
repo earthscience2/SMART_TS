@@ -89,6 +89,7 @@ layout = dbc.Container(
                             id="tbl-concrete",
                             page_size=10,
                             row_selectable="single",
+                            selected_rows=[],  # 초기에는 선택하지 않음
                             style_table={"overflowY": "auto", "height": "45vh"},
                             style_cell={"whiteSpace": "nowrap", "textAlign": "center"},
                             style_header={"backgroundColor": "#f1f3f5", "fontWeight": 600},
@@ -301,7 +302,10 @@ def on_project_change(selected_proj):
         }
     ]
     
-    return table_data, columns, [], style_data_conditional, True, True, title, 0, 5, 0, {}, None
+    # 안전한 초기 선택 설정: 데이터가 있을 때만 첫 번째 행 선택
+    initial_selection = [] if not table_data else []  # 초기에는 선택하지 않음
+    
+    return table_data, columns, initial_selection, style_data_conditional, True, True, title, 0, 5, 0, {}, None
 
 # ───────────────────── ③ 콘크리트 선택 콜백 ────────────────────
 @callback(
@@ -318,16 +322,40 @@ def on_project_change(selected_proj):
     prevent_initial_call=True,
 )
 def on_concrete_select(selected_rows, tbl_data):
-    if not selected_rows or not tbl_data or len(tbl_data) == 0:
-        return True, True, "", "", 0, 5, 0, {}
+    # 초기 상태: 모든 버튼 비활성화, 빈 제목
+    default_return = (True, True, "", "", 0, 5, 0, {})
+    
+    # 선택된 행이 없거나 데이터가 없는 경우
+    if not selected_rows or not tbl_data:
+        return default_return
+    
+    # 데이터가 리스트가 아니거나 빈 경우
+    if not isinstance(tbl_data, list) or len(tbl_data) == 0:
+        return default_return
+    
+    # 선택된 인덱스가 유효하지 않은 경우
+    if selected_rows[0] >= len(tbl_data) or selected_rows[0] < 0:
+        return default_return
     
     try:
-        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-    except (IndexError, KeyError):
-        return True, True, "", "", 0, 5, 0, {}
-    is_active = row["activate"] == "활성"
-    has_sensors = row["has_sensors"]
-    concrete_pk = row["concrete_pk"]
+        # DataFrame 생성 및 행 선택을 안전하게 처리
+        df = pd.DataFrame(tbl_data)
+        if df.empty or selected_rows[0] >= len(df):
+            return default_return
+            
+        row = df.iloc[selected_rows[0]]
+        
+        # 필수 필드 존재 확인
+        if "activate" not in row or "has_sensors" not in row or "concrete_pk" not in row:
+            return default_return
+            
+        is_active = row["activate"] == "활성"
+        has_sensors = row.get("has_sensors", False)
+        concrete_pk = row["concrete_pk"]
+        
+    except (IndexError, KeyError, ValueError, TypeError) as e:
+        print(f"콘크리트 선택 처리 오류: {e}")
+        return default_return
     
     # 버튼 상태 결정
     # 활성도가 1이고 센서가 있으면: 분석 시작 활성화, 삭제 비활성화
@@ -446,14 +474,30 @@ def store_section_coord(clickData):
     prevent_initial_call=True,
 )
 def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_time):
-    if not selected_rows or not tbl_data or len(tbl_data) == 0:
+    # 기본 조건 체크
+    if (not selected_rows or not tbl_data or 
+        not isinstance(tbl_data, list) or len(tbl_data) == 0):
+        raise PreventUpdate
+    
+    # 인덱스 유효성 체크
+    if selected_rows[0] >= len(tbl_data) or selected_rows[0] < 0:
         raise PreventUpdate
     
     try:
-        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-    except (IndexError, KeyError):
+        df = pd.DataFrame(tbl_data)
+        if df.empty or selected_rows[0] >= len(df):
+            raise PreventUpdate
+            
+        row = df.iloc[selected_rows[0]]
+        
+        if "concrete_pk" not in row:
+            raise PreventUpdate
+            
+        concrete_pk = row["concrete_pk"]
+        
+    except (IndexError, KeyError, ValueError, TypeError) as e:
+        print(f"3D 뷰 업데이트 오류: {e}")
         raise PreventUpdate
-    concrete_pk = row["concrete_pk"]
     inp_dir = f"inp/{concrete_pk}"
     inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
     if not inp_files:
