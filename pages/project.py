@@ -668,6 +668,28 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     tooltip={"placement": "bottom", "always_visible": True},
                 ),
             ], className="mb-3", style={"display": "none"}),
+            # 3D 뷰어 (항상 포함, 숨김 처리)
+            dcc.Graph(
+                id="viewer-3d",
+                style={"display": "none"},
+                config={"scrollZoom": True},
+            ),
+            # 단면도 탭 관련 컴포넌트들 (숨김 처리)
+            dcc.Slider(id="time-slider-section", style={"display": "none"}),
+            dcc.Graph(id="viewer-3d-section", style={"display": "none"}),
+            dcc.Graph(id="viewer-section-x", style={"display": "none"}),
+            dcc.Graph(id="viewer-section-y", style={"display": "none"}),
+            dcc.Graph(id="viewer-section-z", style={"display": "none"}),
+            dbc.Input(id="section-x-input", style={"display": "none"}),
+            dbc.Input(id="section-y-input", style={"display": "none"}),
+            dbc.Input(id="section-z-input", style={"display": "none"}),
+            # 온도 탭 관련 컴포넌트들 (숨김 처리)
+            dcc.Store(id="temp-coord-store", style={"display": "none"}),
+            dbc.Input(id="temp-x-input", style={"display": "none"}),
+            dbc.Input(id="temp-y-input", style={"display": "none"}),
+            dbc.Input(id="temp-z-input", style={"display": "none"}),
+            dcc.Graph(id="temp-viewer-3d", style={"display": "none"}),
+            dcc.Graph(id="temp-time-graph", style={"display": "none"}),
             html.Div(guide_message, style={
                 "textAlign": "center", "fontSize": "1.3rem", "color": "#555", "marginTop": "120px"
             })
