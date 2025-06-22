@@ -106,7 +106,7 @@ layout = dbc.Container(
                             className="w-100",
                         ),
                     ],
-                    md=2,
+                    md=3,  # 2에서 3으로 변경 (1.5배)
                 ),
                 dbc.Col(
                     [
@@ -150,7 +150,7 @@ layout = dbc.Container(
                             ]),
                         ]),
                     ],
-                    md=10,
+                    md=9,  # 10에서 9로 변경 (3+9=12)
                 ),
             ],
             className="g-3",
@@ -238,17 +238,20 @@ def on_project_change(selected_proj):
         df_sensors = api_db.get_sensors_data(concrete_pk=concrete_pk)
         has_sensors = not df_sensors.empty
         
-        # 상태 결정
+        # 상태 결정 (정렬을 위해 우선순위도 함께 설정)
         if row["activate"] == 1:  # 활성
             if has_sensors:
                 status = "분석 가능"
                 status_color = "#cce5ff"  # 연한 파란색
+                status_sort = 2  # 두 번째 우선순위
             else:
                 status = "센서 부족"
                 status_color = "#fff3cd"  # 연한 노란색
+                status_sort = 3  # 세 번째 우선순위
         else:  # 비활성 (activate == 0)
             status = "분석중"
             status_color = "#d4edda"  # 연한 초록색
+            status_sort = 1  # 첫 번째 우선순위
         
         # 타설날짜 포맷팅
         pour_date = "N/A"
@@ -291,6 +294,7 @@ def on_project_change(selected_proj):
             "name": row["name"],
             "status": status,
             "status_color": status_color,
+            "status_sort": status_sort,  # 정렬용 숨겨진 필드
             "pour_date": pour_date,
             "elapsed_days": elapsed_days,
             "shape": shape_info,
@@ -302,7 +306,7 @@ def on_project_change(selected_proj):
     # 3) 테이블 컬럼 정의
     columns = [
         {"name": "이름", "id": "name", "type": "text"},
-        {"name": "상태", "id": "status", "type": "text"},
+        {"name": "상태", "id": "status", "type": "text", "sort_as_text": False},
         {"name": "타설일", "id": "pour_date", "type": "text"},
         {"name": "경과일", "id": "elapsed_days", "type": "numeric"},
     ]
@@ -343,6 +347,10 @@ def on_project_change(selected_proj):
             'fontWeight': '500'
         }
     ])
+    
+    # 상태별 기본 정렬 적용 (분석중 → 분석 가능 → 센서 부족)
+    if table_data:
+        table_data = sorted(table_data, key=lambda x: x.get('status_sort', 999))
     
     return table_data, columns, [], style_data_conditional, True, True, title, 0, 5, 0, {}, None
 
