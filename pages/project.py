@@ -306,7 +306,7 @@ def on_project_change(selected_proj):
     # 3) 테이블 컬럼 정의
     columns = [
         {"name": "이름", "id": "name", "type": "text"},
-        {"name": "상태", "id": "status", "type": "text", "sort_as_text": False},
+        {"name": "상태", "id": "status", "type": "text"},
         {"name": "타설일", "id": "pour_date", "type": "text"},
         {"name": "경과일", "id": "elapsed_days", "type": "numeric"},
     ]
