@@ -274,16 +274,17 @@ def on_project_change(selected_proj):
             except Exception:
                 pour_date = "N/A"
         
-        # 결과일 계산 (타설일 + 28일)
-        result_date = "N/A"
+        # 경과일 계산 (현재 시간 - 타설일)
+        elapsed_days = "N/A"
         if pour_date != "N/A":
             try:
-                from datetime import datetime, timedelta
+                from datetime import datetime
                 pour_dt = datetime.strptime(pour_date, '%y.%m.%d')
-                result_dt = pour_dt + timedelta(days=28)
-                result_date = result_dt.strftime('%y.%m.%d')
+                now = datetime.now()
+                elapsed = (now - pour_dt).days
+                elapsed_days = f"{elapsed}일"
             except Exception:
-                result_date = "N/A"
+                elapsed_days = "N/A"
         
         table_data.append({
             "concrete_pk": row["concrete_pk"],
@@ -291,7 +292,7 @@ def on_project_change(selected_proj):
             "status": status,
             "status_color": status_color,
             "pour_date": pour_date,
-            "result_date": result_date,
+            "elapsed_days": elapsed_days,
             "shape": shape_info,
             "dims": row["dims"],
             "activate": "활성" if row["activate"] == 1 else "비활성",
@@ -303,7 +304,7 @@ def on_project_change(selected_proj):
         {"name": "이름", "id": "name", "type": "text"},
         {"name": "상태", "id": "status", "type": "text"},
         {"name": "타설일", "id": "pour_date", "type": "text"},
-        {"name": "결과일", "id": "result_date", "type": "text"},
+        {"name": "경과일", "id": "elapsed_days", "type": "numeric"},
     ]
 
     title = f"{proj_name} · 콘크리트 전체"
@@ -328,7 +329,7 @@ def on_project_change(selected_proj):
             'fontWeight': 'bold'
         })
     
-    # 날짜 컬럼 스타일 추가
+    # 날짜 및 경과일 컬럼 스타일 추가
     style_data_conditional.extend([
         {
             'if': {'column_id': 'pour_date'},
@@ -336,9 +337,10 @@ def on_project_change(selected_proj):
             'color': '#6c757d'
         },
         {
-            'if': {'column_id': 'result_date'},
+            'if': {'column_id': 'elapsed_days'},
             'fontSize': '0.85rem',
-            'color': '#6c757d'
+            'color': '#495057',
+            'fontWeight': '500'
         }
     ])
     
