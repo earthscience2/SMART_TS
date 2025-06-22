@@ -239,19 +239,15 @@ def on_project_change(selected_proj):
         if row["activate"] == 1:  # 활성
             if has_sensors:
                 status = "분석 가능"
-                status_color = "#28a745"  # 초록색
             else:
                 status = "센서 부족"
-                status_color = "#ffc107"  # 노란색
         else:  # 비활성 (activate == 0)
             status = "분석중"
-            status_color = "#007bff"  # 파란색
         
         table_data.append({
             "concrete_pk": row["concrete_pk"],
             "name": row["name"],
             "status": status,
-            "status_color": status_color,
             "shape": shape_info,
             "dims": row["dims"],
             "activate": "활성" if row["activate"] == 1 else "비활성",
@@ -266,15 +262,36 @@ def on_project_change(selected_proj):
 
     title = f"{proj_name} · 콘크리트 전체"
     
-    # 테이블 스타일 설정 (상태별 색상)
-    style_data_conditional = []
-    for i, data in enumerate(table_data):
-        style_data_conditional.append({
-            'if': {'row_index': i, 'column_id': 'status'},
-            'backgroundColor': data['status_color'],
-            'color': 'white',
+    # 테이블 스타일 설정 (콘크리트 페이지와 동일한 스타일)
+    style_data_conditional = [
+        {
+            'if': {
+                'filter_query': '{status} = 분석중',
+                'column_id': 'status'
+            },
+            'backgroundColor': '#fff3cd',
+            'color': '#856404',
             'fontWeight': 'bold'
-        })
+        },
+        {
+            'if': {
+                'filter_query': '{status} = 분석 가능',
+                'column_id': 'status'
+            },
+            'backgroundColor': '#d1ecf1',
+            'color': '#0c5460',
+            'fontWeight': 'bold'
+        },
+        {
+            'if': {
+                'filter_query': '{status} = 센서 부족',
+                'column_id': 'status'
+            },
+            'backgroundColor': '#ffeaa7',
+            'color': '#d63031',
+            'fontWeight': 'bold'
+        }
+    ]
     
     return table_data, columns, [], style_data_conditional, True, True, title, 0, 5, 0, {}, None
 
@@ -1461,7 +1478,6 @@ def start_analysis(n_clicks, selected_rows, tbl_data):
         updated_data = tbl_data.copy()
         updated_data[selected_rows[0]]["activate"] = "비활성"
         updated_data[selected_rows[0]]["status"] = "분석중"
-        updated_data[selected_rows[0]]["status_color"] = "#007bff"  # 파란색
         
         return f"{concrete_pk} 분석이 시작되었습니다", "success", True, updated_data, True
     except Exception as e:
