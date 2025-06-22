@@ -85,10 +85,13 @@ layout = dbc.Container(
                             clearable=False,
                         ),
                         html.H6("콘크리트 리스트", className="mt-3"),
+                        html.Small("💡 컬럼 헤더를 클릭하여 정렬할 수 있습니다", className="text-muted mb-2 d-block"),
                         dash_table.DataTable(
                             id="tbl-concrete",
                             page_size=10,
                             row_selectable="single",
+                            sort_action="native",
+                            sort_mode="single",
                             style_table={"overflowY": "auto", "height": "45vh"},
                             style_cell={"whiteSpace": "nowrap", "textAlign": "center"},
                             style_header={"backgroundColor": "#f1f3f5", "fontWeight": 600},
@@ -247,11 +250,48 @@ def on_project_change(selected_proj):
             status = "분석중"
             status_color = "#d4edda"  # 연한 초록색
         
+        # 타설날짜 포맷팅
+        pour_date = "N/A"
+        if row.get("con_t") and row["con_t"] not in ["", "N/A", None]:
+            try:
+                from datetime import datetime
+                # datetime 객체인 경우
+                if hasattr(row["con_t"], 'strftime'):
+                    dt = row["con_t"]
+                # 문자열인 경우 파싱
+                elif isinstance(row["con_t"], str):
+                    if 'T' in row["con_t"]:
+                        # ISO 형식 (2024-01-01T10:00 또는 2024-01-01T10:00:00)
+                        dt = datetime.fromisoformat(row["con_t"].replace('Z', ''))
+                    else:
+                        # 다른 형식 시도
+                        dt = datetime.strptime(str(row["con_t"]), '%Y-%m-%d %H:%M:%S')
+                else:
+                    dt = None
+                
+                if dt:
+                    pour_date = dt.strftime('%y.%m.%d')
+            except Exception:
+                pour_date = "N/A"
+        
+        # 결과일 계산 (타설일 + 28일)
+        result_date = "N/A"
+        if pour_date != "N/A":
+            try:
+                from datetime import datetime, timedelta
+                pour_dt = datetime.strptime(pour_date, '%y.%m.%d')
+                result_dt = pour_dt + timedelta(days=28)
+                result_date = result_dt.strftime('%y.%m.%d')
+            except Exception:
+                result_date = "N/A"
+        
         table_data.append({
             "concrete_pk": row["concrete_pk"],
             "name": row["name"],
             "status": status,
             "status_color": status_color,
+            "pour_date": pour_date,
+            "result_date": result_date,
             "shape": shape_info,
             "dims": row["dims"],
             "activate": "활성" if row["activate"] == 1 else "비활성",
@@ -260,8 +300,10 @@ def on_project_change(selected_proj):
 
     # 3) 테이블 컬럼 정의
     columns = [
-        {"name": "이름", "id": "name"},
-        {"name": "상태", "id": "status"},
+        {"name": "이름", "id": "name", "type": "text"},
+        {"name": "상태", "id": "status", "type": "text"},
+        {"name": "타설일", "id": "pour_date", "type": "text"},
+        {"name": "결과일", "id": "result_date", "type": "text"},
     ]
 
     title = f"{proj_name} · 콘크리트 전체"
@@ -285,6 +327,20 @@ def on_project_change(selected_proj):
             'color': text_color,
             'fontWeight': 'bold'
         })
+    
+    # 날짜 컬럼 스타일 추가
+    style_data_conditional.extend([
+        {
+            'if': {'column_id': 'pour_date'},
+            'fontSize': '0.85rem',
+            'color': '#6c757d'
+        },
+        {
+            'if': {'column_id': 'result_date'},
+            'fontSize': '0.85rem',
+            'color': '#6c757d'
+        }
+    ])
     
     return table_data, columns, [], style_data_conditional, True, True, title, 0, 5, 0, {}, None
 
