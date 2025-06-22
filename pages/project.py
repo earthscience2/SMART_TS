@@ -889,6 +889,8 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     value=slider_value,
                     marks=slider_marks,
                     tooltip={"placement": "bottom", "always_visible": True},
+                    keyboard=True,
+                    focus=True,
                 ),
             ], className="mb-2", style={
                 # 슬라이더 색상을 진하게 설정
@@ -1002,6 +1004,8 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     value=slider_value,
                     marks=slider_marks,
                     tooltip={"placement": "bottom", "always_visible": True},
+                    keyboard=True,
+                    focus=True,
                 ),
             ], className="mb-2", style={
                 # 슬라이더 색상을 진하게 설정
@@ -1270,7 +1274,9 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                             step=1,
                             value=max_idx,
                             marks=time_marks,
-                            tooltip={"placement": "bottom", "always_visible": True}
+                            tooltip={"placement": "bottom", "always_visible": True},
+                            keyboard=True,
+                            focus=True,
                         )
                     ], style={
                         # 슬라이더 색상을 진하게 설정
