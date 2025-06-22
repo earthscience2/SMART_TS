@@ -1720,6 +1720,7 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     Output("section-z-input", "min"), Output("section-z-input", "max"), Output("section-z-input", "value"),
     Output("current-file-title-store", "data", allow_duplicate=True),
     Input("time-slider-section", "value"),
+    Input("time-slider", "value"),          # ← 추가
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
     Input("section-z-input", "value"),
@@ -1727,7 +1728,11 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def update_section_views(time_idx, x_val, y_val, z_val, selected_rows, tbl_data):
+def update_section_views(time_idx_section, time_idx_main,
+                         x_val, y_val, z_val,
+                         selected_rows, tbl_data):
+    """time_idx는 두 슬라이더 중 변경된 쪽을 우선 사용"""
+    time_idx = time_idx_section if time_idx_section is not None else time_idx_main
     import math
     import plotly.graph_objects as go
     import numpy as np
