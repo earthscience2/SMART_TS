@@ -1,7 +1,7 @@
 import mysqldb
 import time
 import threading
-from user.logger import Logger as log
+from logger import Logger as log
 
 itsdb_conn = None
 
