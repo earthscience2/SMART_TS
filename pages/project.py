@@ -1351,9 +1351,21 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                 'S_Principal': '주응력(S_Principal)'
             }
             
+            from vtk.util import numpy_support as nps
+            comp_labels = ['X', 'Y', 'Z', 'C4', 'C5', 'C6']  # 최대 6개까지 명칭
             for name in field_names:
+                arr_obj = point_data.GetArray(name)
+                ncomp = arr_obj.GetNumberOfComponents() if arr_obj else 1
                 display_name = field_mapping.get(name, f"{name}")
-                field_options.append({"label": display_name, "value": name})
+                if ncomp == 1:
+                    field_options.append({"label": display_name, "value": name})
+                else:
+                    # 전체 크기(magnitude)
+                    field_options.append({"label": f"{display_name} (Mag)", "value": name})
+                    # 각 컴포넌트
+                    for ci in range(ncomp):
+                        c_label = comp_labels[ci] if ci < len(comp_labels) else f"C{ci}"
+                        field_options.append({"label": f"{display_name} – {c_label}", "value": f"{name}:{ci}"})
             
         except Exception as e:
             print(f"필드 추출 오류: {e}")
@@ -2286,11 +2298,36 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         else:  # Z
             slice_min, slice_max = zmin, zmax
         
-        # 필드 데이터 검증
+        # 필드 데이터 검증 및 컴포넌트 분리 처리
         if field_name:
-            arr = ds.GetPointData().GetArray(field_name)
-            if arr is None:
-                field_name = None  # 필드가 없으면 기본 시각화로 변경
+            # 컴포넌트 지정 패턴: "name:idx"
+            if ':' in field_name:
+                base_name, comp_idx_str = field_name.split(':', 1)
+                try:
+                    comp_idx = int(comp_idx_str)
+                except ValueError:
+                    comp_idx = None
+                arr_base = ds.GetPointData().GetArray(base_name)
+                if arr_base and comp_idx is not None and comp_idx < arr_base.GetNumberOfComponents():
+                    from vtk.util import numpy_support as nps
+                    np_data = nps.vtk_to_numpy(arr_base)
+                    comp_data = np_data[:, comp_idx]
+                    new_name = f"{base_name}_comp{comp_idx}"
+                    # 중복 방지
+                    if ds.GetPointData().HasArray(new_name):
+                        arr = ds.GetPointData().GetArray(new_name)
+                    else:
+                        new_arr = nps.numpy_to_vtk(comp_data, deep=1, array_type=arr_base.GetDataType())
+                        new_arr.SetName(new_name)
+                        ds.GetPointData().AddArray(new_arr)
+                        arr = new_arr
+                    field_name = new_name
+                else:
+                    field_name = None
+            else:
+                arr = ds.GetPointData().GetArray(field_name)
+                if arr is None:
+                    field_name = None  # 필드가 없으면 기본 시각화로 변경
         
         # 단면 적용 (slice_enable에 "on"이 있으면 활성화)
         ds_for_vis = ds
