@@ -8,8 +8,8 @@
 import sys
 from typing import List, Dict
 
-import pymysql
 import pandas as pd
+from sqlalchemy import create_engine
 
 
 DB_CONFIGS: List[Dict[str, str]] = [
@@ -32,35 +32,28 @@ DB_CONFIGS: List[Dict[str, str]] = [
 ]
 
 
-QUERY = """
-    SELECT userid, grade, authstartdate, authenddate
-    FROM tb_user
-    ORDER BY userid;
-"""
+QUERY = (
+    "SELECT userid, grade, authstartdate, authenddate "
+    "FROM tb_user ORDER BY userid;"
+)
 
 
 def fetch_users(cfg: Dict[str, str]) -> pd.DataFrame:
-    """DB 설정 딕셔너리를 받아 tb_user 전체 목록을 DataFrame 으로 반환."""
+    """주어진 DB 설정으로 tb_user 전체 목록을 조회해 DataFrame 반환."""
+
+    uri = (
+        f"mysql+pymysql://{cfg['user']}:{cfg['password']}"
+        f"@{cfg['host']}:{cfg['port']}/{cfg['db']}"
+    )
+
     try:
-        conn = pymysql.connect(
-            host=cfg["host"],
-            port=cfg["port"],
-            user=cfg["user"],
-            password=cfg["password"],
-            db=cfg["db"],
-            charset="utf8mb4",
-            cursorclass=pymysql.cursors.DictCursor,
-        )
-        df = pd.read_sql(QUERY, conn)
+        engine = create_engine(uri, echo=False, pool_pre_ping=True)
+        with engine.begin() as conn:
+            df = pd.read_sql(QUERY, conn)
         return df
     except Exception as exc:
         print(f"[오류] {cfg['name']} DB 접속 실패: {exc}")
         return pd.DataFrame()
-    finally:
-        try:
-            conn.close()
-        except Exception:
-            pass
 
 
 def main() -> None:
@@ -70,7 +63,9 @@ def main() -> None:
         if df.empty:
             print("(데이터 없음 또는 조회 실패)")
         else:
-            print(df.to_string(index=False))
+            # 컬럼 너비가 길어지는 경우를 대비해 최대 폭 설정
+            with pd.option_context("display.max_columns", None, "display.width", 160):
+                print(df.to_string(index=False))
 
 
 if __name__ == "__main__":
