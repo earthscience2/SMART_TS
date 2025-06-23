@@ -13,22 +13,6 @@ from sqlalchemy import create_engine
 
 
 DB_CONFIGS: List[Dict[str, str]] = [
-    {
-        "name": "ITS1",
-        "host": "210.105.85.3",
-        "port": 3306,
-        "user": "smart",
-        "password": "smart001",
-        "db": "itsdb",
-    },
-    {
-        "name": "ITS2",
-        "host": "220.89.167.217",
-        "port": 3306,
-        "user": "smart",
-        "password": "smart001",
-        "db": "itsdb",
-    },
 ]
 
 
