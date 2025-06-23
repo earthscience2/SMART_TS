@@ -2609,14 +2609,56 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 bbox_rep = dash_vtk.GeometryRepresentation(children=[bbox_mesh])
                 view_children.append(bbox_rep)
 
-                # 축 표시 위젯 추가 (X/Y/Z 라벨)
+                # 축 표시 위젯 추가 (X/Y/Z 라벨) - AxesActor 포함
                 try:
-                    view_children.append(dash_vtk.OrientationWidget())
+                    orientation = dash_vtk.OrientationWidget(
+                        children=[dash_vtk.AxesActor()],  # 기본 축 모델 추가
+                        interactive=True  # 마우스 회전 등 기본 인터랙션 허용
+                    )
+                    view_children.append(orientation)
                 except Exception:
-                    pass  # dash_vtk 버전에 위젯이 없으면 무시
+                    pass  # 일부 dash_vtk 버전에서 OrientationWidget 또는 AxesActor가 없을 수 있음
             except Exception as bbox_error:
                 print(f"바운딩 박스 생성 오류: {bbox_error}")
             
+            # ───── 내부 XYZ 축 라인 추가 ─────
+            try:
+                axis_len = 0.4 * max(xmax - xmin, ymax - ymin, zmax - zmin)
+                cx, cy, cz = (xmin + xmax) / 2, (ymin + ymax) / 2, (zmin + zmax) / 2
+                axis_defs = {
+                    'X': {'dir': (1, 0, 0), 'color': [1, 0, 0]},
+                    'Y': {'dir': (0, 1, 0), 'color': [0, 1, 0]},
+                    'Z': {'dir': (0, 0, 1), 'color': [0, 0, 1]},
+                }
+                for axis_info in axis_defs.values():
+                    dx, dy, dz = axis_info['dir']
+                    p0 = (cx, cy, cz)
+                    p1 = (cx + dx * axis_len, cy + dy * axis_len, cz + dz * axis_len)
+
+                    axis_pts = vtk.vtkPoints()
+                    axis_pts.InsertNextPoint(*p0)
+                    axis_pts.InsertNextPoint(*p1)
+
+                    axis_lines = vtk.vtkCellArray()
+                    axis_line = vtk.vtkLine()
+                    axis_line.GetPointIds().SetId(0, 0)
+                    axis_line.GetPointIds().SetId(1, 1)
+                    axis_lines.InsertNextCell(axis_line)
+
+                    axis_poly = vtk.vtkPolyData()
+                    axis_poly.SetPoints(axis_pts)
+                    axis_poly.SetLines(axis_lines)
+
+                    axis_state = to_mesh_state(axis_poly)
+                    axis_mesh = dash_vtk.Mesh(state=axis_state)
+                    axis_rep = dash_vtk.GeometryRepresentation(
+                        children=[axis_mesh],
+                        property={'color': axis_info['color'], 'lineWidth': 3}
+                    )
+                    view_children.append(axis_rep)
+            except Exception as axis_err:
+                print(f"내부 축 생성 오류: {axis_err}")
+
             # View 컴포넌트 생성 (안전한 방식)
             vtk_viewer = dash_vtk.View(
                 children=view_children, 
