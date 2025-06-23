@@ -6,7 +6,7 @@ from datetime import datetime
 import pandas as pd
 import ssl
 
-from logger import Logger as log
+from user.logger import Logger as log
 import config
 import itsdb1, itsdb2
 import timeseriesdb as tsdb
