@@ -2623,8 +2623,10 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             
             # ───── 내부 XYZ 축 라인 추가 ─────
             try:
-                axis_len = 0.4 * max(xmax - xmin, ymax - ymin, zmax - zmin)
-                cx, cy, cz = (xmin + xmax) / 2, (ymin + ymax) / 2, (zmin + zmax) / 2
+                axis_len = 0.5 * max(xmax - xmin, ymax - ymin, zmax - zmin)
+                # 축을 모델 바깥에 배치하기 위해 바운딩박스 최소좌표에서 살짝 바깥쪽으로 이동
+                margin = 0.05 * axis_len
+                ox, oy, oz = xmin - margin, ymin - margin, zmin - margin
                 axis_defs = {
                     'X': {'dir': (1, 0, 0), 'color': [1, 0, 0]},
                     'Y': {'dir': (0, 1, 0), 'color': [0, 1, 0]},
@@ -2632,8 +2634,8 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 }
                 for axis_info in axis_defs.values():
                     dx, dy, dz = axis_info['dir']
-                    p0 = (cx, cy, cz)
-                    p1 = (cx + dx * axis_len, cy + dy * axis_len, cz + dz * axis_len)
+                    p0 = (ox, oy, oz)
+                    p1 = (ox + dx * axis_len, oy + dy * axis_len, oz + dz * axis_len)
 
                     axis_pts = vtk.vtkPoints()
                     axis_pts.InsertNextPoint(*p0)
