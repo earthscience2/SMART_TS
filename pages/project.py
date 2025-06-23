@@ -2614,8 +2614,8 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                     view_children.append(dash_vtk.OrientationWidget())
                 except Exception:
                     pass  # dash_vtk 버전에 위젯이 없으면 무시
-             except Exception as bbox_error:
-                 print(f"바운딩 박스 생성 오류: {bbox_error}")
+            except Exception as bbox_error:
+                print(f"바운딩 박스 생성 오류: {bbox_error}")
              
              # View 컴포넌트 생성 (안전한 방식)
              vtk_viewer = dash_vtk.View(
