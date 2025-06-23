@@ -1,7 +1,7 @@
 import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from user.logger import Logger as log
+from logger import Logger as log
 
 class Mysqlhandler:
     def __init__(self, host, user, password, db_name):
