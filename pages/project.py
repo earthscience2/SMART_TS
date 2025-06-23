@@ -2616,27 +2616,27 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                     pass  # dash_vtk 버전에 위젯이 없으면 무시
             except Exception as bbox_error:
                 print(f"바운딩 박스 생성 오류: {bbox_error}")
-             
-             # View 컴포넌트 생성 (안전한 방식)
-             vtk_viewer = dash_vtk.View(
-                 children=view_children, 
-                 style={"height": "60vh", "width": "100%"}
-             )
-             
-             label = f"파일: {selected_file}"
-             if color_range:
-                 label += f" | 값 범위: {color_range[0]:.2f} ~ {color_range[1]:.2f}"
-             if slice_enable and "on" in slice_enable:
-                 slice_value = slice_slider
-                 if slice_axis == "X":
-                     label += f" | X ≥ {slice_value:.1f} 영역"
-                 elif slice_axis == "Y":
-                     label += f" | Y ≥ {slice_value:.1f} 영역"
-                 else:  # Z
-                     label += f" | Z ≥ {slice_value:.1f} 영역"
-                 
-             return vtk_viewer, label, colorbar_fig, slice_min, slice_max
-             
+            
+            # View 컴포넌트 생성 (안전한 방식)
+            vtk_viewer = dash_vtk.View(
+                children=view_children, 
+                style={"height": "60vh", "width": "100%"}
+            )
+            
+            label = f"파일: {selected_file}"
+            if color_range:
+                label += f" | 값 범위: {color_range[0]:.2f} ~ {color_range[1]:.2f}"
+            if slice_enable and "on" in slice_enable:
+                slice_value = slice_slider
+                if slice_axis == "X":
+                    label += f" | X ≥ {slice_value:.1f} 영역"
+                elif slice_axis == "Y":
+                    label += f" | Y ≥ {slice_value:.1f} 영역"
+                else:  # Z
+                    label += f" | Z ≥ {slice_value:.1f} 영역"
+                
+            return vtk_viewer, label, colorbar_fig, slice_min, slice_max
+            
         except Exception as vtk_error:
             print(f"dash_vtk 컴포넌트 생성 오류: {vtk_error}")
             return html.Div([
