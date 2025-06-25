@@ -26,10 +26,24 @@ def layout():
     if not user_id:
         return dcc.Location(pathname="/login", id="redirect-login")
 
+    # 사용자 인증 정보 가져오기
+    auth_result = api_db.authenticate_user(user_id, "dummy", its_num=1)  # 비밀번호는 이미 확인됨
+    if auth_result["result"] != "Success":
+        return dcc.Location(pathname="/login", id="redirect-login")
+    
+    grade = auth_result["grade"]
+    auth_list = auth_result["auth"]
+
     # 사용자가 접근 가능한 ITS 프로젝트 목록 조회
     its_projects_result = api_db.get_accessible_projects(user_id, its_num=1)
     
-    if its_projects_result["result"] != "Success":
+    # get_project_structure_list 결과 가져오기
+    try:
+        project_structure_df = api_db.get_project_structure_list(its_num=1, allow_list=auth_list, grade=grade)
+    except Exception as e:
+        project_structure_df = pd.DataFrame()
+    
+    if its_projects_result["result"] != "Success" and project_structure_df.empty:
         # 권한이 없거나 오류가 발생한 경우
         return html.Div([
             dbc.Container([
@@ -43,14 +57,48 @@ def layout():
         ])
 
     # ITS 프로젝트가 있는 경우 표시
-    its_projects_df = its_projects_result["projects"]
+    its_projects_df = its_projects_result.get("projects", pd.DataFrame())
     
     # 기존 로컬 프로젝트도 함께 표시 (선택적)
     local_projects_df = api_db.get_project_data()
 
+    sections = []
+
+    # 1. 프로젝트-구조 목록 섹션 (get_project_structure_list 결과)
+    if not project_structure_df.empty:
+        sections.append(html.H3("ITS 프로젝트 구조 목록", className="text-center mb-4 text-success"))
+        
+        # 테이블 형태로 표시
+        table_data = []
+        for _, row in project_structure_df.iterrows():
+            table_data.append([
+                row["projectid"],
+                row["projectname"], 
+                row["stid"],
+                row["stname"],
+                row["staddr"],
+                format_date(row["regdate"]),
+                "진행중" if pd.isna(row["closedate"]) else "완료"
+            ])
+        
+        sections.append(
+            dbc.Table.from_dataframe(
+                pd.DataFrame(table_data, columns=[
+                    "프로젝트ID", "프로젝트명", "구조ID", "구조명", "주소", "시작일", "상태"
+                ]),
+                striped=True,
+                bordered=True,
+                hover=True,
+                responsive=True,
+                className="mb-5"
+            )
+        )
+        
+        sections.append(html.Hr(className="my-5"))
+
     cards = []
 
-    # ITS 프로젝트 카드 생성
+    # 2. ITS 프로젝트 카드 생성
     if not its_projects_df.empty:
         cards.append(html.H3("ITS 프로젝트", className="text-center mb-4 text-primary"))
         
@@ -108,7 +156,7 @@ def layout():
                 ], xs=12, sm=6, md=3, lg=3)
             )
 
-    # 로컬 프로젝트 카드 생성 (기존 로직 유지)
+    # 3. 로컬 프로젝트 카드 생성 (기존 로직 유지)
     if not local_projects_df.empty:
         if cards:  # ITS 프로젝트가 있으면 구분선 추가
             cards.append(html.Hr(className="my-5"))
@@ -173,8 +221,8 @@ def layout():
                 ], xs=12, sm=6, md=3, lg=3)
             )
 
-    # 프로젝트가 하나도 없는 경우
-    if not cards:
+    # 프로젝트와 구조가 모두 없는 경우
+    if not sections and not cards:
         return html.Div([
             dbc.Container([
                 dbc.Alert([
@@ -186,14 +234,17 @@ def layout():
             ])
         ])
 
-    card_grid = dbc.Row(
-        cards,
-        justify="center",
-        style={
-            "rowGap": "4rem",       # 세로 간격
-            "columnGap": "4rem"     # 가로 간격
-        }
-    )
+    # 카드가 있으면 카드 그리드 생성
+    card_grid = None
+    if cards:
+        card_grid = dbc.Row(
+            cards,
+            justify="center",
+            style={
+                "rowGap": "4rem",       # 세로 간격
+                "columnGap": "4rem"     # 가로 간격
+            }
+        )
 
     return html.Div([
         dbc.Container(
@@ -201,7 +252,8 @@ def layout():
             className="mt-5 d-flex flex-column align-items-center",
             children=[
                 html.H2(f"프로젝트 목록 ({user_id})", className="text-center mb-4"),
-                card_grid
+                *sections,  # 프로젝트-구조 테이블
+                card_grid if card_grid else html.Div()  # 프로젝트 카드들
             ]
         )
     ])
