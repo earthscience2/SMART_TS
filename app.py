@@ -103,8 +103,9 @@ def _build_navbar():
             html.A(
                 "Logout",
                 href="/logout",
-                className="btn btn-danger btn-sm ms-auto fw-bold",
-                style={"color": "white"},
+                id="nav-logout",
+                className="btn btn-danger btn-sm fw-bold mt-1 ms-auto",
+                style={"color": "white", "backgroundColor": "#dc3545", "border": "none"},
             ),
         ),
     ]
