@@ -113,7 +113,7 @@ def update_nav_active(pathname):
         classes[4] += " active"
     elif pathname.startswith("/login"):
         classes[5] += " active"
-    return classes + [classes[5], classes[6]]
+    return classes
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=23022)
