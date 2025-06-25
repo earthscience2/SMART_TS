@@ -130,12 +130,18 @@ def _build_navbar():
         html.Span("Concrete MONITOR", className="fw-bold")
     ])
 
-    return dbc.NavbarSimple(
-        brand=brand_component,
+    return dbc.Navbar(
+        dbc.Container([
+            dbc.NavbarBrand(brand_component, href="/"),
+            dbc.Nav(
+                children,
+                navbar=True,
+                className="ms-3"  # 브랜드 옆에 여백을 두고 배치
+            ),
+        ], fluid=True),
         color="dark",
         dark=True,
         className="mb-4",
-        children=children,
     )
 
 def serve_layout():
