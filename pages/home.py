@@ -26,41 +26,41 @@ def layout():
     if not user_id:
         return dcc.Location(pathname="/login", id="redirect-login")
 
-    # 사용자 인증 정보 가져오기
-    auth_result = api_db.authenticate_user(user_id, "dummy", its_num=1)  # 비밀번호는 이미 확인됨
-    if auth_result["result"] != "Success":
-        return dcc.Location(pathname="/login", id="redirect-login")
-    
-    grade = auth_result["grade"]
-    auth_list = auth_result["auth"]
-
     # 사용자가 접근 가능한 ITS 프로젝트 목록 조회
     its_projects_result = api_db.get_accessible_projects(user_id, its_num=1)
     
     # get_project_structure_list 결과 가져오기
     try:
+        # get_accessible_projects에서 이미 사용자 정보를 확인했으므로 
+        # 같은 로직을 사용해서 grade와 auth_list 가져오기
+        from api_db import _get_its_engine, text
+        
+        eng = _get_its_engine(1)
+        user_query = text("SELECT userid, grade FROM tb_user WHERE userid = :uid LIMIT 1")
+        df_user = pd.read_sql(user_query, eng, params={"uid": user_id})
+        
+        if df_user.empty:
+            grade = "AD"  # 기본값으로 관리자 권한
+            auth_list = []
+        else:
+            grade = df_user.iloc[0]["grade"]
+            if grade == "AD":
+                auth_list = []
+            else:
+                auth_query = text("SELECT id FROM tb_sensor_auth_mapping WHERE userid = :uid")
+                df_auth = pd.read_sql(auth_query, eng, params={"uid": user_id})
+                auth_list = df_auth["id"].tolist() if not df_auth.empty else []
+        
         project_structure_df = api_db.get_project_structure_list(its_num=1, allow_list=auth_list, grade=grade)
     except Exception as e:
+        print(f"Error getting project structure list: {e}")
         project_structure_df = pd.DataFrame()
     
-    if its_projects_result["result"] != "Success" and project_structure_df.empty:
-        # 권한이 없거나 오류가 발생한 경우
-        return html.Div([
-            dbc.Container([
-                dbc.Alert([
-                    html.H4("접근 권한 없음", className="alert-heading"),
-                    html.P(its_projects_result["msg"]),
-                    html.Hr(),
-                    html.P("관리자에게 문의하시기 바랍니다.", className="mb-0")
-                ], color="warning", className="mt-5")
-            ])
-        ])
+    # 로컬 프로젝트는 항상 표시
+    local_projects_df = api_db.get_project_data()
 
     # ITS 프로젝트가 있는 경우 표시
     its_projects_df = its_projects_result.get("projects", pd.DataFrame())
-    
-    # 기존 로컬 프로젝트도 함께 표시 (선택적)
-    local_projects_df = api_db.get_project_data()
 
     sections = []
 
