@@ -32,7 +32,7 @@ def layout(error: str | None = None, **kwargs):
                             dbc.Button("로그인", type="submit", color="primary", className="w-100"),
                         ],
                     ),
-                    dbc.Alert(error_msg or "아이디와 비밀번호를 입력하세요.", color="danger" if error_msg else "info", is_open=True, className="mt-3"),
+                    (dbc.Alert(error_msg, color="danger", is_open=True, className="mt-3") if error_msg else None),
                 ],
             ),
         ),

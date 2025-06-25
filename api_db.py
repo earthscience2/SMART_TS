@@ -74,7 +74,7 @@ def authenticate_user(user_id: str, password: str, its_num: int = 1):
         query = text("SELECT userid, userpw, grade FROM tb_user WHERE userid = :uid LIMIT 1")
         df_user = pd.read_sql(query, eng, params={"uid": user_id})
         if df_user.empty:
-            return {"result": "Fail", "msg": "존재하지 않는 ID", "grade": None, "auth": []}
+            return {"result": "Fail", "msg": "존재하지 않는 아이디", "grade": None, "auth": []}
 
         stored_hash = df_user.iloc[0]["userpw"].encode("utf-8")
         if not bcrypt.checkpw(password.encode("utf-8"), stored_hash):

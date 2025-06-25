@@ -3,6 +3,7 @@
 import os
 from flask import Flask, request, redirect, make_response
 from dotenv import load_dotenv
+from urllib.parse import quote_plus
 
 # 사용자 인증 모듈
 from api_db import authenticate_user
@@ -53,11 +54,11 @@ def do_login():
 
     # 입력값 검증
     if not user_id or not user_pw:
-        return redirect("/login?error=아이디와+비밀번호를+입력하세요")
+        return redirect("/login?error=" + quote_plus("아이디와 비밀번호를 입력하세요"))
 
     auth = authenticate_user(user_id, user_pw, its_num=its)
     if auth["result"] != "Success":
-        return redirect(f"/login?error={auth['msg']}")
+        return redirect(f"/login?error={quote_plus(auth['msg'])}")
 
     # 간단하게 쿠키에 user_id 저장 (실 서비스라면 JWT 등 사용)
     resp = make_response(redirect("/"))
