@@ -1,12 +1,16 @@
 # pages/login.py
 from dash import html, dcc, register_page
 import dash_bootstrap_components as dbc
-from flask import request
 
 register_page(__name__, path="/login", title="로그인")
 
-def layout():
-    error_msg = request.args.get("error", "")
+def layout(error: str | None = None, **kwargs):
+    """Login page layout.
+
+    Dash pages 모드에서는 /login?error=... 형태의 쿼리 파라미터가 함수
+    인자로 전달되므로 이를 받아 오류 메시지로 사용한다.
+    """
+    error_msg = error or ""
     return html.Div([
         dbc.Container(
             fluid=True,
