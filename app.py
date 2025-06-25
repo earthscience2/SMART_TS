@@ -67,7 +67,7 @@ def do_login():
 @server.route("/logout")
 def logout():
     """쿠키 제거 후 홈으로 리다이렉트"""
-    resp = make_response(redirect("/"))
+    resp = make_response(redirect("/login"))
     resp.delete_cookie("login_user")
     return resp
 
