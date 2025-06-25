@@ -143,10 +143,13 @@ def serve_layout():
 
     쿠키(login_user)가 없으면 로그인 페이지 레이아웃을 직접 반환해 SPA 내부 이동까지 차단한다.
     """
+    print(f"DEBUG serve_layout - flask_request.args: {dict(flask_request.args)}")
+    print(f"DEBUG serve_layout - flask_request.url: {flask_request.url}")
 
     if not flask_request.cookies.get("login_user"):
         from pages import login as login_page  # 지역 임포트로 순환참조 방지
         error_param = flask_request.args.get("error")
+        print(f"DEBUG serve_layout - error_param: '{error_param}'")
         return login_page.layout(error=error_param)
 
     navbar = _build_navbar()

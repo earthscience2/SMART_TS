@@ -1,5 +1,5 @@
 # pages/login.py
-from dash import html, dcc, register_page
+from dash import html, dcc, register_page, callback, Input, Output
 import dash_bootstrap_components as dbc
 from flask import request as flask_request
 import urllib.parse
@@ -26,6 +26,7 @@ def layout(error: str | None = None, **kwargs):
     print(f"DEBUG - flask_request.url: {flask_request.url}")
     
     return html.Div([
+        dcc.Location(id="login-url", refresh=False),
         dbc.Container(
             fluid=True,
             className="d-flex justify-content-center align-items-center",
@@ -44,7 +45,8 @@ def layout(error: str | None = None, **kwargs):
                             dbc.Button("로그인", type="submit", color="primary", className="w-100"),
                         ],
                     ),
-                    (dbc.Alert(error_msg, color="danger", is_open=True, className="mt-3") if error_msg else None),
+                    html.Div(id="error-alert"),
+                    # 디버깅용 - 제거 가능
                     html.Div([
                         html.P(f"Debug - error param: '{error}'", style={"fontSize": "10px", "color": "red"}),
                         html.P(f"Debug - raw_msg: '{raw_msg}'", style={"fontSize": "10px", "color": "blue"}),
@@ -55,3 +57,24 @@ def layout(error: str | None = None, **kwargs):
             ),
         ),
     ])
+
+@callback(
+    Output("error-alert", "children"),
+    Input("login-url", "search")
+)
+def update_error_message(search):
+    """URL 파라미터에서 error 메시지를 추출하여 Alert 표시"""
+    if not search:
+        return None
+    
+    # ?error=... 형태에서 error 값 추출
+    try:
+        params = urllib.parse.parse_qs(search[1:])  # ? 제거
+        error_encoded = params.get("error", [None])[0]
+        if error_encoded:
+            error_msg = urllib.parse.unquote_plus(error_encoded)
+            return dbc.Alert(error_msg, color="danger", is_open=True, className="mt-3")
+    except Exception as e:
+        print(f"Error parsing URL params: {e}")
+    
+    return None
