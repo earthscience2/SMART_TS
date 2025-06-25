@@ -97,18 +97,29 @@ def _build_navbar():
         dbc.NavItem(dcc.Link("Sensor", href="/sensor", className="nav-link", id="nav-sensor")),
         dbc.NavItem(dcc.Link("Concrete", href="/concrete", className="nav-link", id="nav-concrete")),
         dbc.NavItem(dcc.Link("Download", href="/download", className="nav-link", id="nav-download")),
-        # 자리 확보용; 스타일로 가시성 제어
-        dbc.NavItem(dcc.Link("Login", href="/login", className="nav-link", id="nav-login"), className="ms-auto"),
+        # Login / Logout (보기/숨김 및 정렬)
+        dbc.NavItem(dcc.Link("Login", href="/login", className="nav-link", id="nav-login")),
         dbc.NavItem(
-            dbc.Button("Logout", href="/logout", color="danger", size="sm", id="nav-logout", className="ms-2"),
+            dbc.Button(
+                "Logout",
+                href="/logout",
+                color="danger",
+                size="sm",
+                id="nav-logout",
+                className="ms-auto text-white fw-bold",
+                style={"backgroundColor": "#dc3545", "border": "none"},  # 항상 빨간색
+            ),
         ),
     ]
 
     # 가시성 제어
     if user_id:
-        children[-2].style = {"display": "none"}  # hide login
+        # hide login link
+        children[-2].style = {"display": "none"}
     else:
-        children[-1].style = {"display": "none"}  # hide logout
+        # hide logout button and ensure login link pushed right
+        children[-1].style = {"display": "none"}
+        children[-2].className += " ms-auto"
 
     brand_component = html.Span([
         html.Span(user_id, className="me-2 fw-bold text-warning") if user_id else None,
