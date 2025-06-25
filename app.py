@@ -18,6 +18,25 @@ server = Flask(__name__)
 # 반드시 Dash(app) 생성 전에 정의
 # ──────────────────────────────────────────────────────────────────────────────
 
+# ──────────────────────────────────────────────────
+#  인증 체크: 로그인 안 했으면 /login 으로 리다이렉트
+# ──────────────────────────────────────────────────
+
+_PUBLIC_PREFIXES = ("/login", "/do_login", "/assets", "/_dash", "/favicon", "/logout")
+
+
+@server.before_request
+def require_login():
+    """모든 요청에 대해 로그인 여부 확인. 공용 경로 제외."""
+    path = request.path
+    if path.startswith(_PUBLIC_PREFIXES):
+        return  # allow
+
+    # 쿠키에 login_user 가 없으면 로그인 페이지로
+    if not request.cookies.get("login_user"):
+        # Ajax 요청 등은 401 처리 가능, 여기서는 단순 리다이렉트
+        return redirect("/login")
+
 @server.route("/do_login", methods=["GET", "POST"])
 def do_login():
     """로그인 폼 제출 처리."""
