@@ -109,6 +109,10 @@ def _build_navbar():
 
 def serve_layout():
     """Dash Serve layout function, evaluated per request."""
+    # 인증 체크 – 쿠키 없으면 즉시 로그인 페이지로 리다이렉트
+    if not flask_request.cookies.get("login_user"):
+        return dcc.Location(href="/login", id="redirect-login")
+
     navbar = _build_navbar()
     return dbc.Container(
         fluid=True,
