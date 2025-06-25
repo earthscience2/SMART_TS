@@ -124,9 +124,9 @@ def serve_layout():
     """
 
     if not flask_request.cookies.get("login_user"):
-        # pages.login 모듈의 layout 함수 호출 (쿼리 파라미터 없음)
         from pages import login as login_page  # 지역 임포트로 순환참조 방지
-        return login_page.layout()
+        error_param = flask_request.args.get("error")
+        return login_page.layout(error=error_param)
 
     navbar = _build_navbar()
     return dbc.Container(
