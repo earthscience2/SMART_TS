@@ -81,7 +81,7 @@ app.title = "Concrete Dashboard"
 
 def _build_navbar():
     """쿠키(login_user) 존재 여부에 따라 Login/Logout 버튼 토글"""
-    is_login = bool(flask_request.cookies.get("login_user"))
+    user_id = flask_request.cookies.get("login_user")
 
     children = [
         dbc.NavItem(dcc.Link("Home", href="/", className="nav-link", id="nav-home")),
@@ -97,18 +97,37 @@ def _build_navbar():
     ]
 
     # 가시성 제어
-    if is_login:
+    if user_id:
         children[-2].style = {"display": "none"}  # hide login
     else:
         children[-1].style = {"display": "none"}  # hide logout
 
+    brand_component = (
+        html.Span([
+            html.Span(user_id, className="me-2 fw-bold") if user_id else None,
+            "Concrete MONITOR",
+        ])
+    )
+
     return dbc.NavbarSimple(
-        brand="Concrete MONITOR", color="dark", dark=True, className="mb-4",
+        brand=brand_component,
+        color="dark",
+        dark=True,
+        className="mb-4",
         children=children,
     )
 
 def serve_layout():
-    """Dash Serve layout function, evaluated per request."""
+    """Dash Serve layout function, evaluated per request.
+
+    쿠키(login_user)가 없으면 로그인 페이지 레이아웃을 직접 반환해 SPA 내부 이동까지 차단한다.
+    """
+
+    if not flask_request.cookies.get("login_user"):
+        # pages.login 모듈의 layout 함수 호출 (쿼리 파라미터 없음)
+        from pages import login as login_page  # 지역 임포트로 순환참조 방지
+        return login_page.layout()
+
     navbar = _build_navbar()
     return dbc.Container(
         fluid=True,
