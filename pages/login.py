@@ -22,6 +22,7 @@ def layout(error: str | None = None, **kwargs):
             children=dbc.Card(
                 style={"width": "360px", "padding": "20px"},
                 children=[
+                    html.H3("Concrete MONITOR", className="mb-2 text-center text-primary fw-bold"),
                     html.H4("로그인", className="mb-4 text-center"),
                     html.Form(
                         action="/do_login",
@@ -33,6 +34,7 @@ def layout(error: str | None = None, **kwargs):
                         ],
                     ),
                     (dbc.Alert(error_msg, color="danger", is_open=True, className="mt-3") if error_msg else None),
+                    html.Div(f"Debug - error_msg: '{error_msg}'", style={"fontSize": "10px", "color": "gray"}) if error_msg else None,
                 ],
             ),
         ),
