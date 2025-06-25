@@ -32,6 +32,10 @@ def require_login():
     if path.startswith(_PUBLIC_PREFIXES):
         return  # allow
 
+    # 쿠키가 있는 상태로 /login 접근 시 홈으로 리다이렉트
+    if flask_request.cookies.get("login_user") and flask_request.path.startswith("/login"):
+        return dcc.Location(href="/", id="redirect-home")
+
     # 쿠키에 login_user 가 없으면 로그인 페이지로
     if not request.cookies.get("login_user"):
         # Ajax 요청 등은 401 처리 가능, 여기서는 단순 리다이렉트
