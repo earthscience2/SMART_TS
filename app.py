@@ -68,6 +68,7 @@ def logout():
 # ──────────────────────────────────────────────────────────────────────────────
 from dash import Dash, html, dcc, page_container
 import dash_bootstrap_components as dbc
+from flask import request as flask_request
 
 app = Dash(
     __name__,
@@ -78,32 +79,47 @@ app = Dash(
 )
 app.title = "Concrete Dashboard"
 
-# 네비게이션 바 정의 (Logout 버튼은 href="/logout" 유지)
-navbar = dbc.NavbarSimple(
-    brand="Concrete MONITOR", color="dark", dark=True, className="mb-4",
-    children=[
+def _build_navbar():
+    """쿠키(login_user) 존재 여부에 따라 Login/Logout 버튼 토글"""
+    is_login = bool(flask_request.cookies.get("login_user"))
+
+    children = [
         dbc.NavItem(dcc.Link("Home", href="/", className="nav-link", id="nav-home")),
         dbc.NavItem(dcc.Link("Project", href="/project", className="nav-link", id="nav-project")),
         dbc.NavItem(dcc.Link("Sensor", href="/sensor", className="nav-link", id="nav-sensor")),
         dbc.NavItem(dcc.Link("Concrete", href="/concrete", className="nav-link", id="nav-concrete")),
         dbc.NavItem(dcc.Link("Download", href="/download", className="nav-link", id="nav-download")),
-
-        # Login / Logout 버튼 (항상 표시, 향후 쿠키 기반 토글 가능)
+        # 자리 확보용; 스타일로 가시성 제어
         dbc.NavItem(dcc.Link("Login", href="/login", className="nav-link", id="nav-login"), className="ms-auto"),
         dbc.NavItem(
             dcc.Link("Logout", href="/logout", refresh=True, className="nav-link text-danger", id="nav-logout"),
         ),
-    ],
-)
+    ]
 
-app.layout = dbc.Container(
-    fluid=True,
-    children=[
-        dcc.Location(id="url"),
-        navbar,
-        dbc.Card(className="shadow-sm p-4", children=[ page_container ]),
-    ],
-)
+    # 가시성 제어
+    if is_login:
+        children[-2].style = {"display": "none"}  # hide login
+    else:
+        children[-1].style = {"display": "none"}  # hide logout
+
+    return dbc.NavbarSimple(
+        brand="Concrete MONITOR", color="dark", dark=True, className="mb-4",
+        children=children,
+    )
+
+def serve_layout():
+    """Dash Serve layout function, evaluated per request."""
+    navbar = _build_navbar()
+    return dbc.Container(
+        fluid=True,
+        children=[
+            dcc.Location(id="url"),
+            navbar,
+            dbc.Card(className="shadow-sm p-4", children=[page_container]),
+        ],
+    )
+
+app.layout = serve_layout
 
 # 네비게이션 바 active 클래스 동적 적용 콜백
 from dash.dependencies import Input, Output
