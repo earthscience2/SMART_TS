@@ -542,6 +542,75 @@ def parse_ymdh(ts: str) -> datetime:
 def format_sql_datetime(dt: datetime) -> str:
     return dt.strftime('%Y-%m-%d %H:%M:%S')
 
+def get_accessible_projects(user_id: str, its_num: int = 1):
+    """사용자가 접근 가능한 프로젝트 목록을 반환합니다.
+    
+    Args:
+        user_id: 사용자 ID
+        its_num: ITS 번호 (1 또는 2)
+    
+    Returns:
+        dict: {
+            'result': 'Success' | 'Fail',
+            'projects': DataFrame 또는 None,
+            'msg': 오류 메시지
+        }
+    """
+    try:
+        eng = _get_its_engine(its_num)
+    except Exception as exc:
+        return {"result": "Fail", "projects": None, "msg": f"DB 연결 실패: {exc}"}
+
+    try:
+        # 사용자 정보 조회
+        user_query = text("SELECT userid, grade FROM tb_user WHERE userid = :uid LIMIT 1")
+        df_user = pd.read_sql(user_query, eng, params={"uid": user_id})
+        
+        if df_user.empty:
+            return {"result": "Fail", "projects": None, "msg": "존재하지 않는 사용자"}
+
+        grade = df_user.iloc[0]["grade"]
+        
+        # 관리자(AD)인 경우 모든 프로젝트 반환
+        if grade == "AD":
+            project_query = text("""
+                SELECT DISTINCT tp.projectid, tp.projectname, tp.regdate, tp.closedate
+                FROM tb_project tp
+                ORDER BY tp.projectid
+            """)
+            df_projects = pd.read_sql(project_query, eng)
+        else:
+            # 일반 사용자의 경우 권한이 있는 프로젝트만 반환
+            auth_query = text("SELECT id FROM tb_sensor_auth_mapping WHERE userid = :uid")
+            df_auth = pd.read_sql(auth_query, eng, params={"uid": user_id})
+            
+            if df_auth.empty:
+                return {"result": "Fail", "projects": None, "msg": "접근 권한이 없습니다"}
+            
+            auth_list = df_auth["id"].tolist()
+            
+            # 프로젝트 ID 추출 (권한 목록에서)
+            project_ids = [auth_id for auth_id in auth_list if auth_id.startswith('P_')]
+            
+            if not project_ids:
+                return {"result": "Fail", "projects": None, "msg": "접근 가능한 프로젝트가 없습니다"}
+            
+            # 권한이 있는 프로젝트만 조회
+            placeholders = ", ".join([f":p{i}" for i in range(len(project_ids))])
+            project_query = text(f"""
+                SELECT DISTINCT tp.projectid, tp.projectname, tp.regdate, tp.closedate
+                FROM tb_project tp
+                WHERE tp.projectid IN ({placeholders})
+                ORDER BY tp.projectid
+            """)
+            params = {f"p{i}": pid for i, pid in enumerate(project_ids)}
+            df_projects = pd.read_sql(project_query, eng, params=params)
+
+        return {"result": "Success", "projects": df_projects, "msg": ""}
+        
+    except Exception as exc:
+        return {"result": "Fail", "projects": None, "msg": f"오류 발생: {str(exc)}"}
+
 
 """
 # 테스트
