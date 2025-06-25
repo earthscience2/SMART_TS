@@ -4,6 +4,9 @@ import os
 from flask import Flask, request, redirect, make_response
 from dotenv import load_dotenv
 
+# 사용자 인증 모듈
+from api_db import authenticate_user
+
 load_dotenv()
 
 # 1) Flask 서버만 먼저 생성
@@ -14,26 +17,32 @@ server = Flask(__name__)
 # 로그아웃 처리 라우트 (GET)
 # 반드시 Dash(app) 생성 전에 정의
 # ──────────────────────────────────────────────────────────────────────────────
-"""
+
 @server.route("/do_login", methods=["GET", "POST"])
 def do_login():
+    """로그인 폼 제출 처리."""
     if request.method == "GET":
         return redirect("/login")
+
     user_id = request.form.get("user_id", "")
     user_pw = request.form.get("user_pw", "")
-    success, token_or_msg = api_user.authenticate(user_id, user_pw)
-    if not success:
-        return redirect(f"/login?error={token_or_msg}")
+    its = int(request.form.get("its", "1"))  # hidden 필드로 받아오거나 기본 1
+
+    auth = authenticate_user(user_id, user_pw, its_num=its)
+    if auth["result"] != "Success":
+        return redirect(f"/login?error={auth['msg']}")
+
+    # 간단하게 쿠키에 user_id 저장 (실 서비스라면 JWT 등 사용)
     resp = make_response(redirect("/"))
-    resp.set_cookie("login_token", token_or_msg, max_age=api_user.TOKEN_EXPIRATION, httponly=True)
+    resp.set_cookie("login_user", user_id, max_age=60 * 60 * 6, httponly=True)
     return resp
 
 @server.route("/logout")
 def logout():
+    """쿠키 제거 후 홈으로 리다이렉트"""
     resp = make_response(redirect("/"))
-    resp.delete_cookie("login_token")
+    resp.delete_cookie("login_user")
     return resp
-"""
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 이제 Dash 앱 생성
@@ -59,18 +68,12 @@ navbar = dbc.NavbarSimple(
         dbc.NavItem(dcc.Link("Sensor", href="/sensor", className="nav-link", id="nav-sensor")),
         dbc.NavItem(dcc.Link("Concrete", href="/concrete", className="nav-link", id="nav-concrete")),
         dbc.NavItem(dcc.Link("Download", href="/download", className="nav-link", id="nav-download")),
-        # Logout: dcc.Link + refresh=True 로 강제 풀 리프레시
-        """
+
+        # Login / Logout 버튼 (항상 표시, 향후 쿠키 기반 토글 가능)
+        dbc.NavItem(dcc.Link("Login", href="/login", className="nav-link", id="nav-login"), className="ms-auto"),
         dbc.NavItem(
-            dcc.Link(
-                "Logout",
-                href="/logout",
-                refresh=True,                            # 중요!
-                className="btn btn-outline-danger px-3"
-            ),
-            className="ms-auto"
+            dcc.Link("Logout", href="/logout", refresh=True, className="nav-link text-danger", id="nav-logout"),
         ),
-        """
     ],
 )
 
@@ -91,11 +94,13 @@ from dash.dependencies import Input, Output
      Output("nav-project", "className"),
      Output("nav-sensor", "className"),
      Output("nav-concrete", "className"),
-     Output("nav-download", "className")],
+     Output("nav-download", "className"),
+     Output("nav-login", "className"),
+     Output("nav-logout", "className")],
     Input("url", "pathname")
 )
 def update_nav_active(pathname):
-    classes = ["nav-link"] * 5
+    classes = ["nav-link"] * 7
     if pathname == "/":
         classes[0] += " active"
     elif pathname.startswith("/project"):
@@ -106,7 +111,9 @@ def update_nav_active(pathname):
         classes[3] += " active"
     elif pathname.startswith("/download"):
         classes[4] += " active"
-    return classes
+    elif pathname.startswith("/login"):
+        classes[5] += " active"
+    return classes + [classes[5], classes[6]]
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=23022)

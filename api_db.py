@@ -3,6 +3,9 @@ from sqlalchemy import create_engine, text
 import pandas as pd
 from datetime import datetime, timedelta
 import json
+from pathlib import Path
+import configparser
+import bcrypt
 
 # --------------------------------------------------
 # SQLAlchemy Engine 생성
@@ -12,6 +15,115 @@ DB_URL = (
     "?charset=utf8mb4"
 )
 engine = create_engine(DB_URL, pool_pre_ping=True)
+
+# --------------------------------------------------
+# ITS1/ITS2 접속 설정 로딩 (user/secret.ini)
+# --------------------------------------------------
+
+_SECRET_INI = Path(__file__).resolve().parent / "user" / "secret.ini"
+_its_configs = {}
+if _SECRET_INI.exists():
+    _parser = configparser.ConfigParser()
+    _parser.read(_SECRET_INI, encoding="utf-8")
+    for sec in _parser.sections():
+        if sec.endswith("_DB"):
+            _its_configs[sec.replace("_DB", "")] = {
+                "host": _parser[sec].get("host"),
+                "port": _parser[sec].getint("port", 3306),
+                "db": _parser[sec].get("db_name"),
+                "user": _parser[sec].get("user"),
+                "pwd": _parser[sec].get("password"),
+            }
+
+
+def _get_its_engine(its_num: int):
+    """ITS 번호(1/2)에 해당하는 SQLAlchemy Engine 반환."""
+    key = f"ITS{its_num}"
+    cfg = _its_configs.get(key)
+    if not cfg:
+        raise ValueError(f"secret.ini 에 {key}_DB 설정이 없습니다.")
+    uri = (
+        f"mysql+pymysql://{cfg['user']}:{cfg['pwd']}@{cfg['host']}:{cfg['port']}/{cfg['db']}"
+        "?charset=utf8mb4"
+    )
+    return create_engine(uri, pool_pre_ping=True)
+
+
+# --------------------------------------------------
+# 사용자 인증 & 프로젝트/구조 접근 목록
+# --------------------------------------------------
+
+
+def authenticate_user(user_id: str, password: str, its_num: int = 1):
+    """주어진 ITS DB 에서 사용자 인증 후 (grade, 허용 프로젝트/구조) 반환.
+
+    Returns
+    -------
+    dict with keys:
+        result: "Success" | "Fail"
+        grade: str | None
+        auth: list[str]  # 허용 projectid / stid 리스트 (grade==AD 면 [])
+        msg:   str  (Fail 시 이유)
+    """
+    try:
+        eng = _get_its_engine(its_num)
+    except Exception as exc:
+        return {"result": "Fail", "msg": f"DB 연결 실패: {exc}", "grade": None, "auth": []}
+
+    try:
+        query = text("SELECT userid, userpw, grade FROM tb_user WHERE userid = :uid LIMIT 1")
+        df_user = pd.read_sql(query, eng, params={"uid": user_id})
+        if df_user.empty:
+            return {"result": "Fail", "msg": "존재하지 않는 ID", "grade": None, "auth": []}
+
+        stored_hash = df_user.iloc[0]["userpw"].encode("utf-8")
+        if not bcrypt.checkpw(password.encode("utf-8"), stored_hash):
+            return {"result": "Fail", "msg": "비밀번호 불일치", "grade": None, "auth": []}
+
+        grade = df_user.iloc[0]["grade"]
+
+        # grade 가 AD 면 전체 권한
+        if grade == "AD":
+            auth_list: list[str] = []
+        else:
+            df_auth = pd.read_sql(
+                text("SELECT id FROM tb_sensor_auth_mapping WHERE userid = :uid"),
+                eng,
+                params={"uid": user_id},
+            )
+            auth_list = df_auth["id"].tolist()
+
+        return {"result": "Success", "msg": "", "grade": grade, "auth": auth_list}
+    except Exception as exc:
+        return {"result": "Fail", "msg": str(exc), "grade": None, "auth": []}
+
+
+def get_project_structure_list(its_num: int, allow_list: list[str] | None, grade: str):
+    """tb_project, tb_structure 조인해 접근 가능한 프로젝트/구조 목록 반환."""
+    try:
+        eng = _get_its_engine(its_num)
+    except Exception as exc:
+        raise RuntimeError(f"DB 연결 실패: {exc}") from exc
+
+    if grade == "AD" or not allow_list:
+        condition = ""
+        params = {}
+    else:
+        placeholders = ", ".join([":p" + str(i) for i, _ in enumerate(allow_list)])
+        condition = f"WHERE tp.projectid IN ({placeholders})"
+        params = {f"p{i}": v for i, v in enumerate(allow_list)}
+
+    sql = f"""
+        SELECT tp.projectid, tp.projectname, s.stid, s.stname, s.staddr, tp.regdate, tp.closedate
+        FROM tb_structure s
+        JOIN tb_group g ON s.groupid = g.groupid
+        JOIN tb_project tp ON g.projectid = tp.projectid
+        {condition}
+        ORDER BY tp.projectid, s.stid
+    """
+
+    df = pd.read_sql(text(sql), _get_its_engine(its_num), params=params)
+    return df
 
 # --------------------------------------------------
 # 프로젝트 DB
