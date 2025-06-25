@@ -54,11 +54,16 @@ def do_login():
 
     # 입력값 검증
     if not user_id or not user_pw:
-        return redirect("/login?error=" + quote_plus("아이디와 비밀번호를 입력하세요"))
+        resp = make_response(redirect("/login?error=" + quote_plus("아이디와 비밀번호를 입력하세요")))
+        resp.delete_cookie("login_user")
+        return resp
 
     auth = authenticate_user(user_id, user_pw, its_num=its)
     if auth["result"] != "Success":
-        return redirect(f"/login?error={quote_plus(auth['msg'])}")
+        resp = make_response(redirect(f"/login?error={quote_plus(auth['msg'])}"))
+        # 실패한 로그인 시 기존 쿠키 삭제 (이전 세션 무효화)
+        resp.delete_cookie("login_user")
+        return resp
 
     # 간단하게 쿠키에 user_id 저장 (실 서비스라면 JWT 등 사용)
     resp = make_response(redirect("/"))
