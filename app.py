@@ -100,7 +100,7 @@ def _build_navbar():
         # 자리 확보용; 스타일로 가시성 제어
         dbc.NavItem(dcc.Link("Login", href="/login", className="nav-link", id="nav-login"), className="ms-auto"),
         dbc.NavItem(
-            dcc.Link("Logout", href="/logout", refresh=True, className="nav-link text-danger", id="nav-logout"),
+            dbc.Button("Logout", href="/logout", color="danger", size="sm", id="nav-logout", className="ms-2"),
         ),
     ]
 
@@ -110,12 +110,10 @@ def _build_navbar():
     else:
         children[-1].style = {"display": "none"}  # hide logout
 
-    brand_component = (
-        html.Span([
-            html.Span(user_id, className="me-2 fw-bold") if user_id else None,
-            "Concrete MONITOR",
-        ])
-    )
+    brand_component = html.Span([
+        html.Span(user_id, className="me-2 fw-bold text-warning") if user_id else None,
+        html.Span("Concrete MONITOR", className="fw-bold")
+    ])
 
     return dbc.NavbarSimple(
         brand=brand_component,
