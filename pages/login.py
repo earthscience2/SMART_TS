@@ -29,7 +29,7 @@ def layout(error: str | None = None, **kwargs):
                             dbc.Button("로그인", type="submit", color="primary", className="w-100"),
                         ],
                     ),
-                    html.Div(error_msg, className="mt-3 text-danger text-center"),
+                    (dbc.Alert(error_msg, color="danger", is_open=True, className="mt-3") if error_msg else None),
                 ],
             ),
         ),

@@ -43,9 +43,13 @@ def do_login():
     if request.method == "GET":
         return redirect("/login")
 
-    user_id = request.form.get("user_id", "")
+    user_id = request.form.get("user_id", "").strip()
     user_pw = request.form.get("user_pw", "")
     its = int(request.form.get("its", "1"))  # hidden 필드로 받아오거나 기본 1
+
+    # 입력값 검증
+    if not user_id or not user_pw:
+        return redirect("/login?error=아이디와+비밀번호를+입력하세요")
 
     auth = authenticate_user(user_id, user_pw, its_num=its)
     if auth["result"] != "Success":
