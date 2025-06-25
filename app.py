@@ -100,14 +100,11 @@ def _build_navbar():
         # Login / Logout (보기/숨김 및 정렬)
         dbc.NavItem(dcc.Link("Login", href="/login", className="nav-link", id="nav-login")),
         dbc.NavItem(
-            dbc.Button(
+            html.A(
                 "Logout",
                 href="/logout",
-                color="danger",
-                size="sm",
-                id="nav-logout",
-                className="ms-auto text-white fw-bold",
-                style={"backgroundColor": "#dc3545", "border": "none"},  # 항상 빨간색
+                className="btn btn-danger btn-sm ms-auto fw-bold",
+                style={"color": "white"},
             ),
         ),
     ]
