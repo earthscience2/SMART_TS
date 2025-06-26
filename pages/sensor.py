@@ -166,25 +166,22 @@ layout = html.Div([
                         ], className="p-3")
                     ], className="bg-white rounded shadow-sm border mb-3"),
 
-                    # 보조선 토글 카드
-                    html.Div([
-                        html.Div([
-                            dbc.Switch(
-                                id="toggle-lines",
-                                label="🔗 보조선 표시",
-                                value=True,
-                                style={"fontSize": "0.85rem", "fontWeight": "500"},
-                            ),
-                        ], className="p-2")
-                    ], className="bg-white rounded shadow-sm border mb-3"),
-
                     # 센서 목록 카드
                     html.Div([
                         html.Div([
-                            # 제목과 추가 버튼
+                            # 제목과 보조선 토글, 추가 버튼
                             html.Div([
                                 html.H6("📡 센서 목록", className="mb-0 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
-                                dbc.Button("+ 추가", id="btn-sensor-add", color="success", size="sm", className="px-3")
+                                html.Div([
+                                    dbc.Switch(
+                                        id="toggle-lines",
+                                        label="🔗 보조선",
+                                        value=True,
+                                        style={"fontSize": "0.8rem", "fontWeight": "500"},
+                                        className="me-3"
+                                    ),
+                                    dbc.Button("+ 추가", id="btn-sensor-add", color="success", size="sm", className="px-3")
+                                ], className="d-flex align-items-center")
                             ], className="d-flex justify-content-between align-items-center mb-2"),
                             html.Small("💡 센서를 클릭하여 선택할 수 있습니다", className="text-muted mb-2 d-block", style={"fontSize": "0.75rem"}),
                             
