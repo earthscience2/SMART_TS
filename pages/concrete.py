@@ -224,8 +224,8 @@ layout = html.Div([
                                     dbc.Input(id="add-h", type="number", placeholder="높이를 입력하세요", step=0.1, className="form-control")
                                 ], width=6),
                                 dbc.Col([
-                                    dbc.Label("해석 단위 (0.1 ~ 1.0) [m]", className="form-label fw-semibold"),
-                                    dbc.Input(id="add-unit", type="number", placeholder="해석 단위", 
+                                    dbc.Label("Solid 요소크기 [m]", className="form-label fw-semibold"),
+                                    dbc.Input(id="add-unit", type="number", placeholder="요소크기", 
                                              min=0.1, max=1.0, step=0.1, className="form-control")
                                 ], width=6),
                             ], className="mb-3"),
@@ -241,7 +241,7 @@ layout = html.Div([
                     # 오른쪽 칼럼: 콘크리트 물성치
                     dbc.Col([
                         html.Div([
-                            html.H6("🔬 콘크리트 물성치", className="mb-3 text-secondary fw-bold"),
+                            html.H6("🔬 타설 콘크리트 탄성계수 (CEB-FIB Model)[Pa]", className="mb-3 text-secondary fw-bold"),
                             dbc.Row([
                                 dbc.Col([
                                     dbc.Label("베타 상수 (0.1 ~ 1.0)", className="form-label fw-semibold"),
@@ -256,7 +256,7 @@ layout = html.Div([
                             ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("28일 후 탄성계수 (1 ~ 100) [GPa]", className="form-label fw-semibold"),
+                                    dbc.Label("E28(재령 28일 압축 탄성계수)[Gpa]", className="form-label fw-semibold"),
                                     dbc.Input(id="add-e", type="number", min=1, max=100, step=0.1, placeholder="탄성계수(con_e)", className="form-control")
                                 ], width=12),
                             ], className="mb-3"),
@@ -333,8 +333,8 @@ layout = html.Div([
                                     dbc.Input(id="edit-h", type="number", placeholder="높이를 입력하세요", step=0.1, className="form-control")
                                 ], width=6),
                                 dbc.Col([
-                                    dbc.Label("해석 단위 (0.1 ~ 1.0) [m]", className="form-label fw-semibold"),
-                                    dbc.Input(id="edit-unit", type="number", placeholder="해석 단위", 
+                                    dbc.Label("Solid 요소크기 [m]", className="form-label fw-semibold"),
+                                    dbc.Input(id="edit-unit", type="number", placeholder="요소크기", 
                                              min=0.1, max=1.0, step=0.1, className="form-control")
                                 ], width=6),
                             ], className="mb-3"),
@@ -350,7 +350,7 @@ layout = html.Div([
                     # 오른쪽 칼럼: 콘크리트 물성치
                     dbc.Col([
                         html.Div([
-                            html.H6("🔬 콘크리트 물성치", className="mb-3 text-secondary fw-bold"),
+                            html.H6("🔬 타설 콘크리트 탄성계수 (CEB-FIB Model)[Pa]", className="mb-3 text-secondary fw-bold"),
                             dbc.Row([
                                 dbc.Col([
                                     dbc.Label("베타 상수 (0.1 ~ 1.0)", className="form-label fw-semibold"),
@@ -365,7 +365,7 @@ layout = html.Div([
                             ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("28일 후 탄성계수 (1 ~ 100) [GPa]", className="form-label fw-semibold"),
+                                    dbc.Label("E28(재령 28일 압축 탄성계수)[Gpa]", className="form-label fw-semibold"),
                                     dbc.Input(id="edit-e", type="number", min=1, max=100, step=0.1, placeholder="탄성계수(con_e)", className="form-control")
                                 ], width=12),
                             ], className="mb-3"),
