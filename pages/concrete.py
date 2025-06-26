@@ -419,32 +419,54 @@ layout = html.Div([
                 html.H4("📊 재령일별 탄성계수 분석 (CEB-FIB Model)", className="mb-0 text-secondary fw-bold")
             ], className="border-0 pb-2"),
             dbc.ModalBody([
-                # 상단: 수식과 매개변수를 한 줄로
-                dbc.Row([
-                    dbc.Col([
-                        html.Div([
-                            html.H6("🔬 CEB-FIB Model", className="mb-2 text-secondary fw-bold", style={"fontSize": "1rem"}),
-                            html.P("E(t) = E₂₈ × (t/(t+β))ⁿ", className="text-center mb-2", style={"fontSize": "1.1rem", "fontWeight": "bold", "color": "#495057", "backgroundColor": "#f8f9fa", "padding": "10px", "borderRadius": "6px", "fontFamily": "monospace"}),
-                        ], className="bg-white p-2 rounded shadow-sm border"),
-                    ], md=4),
-                    dbc.Col([
-                        html.Div(id="age-analysis-params", className="p-2 bg-light rounded", style={"height": "fit-content"}),
-                    ], md=8),
-                ], className="g-2 mb-3"),
+                # 상단: 수식과 매개변수 섹션
+                html.Div([
+                    dbc.Row([
+                        # 수식 영역
+                        dbc.Col([
+                            html.H6("🔬 CEB-FIB Model", className="mb-2 text-secondary fw-bold"),
+                            html.Div([
+                                html.P("E(t) = E₂₈ × (t/(t+β))ⁿ", 
+                                      className="text-center mb-0", 
+                                      style={
+                                          "fontSize": "1.1rem", 
+                                          "fontWeight": "bold", 
+                                          "color": "#495057", 
+                                          "backgroundColor": "#f8f9fa", 
+                                          "padding": "12px", 
+                                          "borderRadius": "6px", 
+                                          "fontFamily": "monospace"
+                                      }),
+                            ], className="border rounded p-1"),
+                        ], md=4),
+                        
+                        # 매개변수 및 주요 결과
+                        dbc.Col([
+                            html.Div(id="age-analysis-params"),
+                        ], md=8),
+                    ], className="g-3"),
+                ], className="bg-white p-3 rounded shadow-sm border mb-3"),
                 
-                # 하단: 테이블과 그래프
-                dbc.Row([
-                    # 테이블 (더 넓게)
-                    dbc.Col([
-                        html.H6("📋 수치 결과", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.95rem"}),
-                        html.Div(id="age-analysis-table", style={"height": "45vh", "overflowY": "auto"}),
-                    ], md=5),
-                    # 그래프 (더 넓게)
-                    dbc.Col([
-                        html.H6("📊 재령일별 탄성계수 변화", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.95rem"}),
-                        dcc.Graph(id="age-analysis-graph", style={"height": "45vh"}, config={'displayModeBar': False}),
-                    ], md=7),
-                ], className="g-3"),
+                # 하단: 결과 섹션
+                html.Div([
+                    dbc.Row([
+                        # 수치 결과 테이블
+                        dbc.Col([
+                            html.Div([
+                                html.H6("📋 수치 결과", className="mb-3 text-secondary fw-bold"),
+                                html.Div(id="age-analysis-table", style={"height": "40vh", "overflowY": "auto"}),
+                            ]),
+                        ], md=5),
+                        
+                        # 그래프
+                        dbc.Col([
+                            html.Div([
+                                html.H6("📊 재령일별 탄성계수 변화", className="mb-3 text-secondary fw-bold"),
+                                dcc.Graph(id="age-analysis-graph", style={"height": "40vh"}, config={'displayModeBar': False}),
+                            ]),
+                        ], md=7),
+                    ], className="g-3"),
+                ], className="bg-white p-3 rounded shadow-sm border"),
             ]),
             dbc.ModalFooter([
                 dbc.Button("닫기", id="age-analysis-close", color="secondary", className="px-4"),
@@ -1278,28 +1300,50 @@ def calculate_age_analysis(is_open, source, add_e, add_b, add_n, edit_e, edit_b,
         e_t = e28 * ((t / (t + beta)) ** n)
         elasticity_values.append(e_t)
     
-    # 매개변수 표시 (더 컴팩트하게)
+    # 매개변수 표시 (깔끔하게 정리)
     params_display = [
+        # 매개변수 섹션
         html.Div([
+            html.H6("📋 사용된 매개변수", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
             html.Div([
-                html.Span("📋 매개변수: ", className="fw-bold", style={"fontSize": "0.85rem"}),
-                html.Span(f"E₂₈={e28}GPa, β={beta}, n={n}", style={"fontSize": "0.85rem"}),
-            ], className="mb-2"),
-            html.Div([
-                html.Span("🎯 주요 결과: ", className="fw-bold", style={"fontSize": "0.85rem"}),
-            ], className="mb-1"),
+                html.Span(f"E₂₈ = {e28} GPa", className="badge bg-primary me-2", style={"fontSize": "0.8rem"}),
+                html.Span(f"β = {beta}", className="badge bg-secondary me-2", style={"fontSize": "0.8rem"}),
+                html.Span(f"n = {n}", className="badge bg-info", style={"fontSize": "0.8rem"}),
+            ], className="mb-3"),
+            
+            html.H6("🎯 주요 결과", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
             dbc.Row([
                 dbc.Col([
-                    html.Small(f"1일: {elasticity_values[0]:.1f}GPa ({elasticity_values[0]/e28*100:.0f}%)", className="d-block", style={"fontSize": "0.75rem"}),
-                    html.Small(f"7일: {elasticity_values[6]:.1f}GPa ({elasticity_values[6]/e28*100:.0f}%)", className="d-block", style={"fontSize": "0.75rem"}),
-                    html.Small(f"14일: {elasticity_values[13]:.1f}GPa ({elasticity_values[13]/e28*100:.0f}%)", className="d-block", style={"fontSize": "0.75rem"}),
-                ], width=6),
+                    html.Div([
+                        html.Span("1일차: ", className="text-muted", style={"fontSize": "0.8rem"}),
+                        html.Span(f"{elasticity_values[0]:.1f} GPa", className="fw-bold", style={"fontSize": "0.8rem"}),
+                        html.Span(f" ({elasticity_values[0]/e28*100:.0f}%)", className="text-success", style={"fontSize": "0.75rem"}),
+                    ], className="mb-1"),
+                    html.Div([
+                        html.Span("7일차: ", className="text-muted", style={"fontSize": "0.8rem"}),
+                        html.Span(f"{elasticity_values[6]:.1f} GPa", className="fw-bold", style={"fontSize": "0.8rem"}),
+                        html.Span(f" ({elasticity_values[6]/e28*100:.0f}%)", className="text-success", style={"fontSize": "0.75rem"}),
+                    ], className="mb-1"),
+                    html.Div([
+                        html.Span("14일차: ", className="text-muted", style={"fontSize": "0.8rem"}),
+                        html.Span(f"{elasticity_values[13]:.1f} GPa", className="fw-bold", style={"fontSize": "0.8rem"}),
+                        html.Span(f" ({elasticity_values[13]/e28*100:.0f}%)", className="text-success", style={"fontSize": "0.75rem"}),
+                    ], className="mb-1"),
+                ], md=6),
                 dbc.Col([
-                    html.Small(f"21일: {elasticity_values[20]:.1f}GPa ({elasticity_values[20]/e28*100:.0f}%)", className="d-block", style={"fontSize": "0.75rem"}),
-                    html.Small(f"28일: {elasticity_values[27]:.1f}GPa ({elasticity_values[27]/e28*100:.0f}%)", className="d-block fw-bold", style={"fontSize": "0.75rem"}),
-                ], width=6),
-            ], className="g-1"),
-        ], className="bg-white p-2 rounded border")
+                    html.Div([
+                        html.Span("21일차: ", className="text-muted", style={"fontSize": "0.8rem"}),
+                        html.Span(f"{elasticity_values[20]:.1f} GPa", className="fw-bold", style={"fontSize": "0.8rem"}),
+                        html.Span(f" ({elasticity_values[20]/e28*100:.0f}%)", className="text-success", style={"fontSize": "0.75rem"}),
+                    ], className="mb-1"),
+                    html.Div([
+                        html.Span("28일차: ", className="text-muted", style={"fontSize": "0.8rem"}),
+                        html.Span(f"{elasticity_values[27]:.1f} GPa", className="fw-bold text-primary", style={"fontSize": "0.8rem"}),
+                        html.Span(f" ({elasticity_values[27]/e28*100:.0f}%)", className="text-primary fw-bold", style={"fontSize": "0.75rem"}),
+                    ], className="mb-1"),
+                ], md=6),
+            ], className="g-2"),
+        ], className="bg-light p-3 rounded")
     ]
     
     # 테이블 생성 (1일부터 28일까지, 4주간 데이터)
