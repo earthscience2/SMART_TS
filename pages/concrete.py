@@ -421,50 +421,66 @@ layout = html.Div([
             dbc.ModalBody([
                 # 상단: 수식과 매개변수 섹션
                 html.Div([
-                    # 수식 영역
-                    html.Div([
-                        html.H6("🔬 CEB-FIB Model", className="mb-2 text-secondary fw-bold"),
-                        html.Div([
-                            html.P("E(t) = E₂₈ × (t/(t+β))ⁿ", 
-                                  className="text-center mb-0", 
-                                  style={
-                                      "fontSize": "1.1rem", 
-                                      "fontWeight": "bold", 
-                                      "color": "#495057", 
-                                      "backgroundColor": "#f8f9fa", 
-                                      "padding": "12px", 
-                                      "borderRadius": "6px", 
-                                      "fontFamily": "monospace"
-                                  }),
-                        ], className="border rounded p-1 mb-3"),
-                    ]),
-                    
-                    # 매개변수 설정 영역
-                    html.Div([
-                        html.H6("⚙️ 매개변수 설정", className="mb-3 text-secondary fw-bold"),
-                        dbc.Row([
-                            dbc.Col([
-                                dbc.Label("E₂₈ (재령 28일 탄성계수) [GPa]", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
-                                dbc.Input(id="analysis-e28", type="number", min=1, max=100, step=0.1, className="form-control-sm")
-                            ], md=4),
-                            dbc.Col([
-                                dbc.Label("β (베타 상수)", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
-                                dbc.Input(id="analysis-beta", type="number", min=0.1, max=1.0, step=0.1, className="form-control-sm")
-                            ], md=4),
-                            dbc.Col([
-                                dbc.Label("n (N 상수)", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
-                                dbc.Input(id="analysis-n", type="number", min=0.5, max=0.7, step=0.1, className="form-control-sm")
-                            ], md=4),
-                        ], className="g-2 mb-3"),
-                        dbc.Row([
-                            dbc.Col([
-                                dbc.Button("📊 재분석", id="reanalyze-btn", color="primary", size="sm", className="px-3 fw-semibold"),
-                            ], md="auto"),
-                        ], className="justify-content-center"),
-                    ], className="bg-light p-3 rounded mb-3"),
-                    
-                    # 결과 표시 영역
-                    html.Div(id="age-analysis-params"),
+                    dbc.Row([
+                        # 왼쪽: 수식 + 매개변수 설정
+                        dbc.Col([
+                            # 수식 영역
+                            html.Div([
+                                html.H6("🔬 CEB-FIB Model", className="mb-2 text-secondary fw-bold"),
+                                html.Div([
+                                    html.P("E(t) = E₂₈ × (t/(t+β))ⁿ", 
+                                          className="text-center mb-0", 
+                                          style={
+                                              "fontSize": "1.1rem", 
+                                              "fontWeight": "bold", 
+                                              "color": "#495057", 
+                                              "backgroundColor": "#f8f9fa", 
+                                              "padding": "12px", 
+                                              "borderRadius": "6px", 
+                                              "fontFamily": "monospace"
+                                          }),
+                                ], className="border rounded p-1 mb-3"),
+                            ]),
+                            
+                            # 매개변수 설정 영역
+                            html.Div([
+                                html.H6("⚙️ 매개변수 설정", className="mb-3 text-secondary fw-bold"),
+                                dbc.Row([
+                                    dbc.Col([
+                                        dbc.Label([
+                                            "E₂₈ ", 
+                                            html.Small("(1~100)", className="text-muted", style={"fontSize": "0.7rem"})
+                                        ], className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                        dbc.Input(id="analysis-e28", type="number", min=1, max=100, step=0.1, className="form-control-sm")
+                                    ], md=4),
+                                    dbc.Col([
+                                        dbc.Label([
+                                            "β ", 
+                                            html.Small("(0.1~1.0)", className="text-muted", style={"fontSize": "0.7rem"})
+                                        ], className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                        dbc.Input(id="analysis-beta", type="number", min=0.1, max=1.0, step=0.1, className="form-control-sm")
+                                    ], md=4),
+                                    dbc.Col([
+                                        dbc.Label([
+                                            "n ", 
+                                            html.Small("(0.5~0.7)", className="text-muted", style={"fontSize": "0.7rem"})
+                                        ], className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                        dbc.Input(id="analysis-n", type="number", min=0.5, max=0.7, step=0.01, className="form-control-sm")
+                                    ], md=4),
+                                ], className="g-2 mb-3"),
+                                dbc.Row([
+                                    dbc.Col([
+                                        dbc.Button("📊 재분석", id="reanalyze-btn", color="primary", size="sm", className="px-3 fw-semibold"),
+                                    ], md="auto"),
+                                ], className="justify-content-center"),
+                            ], className="bg-light p-3 rounded"),
+                        ], md=8),
+                        
+                        # 오른쪽: 사용된 매개변수 및 주요 결과
+                        dbc.Col([
+                            html.Div(id="age-analysis-params"),
+                        ], md=4),
+                    ], className="g-3"),
                 ], className="bg-white p-3 rounded shadow-sm border mb-3"),
                 
                 # 하단: 결과 섹션
@@ -733,6 +749,8 @@ def show_selected(sel, data):
     else:
         # 활성화된 경우: 수정/삭제 활성화
         return fig, details, False, False
+
+
 
 # ───────────────────── ③ 버튼 활성화 제어
 @callback(
@@ -1328,32 +1346,10 @@ def calculate_age_analysis(e28, beta, n, reanalyze_clicks, is_open):
         
         return params_display, empty_table, empty_fig
     
-    # 범위 유효성 검사
-    range_errors = []
-    if e28 < 1 or e28 > 100:
-        range_errors.append("E₂₈ (1~100 GPa)")
-    if beta < 0.1 or beta > 1.0:
-        range_errors.append("β (0.1~1.0)")
-    if n < 0.5 or n > 0.7:
-        range_errors.append("n (0.5~0.7)")
-    
-    if range_errors:
-        params_display = dbc.Alert(
-            f"다음 값들이 허용 범위를 벗어났습니다: {', '.join(range_errors)}",
-            color="danger",
-            className="mb-0"
-        )
-        
-        empty_table = dbc.Alert("올바른 범위의 매개변수를 입력해주세요.", color="warning", className="text-center")
-        empty_fig = go.Figure()
-        empty_fig.update_layout(
-            title="올바른 매개변수 입력 후 그래프가 표시됩니다",
-            xaxis_title="재령일 [day]",
-            yaxis_title="탄성계수 E(t) [GPa]",
-            margin=dict(l=40, r=40, t=60, b=40)
-        )
-        
-        return params_display, empty_table, empty_fig
+    # 범위 자동 조정 (범위를 벗어나면 자동으로 제한)
+    e28 = max(1, min(100, e28))
+    beta = max(0.1, min(1.0, beta))
+    n = max(0.5, min(0.7, n))
     
     # CEB-FIB 모델 계산: E(t) = E28 * (t/(t+β))^n
     days = list(range(1, 29))  # 1일부터 28일까지
