@@ -491,23 +491,11 @@ def dl_switch_tab(file_data, start_date, end_date):
                     date_display = date_key
                     date_badge = "📅"
             
-            # full_datetime 계산 개선
-            if f["datetime"] and isinstance(f["datetime"], datetime):
-                full_datetime_str = f["datetime"].strftime("%Y-%m-%d %H:%M")
-            else:
-                # datetime이 없는 경우 파일명에서 다시 파싱 시도
-                dt = parse_filename_datetime(f["filename"])
-                if dt:
-                    full_datetime_str = dt.strftime("%Y-%m-%d %H:%M")
-                else:
-                    full_datetime_str = "N/A"
-            
             all_files_data.append({
                 "filename": f["filename"],
                 "date": f"{date_badge} {date_display}",
                 "time": f["time_str"] if f["time_str"] != "N/A" else "00:00",
                 "size": f["size"],
-                "full_datetime": full_datetime_str,
                 "sort_key": f["datetime"] if f["datetime"] and isinstance(f["datetime"], datetime) else datetime.min
             })
     
@@ -529,8 +517,7 @@ def dl_switch_tab(file_data, start_date, end_date):
                         {"name": "📄 파일명", "id": "filename", "type": "text"},
                         {"name": "📅 날짜", "id": "date", "type": "text"},
                         {"name": "🕐 시간", "id": "time", "type": "text"},
-                        {"name": "💾 크기", "id": "size", "type": "text"},
-                        {"name": "📅 전체 날짜시간", "id": "full_datetime", "type": "text"}
+                        {"name": "💾 크기", "id": "size", "type": "text"}
                     ],
                     row_selectable="multi",
                     page_size=10,
@@ -585,8 +572,7 @@ def dl_switch_tab(file_data, start_date, end_date):
                             'rule': 'background-color: #e8f5e8 !important; transition: all 0.2s ease;'
                         }
                     ],
-                    style_table={"borderRadius": "6px", "overflow": "hidden"},
-                    filter_action="native"   # 컬럼별 필터링 기능만 유지
+                    style_table={"borderRadius": "6px", "overflow": "hidden"}
                 )
             ], className="p-0")
         ], className="mb-3", style={"border": "1px solid #dee2e6", "boxShadow": "0 2px 4px rgba(0,0,0,0.1)"})
@@ -639,11 +625,11 @@ def handle_select_all(select_clicks, deselect_clicks, data):
     if not ctx.triggered or not data:
         raise PreventUpdate
     
-    button_id = ctx.triggered[0]['prop_id']
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
-    if "select-all-btn" in button_id and select_clicks:
+    if "select-all-btn" in trigger_id:
         return list(range(len(data)))
-    elif "deselect-all-btn" in button_id and deselect_clicks:
+    elif "deselect-all-btn" in trigger_id:
         return []
     
     raise PreventUpdate
