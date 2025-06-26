@@ -167,20 +167,11 @@ layout = dbc.Container(
             # 왼쪽 사이드바 - 콘크리트 목록
             dbc.Col([
                 html.Div([
-                    # 프로젝트 제목
+                    # 프로젝트 제목 (숨김)
                     html.Div([
-                        html.H6(
+                        html.Span(
                             id="concrete-title",
-                            style={
-                                "fontWeight": "600", 
-                                "color": "#2d3748",
-                                "fontSize": "14px",
-                                "margin": "0 0 16px 0",
-                                "padding": "12px 16px",
-                                "backgroundColor": "#f8fafc",
-                                "borderRadius": "8px",
-                                "border": "1px solid #e2e8f0"
-                            },
+                            style={"display": "none"},
                             children="프로젝트를 선택하세요"
                         )
                     ]),
@@ -386,9 +377,16 @@ layout = dbc.Container(
                     
                     # 숨김 처리된 콜백 대상 컴포넌트들 (항상 포함)
                     html.Div([
-                        dcc.Slider(id="time-slider", min=0, max=5, step=1, value=0, marks={}),
+                        dcc.Slider(
+                            id="time-slider",
+                            min=0, max=5, step=1, value=0, marks={},
+                            style={"display": "block"}  # 항상 표시되도록 설정
+                        ),
                         dcc.Slider(id="time-slider-section", min=0, max=5, step=1, value=0, marks={}),
-                        dcc.Graph(id="viewer-3d"),
+                        dcc.Graph(
+                            id="viewer-3d",
+                            style={"display": "block"}  # 항상 표시되도록 설정
+                        ),
                         dbc.Input(id="section-x-input", type="number", value=None),
                         dbc.Input(id="section-y-input", type="number", value=None),
                         dbc.Input(id="section-z-input", type="number", value=None),
