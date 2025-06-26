@@ -167,6 +167,24 @@ layout = dbc.Container(
             # 왼쪽 사이드바 - 콘크리트 목록
             dbc.Col([
                 html.Div([
+                    # 프로젝트 제목
+                    html.Div([
+                        html.H6(
+                            id="concrete-title",
+                            style={
+                                "fontWeight": "600", 
+                                "color": "#2d3748",
+                                "fontSize": "14px",
+                                "margin": "0 0 16px 0",
+                                "padding": "12px 16px",
+                                "backgroundColor": "#f8fafc",
+                                "borderRadius": "8px",
+                                "border": "1px solid #e2e8f0"
+                            },
+                            children="프로젝트를 선택하세요"
+                        )
+                    ]),
+                    
                     # 콘크리트 목록 섹션
                     html.Div([
                         html.Div([
