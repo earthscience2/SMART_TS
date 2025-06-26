@@ -44,36 +44,56 @@ register_page(__name__, path="/project")
 # ────────────────────────────── 레이아웃 ────────────────────────────
 layout = dbc.Container(
     fluid=True,
+    className="px-4 py-3",
+    style={"backgroundColor": "#f7f9fc", "minHeight": "100vh"},
     children=[
         dcc.Location(id="project-url", refresh=False),
-        # ── (★) 삭제 컨펌 다이얼로그
+        
+        # 상단 헤더
+        dbc.Row([
+            dbc.Col([
+                html.Div([
+                    html.H2("프로젝트 관리", className="mb-2", style={
+                        "fontWeight": "700", 
+                        "color": "#1a202c",
+                        "fontSize": "28px"
+                    }),
+                    html.P("프로젝트별 콘크리트 구조물 분석 및 관리", className="text-muted mb-0", style={
+                        "fontSize": "16px",
+                        "lineHeight": "1.5"
+                    })
+                ], style={
+                    "backgroundColor": "white",
+                    "padding": "24px",
+                    "borderRadius": "12px",
+                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
+                    "border": "1px solid #e2e8f0",
+                    "marginBottom": "24px"
+                })
+            ])
+        ]),
+
+        # ── 컨펌 다이얼로그 및 알림
         dcc.ConfirmDialog(
             id="confirm-del-concrete",
             message="선택한 콘크리트를 정말 삭제하시겠습니까?"
         ),
-
-        # ── (★) Alert 메시지
         dbc.Alert(
             id="project-alert",
             is_open=False,
             duration=3000,
             color="danger",
+            style={"borderRadius": "8px", "border": "none"}
         ),
 
-        # ── (★) 현재 시간 정보를 저장할 Store
+        # ── 데이터 저장용 Store들
         dcc.Store(id="current-time-store", data=None),
         dcc.Store(id="current-file-title-store", data=""),
-
-        # ── (★) 클릭 좌표 저장
         dcc.Store(id="section-coord-store", data=None),
-
-        # ── (★) 3D 뷰 정보 저장
         dcc.Store(id="viewer-3d-store", data=None),
-
-        # section-colorbar 항상 포함 (처음엔 숨김)
         dcc.Graph(id='section-colorbar', style={'display':'none'}),
         
-        # 키보드 이벤트를 위한 JavaScript (서버 부하 없음)
+        # 키보드 이벤트 처리 스크립트
         html.Div([
             html.Script("""
                 window.addEventListener('load', function() {
@@ -164,96 +184,257 @@ layout = dbc.Container(
             """)
         ], style={"display": "none"}),
 
-        # 상단: 프로젝트 선택 → 콘크리트 테이블 + 버튼
-        dbc.Row(
-            [
-                dbc.Col(
-                    [
-                        html.H6("프로젝트 선택"),
+        # 메인 콘텐츠 영역
+        dbc.Row([
+            # 왼쪽 사이드바 - 프로젝트 및 콘크리트 목록
+            dbc.Col([
+                html.Div([
+                    # 프로젝트 선택 섹션
+                    html.Div([
+                        html.H5("📋 프로젝트 선택", className="mb-3", style={
+                            "fontWeight": "600", 
+                            "color": "#2d3748",
+                            "fontSize": "16px",
+                            "display": "flex",
+                            "alignItems": "center"
+                        }),
                         dcc.Dropdown(
                             id="ddl-project",
-                            placeholder="프로젝트 선택",
+                            placeholder="프로젝트를 선택하세요",
                             clearable=False,
+                            style={
+                                "borderRadius": "8px",
+                                "border": "1px solid #e2e8f0"
+                            }
                         ),
-                        html.H6("콘크리트 리스트", className="mt-3"),
-                        html.Small("💡 컬럼 헤더를 클릭하여 정렬할 수 있습니다", className="text-muted mb-2 d-block"),
-                        dash_table.DataTable(
-                            id="tbl-concrete",
-                            page_size=10,
-                            row_selectable="single",
-                            sort_action="native",
-                            sort_mode="single",
-                            style_table={"overflowY": "auto", "height": "45vh"},
-                            style_cell={"whiteSpace": "nowrap", "textAlign": "center"},
-                            style_header={"backgroundColor": "#f1f3f5", "fontWeight": 600},
-                        ),
-                        dbc.ButtonGroup(
-                            [
-                                dbc.Button("분석 시작", id="btn-concrete-analyze", color="success", className="mt-2", disabled=True),
-                                dbc.Button("삭제", id="btn-concrete-del", color="danger", className="mt-2", disabled=True),
-                            ],
-                            size="sm",
-                            vertical=True,
-                            className="w-100",
-                        ),
-                    ],
-                    md=3,  # 2에서 3으로 변경 (1.5배)
-                ),
-                dbc.Col(
-                    [
-                        html.H6(id="concrete-title", className="mb-2"),
-                        # 탭 메뉴
-                        dbc.Tabs([
-                            dbc.Tab(label="3D뷰", tab_id="tab-3d"),
-                            dbc.Tab(label="단면도", tab_id="tab-section"),
-                            dbc.Tab(label="온도 변화", tab_id="tab-temp"),
-                            dbc.Tab(label="수치해석", tab_id="tab-analysis"),
-                        ], id="tabs-main", active_tab="tab-3d"),
-                        # 탭 콘텐츠
-                        html.Div(id="tab-content", children=[
-                            # 시간 슬라이더 (3D 뷰 위에 배치)
-                            html.Div([
-                                html.Label("시간", className="form-label"),
-                                dcc.Slider(
-                                    id="time-slider",
-                                    min=0,
-                                    step=1,
-                                    value=0,
-                                    marks={},
-                                    tooltip={"placement": "bottom", "always_visible": True},
+                    ], style={"marginBottom": "24px"}),
+                    
+                    # 콘크리트 목록 섹션
+                    html.Div([
+                        html.Div([
+                            html.H5("🏗️ 콘크리트 목록", style={
+                                "fontWeight": "600", 
+                                "color": "#2d3748",
+                                "fontSize": "16px",
+                                "margin": "0"
+                            }),
+                            html.Small("💡 행을 클릭하여 선택", className="text-muted", style={
+                                "fontSize": "12px"
+                            })
+                        ], className="d-flex justify-content-between align-items-center mb-3"),
+                        
+                        html.Div([
+                            dash_table.DataTable(
+                                id="tbl-concrete",
+                                page_size=8,
+                                row_selectable="single",
+                                sort_action="native",
+                                sort_mode="single",
+                                style_table={
+                                    "overflowY": "auto", 
+                                    "height": "400px",
+                                    "borderRadius": "8px",
+                                    "border": "1px solid #e2e8f0"
+                                },
+                                style_cell={
+                                    "whiteSpace": "nowrap", 
+                                    "textAlign": "center",
+                                    "padding": "12px 8px",
+                                    "fontSize": "13px",
+                                    "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui",
+                                    "border": "1px solid #f1f5f9"
+                                },
+                                style_header={
+                                    "backgroundColor": "#f8fafc", 
+                                    "fontWeight": "600",
+                                    "color": "#475569",
+                                    "border": "1px solid #e2e8f0",
+                                    "textAlign": "center"
+                                },
+                                style_data_conditional=[
+                                    {
+                                        'if': {'row_index': 'odd'},
+                                        'backgroundColor': '#fafbfc'
+                                    },
+                                    {
+                                        'if': {'state': 'selected'},
+                                        'backgroundColor': '#e6f3ff',
+                                        'border': '1px solid #3182ce'
+                                    }
+                                ]
+                            ),
+                        ], style={
+                            "backgroundColor": "white",
+                            "borderRadius": "8px",
+                            "overflow": "hidden"
+                        }),
+                        
+                        # 액션 버튼들
+                        html.Div([
+                            dbc.ButtonGroup([
+                                dbc.Button(
+                                    [html.I(className="fas fa-play me-2"), "분석 시작"],
+                                    id="btn-concrete-analyze",
+                                    color="success",
+                                    disabled=True,
+                                    size="sm",
+                                    style={
+                                        "borderRadius": "6px",
+                                        "fontWeight": "500",
+                                        "boxShadow": "0 1px 2px rgba(0,0,0,0.1)"
+                                    }
                                 ),
-                                html.Div("", style={"textAlign": "center", "fontSize": "14px", "color": "#666", "marginTop": "8px"}),
-                            ], className="mb-3"),
-                            dbc.Row([
-                                dbc.Col([
-                                    html.Div([
-                                        dcc.Graph(
-                                            id="viewer-3d",
-                                            style={"height": "70vh", "border": "2px solid #dee2e6", "borderRadius": "8px"},
-                                            config={"scrollZoom": True},
-                                        ),
-                                    ], style={"padding": "10px"}),
-                                ], md=12),
-                            ]),
-                            # --- 단면도 콜백 대상 컴포넌트들(3D 탭에서도 항상 존재하도록 숨김) ---
-                            html.Div([
-                                # Section inputs
-                                dbc.Input(id="section-x-input", type="number", value=None),
-                                dbc.Input(id="section-y-input", type="number", value=None),
-                                dbc.Input(id="section-z-input", type="number", value=None),
-                                # Section graphs
-                                dcc.Graph(id="viewer-3d-section"),
-                                dcc.Graph(id="viewer-section-x"),
-                                dcc.Graph(id="viewer-section-y"),
-                                dcc.Graph(id="viewer-section-z"),
-                            ], style={"display": "none"}),
-                        ]),
-                    ],
-                    md=9,  # 10에서 9로 변경 (3+9=12)
-                ),
-            ],
-            className="g-3",
-        ),
+                                dbc.Button(
+                                    [html.I(className="fas fa-trash me-2"), "삭제"],
+                                    id="btn-concrete-del",
+                                    color="danger",
+                                    disabled=True,
+                                    size="sm",
+                                    style={
+                                        "borderRadius": "6px",
+                                        "fontWeight": "500",
+                                        "boxShadow": "0 1px 2px rgba(0,0,0,0.1)"
+                                    }
+                                ),
+                            ], className="w-100")
+                        ], className="mt-3"),
+                    ])
+                ], style={
+                    "backgroundColor": "white",
+                    "padding": "24px",
+                    "borderRadius": "12px",
+                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
+                    "border": "1px solid #e2e8f0",
+                    "height": "fit-content"
+                })
+            ], width=4),
+            
+            # 오른쪽 메인 콘텐츠 영역
+            dbc.Col([
+                html.Div([
+                    # 상단 제목 영역
+                    html.Div([
+                        html.H4(id="concrete-title", className="mb-3", style={
+                            "fontWeight": "600",
+                            "color": "#1a202c",
+                            "fontSize": "20px"
+                        }),
+                    ], style={"marginBottom": "20px"}),
+                    
+                    # 탭 메뉴 (노션 스타일)
+                    html.Div([
+                        dbc.Tabs([
+                            dbc.Tab(
+                                label="🎯 3D 뷰", 
+                                tab_id="tab-3d",
+                                tab_style={
+                                    "marginLeft": "2px",
+                                    "marginRight": "2px",
+                                    "border": "none",
+                                    "borderRadius": "6px 6px 0 0",
+                                    "backgroundColor": "#f8fafc"
+                                },
+                                active_tab_style={
+                                    "backgroundColor": "white",
+                                    "border": "1px solid #e2e8f0",
+                                    "borderBottom": "1px solid white",
+                                    "color": "#3182ce",
+                                    "fontWeight": "600"
+                                }
+                            ),
+                            dbc.Tab(
+                                label="📊 단면도", 
+                                tab_id="tab-section",
+                                tab_style={
+                                    "marginLeft": "2px",
+                                    "marginRight": "2px",
+                                    "border": "none",
+                                    "borderRadius": "6px 6px 0 0",
+                                    "backgroundColor": "#f8fafc"
+                                },
+                                active_tab_style={
+                                    "backgroundColor": "white",
+                                    "border": "1px solid #e2e8f0",
+                                    "borderBottom": "1px solid white",
+                                    "color": "#3182ce",
+                                    "fontWeight": "600"
+                                }
+                            ),
+                            dbc.Tab(
+                                label="🌡️ 온도 변화", 
+                                tab_id="tab-temp",
+                                tab_style={
+                                    "marginLeft": "2px",
+                                    "marginRight": "2px",
+                                    "border": "none",
+                                    "borderRadius": "6px 6px 0 0",
+                                    "backgroundColor": "#f8fafc"
+                                },
+                                active_tab_style={
+                                    "backgroundColor": "white",
+                                    "border": "1px solid #e2e8f0",
+                                    "borderBottom": "1px solid white",
+                                    "color": "#3182ce",
+                                    "fontWeight": "600"
+                                }
+                            ),
+                            dbc.Tab(
+                                label="🔬 수치해석", 
+                                tab_id="tab-analysis",
+                                tab_style={
+                                    "marginLeft": "2px",
+                                    "marginRight": "2px",
+                                    "border": "none",
+                                    "borderRadius": "6px 6px 0 0",
+                                    "backgroundColor": "#f8fafc"
+                                },
+                                active_tab_style={
+                                    "backgroundColor": "white",
+                                    "border": "1px solid #e2e8f0",
+                                    "borderBottom": "1px solid white",
+                                    "color": "#3182ce",
+                                    "fontWeight": "600"
+                                }
+                            ),
+                        ], 
+                        id="tabs-main", 
+                        active_tab="tab-3d",
+                        style={"borderBottom": "1px solid #e2e8f0"}
+                        ),
+                    ], style={"marginBottom": "0px"}),
+                    
+                    # 탭 콘텐츠 영역
+                    html.Div([
+                        html.Div(id="tab-content", style={
+                            "backgroundColor": "white",
+                            "border": "1px solid #e2e8f0",
+                            "borderTop": "none",
+                            "borderRadius": "0 0 12px 12px",
+                            "padding": "24px",
+                            "minHeight": "600px"
+                        })
+                    ]),
+                    
+                    # 숨김 처리된 단면도 콜백 대상 컴포넌트들
+                    html.Div([
+                        dbc.Input(id="section-x-input", type="number", value=None),
+                        dbc.Input(id="section-y-input", type="number", value=None),
+                        dbc.Input(id="section-z-input", type="number", value=None),
+                        dcc.Graph(id="viewer-3d-section"),
+                        dcc.Graph(id="viewer-section-x"),
+                        dcc.Graph(id="viewer-section-y"),
+                        dcc.Graph(id="viewer-section-z"),
+                    ], style={"display": "none"}),
+                    
+                ], style={
+                    "backgroundColor": "white",
+                    "borderRadius": "12px",
+                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
+                    "border": "1px solid #e2e8f0",
+                    "overflow": "hidden"
+                })
+            ], width=8),
+        ], className="g-4"),
     ],
 )
 
@@ -890,9 +1071,26 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
             dbc.Input(id="temp-z-input", type="number", value=0, style={"display": "none"}),
             dcc.Graph(id="temp-viewer-3d", style={"display": "none"}),
             dcc.Graph(id="temp-time-graph", style={"display": "none"}),
-            html.Div(guide_message, style={
-                "textAlign": "center", "fontSize": "1.3rem", "color": "#555", "marginTop": "120px"
-            })
+            
+            # 안내 메시지 (노션 스타일)
+            html.Div([
+                html.Div([
+                    html.I(className="fas fa-info-circle fa-2x", style={"color": "#64748b", "marginBottom": "16px"}),
+                    html.H5(guide_message, style={
+                        "color": "#475569",
+                        "fontWeight": "500",
+                        "lineHeight": "1.6",
+                        "margin": "0"
+                    })
+                ], style={
+                    "textAlign": "center",
+                    "padding": "60px 40px",
+                    "backgroundColor": "#f8fafc",
+                    "borderRadius": "12px",
+                    "border": "1px solid #e2e8f0",
+                    "marginTop": "60px"
+                })
+            ])
         ])
     # 이하 기존 코드 유지
     if active_tab == "tab-3d":
@@ -978,35 +1176,80 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
             display_title = viewer_data['current_file_title']
         
         return html.Div([
-            # 시간 슬라이더
+            # 시간 컨트롤 섹션 (노션 스타일)
             html.Div([
-                dcc.Slider(
-                    id="time-slider",
-                    min=slider_min,
-                    max=slider_max,
-                    step=1,
-                    value=slider_value,
-                    marks=slider_marks,
-                    tooltip={"placement": "bottom", "always_visible": True},
-                ),
-            ], className="mb-2", style={
-                # 슬라이더 색상을 진하게 설정
-                "--slider-track-color": "#007bff",
-                "--slider-thumb-color": "#0056b3",
-                "--slider-mark-color": "#343a40"
-            }),
-            # 시간 정보 (슬라이더 아래, 3D 뷰 위)
-            html.Div(id="main-file-title", children=display_title, style={
-                "fontSize": "16px", 
-                "color": "#495057", 
-                "marginBottom": "10px", 
-                "textAlign": "center",
-                "fontWeight": "500",
-                "padding": "8px",
-                "backgroundColor": "#f8f9fa",
-                "borderRadius": "6px",
-                "border": "1px solid #dee2e6"
-            }),
+                html.Div([
+                    html.H6("⏰ 시간 설정", style={
+                        "fontWeight": "600",
+                        "color": "#374151",
+                        "marginBottom": "12px",
+                        "fontSize": "14px"
+                    }),
+                    dcc.Slider(
+                        id="time-slider",
+                        min=slider_min,
+                        max=slider_max,
+                        step=1,
+                        value=slider_value,
+                        marks=slider_marks,
+                        tooltip={"placement": "bottom", "always_visible": True},
+                    ),
+                ], style={
+                    "padding": "16px 20px",
+                    "backgroundColor": "#f9fafb",
+                    "borderRadius": "8px",
+                    "border": "1px solid #e5e7eb",
+                    "marginBottom": "16px"
+                })
+            ]),
+            
+            # 현재 시간 정보 (노션 스타일 카드)
+            html.Div([
+                html.Div([
+                    html.I(className="fas fa-clock me-2", style={"color": "#6366f1"}),
+                    html.Span(display_title or "시간 정보 없음", style={
+                        "fontWeight": "500",
+                        "color": "#374151"
+                    })
+                ], style={
+                    "padding": "12px 16px",
+                    "backgroundColor": "white",
+                    "borderRadius": "8px",
+                    "border": "1px solid #e5e7eb",
+                    "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
+                    "marginBottom": "20px",
+                    "fontSize": "14px"
+                })
+            ]),
+            
+            # 3D 뷰어 (노션 스타일)
+            html.Div([
+                html.Div([
+                    html.H6("🎯 3D 히트맵 뷰어", style={
+                        "fontWeight": "600",
+                        "color": "#374151",
+                        "marginBottom": "16px",
+                        "fontSize": "16px"
+                    }),
+                    dcc.Graph(
+                        id="viewer-3d",
+                        style={
+                            "height": "65vh", 
+                            "borderRadius": "8px",
+                            "overflow": "hidden"
+                        },
+                        config={"scrollZoom": True},
+                        figure=fig_3d,
+                    ),
+                ], style={
+                    "padding": "20px",
+                    "backgroundColor": "white",
+                    "borderRadius": "12px",
+                    "border": "1px solid #e5e7eb",
+                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
+                })
+            ]),
+            
             # 숨김용 섹션 슬라이더 (3D 탭에서도 콜백 대상 유지)
             html.Div([
                 dcc.Slider(
@@ -1018,18 +1261,7 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     marks=slider_marks,
                 )
             ], style={"display": "none"}),
-            dbc.Row([
-                dbc.Col([
-                    html.Div([
-                        dcc.Graph(
-                            id="viewer-3d",
-                            style={"height": "70vh", "border": "2px solid #dee2e6", "borderRadius": "8px"},
-                            config={"scrollZoom": True},
-                            figure=fig_3d,
-                        ),
-                    ], style={"padding": "10px"}),
-                ], md=12),
-            ]),
+            
             # --- 단면도 콜백 대상 컴포넌트들(3D 탭에서도 항상 존재하도록 숨김) ---
             html.Div([
                 # Section inputs
@@ -1114,17 +1346,31 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
             section_display_title = viewer_data['current_file_title']
         
         return html.Div([
-            # 시간 슬라이더 (상단)
+            # 시간 컨트롤 섹션 (노션 스타일)
             html.Div([
-                dcc.Slider(
-                    id="time-slider-section",
-                    min=slider_min,
-                    max=slider_max,
-                    step=1,
-                    value=slider_value,
-                    marks=slider_marks,
-                    tooltip={"placement": "bottom", "always_visible": True},
-                ),
+                html.Div([
+                    html.H6("⏰ 시간 설정", style={
+                        "fontWeight": "600",
+                        "color": "#374151",
+                        "marginBottom": "12px",
+                        "fontSize": "14px"
+                    }),
+                    dcc.Slider(
+                        id="time-slider-section",
+                        min=slider_min,
+                        max=slider_max,
+                        step=1,
+                        value=slider_value,
+                        marks=slider_marks,
+                        tooltip={"placement": "bottom", "always_visible": True},
+                    ),
+                ], style={
+                    "padding": "16px 20px",
+                    "backgroundColor": "#f9fafb",
+                    "borderRadius": "8px",
+                    "border": "1px solid #e5e7eb",
+                    "marginBottom": "16px"
+                }),
                 # 숨김용 메인 슬라이더 (단면도 탭에서도 컴포넌트 유지)
                 html.Div([
                     dcc.Slider(
@@ -1136,68 +1382,187 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                         marks=slider_marks,
                     )
                 ], style={"display": "none"}),
-            ], className="mb-2", style={
-                # 슬라이더 색상을 진하게 설정
-                "--slider-track-color": "#007bff",
-                "--slider-thumb-color": "#0056b3",
-                "--slider-mark-color": "#343a40"
-            }),
-            # 시간 정보 (슬라이더 아래)
-            html.Div(id="section-file-title", children=section_display_title, style={
-                "fontSize": "16px", 
-                "color": "#495057", 
-                "marginBottom": "10px", 
-                "textAlign": "center",
-                "fontWeight": "500",
-                "padding": "8px",
-                "backgroundColor": "#f8f9fa",
-                "borderRadius": "6px",
-                "border": "1px solid #dee2e6"
-            }),
+            ]),
+            
+            # 현재 시간 정보 (노션 스타일 카드)
+            html.Div([
+                html.Div([
+                    html.I(className="fas fa-clock me-2", style={"color": "#6366f1"}),
+                    html.Span(section_display_title or "시간 정보 없음", style={
+                        "fontWeight": "500",
+                        "color": "#374151"
+                    })
+                ], style={
+                    "padding": "12px 16px",
+                    "backgroundColor": "white",
+                    "borderRadius": "8px",
+                    "border": "1px solid #e5e7eb",
+                    "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
+                    "marginBottom": "20px",
+                    "fontSize": "14px"
+                })
+            ]),
+            
+            # 단면 위치 설정 섹션 (노션 스타일)
+            html.Div([
+                html.Div([
+                    html.H6("📍 단면 위치 설정", style={
+                        "fontWeight": "600",
+                        "color": "#374151",
+                        "marginBottom": "16px",
+                        "fontSize": "14px"
+                    }),
+                    html.Div([
+                        dbc.InputGroup([
+                            html.Span("●", style={
+                                "color": "#ef4444", 
+                                "fontSize": "20px", 
+                                "marginRight": "8px", 
+                                "lineHeight": "1"
+                            }),
+                            dbc.InputGroupText("X", style={"fontWeight": "500"}),
+                            dbc.Input(
+                                id="section-x-input", 
+                                type="number", 
+                                step=0.1, 
+                                value=None,
+                                style={"width": "100px"}
+                            ),
+                        ], className="me-3", style={"width": "auto"}),
+                        dbc.InputGroup([
+                            html.Span("●", style={
+                                "color": "#3b82f6", 
+                                "fontSize": "20px", 
+                                "marginRight": "8px", 
+                                "lineHeight": "1"
+                            }),
+                            dbc.InputGroupText("Y", style={"fontWeight": "500"}),
+                            dbc.Input(
+                                id="section-y-input", 
+                                type="number", 
+                                step=0.1, 
+                                value=None,
+                                style={"width": "100px"}
+                            ),
+                        ], className="me-3", style={"width": "auto"}),
+                        dbc.InputGroup([
+                            html.Span("●", style={
+                                "color": "#22c55e", 
+                                "fontSize": "20px", 
+                                "marginRight": "8px", 
+                                "lineHeight": "1"
+                            }),
+                            dbc.InputGroupText("Z", style={"fontWeight": "500"}),
+                            dbc.Input(
+                                id="section-z-input", 
+                                type="number", 
+                                step=0.1, 
+                                value=None,
+                                style={"width": "100px"}
+                            ),
+                        ], style={"width": "auto"}),
+                    ], style={"display": "flex", "alignItems": "center", "flexWrap": "wrap", "gap": "12px"}),
+                ], style={
+                    "padding": "16px 20px",
+                    "backgroundColor": "#f9fafb",
+                    "borderRadius": "8px",
+                    "border": "1px solid #e5e7eb",
+                    "marginBottom": "20px"
+                })
+            ]),
+            
+            # 단면도 뷰어 그리드 (노션 스타일)
+            html.Div([
+                html.H6("📊 단면도 뷰어", style={
+                    "fontWeight": "600",
+                    "color": "#374151",
+                    "marginBottom": "16px",
+                    "fontSize": "16px"
+                }),
+                dbc.Row([
+                    dbc.Col([
+                        html.Div([
+                            html.P("3D 뷰", style={
+                                "fontSize": "12px", 
+                                "fontWeight": "600", 
+                                "color": "#6b7280", 
+                                "marginBottom": "8px",
+                                "textAlign": "center"
+                            }),
+                            dcc.Graph(
+                                id="viewer-3d-section", 
+                                style={"height": "30vh", "borderRadius": "6px"}, 
+                                config={"scrollZoom": True}
+                            ),
+                        ], style={
+                            "backgroundColor": "white",
+                            "padding": "12px",
+                            "borderRadius": "8px",
+                            "border": "1px solid #e5e7eb",
+                            "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
+                        })
+                    ], md=6),
+                    dbc.Col([
+                        html.Div([
+                            html.P("X 단면도", style={
+                                "fontSize": "12px", 
+                                "fontWeight": "600", 
+                                "color": "#ef4444", 
+                                "marginBottom": "8px",
+                                "textAlign": "center"
+                            }),
+                            dcc.Graph(id="viewer-section-x", style={"height": "30vh"}),
+                        ], style={
+                            "backgroundColor": "white",
+                            "padding": "12px",
+                            "borderRadius": "8px",
+                            "border": "1px solid #e5e7eb",
+                            "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
+                        })
+                    ], md=6),
+                ], className="mb-3"),
+                dbc.Row([
+                    dbc.Col([
+                        html.Div([
+                            html.P("Y 단면도", style={
+                                "fontSize": "12px", 
+                                "fontWeight": "600", 
+                                "color": "#3b82f6", 
+                                "marginBottom": "8px",
+                                "textAlign": "center"
+                            }),
+                            dcc.Graph(id="viewer-section-y", style={"height": "30vh"}),
+                        ], style={
+                            "backgroundColor": "white",
+                            "padding": "12px",
+                            "borderRadius": "8px",
+                            "border": "1px solid #e5e7eb",
+                            "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
+                        })
+                    ], md=6),
+                    dbc.Col([
+                        html.Div([
+                            html.P("Z 단면도", style={
+                                "fontSize": "12px", 
+                                "fontWeight": "600", 
+                                "color": "#22c55e", 
+                                "marginBottom": "8px",
+                                "textAlign": "center"
+                            }),
+                            dcc.Graph(id="viewer-section-z", style={"height": "30vh"}),
+                        ], style={
+                            "backgroundColor": "white",
+                            "padding": "12px",
+                            "borderRadius": "8px",
+                            "border": "1px solid #e5e7eb",
+                            "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
+                        })
+                    ], md=6),
+                ]),
+            ]),
+            
             # 숨김용 3D 메인 뷰(단면도에서도 콜백 대상 유지)
             dcc.Graph(id="viewer-3d", style={"display": "none"}, config={"scrollZoom": True}),
-            # 입력창 (x, y, z)
-            html.Div([
-                html.Label("단면 위치 설정", className="mb-2"),
-                html.Div([
-                    dbc.InputGroup([
-                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#ff3333", "marginRight": "6px", "marginTop": "8px"}),
-                        dbc.InputGroupText("X"),
-                        dbc.Input(id="section-x-input", type="number", step=0.1, value=None, style={"width": "80px"}),
-                    ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
-                    dbc.InputGroup([
-                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#3388ff", "marginRight": "6px", "marginTop": "8px"}),
-                        dbc.InputGroupText("Y"),
-                        dbc.Input(id="section-y-input", type="number", step=0.1, value=None, style={"width": "80px"}),
-                    ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
-                    dbc.InputGroup([
-                        html.Span(style={"display": "inline-block", "width": "18px", "height": "18px", "borderRadius": "50%", "backgroundColor": "#33cc33", "marginRight": "6px", "marginTop": "8px"}),
-                        dbc.InputGroupText("Z"),
-                        dbc.Input(id="section-z-input", type="number", step=0.1, value=None, style={"width": "80px"}),
-                    ], style={"display": "inline-flex", "verticalAlign": "middle"}),
-                ], style={"display": "flex", "flexDirection": "row", "alignItems": "center"}),
-            ], style={"padding": "10px"}),
-            # 2x2 배열 배치 (컬러바 제거)
-            dbc.Row([
-                dbc.Col([
-                    dbc.Row([
-                        dbc.Col([
-                            dcc.Graph(id="viewer-3d-section", style={"height": "32vh", "border": "2px solid #dee2e6", "borderRadius": "8px"}, config={"scrollZoom": True}),
-                        ], md=6),
-                        dbc.Col([
-                            dcc.Graph(id="viewer-section-x", style={"height": "32vh"}),
-                        ], md=6),
-                    ], className="mb-2"),
-                    dbc.Row([
-                        dbc.Col([
-                            dcc.Graph(id="viewer-section-y", style={"height": "32vh"}),
-                        ], md=6),
-                        dbc.Col([
-                            dcc.Graph(id="viewer-section-z", style={"height": "32vh"}),
-                        ], md=6),
-                    ]),
-                ], md=12),
-            ]),
         ])
     elif active_tab == "tab-temp":
         # 온도 변화 탭: 입력창(맨 위), 3D 뷰(왼쪽, 콘크리트 모양만, 온도 없음, 입력 위치 표시), 오른쪽 시간에 따른 온도 정보(그래프)
@@ -1228,33 +1593,104 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
         store_data = {'x': round(x_mid,1), 'y': round(y_mid,1), 'z': round(z_mid,1)}
         return html.Div([
             dcc.Store(id="temp-coord-store", data=store_data),
-            # 입력창 (맨 위)
+            
+            # 위치 설정 섹션 (노션 스타일)
             html.Div([
-                html.Label("위치 설정", className="mb-2"),
                 html.Div([
-                    dbc.InputGroup([
-                        dbc.InputGroupText("X"),
-                        dbc.Input(id="temp-x-input", type="number", step=0.1, value=round(x_mid,1), min=round(x_min,2), max=round(x_max,2), style={"width": "80px"}),
-                    ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
-                    dbc.InputGroup([
-                        dbc.InputGroupText("Y"),
-                        dbc.Input(id="temp-y-input", type="number", step=0.1, value=round(y_mid,1), min=round(y_min,2), max=round(y_max,2), style={"width": "80px"}),
-                    ], className="me-2", style={"display": "inline-flex", "verticalAlign": "middle"}),
-                    dbc.InputGroup([
-                        dbc.InputGroupText("Z"),
-                        dbc.Input(id="temp-z-input", type="number", step=0.1, value=round(z_mid,1), min=round(z_min,2), max=round(z_max,2), style={"width": "80px"}),
-                    ], style={"display": "inline-flex", "verticalAlign": "middle"}),
-                ], style={"display": "flex", "flexDirection": "row", "alignItems": "center"}),
-            ], style={"padding": "10px"}),
-            # 3D 뷰 + 온도 정보 (좌우 배치)
+                    html.H6("📍 측정 위치 설정", style={
+                        "fontWeight": "600",
+                        "color": "#374151",
+                        "marginBottom": "16px",
+                        "fontSize": "14px"
+                    }),
+                    html.Div([
+                        dbc.InputGroup([
+                            dbc.InputGroupText("X", style={"fontWeight": "500"}),
+                            dbc.Input(
+                                id="temp-x-input", 
+                                type="number", 
+                                step=0.1, 
+                                value=round(x_mid,1), 
+                                min=round(x_min,2), 
+                                max=round(x_max,2), 
+                                style={"width": "100px"}
+                            ),
+                        ], className="me-3", style={"width": "auto"}),
+                        dbc.InputGroup([
+                            dbc.InputGroupText("Y", style={"fontWeight": "500"}),
+                            dbc.Input(
+                                id="temp-y-input", 
+                                type="number", 
+                                step=0.1, 
+                                value=round(y_mid,1), 
+                                min=round(y_min,2), 
+                                max=round(y_max,2), 
+                                style={"width": "100px"}
+                            ),
+                        ], className="me-3", style={"width": "auto"}),
+                        dbc.InputGroup([
+                            dbc.InputGroupText("Z", style={"fontWeight": "500"}),
+                            dbc.Input(
+                                id="temp-z-input", 
+                                type="number", 
+                                step=0.1, 
+                                value=round(z_mid,1), 
+                                min=round(z_min,2), 
+                                max=round(z_max,2), 
+                                style={"width": "100px"}
+                            ),
+                        ], style={"width": "auto"}),
+                    ], style={"display": "flex", "alignItems": "center", "flexWrap": "wrap", "gap": "12px"}),
+                ], style={
+                    "padding": "16px 20px",
+                    "backgroundColor": "#f9fafb",
+                    "borderRadius": "8px",
+                    "border": "1px solid #e5e7eb",
+                    "marginBottom": "20px"
+                })
+            ]),
+            
+            # 분석 결과 (좌우 배치, 노션 스타일)
             dbc.Row([
                 dbc.Col([
-                    dcc.Graph(id="temp-viewer-3d", style={"height": "50vh", "border": "2px solid #dee2e6", "borderRadius": "8px"}, config={"scrollZoom": True}),
+                    html.Div([
+                        html.H6("🏗️ 콘크리트 구조", style={
+                            "fontWeight": "600",
+                            "color": "#374151",
+                            "marginBottom": "12px",
+                            "fontSize": "14px"
+                        }),
+                        dcc.Graph(
+                            id="temp-viewer-3d", 
+                            style={"height": "45vh", "borderRadius": "6px"}, 
+                            config={"scrollZoom": True}
+                        ),
+                    ], style={
+                        "backgroundColor": "white",
+                        "padding": "16px",
+                        "borderRadius": "12px",
+                        "border": "1px solid #e5e7eb",
+                        "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
+                    })
                 ], md=6),
                 dbc.Col([
-                    dcc.Graph(id="temp-time-graph", style={"height": "50vh"}),
+                    html.Div([
+                        html.H6("📈 온도 변화 추이", style={
+                            "fontWeight": "600",
+                            "color": "#374151",
+                            "marginBottom": "12px",
+                            "fontSize": "14px"
+                        }),
+                        dcc.Graph(id="temp-time-graph", style={"height": "45vh"}),
+                    ], style={
+                        "backgroundColor": "white",
+                        "padding": "16px",
+                        "borderRadius": "12px",
+                        "border": "1px solid #e5e7eb",
+                        "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
+                    })
                 ], md=6),
-            ]),
+            ], className="g-3"),
         ])
     elif active_tab == "tab-analysis":
         # 수치해석 탭: 서버에서 VTK/VTP 파일을 파싱하여 dash_vtk.Mesh로 시각화 + 컬러맵 필드/프리셋 선택
@@ -1387,90 +1823,184 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                 seen_dates.add(date_str)
         
         return html.Div([
-            # 컨트롤 패널
-            dbc.Row([
-                dbc.Col([
-                    html.Label("컬러맵 필드"),
-                    dcc.Dropdown(
-                        id="analysis-field-dropdown",
-                        options=field_options,
-                        value=field_options[0]["value"] if field_options else None,
-                        placeholder="필드 선택"
-                    )
-                ], md=3),
-                dbc.Col([
-                    html.Label("컬러맵 프리셋"),
-                    dcc.Dropdown(
-                        id="analysis-preset-dropdown", 
-                        options=preset_options,
-                        value="rainbow",
-                        placeholder="프리셋 선택"
-                    )
-                ], md=3),
-                dbc.Col([
-                    html.Label("시간"),
-                    html.Div([
-                        dcc.Slider(
-                            id="analysis-time-slider",
-                            min=0,
-                            max=max_idx,
-                            step=1,
-                            value=max_idx,
-                            marks=time_marks,
-                            tooltip={"placement": "bottom", "always_visible": True},
-                        )
-                    ], style={
-                        # 슬라이더 색상을 진하게 설정
-                        "--slider-track-color": "#007bff",
-                        "--slider-thumb-color": "#0056b3",
-                        "--slider-mark-color": "#343a40"
+            # 컨트롤 패널 (노션 스타일)
+            html.Div([
+                html.Div([
+                    html.H6("🎛️ 분석 설정", style={
+                        "fontWeight": "600",
+                        "color": "#374151",
+                        "marginBottom": "16px",
+                        "fontSize": "14px"
+                    }),
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("컬러맵 필드", style={
+                                "fontSize": "12px", 
+                                "fontWeight": "500", 
+                                "color": "#6b7280",
+                                "marginBottom": "4px"
+                            }),
+                            dcc.Dropdown(
+                                id="analysis-field-dropdown",
+                                options=field_options,
+                                value=field_options[0]["value"] if field_options else None,
+                                placeholder="필드 선택",
+                                style={"fontSize": "13px"}
+                            )
+                        ], md=4),
+                        dbc.Col([
+                            html.Label("컬러맵 프리셋", style={
+                                "fontSize": "12px", 
+                                "fontWeight": "500", 
+                                "color": "#6b7280",
+                                "marginBottom": "4px"
+                            }),
+                            dcc.Dropdown(
+                                id="analysis-preset-dropdown", 
+                                options=preset_options,
+                                value="rainbow",
+                                placeholder="프리셋 선택",
+                                style={"fontSize": "13px"}
+                            )
+                        ], md=4),
+                        dbc.Col([
+                            html.Label("시간", style={
+                                "fontSize": "12px", 
+                                "fontWeight": "500", 
+                                "color": "#6b7280",
+                                "marginBottom": "4px"
+                            }),
+                            dcc.Slider(
+                                id="analysis-time-slider",
+                                min=0,
+                                max=max_idx,
+                                step=1,
+                                value=max_idx,
+                                marks=time_marks,
+                                tooltip={"placement": "bottom", "always_visible": True},
+                            )
+                        ], md=4),
+                    ], className="g-3"),
+                ], style={
+                    "padding": "16px 20px",
+                    "backgroundColor": "#f9fafb",
+                    "borderRadius": "8px",
+                    "border": "1px solid #e5e7eb",
+                    "marginBottom": "16px"
+                })
+            ]),
+            
+            # 현재 파일 정보 (노션 스타일 카드)
+            html.Div([
+                html.Div([
+                    html.I(className="fas fa-file-alt me-2", style={"color": "#6366f1"}),
+                    html.Span(id="analysis-current-file-label", style={
+                        "fontWeight": "500",
+                        "color": "#374151"
                     })
-                ], md=6),
-            ], className="mb-3"),
+                ], style={
+                    "padding": "12px 16px",
+                    "backgroundColor": "white",
+                    "borderRadius": "8px",
+                    "border": "1px solid #e5e7eb",
+                    "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
+                    "marginBottom": "16px",
+                    "fontSize": "14px"
+                })
+            ]),
             
-            # 현재 파일/범위 표시
-            html.Div(id="analysis-current-file-label", style={"marginBottom":"8px", "fontWeight":"500"}),
+            # 단면 컨트롤 (노션 스타일)
+            html.Div([
+                html.Div([
+                    html.H6("✂️ 단면 설정", style={
+                        "fontWeight": "600",
+                        "color": "#374151",
+                        "marginBottom": "16px",
+                        "fontSize": "14px"
+                    }),
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Checklist(
+                                options=[{"label": "단면 보기 활성화", "value": "on"}],
+                                value=[],
+                                id="slice-enable",
+                                switch=True,
+                                style={"fontSize": "13px"}
+                            )
+                        ], md=3),
+                        dbc.Col([
+                            html.Label("축 선택", style={
+                                "fontSize": "12px", 
+                                "fontWeight": "500", 
+                                "color": "#6b7280",
+                                "marginBottom": "4px"
+                            }),
+                            dcc.Dropdown(
+                                id="slice-axis",
+                                options=[
+                                    {"label": "X축 (좌→우)", "value": "X"},
+                                    {"label": "Y축 (앞→뒤)", "value": "Y"},
+                                    {"label": "Z축 (아래→위)", "value": "Z"},
+                                ],
+                                value="Z",
+                                clearable=False,
+                                style={"fontSize": "13px"}
+                            )
+                        ], md=3),
+                        dbc.Col([
+                            html.Label("절단 위치", style={
+                                "fontSize": "12px", 
+                                "fontWeight": "500", 
+                                "color": "#6b7280",
+                                "marginBottom": "4px"
+                            }),
+                            dcc.Slider(
+                                id="slice-slider",
+                                min=0, max=1, step=0.05, value=0.5,
+                                marks={0: '0.0', 1: '1.0'},
+                                tooltip={"placement": "bottom", "always_visible": True},
+                            )
+                        ], md=6),
+                    ], className="g-3"),
+                ], style={
+                    "padding": "16px 20px",
+                    "backgroundColor": "#f9fafb",
+                    "borderRadius": "8px",
+                    "border": "1px solid #e5e7eb",
+                    "marginBottom": "20px"
+                })
+            ]),
             
-            # 단면(slice) 컨트롤
-            dbc.Row([
-                dbc.Col([
-                    dbc.Checklist(
-                        options=[{"label": "단면 보기", "value": "on"}],
-                        value=[],
-                        id="slice-enable",
-                        switch=True,
-                    )
-                ], md=2),
-                dbc.Col([
-                    html.Label("축 선택", style={"fontSize": "12px", "marginBottom": "2px"}),
-                    dcc.Dropdown(
-                        id="slice-axis",
-                        options=[
-                            {"label": "X축 (좌→우)", "value": "X"},
-                            {"label": "Y축 (앞→뒤)", "value": "Y"},
-                            {"label": "Z축 (아래→위)", "value": "Z"},
-                        ],
-                        value="Z",
-                        clearable=False,
-                    )
-                ], md=2),
-                dbc.Col([
-                    html.Label("절단 위치 (선택 위치 이상 영역 표시)", style={"fontSize": "12px", "marginBottom": "2px"}),
-                    dcc.Slider(
-                        id="slice-slider",
-                        min=0, max=1, step=0.05, value=0.5,
-                        marks={0: '0.0', 1: '1.0'},
-                        tooltip={"placement": "bottom", "always_visible": True},
-                    )
-                ], md=8),
-            ], className="mb-2"),
-            
-            # 3D 뷰어
-            html.Div(id="analysis-3d-viewer", style={"height": "60vh"}),
+            # 3D 뷰어 (노션 스타일)
+            html.Div([
+                html.Div([
+                    html.H6("🔬 수치해석 3D 뷰어", style={
+                        "fontWeight": "600",
+                        "color": "#374151",
+                        "marginBottom": "16px",
+                        "fontSize": "16px"
+                    }),
+                    html.Div(id="analysis-3d-viewer", style={"height": "55vh"}),
+                ], style={
+                    "padding": "20px",
+                    "backgroundColor": "white",
+                    "borderRadius": "12px",
+                    "border": "1px solid #e5e7eb",
+                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
+                    "marginBottom": "16px"
+                })
+            ]),
 
-            # 컬러바 (조건부 표시)
+            # 컬러바 (조건부 표시, 노션 스타일)
             html.Div(id="analysis-colorbar-container", children=[
-                dcc.Graph(id="analysis-colorbar", style={"height":"120px", "display": "none"})
+                html.Div([
+                    dcc.Graph(id="analysis-colorbar", style={"height":"120px", "display": "none"})
+                ], style={
+                    "backgroundColor": "white",
+                    "borderRadius": "8px",
+                    "border": "1px solid #e5e7eb",
+                    "overflow": "hidden"
+                })
             ])
             
         ]), f"수치해석 결과 ({len(files)}개 파일)"
