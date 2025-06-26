@@ -166,14 +166,9 @@ layout = html.Div([
                         
                         # 선택된 콘크리트 작업 버튼
                         html.Div([
-                            html.Div([
-                                html.Small("선택된 콘크리트:", className="text-muted me-2"),
-                                dbc.ButtonGroup([
-                                    dbc.Button("수정", id="btn-edit", color="secondary", size="sm", className="px-3", disabled=True),
-                                    dbc.Button("삭제", id="btn-del", color="danger", size="sm", className="px-3", disabled=True),
-                                ]),
-                            ], className="d-flex align-items-center justify-content-center")
-                        ], className="mt-2")
+                            dbc.Button("수정", id="btn-edit", color="secondary", size="sm", className="px-3", disabled=True),
+                            dbc.Button("삭제", id="btn-del", color="danger", size="sm", className="px-3", disabled=True),
+                        ], className="d-flex justify-content-between mt-2")
                     ], className="p-3")
                 ], className="bg-white rounded shadow-sm border"),
             ], md=4),
