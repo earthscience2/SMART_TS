@@ -84,6 +84,10 @@ def make_fig(nodes: list[list[float]], h: float) -> go.Figure:
 layout = html.Div([
     dcc.Location(id="concrete-url", refresh=False),
     dcc.Store(id="selected-project-store"),
+    
+    # 프로젝트 네비게이션 바
+    html.Div(id="project-navbar"),
+    
     dbc.Container([
         dbc.Row([
             # 좌측: 상세정보 + 현재 프로젝트 표시 + 콘크리트 목록
@@ -617,7 +621,75 @@ layout = html.Div([
         ]),
 ], style={"backgroundColor": "#f8f9fa", "minHeight": "100vh"})
 
-# ───────────────────── ① URL에서 프로젝트 정보 읽기
+# ───────────────────── ① 프로젝트 네비게이션 바 생성
+@callback(
+    Output("project-navbar", "children"),
+    Input("selected-project-store", "data"),
+    prevent_initial_call=False
+)
+def create_project_navbar(project_pk):
+    if not project_pk:
+        return html.Div()
+    
+    # 현재 페이지가 concrete임을 표시
+    current_page = "concrete"
+    
+    nav_items = [
+        {
+            "label": "🧱 콘크리트",
+            "href": f"/concrete?page={project_pk}",
+            "id": "concrete",
+            "icon": "🧱"
+        },
+        {
+            "label": "📡 센서",
+            "href": f"/sensor?page={project_pk}",
+            "id": "sensor", 
+            "icon": "📡"
+        },
+        {
+            "label": "📊 분석",
+            "href": f"/project?page={project_pk}",
+            "id": "project",
+            "icon": "📊"
+        },
+        {
+            "label": "💾 다운로드",
+            "href": f"/download?page={project_pk}",
+            "id": "download",
+            "icon": "💾"
+        }
+    ]
+    
+    nav_buttons = []
+    for item in nav_items:
+        is_active = current_page == item["id"]
+        nav_buttons.append(
+            dbc.Button(
+                [
+                    html.Span(item["icon"], className="me-2"),
+                    item["label"].replace(item["icon"] + " ", "")
+                ],
+                href=item["href"],
+                external_link=True,
+                color="primary" if is_active else "outline-primary",
+                size="sm",
+                className="px-3 py-2 fw-semibold" + (" active" if is_active else ""),
+                style={
+                    "borderRadius": "8px",
+                    "fontWeight": "600" if is_active else "500",
+                    "boxShadow": "0 2px 4px rgba(0,0,0,0.1)" if is_active else "none"
+                }
+            )
+        )
+    
+    return dbc.Container([
+        html.Div([
+            html.Div(nav_buttons, className="d-flex gap-2"),
+        ], className="d-flex justify-content-center py-3")
+    ], className="bg-white border-bottom mb-3", style={"boxShadow": "0 1px 3px rgba(0,0,0,0.1)"})
+
+# ───────────────────── ② URL에서 프로젝트 정보 읽기
 @callback(
     Output("selected-project-store", "data"),
     Output("current-project-info", "children"),

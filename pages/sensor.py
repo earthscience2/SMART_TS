@@ -132,6 +132,12 @@ def get_polygon_intersections_y(x: float, nodes: list[list[float]]) -> list[floa
 layout = dbc.Container(
     fluid=True,
     children=[
+        dcc.Location(id="sensor-url", refresh=False),
+        dcc.Store(id="selected-project-store-sensor"),
+        
+        # 프로젝트 네비게이션 바
+        html.Div(id="project-navbar-sensor"),
+        
         # ── (★) 카메라 정보를 저장하기 위한 Store
         dcc.Store(id="camera-store", data=None),
 
@@ -301,6 +307,92 @@ layout = dbc.Container(
     ],
 )
 
+
+# ───────────────────── 프로젝트 네비게이션 바 생성
+@callback(
+    Output("project-navbar-sensor", "children"),
+    Input("selected-project-store-sensor", "data"),
+    prevent_initial_call=False
+)
+def create_project_navbar_sensor(project_pk):
+    if not project_pk:
+        return html.Div()
+    
+    # 현재 페이지가 sensor임을 표시
+    current_page = "sensor"
+    
+    nav_items = [
+        {
+            "label": "🧱 콘크리트",
+            "href": f"/concrete?page={project_pk}",
+            "id": "concrete",
+            "icon": "🧱"
+        },
+        {
+            "label": "📡 센서",
+            "href": f"/sensor?page={project_pk}",
+            "id": "sensor", 
+            "icon": "📡"
+        },
+        {
+            "label": "📊 분석",
+            "href": f"/project?page={project_pk}",
+            "id": "project",
+            "icon": "📊"
+        },
+        {
+            "label": "💾 다운로드",
+            "href": f"/download?page={project_pk}",
+            "id": "download",
+            "icon": "💾"
+        }
+    ]
+    
+    nav_buttons = []
+    for item in nav_items:
+        is_active = current_page == item["id"]
+        nav_buttons.append(
+            dbc.Button(
+                [
+                    html.Span(item["icon"], className="me-2"),
+                    item["label"].replace(item["icon"] + " ", "")
+                ],
+                href=item["href"],
+                external_link=True,
+                color="primary" if is_active else "outline-primary",
+                size="sm",
+                className="px-3 py-2 fw-semibold" + (" active" if is_active else ""),
+                style={
+                    "borderRadius": "8px",
+                    "fontWeight": "600" if is_active else "500",
+                    "boxShadow": "0 2px 4px rgba(0,0,0,0.1)" if is_active else "none"
+                }
+            )
+        )
+    
+    return dbc.Container([
+        html.Div([
+            html.Div(nav_buttons, className="d-flex gap-2"),
+        ], className="d-flex justify-content-center py-3")
+    ], className="bg-white border-bottom mb-3", style={"boxShadow": "0 1px 3px rgba(0,0,0,0.1)"})
+
+# ───────────────────── URL에서 프로젝트 정보 읽기
+@callback(
+    Output("selected-project-store-sensor", "data"),
+    Input("sensor-url", "search"),
+    prevent_initial_call=False
+)
+def parse_url_project_sensor(search):
+    if not search:
+        return None
+    
+    try:
+        from urllib.parse import parse_qs
+        params = parse_qs(search.lstrip('?'))
+        project_pk = params.get('page', [None])[0]
+        return project_pk
+    except Exception:
+        return None
 
 # ───────────────────── ① 콘크리트 목록 초기화 ─────────────────────
 @callback(
