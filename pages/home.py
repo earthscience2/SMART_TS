@@ -20,6 +20,7 @@ def format_date(value):
     return dt.strftime("%Y.%m.%d")
 
 
+
 def filter_local_projects(grade: str, auth_list: list) -> pd.DataFrame:
     """사용자 권한에 따라 로컬 프로젝트를 필터링합니다.
     
@@ -106,15 +107,21 @@ def layout():
 
         for _, row in local_projects_df.iterrows():
             proj_pk = row["project_pk"]
+            s_code = row["s_code"]
+            
             # 해당 프로젝트의 콘크리트 개수
             conc_cnt = df_concrete[df_concrete["project_pk"] == str(proj_pk)].shape[0]
             # 해당 콘크리트의 sensor 개수
             conc_ids = df_concrete[df_concrete["project_pk"] == str(proj_pk)]["concrete_pk"].tolist()
-            sensor_cnt = df_sensors[df_sensors["concrete_pk"].isin(conc_ids)].shape[0]
+            local_sensor_cnt = df_sensors[df_sensors["concrete_pk"].isin(conc_ids)].shape[0]
+            
+            # P_000078 프로젝트에서 해당 구조의 ITS 센서 리스트 조회
+            its_sensors_df = api_db.get_sensor_list_for_structure(s_code)
+            its_sensor_cnt = len(its_sensors_df) if not its_sensors_df.empty else 0
 
             card_style = {
-                "width": "200px",
-                "height": "200px",
+                "width": "250px",
+                "height": "280px",
                 "backgroundColor": "#f0f8ff",
                 "borderRadius": "0.5rem",
                 "overflow": "hidden",
@@ -123,6 +130,25 @@ def layout():
                 "cursor": "pointer",
                 "textDecoration": "none"
             }
+
+            # ITS 센서 정보 표시
+            its_sensor_info = []
+            if its_sensor_cnt > 0:
+                its_sensor_info = [
+                    html.P(f"ITS 센서: {its_sensor_cnt} 개", className="card-text fs-7 mb-1 text-success"),
+                    html.Details([
+                        html.Summary("센서 목록", className="fs-8 text-muted cursor-pointer"),
+                        html.Div([
+                            html.P(f"• {row['deviceid']} (Ch.{row['channel']})", 
+                                   className="fs-9 mb-0 text-muted")
+                            for _, row in its_sensors_df.iterrows()
+                        ], className="mt-1")
+                    ], className="mb-1")
+                ]
+            else:
+                its_sensor_info = [
+                    html.P("ITS 센서: 없음", className="card-text fs-7 mb-1 text-muted")
+                ]
 
             cards.append(
                 dbc.Col([
@@ -136,23 +162,28 @@ def layout():
                                     className="card-title fw-bold fs-5 mb-2"
                                 ),
                                 html.P(
+                                    f"구조 ID: {s_code}",
+                                    className="card-text fs-8 mb-1 text-primary"
+                                ),
+                                html.P(
                                     f"생성일: {format_date(row['created_at'])}",
                                     className="card-text fs-7 mb-1"
                                 ),
                                 html.P(
-                                    f"콘크리트 : {conc_cnt} 개",
+                                    f"콘크리트: {conc_cnt} 개",
                                     className="card-text fs-7 mb-1"
                                 ),
                                 html.P(
-                                    f"센서 : {sensor_cnt} 개",
+                                    f"로컬 센서: {local_sensor_cnt} 개",
                                     className="card-text fs-7 mb-1"
                                 ),
-                            ], className="d-flex flex-column align-items-center justify-content-center h-100"),
+                                *its_sensor_info
+                            ], className="d-flex flex-column align-items-center justify-content-start h-100 p-2"),
                             style=card_style,
                             className="project-card mb-4"
                         )
                     )
-                ], xs=12, sm=6, md=3, lg=3)
+                ], xs=12, sm=6, md=4, lg=3)
             )
 
     # 프로젝트가 없는 경우
