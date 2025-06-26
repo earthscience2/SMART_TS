@@ -126,7 +126,7 @@ def _build_navbar():
         children[-2].className += " ms-auto"
 
     brand_component = html.Span([
-        html.Span("Concrete MONITOR   | ", className="fw-bold"),
+        html.Span("Concrete MONITORㅤㅤ| ", className="fw-bold"),
         html.Span(f"  {user_id}", className="ms-2 fw-bold text-warning") if user_id else None
     ])
 
