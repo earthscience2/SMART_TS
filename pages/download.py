@@ -515,7 +515,7 @@ def dl_switch_tab(file_data, start_date, end_date):
                             "filename": f["filename"],
                             "time": f["time_str"] if f["time_str"] != "N/A" else "00:00",
                             "size": f["size"],
-                            "full_datetime": f["datetime"].strftime("%Y-%m-%d %H:%M") if f["datetime"] else "N/A"
+                            "full_datetime": f["datetime"].strftime("%Y-%m-%d %H:%M") if f["datetime"] and isinstance(f["datetime"], datetime) else "N/A"
                         } for f in files],
                         columns=[
                             {"name": "📄 파일명", "id": "filename", "type": "text"},
