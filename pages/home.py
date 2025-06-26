@@ -20,6 +20,46 @@ def format_date(value):
     return dt.strftime("%Y.%m.%d")
 
 
+def filter_local_projects(grade: str, auth_list: list) -> pd.DataFrame:
+    """사용자 권한에 따라 로컬 프로젝트를 필터링합니다.
+    
+    Args:
+        grade: 사용자 권한 (AD, CM, CT, US 등)
+        auth_list: 사용자가 접근 가능한 권한 목록
+    
+    Returns:
+        필터링된 프로젝트 DataFrame
+    """
+    # 모든 프로젝트 가져오기
+    all_projects_df = api_db.get_project_data()
+    
+    # 1. AD 권한이면 모든 프로젝트 반환
+    if grade == "AD":
+        return all_projects_df
+    
+    # 2. CM 또는 CT 권한인 경우
+    if grade in ["CM", "CT"]:
+        # 접근 가능한 프로젝트 ID 추출
+        project_ids = [auth_id for auth_id in auth_list if auth_id.startswith('P_')]
+        
+        # P_000078에 접근 가능하면 모든 프로젝트 반환
+        if "P_000078" in project_ids:
+            return all_projects_df
+        
+        # 접근 가능한 구조 ID 추출
+        structure_ids = [auth_id for auth_id in auth_list if auth_id.startswith('S_')]
+        
+        if structure_ids:
+            # s_code가 구조 ID와 매칭되는 프로젝트만 필터링
+            filtered_projects = all_projects_df[
+                all_projects_df['s_code'].isin(structure_ids)
+            ]
+            return filtered_projects
+    
+    # 3. 기타 권한 (US 등)의 경우 빈 DataFrame 반환
+    return pd.DataFrame()
+
+
 def layout():
     # 로그인된 사용자 정보 가져오기
     user_id = request.cookies.get("login_user")
@@ -56,8 +96,8 @@ def layout():
         print(f"Error getting project structure list: {e}")
         project_structure_df = pd.DataFrame()
     
-    # 로컬 프로젝트는 항상 표시
-    local_projects_df = api_db.get_project_data()
+    # 로컬 프로젝트 필터링 로직
+    local_projects_df = filter_local_projects(grade, auth_list)
 
     # ITS 프로젝트가 있는 경우 표시
     its_projects_df = its_projects_result.get("projects", pd.DataFrame())
