@@ -378,8 +378,10 @@ layout = dbc.Container(
                     # 숨김 처리된 콜백 대상 컴포넌트들 (항상 포함)
                     html.Div([
                         dcc.Slider(id="time-slider", min=0, max=5, step=1, value=0, marks={}),
+                        dcc.Slider(id="time-slider-display", min=0, max=5, step=1, value=0, marks={}),
                         dcc.Slider(id="time-slider-section", min=0, max=5, step=1, value=0, marks={}),
                         dcc.Graph(id="viewer-3d"),
+                        dcc.Graph(id="viewer-3d-display"),
                         dbc.Input(id="section-x-input", type="number", value=None),
                         dbc.Input(id="section-y-input", type="number", value=None),
                         dbc.Input(id="section-z-input", type="number", value=None),
@@ -1110,81 +1112,35 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
             display_title = viewer_data['current_file_title']
         
         return html.Div([
-            # 시간 컨트롤 섹션 (노션 스타일)
+            # 시간 슬라이더
             html.Div([
-                html.Div([
-                    html.H6("⏰ 시간 설정", style={
-                        "fontWeight": "600",
-                        "color": "#374151",
-                        "marginBottom": "12px",
-                        "fontSize": "14px"
-                    }),
-                    dcc.Slider(
-                        id="time-slider",
-                        min=slider_min,
-                        max=slider_max,
-                        step=1,
-                        value=slider_value,
-                        marks=slider_marks,
-                        tooltip={"placement": "bottom", "always_visible": True},
-                    ),
-                ], style={
-                    "padding": "16px 20px",
-                    "backgroundColor": "#f9fafb",
-                    "borderRadius": "8px",
-                    "border": "1px solid #e5e7eb",
-                    "marginBottom": "16px"
-                })
-            ]),
+                html.H5("시간 설정", className="mb-3"),
+                dcc.Slider(
+                    id="time-slider-display",  # 다른 ID 사용
+                    min=slider_min,
+                    max=slider_max,
+                    step=1,
+                    value=slider_value,
+                    marks=slider_marks,
+                    tooltip={"placement": "bottom", "always_visible": True},
+                ),
+            ], className="mb-4"),
             
-            # 현재 시간 정보 (노션 스타일 카드)
+            # 현재 시간 정보
             html.Div([
-                html.Div([
-                    html.I(className="fas fa-clock me-2", style={"color": "#6366f1"}),
-                    html.Span(display_title or "시간 정보 없음", style={
-                        "fontWeight": "500",
-                        "color": "#374151"
-                    })
-                ], style={
-                    "padding": "12px 16px",
-                    "backgroundColor": "white",
-                    "borderRadius": "8px",
-                    "border": "1px solid #e5e7eb",
-                    "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
-                    "marginBottom": "20px",
-                    "fontSize": "14px"
-                })
-            ]),
+                html.H6(display_title or "시간 정보 없음", className="text-muted")
+            ], className="mb-3"),
             
-            # 3D 뷰어 (노션 스타일)
+            # 3D 뷰어
             html.Div([
-                html.Div([
-                    html.H6("🎯 3D 히트맵 뷰어", style={
-                        "fontWeight": "600",
-                        "color": "#374151",
-                        "marginBottom": "16px",
-                        "fontSize": "16px"
-                    }),
-                    dcc.Graph(
-                        id="viewer-3d",
-                        style={
-                            "height": "65vh", 
-                            "borderRadius": "8px",
-                            "overflow": "hidden"
-                        },
-                        config={"scrollZoom": True},
-                        figure=fig_3d,
-                    ),
-                ], style={
-                    "padding": "20px",
-                    "backgroundColor": "white",
-                    "borderRadius": "12px",
-                    "border": "1px solid #e5e7eb",
-                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
-                })
-            ]),
-            
-
+                html.H5("3D 히트맵 뷰어", className="mb-3"),
+                dcc.Graph(
+                    id="viewer-3d-display",  # 다른 ID 사용  
+                    figure=fig_3d,
+                    style={"height": "60vh"},
+                    config={"scrollZoom": True}
+                ),
+            ])
         ])
     elif active_tab == "tab-section":
         # 단면도 탭: 2x2 배열 배치, 입력창 상단, 3D 뷰/단면도
@@ -3140,5 +3096,37 @@ def toggle_colorbar_visibility(field_name):
         return {"height": "120px", "display": "block"}
     else:
         return {"height": "120px", "display": "none"}
+
+# 시간 슬라이더 동기화 콜백 (display용 슬라이더와 실제 슬라이더)
+@callback(
+    Output("time-slider", "value", allow_duplicate=True),
+    Input("time-slider-display", "value"),
+    prevent_initial_call=True,
+)
+def sync_display_slider_to_main(display_value):
+    return display_value
+
+@callback(
+    Output("time-slider-display", "value", allow_duplicate=True),
+    Output("time-slider-display", "min", allow_duplicate=True),
+    Output("time-slider-display", "max", allow_duplicate=True),
+    Output("time-slider-display", "marks", allow_duplicate=True),
+    Input("time-slider", "value"),
+    Input("time-slider", "min"),
+    Input("time-slider", "max"),
+    Input("time-slider", "marks"),
+    prevent_initial_call=True,
+)
+def sync_main_slider_to_display(main_value, main_min, main_max, main_marks):
+    return main_value, main_min, main_max, main_marks
+
+# 3D 뷰어 동기화 콜백 (display용 뷰어와 실제 뷰어)
+@callback(
+    Output("viewer-3d-display", "figure", allow_duplicate=True),
+    Input("viewer-3d", "figure"),
+    prevent_initial_call=True,
+)
+def sync_viewer_to_display(main_figure):
+    return main_figure
 
 
