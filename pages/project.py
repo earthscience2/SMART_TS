@@ -556,29 +556,28 @@ def load_concrete_data(search, pathname):
     title = f"{proj_name} · 콘크리트 목록"
     
     # 테이블 스타일 설정 (상태별 색상)
-    style_data_conditional = [
-        # 분석중 상태 스타일
-        {
-            'if': {'filter_query': '{status} = 분석중', 'column_id': 'status'},
-            'backgroundColor': '#e8f5e8',  # 연한 초록색
-            'color': '#2e7d32',  # 진한 초록색
+    style_data_conditional = []
+    for i, data in enumerate(table_data):
+        # 상태별 텍스트 색상 및 배경색 설정
+        if data['status'] == '분석중':
+            bg_color = '#e8f5e8'  # 연한 초록색
+            text_color = '#2e7d32'  # 진한 초록색
+        elif data['status'] == '분석 가능':
+            bg_color = '#e3f2fd'  # 연한 파란색
+            text_color = '#1565c0'  # 진한 파란색
+        elif data['status'] == '센서 부족':
+            bg_color = '#fff3e0'  # 연한 오렌지색
+            text_color = '#ef6c00'  # 진한 오렌지색
+        else:
+            bg_color = '#ffffff'  # 기본 흰색
+            text_color = '#212529'  # 기본 색상
+            
+        style_data_conditional.append({
+            'if': {'row_index': i, 'column_id': 'status'},
+            'backgroundColor': bg_color,
+            'color': text_color,
             'fontWeight': 'bold'
-        },
-        # 분석 가능 상태 스타일  
-        {
-            'if': {'filter_query': '{status} = 분석 가능', 'column_id': 'status'},
-            'backgroundColor': '#e3f2fd',  # 연한 파란색
-            'color': '#1565c0',  # 진한 파란색
-            'fontWeight': 'bold'
-        },
-        # 센서 부족 상태 스타일
-        {
-            'if': {'filter_query': '{status} = 센서 부족', 'column_id': 'status'},
-            'backgroundColor': '#fff3e0',  # 연한 오렌지색
-            'color': '#ef6c00',  # 진한 오렌지색
-            'fontWeight': 'bold'
-        }
-    ]
+        })
     
     # 날짜 및 경과일 컬럼 스타일 추가
     style_data_conditional.extend([
