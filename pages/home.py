@@ -230,11 +230,11 @@ def layout():
                                     dbc.Table([
                                         html.Thead([
                                             html.Tr([
-                                                html.Th("이름", className="border-0 text-muted small"),
-                                                html.Th("생성일", className="border-0 text-muted small"),
-                                                html.Th("경과시간", className="border-0 text-muted small"),
-                                                html.Th("센서", className="border-0 text-muted small"),
-                                                html.Th("분석", className="border-0 text-muted small")
+                                                html.Th("이름", className="border-0 text-muted small", style={"width": "35%"}),
+                                                html.Th("생성일", className="border-0 text-muted small", style={"width": "20%"}),
+                                                html.Th("경과시간", className="border-0 text-muted small", style={"width": "20%"}),
+                                                html.Th("센서", className="border-0 text-muted small", style={"width": "15%"}),
+                                                html.Th("분석", className="border-0 text-muted small", style={"width": "10%"})
                                             ])
                                         ]),
                                         html.Tbody(concrete_list)
