@@ -24,26 +24,26 @@ register_page(__name__, path="/download")
 projects_df = api_db.get_project_data()
 
 def parse_filename_datetime(filename):
-    """파일명에서 날짜시간 추출 (YYYYMMDDHHMM 형식)"""
+    """파일명에서 날짜시간 추출 (YYYYMMDD, YYYYMMDDHH, YYYYMMDDHHMM 형식)"""
     try:
         base_name = filename.split('.')[0]
-        # 숫자만으로 구성되고 10자리 이상인 경우 처리
-        if base_name.isdigit() and len(base_name) >= 10:
+        # 숫자만으로 구성되고 8자리 이상인 경우 처리
+        if base_name.isdigit() and len(base_name) >= 8:
             year = int(base_name[:4])
             month = int(base_name[4:6])
             day = int(base_name[6:8])
             
-            # 시간과 분이 있는 경우만 처리 (YYYYMMDDHHMM)
+            # 시간과 분이 있는 경우 (YYYYMMDDHHMM)
             if len(base_name) >= 12:
                 hour = int(base_name[8:10])
                 minute = int(base_name[10:12])
-            # 시간이 없는 경우 (YYYYMMDD)
-            elif len(base_name) == 10:
-                hour = 0
-                minute = 0
             # 시간만 있는 경우 (YYYYMMDDHH)
             elif len(base_name) == 10:
                 hour = int(base_name[8:10])
+                minute = 0
+            # 날짜만 있는 경우 (YYYYMMDD)
+            elif len(base_name) == 8:
+                hour = 0
                 minute = 0
             else:
                 hour = 0
@@ -444,14 +444,14 @@ def dl_switch_tab(file_data, start_date, end_date):
                 html.Div([
                     html.Div([
                         dbc.Button("📋 모든 파일 선택", 
-                                 id=f"btn-select-all-{active_tab}", 
+                                 id={"type": "select-all-btn", "index": active_tab}, 
                                  color="outline-primary", 
                                  size="sm", 
                                  className="me-2",
                                  style={"fontSize": "0.8rem"},
                                  n_clicks=0),
                         dbc.Button("🗑️ 선택 해제", 
-                                 id=f"btn-deselect-all-{active_tab}", 
+                                 id={"type": "deselect-all-btn", "index": active_tab}, 
                                  color="outline-secondary", 
                                  size="sm", 
                                  className="me-2",
@@ -512,7 +512,7 @@ def dl_switch_tab(file_data, start_date, end_date):
         dbc.Card([
             dbc.CardBody([
                 dash_table.DataTable(
-                    id=f"tbl-all-files-{active_tab}",
+                    id={"type": "all-files-table", "index": active_tab},
                     data=all_files_data,
                     columns=[
                         {"name": "📄 파일명", "id": "filename", "type": "text"},
@@ -522,7 +522,7 @@ def dl_switch_tab(file_data, start_date, end_date):
                         {"name": "📅 전체 날짜시간", "id": "full_datetime", "type": "text"}
                     ],
                     row_selectable="multi",
-                    page_size=15,
+                    page_size=10,
                     style_cell={
                         "textAlign": "center",
                         "fontSize": "0.8rem",
@@ -616,6 +616,28 @@ def dl_download_vtk(n_clicks, file_data, tab_content):
     return _download_selected_files(n_clicks, file_data, "vtk")
 
 # ───────────────────── 새로운 다운로드 로직 ────────────────────
+# ───────────────────── 모든 파일 선택/해제 콜백 ────────────────────
+@dash.callback(
+    Output({"type": "all-files-table", "index": dash.MATCH}, "selected_rows"),
+    Input({"type": "select-all-btn", "index": dash.MATCH}, "n_clicks"),
+    Input({"type": "deselect-all-btn", "index": dash.MATCH}, "n_clicks"),
+    State({"type": "all-files-table", "index": dash.MATCH}, "data"),
+    prevent_initial_call=True,
+)
+def handle_select_all(select_clicks, deselect_clicks, data):
+    ctx = dash.callback_context
+    if not ctx.triggered or not data:
+        raise PreventUpdate
+    
+    button_id = ctx.triggered[0]['prop_id']
+    
+    if "select-all-btn" in button_id and select_clicks:
+        return list(range(len(data)))
+    elif "deselect-all-btn" in button_id and deselect_clicks:
+        return []
+    
+    raise PreventUpdate
+
 def _download_selected_files(n_clicks, file_data, ftype):
     """선택된 파일들을 다운로드하는 함수 (새로운 구조에 맞게 수정 필요)"""
     if not n_clicks or not file_data:
