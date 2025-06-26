@@ -28,27 +28,106 @@ layout = dbc.Container(
         # ── 프로젝트 / 콘크리트 선택 영역
         dbc.Row([
             dbc.Col([
-                html.H6("프로젝트 선택"),
-                dcc.Dropdown(id="dl-ddl-project", clearable=False, placeholder="프로젝트 선택"),
-                html.H6("콘크리트 리스트", className="mt-3"),
-                dash_table.DataTable(
-                    id="dl-tbl-concrete", page_size=10, row_selectable="single",
-                    style_table={"overflowY": "auto", "height": "45vh"},
-                    style_cell={"whiteSpace": "nowrap", "textAlign": "center"},
-                    style_header={"backgroundColor": "#f1f3f5", "fontWeight": 600},
-                ),
+                # 프로젝트 선택 카드
+                html.Div([
+                    html.Div([
+                        html.H6("🏗️ 프로젝트 선택", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                        dcc.Dropdown(
+                            id="dl-ddl-project", 
+                            clearable=False, 
+                            placeholder="프로젝트를 선택하세요",
+                            style={"fontSize": "0.85rem"},
+                            className="mb-2"
+                        ),
+                    ], className="p-3")
+                ], className="bg-white rounded shadow-sm border mb-3"),
+
+                # 콘크리트 목록 카드
+                html.Div([
+                    html.Div([
+                        html.H6("🧱 콘크리트 목록", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                        html.Small("💡 콘크리트를 클릭하여 선택할 수 있습니다", className="text-muted mb-2 d-block", style={"fontSize": "0.75rem"}),
+                        dash_table.DataTable(
+                            id="dl-tbl-concrete", 
+                            page_size=10, 
+                            row_selectable="single",
+                            style_table={"overflowY": "auto", "height": "45vh"},
+                            style_cell={
+                                "whiteSpace": "nowrap", 
+                                "textAlign": "center",
+                                "fontSize": "0.8rem",
+                                "padding": "12px 10px",
+                                "border": "none",
+                                "borderBottom": "1px solid #f1f1f0",
+                                "fontFamily": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+                            },
+                            style_header={
+                                "backgroundColor": "#fafafa", 
+                                "fontWeight": 600,
+                                "color": "#37352f",
+                                "border": "none",
+                                "borderBottom": "1px solid #e9e9e7",
+                                "fontSize": "0.75rem",
+                                "textTransform": "uppercase",
+                                "letterSpacing": "0.5px"
+                            },
+                            style_data={
+                                "backgroundColor": "white",
+                                "border": "none",
+                                "color": "#37352f"
+                            },
+                            style_data_conditional=[
+                                {
+                                    'if': {'row_index': 'odd'},
+                                    'backgroundColor': '#fbfbfa'
+                                },
+                                {
+                                    'if': {'state': 'selected'},
+                                    'backgroundColor': '#e8f4fd',
+                                    'border': '1px solid #579ddb',
+                                    'borderRadius': '6px',
+                                    'boxShadow': '0 0 0 1px rgba(87, 157, 219, 0.3)',
+                                    'color': '#1d4ed8'
+                                }
+                            ],
+                            css=[
+                                {
+                                    'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner table',
+                                    'rule': 'border-collapse: separate; border-spacing: 0;'
+                                },
+                                {
+                                    'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr:hover',
+                                    'rule': 'background-color: #f8fafc !important; transition: background-color 0.15s ease;'
+                                }
+                            ]
+                        ),
+                    ], className="p-3")
+                ], className="bg-white rounded shadow-sm border")
             ], md=3),
             dbc.Col([
-                html.H6(id="dl-concrete-title"),
-                dbc.Tabs([
-                    dbc.Tab(label="inp", tab_id="tab-inp"),
-                    dbc.Tab(label="frd", tab_id="tab-frd"),
-                    dbc.Tab(label="vtk", tab_id="tab-vtk"),
-                ], id="dl-tabs", active_tab="tab-inp"),
-                html.Div(id="dl-tab-content"),
+                # 파일 다운로드 카드
+                html.Div([
+                    html.Div([
+                        html.H6("📁 파일 다운로드", id="dl-concrete-title", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                        html.Small("💡 탭을 선택하여 파일 유형을 변경할 수 있습니다", className="text-muted mb-3 d-block", style={"fontSize": "0.75rem"}),
+                        dbc.Tabs([
+                            dbc.Tab(label="INP 파일", tab_id="tab-inp", 
+                                   style={"fontSize": "0.85rem", "padding": "8px 16px"},
+                                   active_label_style={"backgroundColor": "#e8f4fd", "color": "#1d4ed8", "fontWeight": "600"}),
+                            dbc.Tab(label="FRD 파일", tab_id="tab-frd",
+                                   style={"fontSize": "0.85rem", "padding": "8px 16px"},
+                                   active_label_style={"backgroundColor": "#e8f4fd", "color": "#1d4ed8", "fontWeight": "600"}),
+                            dbc.Tab(label="VTK 파일", tab_id="tab-vtk",
+                                   style={"fontSize": "0.85rem", "padding": "8px 16px"},
+                                   active_label_style={"backgroundColor": "#e8f4fd", "color": "#1d4ed8", "fontWeight": "600"}),
+                        ], id="dl-tabs", active_tab="tab-inp", className="mb-3"),
+                        html.Div(id="dl-tab-content"),
+                    ], className="p-3")
+                ], className="bg-white rounded shadow-sm border"),
             ], md=9),
         ], className="g-3"),
-    ]
+    ],
+    className="py-3"
 )
 
 # ───────────────────── ① 프로젝트 목록 초기화 ─────────────────────
@@ -79,12 +158,11 @@ def dl_init_project(selected_value):
 )
 def dl_on_project_change(project_pk):
     if not project_pk:
-        return [], [], [], ""
+        return [], [], [], "📁 파일 다운로드"
     df_conc = api_db.get_concrete_data(project_pk=project_pk)
     data = df_conc[["concrete_pk", "name"]].to_dict("records")
     columns = [{"name": "이름", "id": "name"}]
-    title = f"프로젝트 {project_pk} · 콘크리트 {len(data)}개"
-    return data, columns, [], title
+    return data, columns, [], "📁 파일 다운로드"
 
 # ───────────────────── ③ 콘크리트 선택 → 탭 콘텐츠 업데이트 ────────────────────
 @dash.callback(
@@ -96,7 +174,12 @@ def dl_on_project_change(project_pk):
 )
 def dl_switch_tab(active_tab, sel_rows, tbl_data):
     if not sel_rows:
-        return html.Div("콘크리트를 선택하세요.")
+        return html.Div([
+            html.Div([
+                html.I(className="fas fa-info-circle me-2", style={"color": "#6b7280", "fontSize": "1.2rem"}),
+                html.Span("콘크리트를 선택하면 파일 목록이 표시됩니다", style={"color": "#6b7280", "fontSize": "0.9rem"})
+            ], className="d-flex align-items-center justify-content-center p-4", style={"backgroundColor": "#f9fafb", "borderRadius": "8px", "border": "1px dashed #d1d5db"})
+        ])
     concrete_pk = tbl_data[sel_rows[0]]["concrete_pk"]
 
     if active_tab == "tab-inp":
@@ -128,18 +211,64 @@ def dl_switch_tab(active_tab, sel_rows, tbl_data):
         columns=columns,
         page_size=10,
         row_selectable="multi",
-        style_cell={"textAlign": "center"},
-        style_header={"backgroundColor": "#f1f3f5", "fontWeight": 600},
-        style_table={"width": "70%", "margin": "auto"},
+        style_cell={
+            "textAlign": "center",
+            "fontSize": "0.8rem",
+            "padding": "12px 10px",
+            "border": "none",
+            "borderBottom": "1px solid #f1f1f0",
+            "fontFamily": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        },
+        style_header={
+            "backgroundColor": "#fafafa", 
+            "fontWeight": 600,
+            "color": "#37352f",
+            "border": "none",
+            "borderBottom": "1px solid #e9e9e7",
+            "fontSize": "0.75rem",
+            "textTransform": "uppercase",
+            "letterSpacing": "0.5px"
+        },
+        style_data={
+            "backgroundColor": "white",
+            "border": "none",
+            "color": "#37352f"
+        },
+        style_data_conditional=[
+            {
+                'if': {'row_index': 'odd'},
+                'backgroundColor': '#fbfbfa'
+            },
+            {
+                'if': {'state': 'selected'},
+                'backgroundColor': '#e8f4fd',
+                'border': '1px solid #579ddb',
+                'borderRadius': '6px',
+                'boxShadow': '0 0 0 1px rgba(87, 157, 219, 0.3)',
+                'color': '#1d4ed8'
+            }
+        ],
+        css=[
+            {
+                'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner table',
+                'rule': 'border-collapse: separate; border-spacing: 0;'
+            },
+            {
+                'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr:hover',
+                'rule': 'background-color: #f8fafc !important; transition: background-color 0.15s ease;'
+            }
+        ],
+        style_table={"width": "100%", "margin": "auto", "marginBottom": "20px"},
     )
     return html.Div([
+        html.Small(f"💾 {len(files)}개의 파일이 있습니다", className="text-muted mb-2 d-block", style={"fontSize": "0.75rem"}),
         table,
         html.Div([
-            dbc.Button("전체 선택", id=f"btn-select-all-{active_tab}", color="secondary", className="me-2 mt-3", n_clicks=0),
-            dbc.Button("전체 해제", id=f"btn-deselect-all-{active_tab}", color="light", className="me-2 mt-3", n_clicks=0),
-            dbc.Button("선택 파일 다운로드", id=dl_btn_id, color="success", className="mt-3", n_clicks=0),
+            dbc.Button("전체 선택", id=f"btn-select-all-{active_tab}", color="outline-secondary", size="sm", className="me-2", n_clicks=0),
+            dbc.Button("전체 해제", id=f"btn-deselect-all-{active_tab}", color="outline-light", size="sm", className="me-2", n_clicks=0),
+            dbc.Button("선택 파일 다운로드", id=dl_btn_id, color="primary", size="sm", className="ms-2", n_clicks=0),
             dcc.Download(id=dl_component_id)
-        ], style={"textAlign": "center"})
+        ], className="d-flex justify-content-center")
     ])
 
 # ───────────────────── ④ 전체 선택/해제 콜백 (탭별) ────────────────────
