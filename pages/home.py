@@ -66,13 +66,8 @@ def layout():
     if not user_id:
         return dcc.Location(pathname="/login", id="redirect-login")
 
-    # 사용자가 접근 가능한 ITS 프로젝트 목록 조회
-    its_projects_result = api_db.get_accessible_projects(user_id, its_num=1)
-    
-    # get_project_structure_list 결과 가져오기
+    # 사용자 권한 정보 조회 (로컬 프로젝트 필터링용)
     try:
-        # get_accessible_projects에서 이미 사용자 정보를 확인했으므로 
-        # 같은 로직을 사용해서 grade와 auth_list 가져오기
         from api_db import _get_its_engine, text
         
         eng = _get_its_engine(1)
@@ -91,177 +86,17 @@ def layout():
                 df_auth = pd.read_sql(auth_query, eng, params={"uid": user_id})
                 auth_list = df_auth["id"].tolist() if not df_auth.empty else []
         
-        project_structure_df = api_db.get_project_structure_list(its_num=1, allow_list=auth_list, grade=grade)
     except Exception as e:
-        print(f"Error getting project structure list: {e}")
-        project_structure_df = pd.DataFrame()
+        print(f"Error getting user info: {e}")
+        grade = "AD"
+        auth_list = []
     
     # 로컬 프로젝트 필터링 로직
     local_projects_df = filter_local_projects(grade, auth_list)
 
-    # ITS 프로젝트가 있는 경우 표시
-    its_projects_df = its_projects_result.get("projects", pd.DataFrame())
-
-    sections = []
-
-    # 권한 정보 표시 섹션 (AD가 아닌 경우)
-    if grade != "AD" and auth_list:
-        sections.append(html.H3("접근 권한 정보", className="text-center mb-4 text-warning"))
-        
-        # 프로젝트 ID와 구조 ID 분류
-        project_ids = [auth_id for auth_id in auth_list if auth_id.startswith('P_')]
-        structure_ids = [auth_id for auth_id in auth_list if auth_id.startswith('S_')]
-        
-        # 권한 정보 카드
-        auth_cards = []
-        
-        if project_ids:
-            auth_cards.append(
-                dbc.Col([
-                    dbc.Card([
-                        dbc.CardHeader("접근 가능한 프로젝트 ID"),
-                        dbc.CardBody([
-                            html.Ul([
-                                html.Li(proj_id, className="mb-1") 
-                                for proj_id in project_ids
-                            ])
-                        ])
-                    ], color="primary", outline=True)
-                ], xs=12, md=6)
-            )
-        
-        if structure_ids:
-            auth_cards.append(
-                dbc.Col([
-                    dbc.Card([
-                        dbc.CardHeader("접근 가능한 구조 ID"),
-                        dbc.CardBody([
-                            html.Ul([
-                                html.Li(struct_id, className="mb-1") 
-                                for struct_id in structure_ids
-                            ])
-                        ])
-                    ], color="success", outline=True)
-                ], xs=12, md=6)
-            )
-        
-        if not project_ids and not structure_ids:
-            auth_cards.append(
-                dbc.Col([
-                    dbc.Alert(
-                        "현재 접근 권한이 설정되지 않았습니다. 관리자에게 문의하세요.",
-                        color="info"
-                    )
-                ], xs=12)
-            )
-        
-        sections.append(
-            dbc.Row(auth_cards, className="mb-4")
-        )
-        sections.append(html.Hr(className="my-5"))
-    elif grade == "AD":
-        sections.append(
-            dbc.Alert(
-                "관리자 권한: 모든 프로젝트와 구조에 접근 가능합니다.",
-                color="success",
-                className="mb-4"
-            )
-        )
-        sections.append(html.Hr(className="my-5"))
-
-    # 1. 프로젝트-구조 목록 섹션 (get_project_structure_list 결과)
-    if not project_structure_df.empty:
-        sections.append(html.H3("ITS 프로젝트 구조 목록", className="text-center mb-4 text-success"))
-        
-        # 테이블 형태로 표시
-        table_data = []
-        for _, row in project_structure_df.iterrows():
-            table_data.append([
-                row["projectid"],
-                row["projectname"], 
-                row["stid"],
-                row["stname"],
-                row["staddr"],
-                format_date(row["regdate"]),
-                "진행중" if pd.isna(row["closedate"]) else "완료"
-            ])
-        
-        sections.append(
-            dbc.Table.from_dataframe(
-                pd.DataFrame(table_data, columns=[
-                    "프로젝트ID", "프로젝트명", "구조ID", "구조명", "주소", "시작일", "상태"
-                ]),
-                striped=True,
-                bordered=True,
-                hover=True,
-                responsive=True,
-                className="mb-5"
-            )
-        )
-        
-        sections.append(html.Hr(className="my-5"))
-
     cards = []
 
-    # 2. ITS 프로젝트 카드 생성
-    if not its_projects_df.empty:
-        cards.append(html.H3("ITS 프로젝트", className="text-center mb-4 text-primary"))
-        
-        for _, row in its_projects_df.iterrows():
-            proj_id = row["projectid"]
-            proj_name = row["projectname"]
-            reg_date = row["regdate"]
-            close_date = row["closedate"]
-            
-            # 상태 표시
-            status = "진행중" if pd.isna(close_date) else "완료"
-            status_color = "success" if status == "진행중" else "secondary"
-            
-            card_style = {
-                "width": "200px",
-                "height": "200px",
-                "backgroundColor": "#e8f5e8",
-                "borderRadius": "0.5rem",
-                "overflow": "hidden",
-                "transition": "transform 0.2s, box-shadow 0.2s",
-                "boxShadow": "0 4px 8px rgba(40, 167, 69, 0.4)",
-                "cursor": "pointer",
-                "textDecoration": "none"
-            }
-
-            cards.append(
-                dbc.Col([
-                    dbc.Card(
-                        dbc.CardBody([
-                            html.H5(
-                                proj_name,
-                                className="card-title fw-bold fs-5 mb-2"
-                            ),
-                            dbc.Badge(
-                                status,
-                                color=status_color,
-                                className="mb-2"
-                            ),
-                            html.P(
-                                f"프로젝트 ID: {proj_id}",
-                                className="card-text fs-7 mb-1"
-                            ),
-                            html.P(
-                                f"시작일: {format_date(reg_date)}",
-                                className="card-text fs-7 mb-1"
-                            ),
-                            html.P(
-                                "ITS 시스템",
-                                className="card-text fs-8 text-muted"
-                            ),
-                        ], className="d-flex flex-column align-items-center justify-content-center h-100"),
-                        style=card_style,
-                        className="project-card mb-4"
-                    )
-                ], xs=12, sm=6, md=3, lg=3)
-            )
-
-    # 3. 로컬 프로젝트 카드 생성 (기존 로직 유지)
+    # 로컬 프로젝트 카드 생성
     if not local_projects_df.empty:
         if cards:  # ITS 프로젝트가 있으면 구분선 추가
             cards.append(html.Hr(className="my-5"))
