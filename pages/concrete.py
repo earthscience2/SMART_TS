@@ -219,13 +219,19 @@ layout = html.Div([
                             ], className="mb-2"),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("높이 (m)", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                    dbc.Label([
+                                        "높이 [m] ",
+                                        html.Small("(0.1~500)", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
                                     dbc.Input(id="add-h", type="number", placeholder="높이를 입력하세요", step=0.1, className="form-control", style={"fontSize": "0.85rem"})
                                 ], width=6),
                                 dbc.Col([
-                                    dbc.Label("Solid 요소크기 [m]", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                    dbc.Label([
+                                        "Solid 요소크기 [m] ",
+                                        html.Small("(0.1~10)", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
                                     dbc.Input(id="add-unit", type="number", placeholder="요소크기", 
-                                             min=0.1, max=1.0, step=0.1, className="form-control", style={"fontSize": "0.85rem"})
+                                             min=0.1, max=10.0, step=0.1, className="form-control", style={"fontSize": "0.85rem"})
                                 ], width=6),
                             ], className="mb-2"),
                         ], className="bg-light p-2 rounded mb-2"),
@@ -262,8 +268,8 @@ layout = html.Div([
                             dbc.Row([
                                 dbc.Col([
                                     dbc.Label([
-                                        "E28(재령 28일 압축 탄성계수) ",
-                                        html.Small("(1~100 GPa)", className="text-muted", style={"fontSize": "0.7rem"})
+                                        "E28(재령 28일 압축 탄성계수) [GPa] ",
+                                        html.Small("(1~100)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="add-e", type="number", min=1, max=100, step=0.1, placeholder="탄성계수(con_e)", className="form-control")
                                 ], width=12),
@@ -351,13 +357,19 @@ layout = html.Div([
                             ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("높이 (m)", className="form-label fw-semibold"),
+                                    dbc.Label([
+                                        "높이 [m] ",
+                                        html.Small("(0.1~500)", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold"),
                                     dbc.Input(id="edit-h", type="number", placeholder="높이를 입력하세요", step=0.1, className="form-control")
                                 ], width=6),
                                 dbc.Col([
-                                    dbc.Label("Solid 요소크기 [m]", className="form-label fw-semibold"),
+                                    dbc.Label([
+                                        "Solid 요소크기 [m] ",
+                                        html.Small("(0.1~10)", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold"),
                                     dbc.Input(id="edit-unit", type="number", placeholder="요소크기", 
-                                             min=0.1, max=1.0, step=0.1, className="form-control")
+                                             min=0.1, max=10.0, step=0.1, className="form-control")
                                 ], width=6),
                             ], className="mb-3"),
                         ], className="bg-light p-3 rounded mb-3"),
@@ -394,8 +406,8 @@ layout = html.Div([
                             dbc.Row([
                                 dbc.Col([
                                     dbc.Label([
-                                        "E28(재령 28일 압축 탄성계수) ",
-                                        html.Small("(1~100 GPa)", className="text-muted", style={"fontSize": "0.7rem"})
+                                        "E28(재령 28일 압축 탄성계수) [GPa] ",
+                                        html.Small("(1~100)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="edit-e", type="number", min=1, max=100, step=0.1, placeholder="탄성계수(con_e)", className="form-control")
                                 ], width=12),
@@ -492,8 +504,8 @@ layout = html.Div([
                                 dbc.Row([
                                     dbc.Col([
                                         dbc.Label([
-                                            "E₂₈ (재령 28일 압축 탄성계수) ", 
-                                            html.Small("(1~100 GPa)", className="text-muted", style={"fontSize": "0.7rem"})
+                                            "E₂₈ (재령 28일 압축 탄성계수) [GPa] ", 
+                                            html.Small("(1~100)", className="text-muted", style={"fontSize": "0.7rem"})
                                         ], className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
                                         dbc.Input(id="analysis-e28", type="number", min=1, max=100, step=0.1, className="form-control-sm")
                                     ], md=4),
@@ -900,8 +912,10 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t_date, t_tim
     
     # 2) 범위 체크
     range_errors = []
-    if unit is not None and (unit < 0.1 or unit > 1.0):
-        range_errors.append("해석 단위(0.1~1.0)")
+    if unit is not None and (unit < 0.1 or unit > 10.0):
+        range_errors.append("해석 단위(0.1~10.0)")
+    if h is not None and (h < 0.1 or h > 500):
+        range_errors.append("높이(0.1~500)")
     if b is not None and (b < 0.1 or b > 1.0):
         range_errors.append("베타 상수(0.1~1.0)")
     if n is not None and (n < 0.5 or n > 0.7):
@@ -1227,8 +1241,10 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
     
     # 2) 범위 체크
     range_errors = []
-    if unit is not None and (unit < 0.1 or unit > 1.0):
-        range_errors.append("해석 단위(0.1~1.0)")
+    if unit is not None and (unit < 0.1 or unit > 10.0):
+        range_errors.append("해석 단위(0.1~10.0)")
+    if h is not None and (h < 0.1 or h > 500):
+        range_errors.append("높이(0.1~500)")
     if b is not None and (b < 0.1 or b > 1.0):
         range_errors.append("베타 상수(0.1~1.0)")
     if n is not None and (n < 0.5 or n > 0.7):
