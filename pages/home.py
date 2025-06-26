@@ -120,8 +120,8 @@ def layout():
             its_sensor_cnt = len(its_sensors_df) if not its_sensors_df.empty else 0
 
             card_style = {
-                "width": "250px",
-                "height": "280px",
+                "width": "280px",
+                "height": "320px",
                 "backgroundColor": "#f0f8ff",
                 "borderRadius": "0.5rem",
                 "overflow": "hidden",
@@ -134,15 +134,35 @@ def layout():
             # ITS 센서 정보 표시
             its_sensor_info = []
             if its_sensor_cnt > 0:
+                # 센서 상세 목록 생성
+                sensor_details = []
+                for _, sensor_row in its_sensors_df.iterrows():
+                    device_type = sensor_row.get('device_type', 'N/A')
+                    data_type = sensor_row.get('data_type', 'N/A')
+                    is3axis = "3축" if sensor_row.get('is3axis') == 'Y' else "1축"
+                    
+                    sensor_details.append(
+                        html.Div([
+                            html.P(f"📡 {sensor_row['deviceid']} (Ch.{sensor_row['channel']})", 
+                                   className="fs-9 mb-1 fw-bold text-primary"),
+                            html.P(f"   • 장비타입: {device_type}", 
+                                   className="fs-10 mb-0 text-muted"),
+                            html.P(f"   • 데이터타입: {data_type}", 
+                                   className="fs-10 mb-0 text-muted"),
+                            html.P(f"   • 센서타입: {is3axis}", 
+                                   className="fs-10 mb-2 text-muted"),
+                        ], className="border-bottom border-light pb-1 mb-2")
+                    )
+                
                 its_sensor_info = [
                     html.P(f"ITS 센서: {its_sensor_cnt} 개", className="card-text fs-7 mb-1 text-success"),
                     html.Details([
-                        html.Summary("센서 목록", className="fs-8 text-muted cursor-pointer"),
-                        html.Div([
-                            html.P(f"• {row['deviceid']} (Ch.{row['channel']})", 
-                                   className="fs-9 mb-0 text-muted")
-                            for _, row in its_sensors_df.iterrows()
-                        ], className="mt-1")
+                        html.Summary("📋 센서 상세정보", className="fs-8 text-muted cursor-pointer fw-bold"),
+                        html.Div(
+                            sensor_details,
+                            className="mt-2 max-height-150 overflow-auto",
+                            style={"maxHeight": "150px", "overflowY": "auto"}
+                        )
                     ], className="mb-1")
                 ]
             else:
