@@ -323,7 +323,7 @@ layout = html.Div([
                 ], className="mt-3"),
             ]),
             dbc.ModalFooter([
-                dbc.Button("미리보기", id="add-build", color="info", className="px-3", size="sm"),
+                dbc.Button("3D 미리보기", id="add-build", color="info", className="px-3", size="sm"),
                 dbc.Button("재령분석", id="add-age-analysis", color="warning", className="px-3", size="sm"),
                 dbc.Button("저장", id="add-save", color="success", className="px-3 fw-semibold ms-auto", size="sm"),
                 dbc.Button("닫기", id="add-close", color="secondary", className="px-3", size="sm"),
@@ -461,7 +461,7 @@ layout = html.Div([
                 ], className="mt-3"),
             ]),
             dbc.ModalFooter([
-                dbc.Button("미리보기", id="edit-build", color="info", className="px-3", size="sm"),
+                dbc.Button("3D 미리보기", id="edit-build", color="info", className="px-3", size="sm"),
                 dbc.Button("재령분석", id="edit-age-analysis", color="warning", className="px-3", size="sm"),
                 dbc.Button("저장", id="edit-save", color="success", className="px-3 fw-semibold ms-auto", size="sm"),
                 dbc.Button("닫기", id="edit-close", color="secondary", className="px-3", size="sm"),
@@ -895,38 +895,55 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t_date, t_tim
         today = datetime.now().strftime('%Y-%m-%d')
         t = f"{today}T{t_time}"
 
-    # 1) 빈값 체크
+    # 1) 빈값 및 범위 체크
     missing = []
+    range_errors = []
+    
+    # 기본 정보 체크
     if not project_pk: missing.append("프로젝트 선택")
     if not name:       missing.append("이름")
     if not nodes_txt:  missing.append("노드 목록")
-    if h    is None:   missing.append("높이 H")
-    if unit is None:   missing.append("해석 단위")
-    if b    is None:   missing.append("베타 상수")
-    if n    is None:   missing.append("N 상수")
     if not t:          missing.append("타설 시간")
-    if a    is None:   missing.append("열팽창계수")
-    if p    is None:   missing.append("포아송비")
-    if d    is None:   missing.append("밀도")
-    if e    is None:   missing.append("탄성계수")
     
-    # 2) 범위 체크
-    range_errors = []
-    if unit is not None and (unit < 0.1 or unit > 10.0):
+    # 수치 입력 필드들 - 빈값과 범위를 함께 체크
+    if unit is None:
+        missing.append("해석 단위")
+    elif unit < 0.1 or unit > 10.0:
         range_errors.append("해석 단위(0.1~10.0)")
-    if h is not None and (h < 0.1 or h > 500):
+        
+    if h is None:
+        missing.append("높이 H")
+    elif h < 0.1 or h > 500:
         range_errors.append("높이(0.1~500)")
-    if b is not None and (b < 0.1 or b > 1.0):
+        
+    if b is None:
+        missing.append("베타 상수")
+    elif b < 0.1 or b > 1.0:
         range_errors.append("베타 상수(0.1~1.0)")
-    if n is not None and (n < 0.5 or n > 0.7):
+        
+    if n is None:
+        missing.append("N 상수")
+    elif n < 0.5 or n > 0.7:
         range_errors.append("N 상수(0.5~0.7)")
-    if a is not None and (a < 0.1 or a > 10.0):
+        
+    if a is None:
+        missing.append("열팽창계수")
+    elif a < 0.1 or a > 10.0:
         range_errors.append("열팽창계수(0.1~10.0)")
-    if p is not None and (p < 0.01 or p > 1.0):
+        
+    if p is None:
+        missing.append("포아송비")
+    elif p < 0.01 or p > 1.0:
         range_errors.append("포아송비(0.01~1.0)")
-    if d is not None and (d < 500 or d > 5000):
+        
+    if d is None:
+        missing.append("밀도")
+    elif d < 500 or d > 5000:
         range_errors.append("밀도(500~5000)")
-    if e is not None and (e < 1 or e > 100):
+        
+    if e is None:
+        missing.append("탄성계수")
+    elif e < 1 or e > 100:
         range_errors.append("탄성계수(1~100)")
 
     if missing:
@@ -1224,38 +1241,55 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
         today = datetime.now().strftime('%Y-%m-%d')
         t = f"{today}T{t_time}"
 
-    # 1) 빈값 체크
+    # 1) 빈값 및 범위 체크
     missing = []
+    range_errors = []
+    
+    # 기본 정보 체크
     if not cid:        missing.append("항목 선택")
     if not name:       missing.append("이름")
     if not nodes_txt:  missing.append("노드 목록")
-    if h    is None:   missing.append("높이 H")
-    if unit is None:   missing.append("해석 단위")
-    if b    is None:   missing.append("베타 상수")
-    if n    is None:   missing.append("N 상수")
     if not t:          missing.append("타설 시간")
-    if a    is None:   missing.append("열팽창계수")
-    if p    is None:   missing.append("포아송비")
-    if d    is None:   missing.append("밀도")
-    if e    is None:   missing.append("탄성계수")
     
-    # 2) 범위 체크
-    range_errors = []
-    if unit is not None and (unit < 0.1 or unit > 10.0):
+    # 수치 입력 필드들 - 빈값과 범위를 함께 체크
+    if unit is None:
+        missing.append("해석 단위")
+    elif unit < 0.1 or unit > 10.0:
         range_errors.append("해석 단위(0.1~10.0)")
-    if h is not None and (h < 0.1 or h > 500):
+        
+    if h is None:
+        missing.append("높이 H")
+    elif h < 0.1 or h > 500:
         range_errors.append("높이(0.1~500)")
-    if b is not None and (b < 0.1 or b > 1.0):
+        
+    if b is None:
+        missing.append("베타 상수")
+    elif b < 0.1 or b > 1.0:
         range_errors.append("베타 상수(0.1~1.0)")
-    if n is not None and (n < 0.5 or n > 0.7):
+        
+    if n is None:
+        missing.append("N 상수")
+    elif n < 0.5 or n > 0.7:
         range_errors.append("N 상수(0.5~0.7)")
-    if a is not None and (a < 0.1 or a > 10.0):
+        
+    if a is None:
+        missing.append("열팽창계수")
+    elif a < 0.1 or a > 10.0:
         range_errors.append("열팽창계수(0.1~10.0)")
-    if p is not None and (p < 0.01 or p > 1.0):
+        
+    if p is None:
+        missing.append("포아송비")
+    elif p < 0.01 or p > 1.0:
         range_errors.append("포아송비(0.01~1.0)")
-    if d is not None and (d < 500 or d > 5000):
+        
+    if d is None:
+        missing.append("밀도")
+    elif d < 500 or d > 5000:
         range_errors.append("밀도(500~5000)")
-    if e is not None and (e < 1 or e > 100):
+        
+    if e is None:
+        missing.append("탄성계수")
+    elif e < 1 or e > 100:
         range_errors.append("탄성계수(1~100)")
 
     if missing:
