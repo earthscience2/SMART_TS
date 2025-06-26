@@ -64,6 +64,71 @@ def layout():
 
     sections = []
 
+    # 권한 정보 표시 섹션 (AD가 아닌 경우)
+    if grade != "AD" and auth_list:
+        sections.append(html.H3("접근 권한 정보", className="text-center mb-4 text-warning"))
+        
+        # 프로젝트 ID와 구조 ID 분류
+        project_ids = [auth_id for auth_id in auth_list if auth_id.startswith('P_')]
+        structure_ids = [auth_id for auth_id in auth_list if auth_id.startswith('S_')]
+        
+        # 권한 정보 카드
+        auth_cards = []
+        
+        if project_ids:
+            auth_cards.append(
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader("접근 가능한 프로젝트 ID"),
+                        dbc.CardBody([
+                            html.Ul([
+                                html.Li(proj_id, className="mb-1") 
+                                for proj_id in project_ids
+                            ])
+                        ])
+                    ], color="primary", outline=True)
+                ], xs=12, md=6)
+            )
+        
+        if structure_ids:
+            auth_cards.append(
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader("접근 가능한 구조 ID"),
+                        dbc.CardBody([
+                            html.Ul([
+                                html.Li(struct_id, className="mb-1") 
+                                for struct_id in structure_ids
+                            ])
+                        ])
+                    ], color="success", outline=True)
+                ], xs=12, md=6)
+            )
+        
+        if not project_ids and not structure_ids:
+            auth_cards.append(
+                dbc.Col([
+                    dbc.Alert(
+                        "현재 접근 권한이 설정되지 않았습니다. 관리자에게 문의하세요.",
+                        color="info"
+                    )
+                ], xs=12)
+            )
+        
+        sections.append(
+            dbc.Row(auth_cards, className="mb-4")
+        )
+        sections.append(html.Hr(className="my-5"))
+    elif grade == "AD":
+        sections.append(
+            dbc.Alert(
+                "관리자 권한: 모든 프로젝트와 구조에 접근 가능합니다.",
+                color="success",
+                className="mb-4"
+            )
+        )
+        sections.append(html.Hr(className="my-5"))
+
     # 1. 프로젝트-구조 목록 섹션 (get_project_structure_list 결과)
     if not project_structure_df.empty:
         sections.append(html.H3("ITS 프로젝트 구조 목록", className="text-center mb-4 text-success"))
