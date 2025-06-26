@@ -377,15 +377,7 @@ layout = html.Div([
                                 dbc.Col([
                                     dbc.Label("센서 좌표 [x, y, z]", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
                                     dbc.Input(id="edit-sensor-coords", placeholder="센서 좌표 (예: [1, 1, 0])", className="form-control", style={"fontSize": "0.85rem"}),
-                                ], width=8),
-                                dbc.Col([
-                                    dbc.Switch(
-                                        id="edit-toggle-lines",
-                                        label="보조선 표시",
-                                        value=True,
-                                        style={"fontSize": "0.8rem", "marginTop": "28px"},
-                                    ),
-                                ], width=4)
+                                ], width=12)
                             ], className="mb-2"),
                         ], className="bg-light p-2 rounded mb-3"),
                         
@@ -1010,9 +1002,8 @@ def toggle_edit_modal(b_open, b_close, b_save, sel, tbl_data, conc_pk):
     Input("modal-sensor-edit", "is_open"),
     State("edit-sensor-concrete-id", "data"),
     State("edit-sensor-id-store", "data"),
-    State("edit-toggle-lines", "value"),      # ← 모달 내 보조선 토글 스위치 상태
 )
-def fill_edit_sensor(opened, conc_pk, sensor_pk, show_lines):
+def fill_edit_sensor(opened, conc_pk, sensor_pk):
     if not opened or not (conc_pk and sensor_pk):
         raise PreventUpdate
 
@@ -1060,8 +1051,8 @@ def fill_edit_sensor(opened, conc_pk, sensor_pk, show_lines):
         name="All Sensors (for edit)",
     ))
 
-    # 4) 보조선(show_lines=True 일 때만)
-    if show_lines:
+    # 4) 보조선 (항상 표시)
+    if True:
         for x_s, y_s, z_s in zip(all_xs, all_ys, all_zs):
             # ① 수직 보조선
             fig_conc.add_trace(go.Scatter3d(
@@ -1140,21 +1131,17 @@ def fill_edit_sensor(opened, conc_pk, sensor_pk, show_lines):
     Output("edit-sensor-alert", "children", allow_duplicate=True),
     Output("edit-sensor-alert", "is_open", allow_duplicate=True),
     Input("edit-sensor-build", "n_clicks"),           # "새로고침" 버튼 클릭
-    Input("edit-toggle-lines", "value"),              # 모달 내 보조선 스위치 값
     State("edit-sensor-coords", "value"),             # 수정할 좌표
     State("edit-sensor-concrete-id", "data"),         # 현재 콘크리트 ID
     State("edit-sensor-id-store", "data"),            # 수정 중인 센서 ID
     prevent_initial_call=True,
 )
-def edit_sensor_preview(n_clicks, show_lines, coords_txt, conc_pk, sensor_pk):
+def edit_sensor_preview(n_clicks, coords_txt, conc_pk, sensor_pk):
     """
-    수정 모달에서:
-    - '새로고침' 버튼(n_clicks) OR
-    - '모달 내 보조선 표시' 스위치(show_lines)
-    둘 중 하나가 변경되면 실행됩니다.
+    수정 모달에서 '새로고침' 버튼이 클릭되면 실행됩니다.
 
     1) 콘크리트 + (수정 대상 제외) 나머지 센서를 파란 점으로 그림
-    2) show_lines=True 면 보조선을 그림
+    2) 보조선을 그림
     3) 입력된 coords_txt로 수정된 센서를 빨간 점으로 그림
     """
     # 1) 콘크리트 정보 로드 & 기본 Mesh 그리기
@@ -1191,8 +1178,8 @@ def edit_sensor_preview(n_clicks, show_lines, coords_txt, conc_pk, sensor_pk):
             showlegend=False,
         ))
 
-    # 3) show_lines=True일 때만 보조선을 그린다
-    if show_lines:
+    # 3) 보조선을 항상 그린다
+    if True:
         for idx, row in df_same.iterrows():
             try:
                 dims = ast.literal_eval(row["dims"])
