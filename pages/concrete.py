@@ -168,7 +168,7 @@ layout = html.Div([
                         html.Div([
                             dbc.Button("수정", id="btn-edit", color="secondary", size="sm", className="px-3", disabled=True),
                             dbc.Button("삭제", id="btn-del", color="danger", size="sm", className="px-3", disabled=True),
-                        ], className="d-flex justify-content-between mt-2")
+                        ], className="d-flex justify-content-around mt-2")
                     ], className="p-3")
                 ], className="bg-white rounded shadow-sm border"),
             ], md=4),
@@ -194,91 +194,105 @@ layout = html.Div([
         ),
 
         # 추가 모달
-        dbc.Modal(id="modal-add", is_open=False, size="lg", className="modal-notion", children=[
+        dbc.Modal(id="modal-add", is_open=False, size="xl", className="modal-notion", children=[
             dbc.ModalHeader([
                 html.H4("🧱 콘크리트 추가", className="mb-0 text-secondary fw-bold")
             ], className="border-0 pb-2"),
             dbc.ModalBody([
-                # 기본 정보 섹션
-                html.Div([
-                    html.H6("📝 기본 정보", className="mb-3 text-secondary fw-bold"),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Label("콘크리트 이름", className="form-label fw-semibold"),
-                            dbc.Input(id="add-name", placeholder="콘크리트 이름을 입력하세요", className="form-control-lg")
-                        ], width=12),
-                    ], className="mb-3"),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Label("노드 목록 (예: [[1,0],[1,1],[0,1],[0,0]])", className="form-label fw-semibold"),
-                            dbc.Textarea(id="add-nodes", rows=3, placeholder="노드 좌표를 입력하세요", className="form-control-lg")
-                        ], width=12),
-                    ], className="mb-3"),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Label("높이 (m)", className="form-label fw-semibold"),
-                            dbc.Input(id="add-h", type="number", placeholder="높이를 입력하세요", step=0.1, className="form-control-lg")
-                        ], width=6),
-                        dbc.Col([
-                            dbc.Label("해석 단위 (0.1 ~ 1.0) [m]", className="form-label fw-semibold"),
-                            dbc.Input(id="add-unit", type="number", placeholder="해석 단위", 
-                                     min=0.1, max=1.0, step=0.1, className="form-control-lg")
-                        ], width=6),
-                    ], className="mb-3"),
-                ], className="bg-light p-3 rounded mb-3"),
-                
-                dbc.Alert(id="add-alert", is_open=False, duration=3000, color="danger"),
-                # 콘크리트 물성치 섹션
-                html.Div([
-                    html.H6("🔬 콘크리트 물성치", className="mb-3 text-secondary fw-bold"),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Label("베타 상수 (0.1 ~ 1.0)", className="form-label fw-semibold"),
-                            dbc.Input(id="add-b", type="number", min=0.1, max=1.0, step=0.1, placeholder="베타 상수(con_b)", className="form-control-lg")
-                        ], width=6),
-                        dbc.Col([
-                            dbc.Label("N 상수 (0.5 ~ 0.7)", className="form-label fw-semibold"),
-                            dbc.Input(id="add-n", type="number", min=0.5, max=0.7, step=0.1, placeholder="N 상수(con_n)", className="form-control-lg")
-                        ], width=6),
-                    ], className="mb-3"),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Label("28일 후 탄성계수 (1 ~ 100) [GPa]", className="form-label fw-semibold"),
-                            dbc.Input(id="add-e", type="number", min=1, max=100, step=0.1, placeholder="탄성계수(con_e)", className="form-control-lg")
-                        ], width=12),
-                    ], className="mb-3"),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Label("타설 날짜", className="form-label fw-semibold"),
-                            dbc.Input(id="add-t-date", type="date", className="form-control-lg")
-                        ], width=6),
-                        dbc.Col([
-                            dbc.Label("타설 시간", className="form-label fw-semibold"),
-                            dbc.Input(id="add-t-time", type="time", className="form-control-lg")
-                        ], width=6),
-                    ], className="mb-3"),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Label("열팽창계수 (0.1 ~ 10.0) [×10⁻⁵/°C]", className="form-label fw-semibold"),
-                            dbc.Input(id="add-a", type="number", min=0.1, max=10.0, step=0.1, placeholder="열팽창계수(con_a)", className="form-control-lg")
-                        ], width=6),
-                        dbc.Col([
-                            dbc.Label("포아송비 (0.01 ~ 1.00)", className="form-label fw-semibold"),
-                            dbc.Input(id="add-p", type="number", min=0.01, max=1.00, step=0.01, placeholder="포아송비(con_p)", className="form-control-lg")
-                        ], width=6),
-                    ], className="mb-3"),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Label("밀도 (500 ~ 5000) [kg/m³]", className="form-label fw-semibold"),
-                            dbc.Input(id="add-d", type="number", min=500, max=5000, step=10, placeholder="밀도(con_d)", className="form-control-lg")
-                        ], width=12),
-                    ], className="mb-3"),
-                ], className="bg-light p-3 rounded mb-3"),
-                # 미리보기 섹션
-                html.Div([
-                    html.H6("👁️ 3D 미리보기", className="mb-3 text-secondary fw-bold"),
-                    dcc.Graph(id="add-preview", style={"height": "45vh"}, className="rounded", config={'displayModeBar': False}),
-                ], className="bg-light p-3 rounded"),
+                dbc.Alert(id="add-alert", is_open=False, duration=3000, color="danger", className="mb-3"),
+                dbc.Row([
+                    # 왼쪽 칼럼: 기본 정보 + 3D 미리보기
+                    dbc.Col([
+                        # 기본 정보 섹션
+                        html.Div([
+                            html.H6("📝 기본 정보", className="mb-3 text-secondary fw-bold"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("콘크리트 이름", className="form-label fw-semibold"),
+                                    dbc.Input(id="add-name", placeholder="콘크리트 이름을 입력하세요", className="form-control")
+                                ], width=12),
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("노드 목록 (예: [[1,0],[1,1],[0,1],[0,0]])", className="form-label fw-semibold"),
+                                    dbc.Textarea(id="add-nodes", rows=3, placeholder="노드 좌표를 입력하세요", className="form-control")
+                                ], width=12),
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("높이 (m)", className="form-label fw-semibold"),
+                                    dbc.Input(id="add-h", type="number", placeholder="높이를 입력하세요", step=0.1, className="form-control")
+                                ], width=6),
+                                dbc.Col([
+                                    dbc.Label("해석 단위 (0.1 ~ 1.0) [m]", className="form-label fw-semibold"),
+                                    dbc.Input(id="add-unit", type="number", placeholder="해석 단위", 
+                                             min=0.1, max=1.0, step=0.1, className="form-control")
+                                ], width=6),
+                            ], className="mb-3"),
+                        ], className="bg-light p-3 rounded mb-3"),
+                        
+                        # 미리보기 섹션
+                        html.Div([
+                            html.H6("👁️ 3D 미리보기", className="mb-3 text-secondary fw-bold"),
+                            dcc.Graph(id="add-preview", style={"height": "40vh"}, className="rounded", config={'displayModeBar': False}),
+                        ], className="bg-light p-3 rounded"),
+                    ], md=6),
+                    
+                    # 오른쪽 칼럼: 콘크리트 물성치
+                    dbc.Col([
+                        html.Div([
+                            html.H6("🔬 콘크리트 물성치", className="mb-3 text-secondary fw-bold"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("베타 상수 (0.1 ~ 1.0)", className="form-label fw-semibold"),
+                                    dbc.Input(id="add-b", type="number", min=0.1, max=1.0, step=0.1, placeholder="베타 상수(con_b)", className="form-control")
+                                ], width=12),
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("N 상수 (0.5 ~ 0.7)", className="form-label fw-semibold"),
+                                    dbc.Input(id="add-n", type="number", min=0.5, max=0.7, step=0.1, placeholder="N 상수(con_n)", className="form-control")
+                                ], width=12),
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("28일 후 탄성계수 (1 ~ 100) [GPa]", className="form-label fw-semibold"),
+                                    dbc.Input(id="add-e", type="number", min=1, max=100, step=0.1, placeholder="탄성계수(con_e)", className="form-control")
+                                ], width=12),
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("타설 날짜", className="form-label fw-semibold"),
+                                    dbc.Input(id="add-t-date", type="date", className="form-control")
+                                ], width=12),
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("타설 시간", className="form-label fw-semibold"),
+                                    dbc.Input(id="add-t-time", type="time", className="form-control")
+                                ], width=12),
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("열팽창계수 (0.1 ~ 10.0) [×10⁻⁵/°C]", className="form-label fw-semibold"),
+                                    dbc.Input(id="add-a", type="number", min=0.1, max=10.0, step=0.1, placeholder="열팽창계수(con_a)", className="form-control")
+                                ], width=12),
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("포아송비 (0.01 ~ 1.00)", className="form-label fw-semibold"),
+                                    dbc.Input(id="add-p", type="number", min=0.01, max=1.00, step=0.01, placeholder="포아송비(con_p)", className="form-control")
+                                ], width=12),
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("밀도 (500 ~ 5000) [kg/m³]", className="form-label fw-semibold"),
+                                    dbc.Input(id="add-d", type="number", min=500, max=5000, step=10, placeholder="밀도(con_d)", className="form-control")
+                                ], width=12),
+                            ], className="mb-3"),
+                        ], className="bg-light p-3 rounded", style={"height": "fit-content"}),
+                    ], md=6),
+                ], className="g-3"),
             ]),
             dbc.ModalFooter([
                 dbc.Button("미리보기", id="add-build", color="info", className="me-auto px-4"),
@@ -288,94 +302,106 @@ layout = html.Div([
         ]),
 
         # 수정 모달
-        dbc.Modal(id="modal-edit", is_open=False, size="lg", className="modal-notion", children=[
+        dbc.Modal(id="modal-edit", is_open=False, size="xl", className="modal-notion", children=[
             dbc.ModalHeader([
                 html.H4("✏️ 콘크리트 수정", className="mb-0 text-secondary fw-bold")
             ], className="border-0 pb-2"),
             dbc.ModalBody([
                 dcc.Store(id="edit-id"),
-                
-                # 기본 정보 섹션
-                html.Div([
-                    html.H6("📝 기본 정보", className="mb-3 text-secondary fw-bold"),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Label("콘크리트 이름", className="form-label fw-semibold"),
-                            dbc.Input(id="edit-name", placeholder="콘크리트 이름을 입력하세요", className="form-control-lg")
-                        ], width=12),
-                    ], className="mb-3"),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Label("노드 목록 (예: [(1,0),(1,1),(0,1),(0,0)])", className="form-label fw-semibold"),
-                            dbc.Textarea(id="edit-nodes", rows=3, placeholder="노드 좌표를 입력하세요", className="form-control-lg")
-                        ], width=12),
-                    ], className="mb-3"),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Label("높이 (m)", className="form-label fw-semibold"),
-                            dbc.Input(id="edit-h", type="number", placeholder="높이를 입력하세요", step=0.1, className="form-control-lg")
-                        ], width=6),
-                        dbc.Col([
-                            dbc.Label("해석 단위 (0.1 ~ 1.0) [m]", className="form-label fw-semibold"),
-                            dbc.Input(id="edit-unit", type="number", placeholder="해석 단위", 
-                                     min=0.1, max=1.0, step=0.1, className="form-control-lg")
-                        ], width=6),
-                    ], className="mb-3"),
-                ], className="bg-light p-3 rounded mb-3"),
-                
-                dbc.Alert(id="edit-alert", is_open=False, duration=3000, color="danger"),
-                # 콘크리트 물성치 섹션
-                html.Div([
-                    html.H6("🔬 콘크리트 물성치", className="mb-3 text-secondary fw-bold"),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Label("베타 상수 (0.1 ~ 1.0)", className="form-label fw-semibold"),
-                            dbc.Input(id="edit-b", type="number", min=0.1, max=1.0, step=0.1, placeholder="베타 상수(con_b)", className="form-control-lg")
-                        ], width=6),
-                        dbc.Col([
-                            dbc.Label("N 상수 (0.5 ~ 0.7)", className="form-label fw-semibold"),
-                            dbc.Input(id="edit-n", type="number", min=0.5, max=0.7, step=0.1, placeholder="N 상수(con_n)", className="form-control-lg")
-                        ], width=6),
-                    ], className="mb-3"),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Label("28일 후 탄성계수 (1 ~ 100) [GPa]", className="form-label fw-semibold"),
-                            dbc.Input(id="edit-e", type="number", min=1, max=100, step=0.1, placeholder="탄성계수(con_e)", className="form-control-lg")
-                        ], width=12),
-                    ], className="mb-3"),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Label("타설 날짜", className="form-label fw-semibold"),
-                            dbc.Input(id="edit-t-date", type="date", className="form-control-lg")
-                        ], width=6),
-                        dbc.Col([
-                            dbc.Label("타설 시간", className="form-label fw-semibold"),
-                            dbc.Input(id="edit-t-time", type="time", className="form-control-lg")
-                        ], width=6),
-                    ], className="mb-3"),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Label("열팽창계수 (0.1 ~ 10.0) [×10⁻⁵/°C]", className="form-label fw-semibold"),
-                            dbc.Input(id="edit-a", type="number", min=0.1, max=10.0, step=0.1, placeholder="열팽창계수(con_a)", className="form-control-lg")
-                        ], width=6),
-                        dbc.Col([
-                            dbc.Label("포아송비 (0.01 ~ 1.00)", className="form-label fw-semibold"),
-                            dbc.Input(id="edit-p", type="number", min=0.01, max=1.00, step=0.01, placeholder="포아송비(con_p)", className="form-control-lg")
-                        ], width=6),
-                    ], className="mb-3"),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Label("밀도 (500 ~ 5000) [kg/m³]", className="form-label fw-semibold"),
-                            dbc.Input(id="edit-d", type="number", min=500, max=5000, step=10, placeholder="밀도(con_d)", className="form-control-lg")
-                        ], width=12),
-                    ], className="mb-3"),
-                ], className="bg-light p-3 rounded mb-3"),
-                
-                # 미리보기 섹션
-                html.Div([
-                    html.H6("👁️ 3D 미리보기", className="mb-3 text-secondary fw-bold"),
-                    dcc.Graph(id="edit-preview", style={"height": "45vh"}, className="rounded", config={'displayModeBar': False}),
-                ], className="bg-light p-3 rounded"),
+                dbc.Alert(id="edit-alert", is_open=False, duration=3000, color="danger", className="mb-3"),
+                dbc.Row([
+                    # 왼쪽 칼럼: 기본 정보 + 3D 미리보기
+                    dbc.Col([
+                        # 기본 정보 섹션
+                        html.Div([
+                            html.H6("📝 기본 정보", className="mb-3 text-secondary fw-bold"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("콘크리트 이름", className="form-label fw-semibold"),
+                                    dbc.Input(id="edit-name", placeholder="콘크리트 이름을 입력하세요", className="form-control")
+                                ], width=12),
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("노드 목록 (예: [(1,0),(1,1),(0,1),(0,0)])", className="form-label fw-semibold"),
+                                    dbc.Textarea(id="edit-nodes", rows=3, placeholder="노드 좌표를 입력하세요", className="form-control")
+                                ], width=12),
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("높이 (m)", className="form-label fw-semibold"),
+                                    dbc.Input(id="edit-h", type="number", placeholder="높이를 입력하세요", step=0.1, className="form-control")
+                                ], width=6),
+                                dbc.Col([
+                                    dbc.Label("해석 단위 (0.1 ~ 1.0) [m]", className="form-label fw-semibold"),
+                                    dbc.Input(id="edit-unit", type="number", placeholder="해석 단위", 
+                                             min=0.1, max=1.0, step=0.1, className="form-control")
+                                ], width=6),
+                            ], className="mb-3"),
+                        ], className="bg-light p-3 rounded mb-3"),
+                        
+                        # 미리보기 섹션
+                        html.Div([
+                            html.H6("👁️ 3D 미리보기", className="mb-3 text-secondary fw-bold"),
+                            dcc.Graph(id="edit-preview", style={"height": "40vh"}, className="rounded", config={'displayModeBar': False}),
+                        ], className="bg-light p-3 rounded"),
+                    ], md=6),
+                    
+                    # 오른쪽 칼럼: 콘크리트 물성치
+                    dbc.Col([
+                        html.Div([
+                            html.H6("🔬 콘크리트 물성치", className="mb-3 text-secondary fw-bold"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("베타 상수 (0.1 ~ 1.0)", className="form-label fw-semibold"),
+                                    dbc.Input(id="edit-b", type="number", min=0.1, max=1.0, step=0.1, placeholder="베타 상수(con_b)", className="form-control")
+                                ], width=12),
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("N 상수 (0.5 ~ 0.7)", className="form-label fw-semibold"),
+                                    dbc.Input(id="edit-n", type="number", min=0.5, max=0.7, step=0.1, placeholder="N 상수(con_n)", className="form-control")
+                                ], width=12),
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("28일 후 탄성계수 (1 ~ 100) [GPa]", className="form-label fw-semibold"),
+                                    dbc.Input(id="edit-e", type="number", min=1, max=100, step=0.1, placeholder="탄성계수(con_e)", className="form-control")
+                                ], width=12),
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("타설 날짜", className="form-label fw-semibold"),
+                                    dbc.Input(id="edit-t-date", type="date", className="form-control")
+                                ], width=12),
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("타설 시간", className="form-label fw-semibold"),
+                                    dbc.Input(id="edit-t-time", type="time", className="form-control")
+                                ], width=12),
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("열팽창계수 (0.1 ~ 10.0) [×10⁻⁵/°C]", className="form-label fw-semibold"),
+                                    dbc.Input(id="edit-a", type="number", min=0.1, max=10.0, step=0.1, placeholder="열팽창계수(con_a)", className="form-control")
+                                ], width=12),
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("포아송비 (0.01 ~ 1.00)", className="form-label fw-semibold"),
+                                    dbc.Input(id="edit-p", type="number", min=0.01, max=1.00, step=0.01, placeholder="포아송비(con_p)", className="form-control")
+                                ], width=12),
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("밀도 (500 ~ 5000) [kg/m³]", className="form-label fw-semibold"),
+                                    dbc.Input(id="edit-d", type="number", min=500, max=5000, step=10, placeholder="밀도(con_d)", className="form-control")
+                                ], width=12),
+                            ], className="mb-3"),
+                        ], className="bg-light p-3 rounded", style={"height": "fit-content"}),
+                    ], md=6),
+                ], className="g-3"),
             ]),
             dbc.ModalFooter([
                 dbc.Button("미리보기", id="edit-build", color="info", className="me-auto px-4"),
