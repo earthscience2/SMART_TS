@@ -486,15 +486,15 @@ def load_concrete_data(search, pathname):
         if row["activate"] == 1:  # 활성
             if has_sensors:
                 status = "분석 가능"
-                status_color = "#cce5ff"  # 연한 파란색
+                status_color = "#e3f2fd"  # 연한 파란색 (더 진하게)
                 status_sort = 2  # 두 번째 우선순위
             else:
                 status = "센서 부족"
-                status_color = "#fff3cd"  # 연한 노란색
+                status_color = "#fff3e0"  # 연한 오렌지색
                 status_sort = 3  # 세 번째 우선순위
         else:  # 비활성 (activate == 0)
             status = "분석중"
-            status_color = "#d4edda"  # 연한 초록색
+            status_color = "#e8f5e8"  # 연한 초록색 (더 진하게)
             status_sort = 1  # 첫 번째 우선순위
         
         # 타설날짜 포맷팅
@@ -562,11 +562,11 @@ def load_concrete_data(search, pathname):
     for i, data in enumerate(table_data):
         # 상태별 텍스트 색상 설정
         if data['status'] == '분석중':
-            text_color = '#155724'  # 진한 초록색
+            text_color = '#2e7d32'  # 진한 초록색 (Material Design Green 800)
         elif data['status'] == '분석 가능':
-            text_color = '#004085'  # 진한 파란색
+            text_color = '#1565c0'  # 진한 파란색 (Material Design Blue 800)
         elif data['status'] == '센서 부족':
-            text_color = '#856404'  # 진한 노란색(갈색)
+            text_color = '#ef6c00'  # 진한 오렌지색 (Material Design Orange 800)
         else:
             text_color = '#212529'  # 기본 색상
             
@@ -988,12 +988,19 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
     if selected_rows and tbl_data:
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
         is_active = row["activate"] == "활성"
+        has_sensors = row["has_sensors"]
         concrete_pk = row["concrete_pk"]
         inp_dir = f"inp/{concrete_pk}"
         inp_files = glob.glob(f"{inp_dir}/*.inp")
-        if is_active:
+        
+        # "분석 가능" 상태이고 INP 파일이 없는 경우만 안내 메시지 표시
+        if is_active and has_sensors and not inp_files:
             guide_message = "⚠️ 분석을 시작하려면 왼쪽의 '분석 시작' 버튼을 클릭하세요."
-        elif not inp_files:
+        # "센서 부족" 상태인 경우 안내 메시지 표시
+        elif is_active and not has_sensors:
+            guide_message = "⚠️ 센서가 부족합니다. 센서를 추가한 후 분석을 시작하세요."
+        # INP 파일이 없는 경우 (분석중 상태이지만 아직 데이터가 없음)
+        elif not is_active and not inp_files:
             guide_message = "⏳ 아직 수집된 데이터가 없습니다. 잠시 후 다시 확인해주세요."
     elif tbl_data is not None and len(tbl_data) == 0:
         guide_message = "분석할 콘크리트를 추가하세요."
