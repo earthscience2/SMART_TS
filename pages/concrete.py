@@ -243,19 +243,28 @@ layout = html.Div([
                             html.H6("🔬 타설 콘크리트 탄성계수 (CEB-FIB Model)[Pa]", className="mb-3 text-secondary fw-bold"),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("베타 상수 (0.1 ~ 1.0)", className="form-label fw-semibold"),
+                                    dbc.Label([
+                                        "베타 상수 ",
+                                        html.Small("0.1~1.0", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold"),
                                     dbc.Input(id="add-b", type="number", min=0.1, max=1.0, step=0.1, placeholder="베타 상수(con_b)", className="form-control")
                                 ], width=12),
                             ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("N 상수 (0.5 ~ 0.7)", className="form-label fw-semibold"),
+                                    dbc.Label([
+                                        "N 상수 ",
+                                        html.Small("0.5~0.7", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold"),
                                     dbc.Input(id="add-n", type="number", min=0.5, max=0.7, step=0.1, placeholder="N 상수(con_n)", className="form-control")
                                 ], width=12),
                             ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("E28(재령 28일 압축 탄성계수)[Gpa]", className="form-label fw-semibold"),
+                                    dbc.Label([
+                                        "E28(재령 28일 압축 탄성계수) ",
+                                        html.Small("1~100 GPa", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold"),
                                     dbc.Input(id="add-e", type="number", min=1, max=100, step=0.1, placeholder="탄성계수(con_e)", className="form-control")
                                 ], width=12),
                             ], className="mb-3"),
@@ -273,19 +282,28 @@ layout = html.Div([
                             ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("열팽창계수 (0.1 ~ 10.0) [×10⁻⁵/°C]", className="form-label fw-semibold"),
+                                    dbc.Label([
+                                        "열팽창계수 [×10⁻⁵/°C] ",
+                                        html.Small("0.1~10.0", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold"),
                                     dbc.Input(id="add-a", type="number", min=0.1, max=10.0, step=0.1, placeholder="열팽창계수(con_a)", className="form-control")
                                 ], width=12),
                             ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("포아송비 (0.01 ~ 1.00)", className="form-label fw-semibold"),
+                                    dbc.Label([
+                                        "포아송비 ",
+                                        html.Small("0.01~1.00", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold"),
                                     dbc.Input(id="add-p", type="number", min=0.01, max=1.00, step=0.01, placeholder="포아송비(con_p)", className="form-control")
                                 ], width=12),
                             ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("밀도 (500 ~ 5000) [kg/m³]", className="form-label fw-semibold"),
+                                    dbc.Label([
+                                        "밀도 [kg/m³] ",
+                                        html.Small("500~5000", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold"),
                                     dbc.Input(id="add-d", type="number", min=500, max=5000, step=10, placeholder="밀도(con_d)", className="form-control")
                                 ], width=12),
                             ], className="mb-3"),
@@ -357,19 +375,28 @@ layout = html.Div([
                             html.H6("🔬 타설 콘크리트 탄성계수 (CEB-FIB Model)[Pa]", className="mb-3 text-secondary fw-bold"),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("베타 상수 (0.1 ~ 1.0)", className="form-label fw-semibold"),
+                                    dbc.Label([
+                                        "베타 상수 ",
+                                        html.Small("0.1~1.0", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold"),
                                     dbc.Input(id="edit-b", type="number", min=0.1, max=1.0, step=0.1, placeholder="베타 상수(con_b)", className="form-control")
                                 ], width=12),
                             ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("N 상수 (0.5 ~ 0.7)", className="form-label fw-semibold"),
+                                    dbc.Label([
+                                        "N 상수 ",
+                                        html.Small("0.5~0.7", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold"),
                                     dbc.Input(id="edit-n", type="number", min=0.5, max=0.7, step=0.1, placeholder="N 상수(con_n)", className="form-control")
                                 ], width=12),
                             ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("E28(재령 28일 압축 탄성계수)[Gpa]", className="form-label fw-semibold"),
+                                    dbc.Label([
+                                        "E28(재령 28일 압축 탄성계수) ",
+                                        html.Small("1~100 GPa", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold"),
                                     dbc.Input(id="edit-e", type="number", min=1, max=100, step=0.1, placeholder="탄성계수(con_e)", className="form-control")
                                 ], width=12),
                             ], className="mb-3"),
@@ -387,19 +414,28 @@ layout = html.Div([
                             ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("열팽창계수 (0.1 ~ 10.0) [×10⁻⁵/°C]", className="form-label fw-semibold"),
+                                    dbc.Label([
+                                        "열팽창계수 [×10⁻⁵/°C] ",
+                                        html.Small("0.1~10.0", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold"),
                                     dbc.Input(id="edit-a", type="number", min=0.1, max=10.0, step=0.1, placeholder="열팽창계수(con_a)", className="form-control")
                                 ], width=12),
                             ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("포아송비 (0.01 ~ 1.00)", className="form-label fw-semibold"),
+                                    dbc.Label([
+                                        "포아송비 ",
+                                        html.Small("0.01~1.00", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold"),
                                     dbc.Input(id="edit-p", type="number", min=0.01, max=1.00, step=0.01, placeholder="포아송비(con_p)", className="form-control")
                                 ], width=12),
                             ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("밀도 (500 ~ 5000) [kg/m³]", className="form-label fw-semibold"),
+                                    dbc.Label([
+                                        "밀도 [kg/m³] ",
+                                        html.Small("500~5000", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold"),
                                     dbc.Input(id="edit-d", type="number", min=500, max=5000, step=10, placeholder="밀도(con_d)", className="form-control")
                                 ], width=12),
                             ], className="mb-3"),
@@ -421,7 +457,7 @@ layout = html.Div([
         ]),
 
         # 재령분석 모달
-        dbc.Modal(id="modal-age-analysis", is_open=False, size="lg", className="modal-notion", children=[
+        dbc.Modal(id="modal-age-analysis", is_open=False, size="xl", className="modal-notion", children=[
             dcc.Store(id="age-analysis-source"),  # 어느 모달에서 호출되었는지 저장
             dbc.ModalHeader([
                 html.H5("📊 재령일별 탄성계수 분석 (CEB-FIB Model)", className="mb-0 text-secondary fw-bold", style={"fontSize": "1.1rem"})
@@ -491,7 +527,7 @@ layout = html.Div([
                         dbc.Col([
                             html.Div([
                                 html.H6("📋 수치 결과", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
-                                html.Div(id="age-analysis-table", style={"height": "35vh", "overflowY": "auto"}),
+                                html.Div(id="age-analysis-table", style={"height": "45vh", "overflowY": "auto"}),
                             ]),
                         ], md=5),
                         
@@ -499,7 +535,7 @@ layout = html.Div([
                         dbc.Col([
                             html.Div([
                                 html.H6("📊 재령일별 탄성계수 변화", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
-                                dcc.Graph(id="age-analysis-graph", style={"height": "35vh"}, config={'displayModeBar': False}),
+                                dcc.Graph(id="age-analysis-graph", style={"height": "45vh"}, config={'displayModeBar': False}),
                             ]),
                         ], md=7),
                     ], className="g-2"),
@@ -1394,7 +1430,7 @@ def calculate_age_analysis(e28, beta, n, is_open):
             {"name": "E(t) (GPa)", "id": "elasticity", "type": "text"},
             {"name": "E28 대비", "id": "ratio", "type": "text"},
         ],
-        style_table={"height": "35vh", "overflowY": "auto"},
+        style_table={"height": "45vh", "overflowY": "auto"},
         style_cell={
             "textAlign": "center",
             "fontSize": "0.8rem",
