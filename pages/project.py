@@ -268,13 +268,13 @@ layout = dbc.Container(
                     ])
                 ], style={
                     "backgroundColor": "white",
-                    "padding": "24px",
+                    "padding": "20px",
                     "borderRadius": "12px",
                     "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
                     "border": "1px solid #e2e8f0",
                     "height": "fit-content"
                 })
-            ], width=4),
+            ], width=3),
             
             # 오른쪽 메인 콘텐츠 영역
             dbc.Col([
@@ -411,7 +411,7 @@ layout = dbc.Container(
                     "border": "1px solid #e2e8f0",
                     "overflow": "hidden"
                 })
-            ], width=8),
+            ], width=9),
         ], className="g-4"),
     ],
 )
