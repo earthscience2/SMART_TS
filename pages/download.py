@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 # pages/download.py
 """Dash 페이지: 파일 다운로드 (inp, frd, vtk)
-프로젝트 선택 → 콘크리트 선택 → 파일 유형 탭에서 다중 파일 선택 후 다운로드
+프로젝트 선택 → 콘크리트 선택 → 파일 유형 탭에서 시간별 그룹핑된 파일 선택 후 다운로드
 """
 
 from __future__ import annotations
 
 import os, glob, io, zipfile
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
+from collections import defaultdict
 
 import dash
 from dash import html, dcc, Input, Output, State, dash_table, register_page
@@ -19,12 +20,83 @@ import api_db
 
 register_page(__name__, path="/download")
 
+def parse_filename_datetime(filename):
+    """파일명에서 날짜시간 추출 (YYYYMMDDHHMM 형식)"""
+    try:
+        base_name = filename.split('.')[0]
+        if len(base_name) >= 12 and base_name.isdigit():
+            year = int(base_name[:4])
+            month = int(base_name[4:6])
+            day = int(base_name[6:8])
+            hour = int(base_name[8:10])
+            minute = int(base_name[10:12])
+            return datetime(year, month, day, hour, minute)
+    except:
+        pass
+    return None
+
+def format_file_size(size_bytes):
+    """파일 크기를 읽기 쉬운 형태로 변환"""
+    if size_bytes == 0:
+        return "0B"
+    size_names = ["B", "KB", "MB", "GB"]
+    i = 0
+    while size_bytes >= 1024 and i < len(size_names) - 1:
+        size_bytes /= 1024
+        i += 1
+    return f"{size_bytes:.1f}{size_names[i]}"
+
+def get_file_info_grouped(folder, ext):
+    """폴더에서 파일 정보를 가져와 날짜별로 그룹핑"""
+    if not os.path.exists(folder):
+        return {}
+    
+    files = [f for f in os.listdir(folder) if f.endswith(ext)]
+    grouped_files = defaultdict(list)
+    
+    for filename in files:
+        filepath = os.path.join(folder, filename)
+        file_stat = os.stat(filepath)
+        file_size = format_file_size(file_stat.st_size)
+        
+        # 파일명에서 날짜시간 추출
+        dt = parse_filename_datetime(filename)
+        if dt:
+            date_key = dt.strftime("%Y-%m-%d")
+            time_str = dt.strftime("%H:%M")
+            
+            grouped_files[date_key].append({
+                "filename": filename,
+                "datetime": dt,
+                "time_str": time_str,
+                "size": file_size,
+                "size_bytes": file_stat.st_size
+            })
+        else:
+            # 날짜를 파싱할 수 없는 파일은 "기타"로 분류
+            grouped_files["기타"].append({
+                "filename": filename,
+                "datetime": None,
+                "time_str": "N/A",
+                "size": file_size,
+                "size_bytes": file_stat.st_size
+            })
+    
+    # 각 날짜별로 시간순 정렬 (최신 순)
+    for date_key in grouped_files:
+        if date_key != "기타":
+            grouped_files[date_key].sort(key=lambda x: x["datetime"], reverse=True)
+    
+    return dict(grouped_files)
+
 # ────────────────────────────── 레이아웃 ────────────────────────────
 layout = dbc.Container(
     fluid=True,
     children=[
         dcc.Location(id="download-url", refresh=False),
         dbc.Alert(id="download-alert", is_open=False, duration=3000, color="info"),
+        dcc.Store(id="file-data-store"),  # 파일 데이터 저장용
+        
         # ── 프로젝트 / 콘크리트 선택 영역
         dbc.Row([
             dbc.Col([
@@ -121,6 +193,37 @@ layout = dbc.Container(
                                    style={"fontSize": "0.85rem", "padding": "8px 16px"},
                                    active_label_style={"backgroundColor": "#e8f4fd", "color": "#1d4ed8", "fontWeight": "600"}),
                         ], id="dl-tabs", active_tab="tab-inp", className="mb-3"),
+                        
+                        # 날짜 필터 영역
+                        html.Div([
+                            html.Div([
+                                html.Label("📅 날짜 범위", className="form-label", style={"fontSize": "0.8rem", "fontWeight": "600"}),
+                                dcc.DatePickerRange(
+                                    id="date-range-picker",
+                                    start_date=datetime.now() - timedelta(days=30),
+                                    end_date=datetime.now(),
+                                    display_format="YYYY-MM-DD",
+                                    style={"fontSize": "0.8rem"}
+                                )
+                            ], className="col-md-6"),
+                            html.Div([
+                                html.Label("🔍 빠른 필터", className="form-label", style={"fontSize": "0.8rem", "fontWeight": "600"}),
+                                dcc.Dropdown(
+                                    id="quick-filter",
+                                    options=[
+                                        {"label": "전체", "value": "all"},
+                                        {"label": "오늘", "value": "today"},
+                                        {"label": "최근 3일", "value": "3days"},
+                                        {"label": "최근 7일", "value": "7days"},
+                                        {"label": "최근 30일", "value": "30days"}
+                                    ],
+                                    value="30days",
+                                    clearable=False,
+                                    style={"fontSize": "0.8rem"}
+                                )
+                            ], className="col-md-6")
+                        ], className="row mb-3"),
+                        
                         html.Div(id="dl-tab-content"),
                     ], className="p-3")
                 ], className="bg-white rounded shadow-sm border"),
@@ -164,218 +267,272 @@ def dl_on_project_change(project_pk):
     columns = [{"name": "이름", "id": "name"}]
     return data, columns, [], "📁 파일 다운로드"
 
-# ───────────────────── ③ 콘크리트 선택 → 탭 콘텐츠 업데이트 ────────────────────
+# ───────────────────── ③ 빠른 필터 업데이트 ────────────────────
 @dash.callback(
-    Output("dl-tab-content", "children"),
+    Output("date-range-picker", "start_date"),
+    Output("date-range-picker", "end_date"),
+    Input("quick-filter", "value"),
+    prevent_initial_call=True,
+)
+def update_date_range(filter_value):
+    today = datetime.now().date()
+    
+    if filter_value == "today":
+        return today, today
+    elif filter_value == "3days":
+        return today - timedelta(days=3), today
+    elif filter_value == "7days":
+        return today - timedelta(days=7), today
+    elif filter_value == "30days":
+        return today - timedelta(days=30), today
+    else:  # "all"
+        return datetime(2020, 1, 1).date(), today
+
+# ───────────────────── ④ 파일 데이터 저장 ────────────────────
+@dash.callback(
+    Output("file-data-store", "data"),
     Input("dl-tabs", "active_tab"),
     Input("dl-tbl-concrete", "selected_rows"),
     State("dl-tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def dl_switch_tab(active_tab, sel_rows, tbl_data):
+def update_file_data(active_tab, sel_rows, tbl_data):
     if not sel_rows:
+        return {}
+    
+    concrete_pk = tbl_data[sel_rows[0]]["concrete_pk"]
+    
+    if active_tab == "tab-inp":
+        folder = f"inp/{concrete_pk}"
+        ext = ".inp"
+    elif active_tab == "tab-frd":
+        folder = f"frd/{concrete_pk}"
+        ext = ".frd"
+    else:
+        folder = f"assets/vtk/{concrete_pk}"
+        ext = ".vtk"
+    
+    grouped_files = get_file_info_grouped(folder, ext)
+    return {
+        "grouped_files": grouped_files,
+        "folder": folder,
+        "ext": ext,
+        "active_tab": active_tab
+    }
+
+# ───────────────────── ⑤ 콘크리트 선택 → 탭 콘텐츠 업데이트 ────────────────────
+@dash.callback(
+    Output("dl-tab-content", "children"),
+    Input("file-data-store", "data"),
+    Input("date-range-picker", "start_date"),
+    Input("date-range-picker", "end_date"),
+    prevent_initial_call=True,
+)
+def dl_switch_tab(file_data, start_date, end_date):
+    if not file_data or not file_data.get("grouped_files"):
         return html.Div([
             html.Div([
                 html.I(className="fas fa-info-circle me-2", style={"color": "#6b7280", "fontSize": "1.2rem"}),
                 html.Span("콘크리트를 선택하면 파일 목록이 표시됩니다", style={"color": "#6b7280", "fontSize": "0.9rem"})
             ], className="d-flex align-items-center justify-content-center p-4", style={"backgroundColor": "#f9fafb", "borderRadius": "8px", "border": "1px dashed #d1d5db"})
         ])
-    concrete_pk = tbl_data[sel_rows[0]]["concrete_pk"]
-
-    if active_tab == "tab-inp":
-        folder = f"inp/{concrete_pk}"
-        ext = ".inp"
-        table_id = "dl-inp-table"
-        dl_btn_id = "btn-dl-inp"
-        dl_component_id = "dl-inp-download"
-    elif active_tab == "tab-frd":
-        folder = f"frd/{concrete_pk}"
-        ext = ".frd"
-        table_id = "dl-frd-table"
-        dl_btn_id = "btn-dl-frd"
-        dl_component_id = "dl-frd-download"
-    else:
-        folder = f"assets/vtk/{concrete_pk}"
-        ext = ".vtk"
-        table_id = "dl-vtk-table"
-        dl_btn_id = "btn-dl-vtk"
-        dl_component_id = "dl-vtk-download"
-
-    files = []
-    if os.path.exists(folder):
-        files = sorted([f for f in os.listdir(folder) if f.endswith(ext)])
-    columns = [{"name": "파일명", "id": "filename"}]
-    table = dash_table.DataTable(
-        id=table_id,
-        data=[{"filename": f} for f in files],
-        columns=columns,
-        page_size=10,
-        row_selectable="multi",
-        style_cell={
-            "textAlign": "center",
-            "fontSize": "0.8rem",
-            "padding": "12px 10px",
-            "border": "none",
-            "borderBottom": "1px solid #f1f1f0",
-            "fontFamily": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-        },
-        style_header={
-            "backgroundColor": "#fafafa", 
-            "fontWeight": 600,
-            "color": "#37352f",
-            "border": "none",
-            "borderBottom": "1px solid #e9e9e7",
-            "fontSize": "0.75rem",
-            "textTransform": "uppercase",
-            "letterSpacing": "0.5px"
-        },
-        style_data={
-            "backgroundColor": "white",
-            "border": "none",
-            "color": "#37352f"
-        },
-        style_data_conditional=[
-            {
-                'if': {'row_index': 'odd'},
-                'backgroundColor': '#fbfbfa'
-            },
-            {
-                'if': {'state': 'selected'},
-                'backgroundColor': '#e8f4fd',
-                'border': '1px solid #579ddb',
-                'borderRadius': '6px',
-                'boxShadow': '0 0 0 1px rgba(87, 157, 219, 0.3)',
-                'color': '#1d4ed8'
-            }
-        ],
-        css=[
-            {
-                'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner table',
-                'rule': 'border-collapse: separate; border-spacing: 0;'
-            },
-            {
-                'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr:hover',
-                'rule': 'background-color: #f8fafc !important; transition: background-color 0.15s ease;'
-            }
-        ],
-        style_table={"width": "100%", "margin": "auto", "marginBottom": "20px"},
-    )
-    return html.Div([
-        html.Small(f"💾 {len(files)}개의 파일이 있습니다", className="text-muted mb-2 d-block", style={"fontSize": "0.75rem"}),
-        table,
+    
+    grouped_files = file_data["grouped_files"]
+    active_tab = file_data["active_tab"]
+    
+    # 날짜 필터링
+    start_dt = datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else None
+    end_dt = datetime.strptime(end_date, "%Y-%m-%d").date() if end_date else None
+    
+    filtered_groups = {}
+    total_files = 0
+    
+    for date_key, files in grouped_files.items():
+        if date_key == "기타":
+            filtered_groups[date_key] = files
+            total_files += len(files)
+        else:
+            date_obj = datetime.strptime(date_key, "%Y-%m-%d").date()
+            if (not start_dt or date_obj >= start_dt) and (not end_dt or date_obj <= end_dt):
+                filtered_groups[date_key] = files
+                total_files += len(files)
+    
+    if not filtered_groups:
+        return html.Div([
+            html.Div([
+                html.I(className="fas fa-calendar-times me-2", style={"color": "#6b7280", "fontSize": "1.2rem"}),
+                html.Span("선택한 날짜 범위에 파일이 없습니다", style={"color": "#6b7280", "fontSize": "0.9rem"})
+            ], className="d-flex align-items-center justify-content-center p-4", style={"backgroundColor": "#f9fafb", "borderRadius": "8px", "border": "1px dashed #d1d5db"})
+        ])
+    
+    # 날짜별로 정렬 (최신 날짜 먼저)
+    sorted_dates = sorted([k for k in filtered_groups.keys() if k != "기타"], reverse=True)
+    if "기타" in filtered_groups:
+        sorted_dates.append("기타")
+    
+    content = []
+    
+    # 전체 통계
+    content.append(
         html.Div([
-            dbc.Button("전체 선택", id=f"btn-select-all-{active_tab}", color="outline-secondary", size="sm", className="me-2", n_clicks=0),
-            dbc.Button("전체 해제", id=f"btn-deselect-all-{active_tab}", color="outline-light", size="sm", className="me-2", n_clicks=0),
-            dbc.Button("선택 파일 다운로드", id=dl_btn_id, color="primary", size="sm", className="ms-2", n_clicks=0),
-            dcc.Download(id=dl_component_id)
-        ], className="d-flex justify-content-center")
-    ])
+            html.Span(f"📊 총 {total_files}개 파일", className="badge bg-info me-2", style={"fontSize": "0.8rem"}),
+            html.Span(f"📅 {len([k for k in filtered_groups.keys() if k != '기타'])}일간", className="badge bg-secondary", style={"fontSize": "0.8rem"})
+        ], className="mb-3")
+    )
+    
+    # 전체 제어 버튼
+    content.append(
+        html.Div([
+            dbc.Button("📋 모든 파일 선택", id=f"btn-select-all-{active_tab}", color="outline-primary", size="sm", className="me-2", n_clicks=0),
+            dbc.Button("🗑️ 선택 해제", id=f"btn-deselect-all-{active_tab}", color="outline-secondary", size="sm", className="me-2", n_clicks=0),
+            dbc.Button("📥 선택한 파일 다운로드", id=f"btn-dl-{active_tab.split('-')[1]}", color="success", size="sm", n_clicks=0),
+            dcc.Download(id=f"dl-{active_tab.split('-')[1]}-download")
+        ], className="mb-3 text-center")
+    )
+    
+    # 날짜별 그룹 표시
+    for date_key in sorted_dates:
+        files = filtered_groups[date_key]
+        
+        # 날짜 헤더
+        if date_key == "기타":
+            date_display = "📂 기타 파일"
+            badge_color = "secondary"
+        else:
+            date_obj = datetime.strptime(date_key, "%Y-%m-%d")
+            if date_obj.date() == datetime.now().date():
+                date_display = f"📅 오늘 ({date_key})"
+                badge_color = "success"
+            elif date_obj.date() == datetime.now().date() - timedelta(days=1):
+                date_display = f"📅 어제 ({date_key})"
+                badge_color = "warning"
+            else:
+                date_display = f"📅 {date_key}"
+                badge_color = "info"
+        
+        # 날짜별 섹션
+        content.append(
+            html.Div([
+                html.Div([
+                    html.Span(date_display, className=f"badge bg-{badge_color} me-2", style={"fontSize": "0.85rem"}),
+                    html.Span(f"{len(files)}개", className="text-muted", style={"fontSize": "0.8rem"}),
+                    dbc.Button(f"날짜별 다운로드", id=f"btn-dl-date-{date_key}-{active_tab}", color="outline-success", size="sm", className="ms-auto", n_clicks=0)
+                ], className="d-flex align-items-center mb-2"),
+                
+                # 파일 테이블
+                dash_table.DataTable(
+                    id=f"tbl-{date_key}-{active_tab}",
+                    data=[{
+                        "filename": f["filename"],
+                        "time": f["time_str"],
+                        "size": f["size"],
+                        "select": False
+                    } for f in files],
+                    columns=[
+                        {"name": "파일명", "id": "filename"},
+                        {"name": "시간", "id": "time"},
+                        {"name": "크기", "id": "size"}
+                    ],
+                    row_selectable="multi",
+                    page_size=8,
+                    style_cell={
+                        "textAlign": "center",
+                        "fontSize": "0.75rem",
+                        "padding": "8px 6px",
+                        "border": "none",
+                        "borderBottom": "1px solid #f1f1f0",
+                        "fontFamily": "'Inter', sans-serif"
+                    },
+                    style_header={
+                        "backgroundColor": "#f8f9fa", 
+                        "fontWeight": 600,
+                        "color": "#495057",
+                        "border": "none",
+                        "fontSize": "0.7rem",
+                        "textTransform": "uppercase"
+                    },
+                    style_data={
+                        "backgroundColor": "white",
+                        "border": "none",
+                        "color": "#37352f"
+                    },
+                    style_data_conditional=[
+                        {
+                            'if': {'state': 'selected'},
+                            'backgroundColor': '#e8f4fd',
+                            'border': '1px solid #579ddb',
+                            'color': '#1d4ed8'
+                        }
+                    ],
+                    style_table={"marginBottom": "10px", "borderRadius": "6px", "overflow": "hidden"}
+                )
+            ], className="mb-4 p-3", style={"backgroundColor": "#fdfdfd", "borderRadius": "8px", "border": "1px solid #e9ecef"})
+        )
+    
+    return html.Div(content)
 
-# ───────────────────── ④ 전체 선택/해제 콜백 (탭별) ────────────────────
-@dash.callback(
-    Output("dl-inp-table", "selected_rows"),
-    Input("btn-select-all-tab-inp", "n_clicks"),
-    Input("btn-deselect-all-tab-inp", "n_clicks"),
-    State("dl-inp-table", "data"),
-    prevent_initial_call=True,
-)
-def inp_select_deselect(all_click, none_click, table_data):
-    ctx = dash.callback_context
-    if not ctx.triggered or not table_data:
-        raise PreventUpdate
-    trig = ctx.triggered_id
-    if trig == "btn-select-all-tab-inp":
-        return list(range(len(table_data)))
-    return []
-
-@dash.callback(
-    Output("dl-frd-table", "selected_rows"),
-    Input("btn-select-all-tab-frd", "n_clicks"),
-    Input("btn-deselect-all-tab-frd", "n_clicks"),
-    State("dl-frd-table", "data"),
-    prevent_initial_call=True,
-)
-def frd_select_deselect(all_click, none_click, table_data):
-    ctx = dash.callback_context
-    if not ctx.triggered or not table_data:
-        raise PreventUpdate
-    trig = ctx.triggered_id
-    if trig == "btn-select-all-tab-frd":
-        return list(range(len(table_data)))
-    return []
-
-@dash.callback(
-    Output("dl-vtk-table", "selected_rows"),
-    Input("btn-select-all-tab-vtk", "n_clicks"),
-    Input("btn-deselect-all-tab-vtk", "n_clicks"),
-    State("dl-vtk-table", "data"),
-    prevent_initial_call=True,
-)
-def vtk_select_deselect(all_click, none_click, table_data):
-    ctx = dash.callback_context
-    if not ctx.triggered or not table_data:
-        raise PreventUpdate
-    trig = ctx.triggered_id
-    if trig == "btn-select-all-tab-vtk":
-        return list(range(len(table_data)))
-    return []
-
-# ───────────────────── ⑤ 파일 다운로드 콜백 (inp/frd/vtk 공통) ────────────────────
+# ───────────────────── ⑥ 파일 다운로드 콜백 (새로운 구조) ────────────────────
 @dash.callback(
     Output("dl-inp-download", "data"),
     Input("btn-dl-inp", "n_clicks"),
-    State("dl-inp-table", "selected_rows"),
-    State("dl-inp-table", "data"),
-    State("dl-tbl-concrete", "selected_rows"),
-    State("dl-tbl-concrete", "data"),
+    State("file-data-store", "data"),
+    State("dl-tab-content", "children"),
     prevent_initial_call=True,
 )
-def dl_download_inp(n_clicks, sel_rows, table_data, sel_conc_rows, conc_data):
-    return _download_generic(n_clicks, sel_rows, table_data, sel_conc_rows, conc_data, "inp")
+def dl_download_inp(n_clicks, file_data, tab_content):
+    return _download_selected_files(n_clicks, file_data, "inp")
 
 @dash.callback(
     Output("dl-frd-download", "data"),
     Input("btn-dl-frd", "n_clicks"),
-    State("dl-frd-table", "selected_rows"),
-    State("dl-frd-table", "data"),
-    State("dl-tbl-concrete", "selected_rows"),
-    State("dl-tbl-concrete", "data"),
+    State("file-data-store", "data"),
+    State("dl-tab-content", "children"),
     prevent_initial_call=True,
 )
-def dl_download_frd(n_clicks, sel_rows, table_data, sel_conc_rows, conc_data):
-    return _download_generic(n_clicks, sel_rows, table_data, sel_conc_rows, conc_data, "frd")
+def dl_download_frd(n_clicks, file_data, tab_content):
+    return _download_selected_files(n_clicks, file_data, "frd")
 
 @dash.callback(
     Output("dl-vtk-download", "data"),
     Input("btn-dl-vtk", "n_clicks"),
-    State("dl-vtk-table", "selected_rows"),
-    State("dl-vtk-table", "data"),
-    State("dl-tbl-concrete", "selected_rows"),
-    State("dl-tbl-concrete", "data"),
+    State("file-data-store", "data"),
+    State("dl-tab-content", "children"),
     prevent_initial_call=True,
 )
-def dl_download_vtk(n_clicks, sel_rows, table_data, sel_conc_rows, conc_data):
-    return _download_generic(n_clicks, sel_rows, table_data, sel_conc_rows, conc_data, "vtk")
+def dl_download_vtk(n_clicks, file_data, tab_content):
+    return _download_selected_files(n_clicks, file_data, "vtk")
 
-# ───────────────────── 공통 다운로드 로직 ────────────────────
-def _download_generic(n_clicks, sel_rows, table_data, sel_conc_rows, conc_data, ftype):
-    if not n_clicks or not sel_rows or not sel_conc_rows:
+# ───────────────────── 새로운 다운로드 로직 ────────────────────
+def _download_selected_files(n_clicks, file_data, ftype):
+    """선택된 파일들을 다운로드하는 함수 (새로운 구조에 맞게 수정 필요)"""
+    if not n_clicks or not file_data:
         raise PreventUpdate
-    concrete_pk = conc_data[sel_conc_rows[0]]["concrete_pk"]
-    if ftype == "inp":
-        folder = f"inp/{concrete_pk}"
-    elif ftype == "frd":
-        folder = f"frd/{concrete_pk}"
-    else:
-        folder = f"assets/vtk/{concrete_pk}"
-    files = [table_data[i]["filename"] for i in sel_rows]
-    if not files:
+    
+    # 임시로 모든 파일을 다운로드하도록 구현 (선택 기능은 향후 구현)
+    folder = file_data["folder"]
+    grouped_files = file_data["grouped_files"]
+    
+    all_files = []
+    for date_files in grouped_files.values():
+        all_files.extend([f["filename"] for f in date_files])
+    
+    if not all_files:
         raise PreventUpdate
+    
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as zf:
-        for fname in files:
+        for fname in all_files:
             path = os.path.join(folder, fname)
             if os.path.exists(path):
-                zf.write(path, arcname=fname)
+                # 날짜별 폴더 구조로 압축
+                dt = parse_filename_datetime(fname)
+                if dt:
+                    date_folder = dt.strftime("%Y-%m-%d")
+                    archive_path = f"{date_folder}/{fname}"
+                else:
+                    archive_path = f"기타/{fname}"
+                zf.write(path, arcname=archive_path)
+    
     buf.seek(0)
-    return dcc.send_bytes(buf.getvalue(), filename=f"{ftype}_files_{concrete_pk}.zip") 
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return dcc.send_bytes(buf.getvalue(), filename=f"{ftype}_files_{timestamp}.zip") 
