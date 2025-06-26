@@ -226,19 +226,24 @@ layout = html.Div([
                         )
                     ], md=6),
                     dbc.Col([
-                        html.Label("날짜 범위 (자동 조회)", className="form-label mb-2", style={"fontSize": "0.8rem", "fontWeight": "600", "color": "#6c757d"}),
-                        dcc.DatePickerRange(
-                            id="date-range-picker",
-                            start_date=datetime.now() - timedelta(days=365),  # 기본값을 1년으로 확장
-                            end_date=datetime.now(),
-                            display_format="YYYY-MM-DD",
-                            style={
-                                "fontSize": "0.8rem", 
-                                "width": "100%",
-                                "height": "25px",
-                                "lineHeight": "25px"
-                            }
-                        )
+                        html.Label("날짜 범위 (자동 조회)", className="form-label mb-1", style={"fontSize": "0.8rem", "fontWeight": "600", "color": "#6c757d"}),
+                        html.Div([
+                            dcc.DatePickerRange(
+                                id="date-range-picker",
+                                start_date=datetime.now() - timedelta(days=365),  # 기본값을 1년으로 확장
+                                end_date=datetime.now(),
+                                display_format="YYYY-MM-DD",
+                                style={
+                                    "fontSize": "0.8rem", 
+                                    "width": "100%"
+                                }
+                            )
+                        ], style={
+                            "transform": "scale(0.9)",
+                            "transformOrigin": "left top",
+                            "height": "32px",
+                            "overflow": "hidden"
+                        })
                     ], md=6),
                 ], className="g-2")
             ], className="py-2")
