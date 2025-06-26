@@ -177,10 +177,10 @@ def layout():
                     concrete_list.append(
                         html.Tr([
                             html.Td(concrete["name"], className="py-2"),
-                            html.Td(format_date(concrete["created_at"]), className="py-2"),
-                            html.Td(calculate_elapsed_time(concrete["created_at"]), className="py-2"),
-                            html.Td(f"{sensor_count}개", className="py-2"),
-                            html.Td(dbc.Badge(analysis_status, color=status_color, className="px-2"), className="py-2")
+                            html.Td(format_date(concrete["created_at"]), className="py-2 text-center"),
+                            html.Td(calculate_elapsed_time(concrete["created_at"]), className="py-2 text-center"),
+                            html.Td(f"{sensor_count}개", className="py-2 text-center"),
+                            html.Td(dbc.Badge(analysis_status, color=status_color, className="px-2"), className="py-2 text-center")
                         ])
                     )
 
