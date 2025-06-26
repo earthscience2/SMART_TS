@@ -86,7 +86,7 @@ def fetch_user_permissions(cfg: Dict[str, str], userid: str) -> pd.DataFrame:
     try:
         engine = create_engine(uri, pool_pre_ping=True)
         with engine.begin() as conn:
-            df = pd.read_sql(AUTH_QUERY, conn, params=[userid])
+            df = pd.read_sql(AUTH_QUERY, conn, params=(userid,))
         return df
     except Exception as exc:
         print(f"[오류] {cfg['name']} 권한 조회 실패: {exc}")
@@ -166,8 +166,26 @@ def main():
         for _, row in df.iterrows():
             userid = row['userid']
             grade = row['grade']
-            start_date = row['authstartdate'].strftime('%Y-%m-%d') if pd.notna(row['authstartdate']) else '미설정'
-            end_date = row['authenddate'].strftime('%Y-%m-%d') if pd.notna(row['authenddate']) else '미설정'
+            
+            # 날짜 처리 - 이미 문자열이거나 datetime 객체일 수 있음
+            start_date = row['authstartdate']
+            end_date = row['authenddate']
+            
+            if pd.notna(start_date):
+                if hasattr(start_date, 'strftime'):
+                    start_date = start_date.strftime('%Y-%m-%d')
+                else:
+                    start_date = str(start_date)
+            else:
+                start_date = '미설정'
+                
+            if pd.notna(end_date):
+                if hasattr(end_date, 'strftime'):
+                    end_date = end_date.strftime('%Y-%m-%d')
+                else:
+                    end_date = str(end_date)
+            else:
+                end_date = '미설정'
             
             print(f"{userid:<15} {grade:<10} {start_date:<12} {end_date:<12}")
             
