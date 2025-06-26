@@ -440,8 +440,30 @@ layout = html.Div([
                             ], className="border rounded p-1"),
                         ], md=4),
                         
-                        # 매개변수 및 주요 결과
+                        # 매개변수 입력 및 주요 결과
                         dbc.Col([
+                            html.Div([
+                                html.H6("⚙️ 매개변수 설정", className="mb-3 text-secondary fw-bold"),
+                                dbc.Row([
+                                    dbc.Col([
+                                        dbc.Label("E₂₈ (재령 28일 탄성계수) [GPa]", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                        dbc.Input(id="analysis-e28", type="number", min=1, max=100, step=0.1, className="form-control-sm")
+                                    ], md=4),
+                                    dbc.Col([
+                                        dbc.Label("β (베타 상수)", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                        dbc.Input(id="analysis-beta", type="number", min=0.1, max=1.0, step=0.1, className="form-control-sm")
+                                    ], md=4),
+                                    dbc.Col([
+                                        dbc.Label("n (N 상수)", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                        dbc.Input(id="analysis-n", type="number", min=0.5, max=0.7, step=0.1, className="form-control-sm")
+                                    ], md=4),
+                                ], className="g-2 mb-3"),
+                                dbc.Row([
+                                    dbc.Col([
+                                        dbc.Button("📊 재분석", id="reanalyze-btn", color="primary", size="sm", className="px-3 fw-semibold"),
+                                    ], md="auto"),
+                                ], className="justify-content-center"),
+                            ], className="bg-light p-3 rounded mb-3"),
                             html.Div(id="age-analysis-params"),
                         ], md=8),
                     ], className="g-3"),
@@ -1240,11 +1262,11 @@ def toggle_age_analysis(add_btn, edit_btn, close_btn, is_open):
         return False, dash.no_update
     return is_open, dash.no_update
 
-# ───────────────────── ⑬ 재령분석 계산 및 표시
+# ───────────────────── ⑬ 모달 열릴 때 입력창에 기존 값 채우기
 @callback(
-    Output("age-analysis-params", "children"),
-    Output("age-analysis-table", "children"),
-    Output("age-analysis-graph", "figure"),
+    Output("analysis-e28", "value"),
+    Output("analysis-beta", "value"),
+    Output("analysis-n", "value"),
     Input("modal-age-analysis", "is_open"),
     State("age-analysis-source", "data"),
     State("add-e", "value"),
@@ -1255,25 +1277,41 @@ def toggle_age_analysis(add_btn, edit_btn, close_btn, is_open):
     State("edit-n", "value"),
     prevent_initial_call=True
 )
-def calculate_age_analysis(is_open, source, add_e, add_b, add_n, edit_e, edit_b, edit_n):
+def fill_analysis_inputs(is_open, source, add_e, add_b, add_n, edit_e, edit_b, edit_n):
     if not is_open:
         raise PreventUpdate
     
     # 소스에 따라 적절한 값 사용
     if source == "add":
-        e28, beta, n = add_e, add_b, add_n
+        return add_e, add_b, add_n
     elif source == "edit":
-        e28, beta, n = edit_e, edit_b, edit_n
+        return edit_e, edit_b, edit_n
     else:
         # 기본값으로 add 사용
-        e28, beta, n = add_e, add_b, add_n
+        return add_e, add_b, add_n
+
+# ───────────────────── ⑭ 재령분석 계산 및 표시
+@callback(
+    Output("age-analysis-params", "children"),
+    Output("age-analysis-table", "children"),
+    Output("age-analysis-graph", "figure"),
+    Input("modal-age-analysis", "is_open"),
+    Input("reanalyze-btn", "n_clicks"),
+    State("analysis-e28", "value"),
+    State("analysis-beta", "value"),
+    State("analysis-n", "value"),
+    prevent_initial_call=True
+)
+def calculate_age_analysis(is_open, reanalyze_clicks, e28, beta, n):
+    if not is_open:
+        raise PreventUpdate
     
     # 값 유효성 검사
     if e28 is None or beta is None or n is None:
         missing_params = []
-        if e28 is None: missing_params.append("E28(재령 28일 압축 탄성계수)")
-        if beta is None: missing_params.append("베타 상수")
-        if n is None: missing_params.append("N 상수")
+        if e28 is None: missing_params.append("E₂₈")
+        if beta is None: missing_params.append("β")
+        if n is None: missing_params.append("n")
         
         params_display = dbc.Alert(
             f"다음 값들을 먼저 입력해주세요: {', '.join(missing_params)}",
@@ -1285,6 +1323,33 @@ def calculate_age_analysis(is_open, source, add_e, add_b, add_n, edit_e, edit_b,
         empty_fig = go.Figure()
         empty_fig.update_layout(
             title="매개변수 입력 후 그래프가 표시됩니다",
+            xaxis_title="재령일 [day]",
+            yaxis_title="탄성계수 E(t) [GPa]",
+            margin=dict(l=40, r=40, t=60, b=40)
+        )
+        
+        return params_display, empty_table, empty_fig
+    
+    # 범위 유효성 검사
+    range_errors = []
+    if e28 < 1 or e28 > 100:
+        range_errors.append("E₂₈ (1~100 GPa)")
+    if beta < 0.1 or beta > 1.0:
+        range_errors.append("β (0.1~1.0)")
+    if n < 0.5 or n > 0.7:
+        range_errors.append("n (0.5~0.7)")
+    
+    if range_errors:
+        params_display = dbc.Alert(
+            f"다음 값들이 허용 범위를 벗어났습니다: {', '.join(range_errors)}",
+            color="danger",
+            className="mb-0"
+        )
+        
+        empty_table = dbc.Alert("올바른 범위의 매개변수를 입력해주세요.", color="warning", className="text-center")
+        empty_fig = go.Figure()
+        empty_fig.update_layout(
+            title="올바른 매개변수 입력 후 그래프가 표시됩니다",
             xaxis_title="재령일 [day]",
             yaxis_title="탄성계수 E(t) [GPa]",
             margin=dict(l=40, r=40, t=60, b=40)
