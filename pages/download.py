@@ -362,9 +362,23 @@ def dl_switch_tab(file_data, start_date, end_date):
     grouped_files = file_data["grouped_files"]
     active_tab = file_data["active_tab"]
     
-    # 날짜 필터링
-    start_dt = datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else None
-    end_dt = datetime.strptime(end_date, "%Y-%m-%d").date() if end_date else None
+    # 날짜 필터링 (ISO 형식 날짜 처리)
+    start_dt = None
+    end_dt = None
+    
+    if start_date:
+        # ISO 형식 또는 YYYY-MM-DD 형식 모두 처리
+        if 'T' in str(start_date):
+            start_dt = datetime.fromisoformat(str(start_date)).date()
+        else:
+            start_dt = datetime.strptime(str(start_date), "%Y-%m-%d").date()
+    
+    if end_date:
+        # ISO 형식 또는 YYYY-MM-DD 형식 모두 처리
+        if 'T' in str(end_date):
+            end_dt = datetime.fromisoformat(str(end_date)).date()
+        else:
+            end_dt = datetime.strptime(str(end_date), "%Y-%m-%d").date()
     
     filtered_groups = {}
     total_files = 0
