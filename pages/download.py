@@ -20,6 +20,9 @@ import api_db
 
 register_page(__name__, path="/download")
 
+# 프로젝트 메타데이터 (URL 파라미터 파싱에 사용)
+projects_df = api_db.get_project_data()
+
 def parse_filename_datetime(filename):
     """파일명에서 날짜시간 추출 (YYYYMMDDHHMM 형식)"""
     try:
@@ -90,30 +93,21 @@ def get_file_info_grouped(folder, ext):
     return dict(grouped_files)
 
 # ────────────────────────────── 레이아웃 ────────────────────────────
-layout = dbc.Container(
-    fluid=True,
-    children=[
-        dcc.Location(id="download-url", refresh=False),
+layout = html.Div([
+    dcc.Location(id="download-url", refresh=False),
+    dcc.Store(id="selected-project-store"),
+    dbc.Container([
         dbc.Alert(id="download-alert", is_open=False, duration=3000, color="info"),
         dcc.Store(id="file-data-store"),  # 파일 데이터 저장용
         
-        # ── 프로젝트 / 콘크리트 선택 영역
         dbc.Row([
+            # 좌측: 프로젝트 정보 + 콘크리트 목록
             dbc.Col([
-                # 프로젝트 선택 카드
+                # 프로젝트 정보 카드
                 html.Div([
-                    html.Div([
-                        html.H6("🏗️ 프로젝트 선택", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
-                        dcc.Dropdown(
-                            id="dl-ddl-project", 
-                            clearable=False, 
-                            placeholder="프로젝트를 선택하세요",
-                            style={"fontSize": "0.85rem"},
-                            className="mb-2"
-                        ),
-                    ], className="p-3")
-                ], className="bg-white rounded shadow-sm border mb-3"),
-
+                    dbc.Alert(id="current-project-info", color="info", className="mb-0 py-2"),
+                ], className="mb-2"),
+                
                 # 콘크리트 목록 카드
                 html.Div([
                     html.Div([
@@ -229,39 +223,64 @@ layout = dbc.Container(
                 ], className="bg-white rounded shadow-sm border"),
             ], md=9),
         ], className="g-3"),
-    ],
-    className="py-3"
-)
+    ], className="py-3")
+])
 
-# ───────────────────── ① 프로젝트 목록 초기화 ─────────────────────
+# ───────────────────── ① URL에서 프로젝트 정보 파싱 ─────────────────────
 @dash.callback(
-    Output("dl-ddl-project", "options"),
-    Output("dl-ddl-project", "value"),
-    Input("dl-ddl-project", "value"),
-    prevent_initial_call=False,
+    Output("selected-project-store", "data"),
+    Output("current-project-info", "children"),
+    Input("download-url", "search"),
+    prevent_initial_call=False
 )
-def dl_init_project(selected_value):
-    df_proj = api_db.get_project_data()
-    opts = [{"label": row["name"], "value": row["project_pk"]} for _, row in df_proj.iterrows()]
-    if not opts:
-        return [], None
-    # 최초: 첫 번째 프로젝트로
-    if selected_value is None:
-        return opts, opts[0]["value"]
-    return opts, selected_value
+def parse_url_project(search):
+    if not search:
+        return None, [
+            "프로젝트가 선택되지 않았습니다. ",
+            html.A("홈으로 돌아가기", href="/", className="alert-link")
+        ]
+    
+    try:
+        from urllib.parse import parse_qs
+        params = parse_qs(search.lstrip('?'))
+        project_pk = params.get('page', [None])[0]
+        
+        if not project_pk:
+            return None, [
+                "프로젝트가 선택되지 않았습니다. ",
+                html.A("홈으로 돌아가기", href="/", className="alert-link")
+            ]
+        
+        # 프로젝트 정보 조회 (project_pk가 문자열일 수 있음)
+        project_info = projects_df[projects_df["project_pk"] == project_pk]
+        if project_info.empty:
+            return None, [
+                f"프로젝트 ID {project_pk}를 찾을 수 없습니다. ",
+                html.A("홈으로 돌아가기", href="/", className="alert-link")
+            ]
+        
+        project_name = project_info.iloc[0]["name"]
+        return project_pk, f"📁 현재 프로젝트: {project_name}"
+        
+    except Exception as e:
+        return None, [
+            f"프로젝트 정보를 읽는 중 오류가 발생했습니다: {str(e)} ",
+            html.A("홈으로 돌아가기", href="/", className="alert-link")
+        ]
 
-# ───────────────────── ② 프로젝트 선택 → 콘크리트 테이블 ────────────────────
+# ───────────────────── ② 프로젝트 정보 → 콘크리트 테이블 ────────────────────
 @dash.callback(
     Output("dl-tbl-concrete", "data"),
     Output("dl-tbl-concrete", "columns"),
     Output("dl-tbl-concrete", "selected_rows"),
     Output("dl-concrete-title", "children"),
-    Input("dl-ddl-project", "value"),
-    prevent_initial_call=True,
+    Input("selected-project-store", "data"),
+    prevent_initial_call=False,
 )
-def dl_on_project_change(project_pk):
+def dl_load_concrete_list(project_pk):
     if not project_pk:
         return [], [], [], "📁 파일 다운로드"
+    
     df_conc = api_db.get_concrete_data(project_pk=project_pk)
     data = df_conc[["concrete_pk", "name"]].to_dict("records")
     columns = [{"name": "이름", "id": "name"}]
@@ -294,10 +313,11 @@ def update_date_range(filter_value):
     Input("dl-tabs", "active_tab"),
     Input("dl-tbl-concrete", "selected_rows"),
     State("dl-tbl-concrete", "data"),
+    State("selected-project-store", "data"),
     prevent_initial_call=True,
 )
-def update_file_data(active_tab, sel_rows, tbl_data):
-    if not sel_rows:
+def update_file_data(active_tab, sel_rows, tbl_data, project_pk):
+    if not sel_rows or not project_pk:
         return {}
     
     concrete_pk = tbl_data[sel_rows[0]]["concrete_pk"]
@@ -317,7 +337,9 @@ def update_file_data(active_tab, sel_rows, tbl_data):
         "grouped_files": grouped_files,
         "folder": folder,
         "ext": ext,
-        "active_tab": active_tab
+        "active_tab": active_tab,
+        "concrete_pk": concrete_pk,
+        "project_pk": project_pk
     }
 
 # ───────────────────── ⑤ 콘크리트 선택 → 탭 콘텐츠 업데이트 ────────────────────
