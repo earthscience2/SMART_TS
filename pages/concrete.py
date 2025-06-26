@@ -456,22 +456,22 @@ layout = html.Div([
                                 dbc.Row([
                                     dbc.Col([
                                         dbc.Label([
-                                            "E₂₈ ", 
-                                            html.Small("(1~100)", className="text-muted", style={"fontSize": "0.7rem"})
+                                            "E₂₈ (재령 28일 압축 탄성계수) ", 
+                                            html.Small("1~100 GPa", className="text-muted", style={"fontSize": "0.7rem"})
                                         ], className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
                                         dbc.Input(id="analysis-e28", type="number", min=1, max=100, step=0.1, className="form-control-sm")
                                     ], md=4),
                                     dbc.Col([
                                         dbc.Label([
-                                            "β ", 
-                                            html.Small("(0.1~1.0)", className="text-muted", style={"fontSize": "0.7rem"})
+                                            "β (베타 상수) ", 
+                                            html.Small("0.1~1.0", className="text-muted", style={"fontSize": "0.7rem"})
                                         ], className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
                                         dbc.Input(id="analysis-beta", type="number", min=0.1, max=1.0, step=0.1, className="form-control-sm")
                                     ], md=4),
                                     dbc.Col([
                                         dbc.Label([
-                                            "n ", 
-                                            html.Small("(0.5~0.7)", className="text-muted", style={"fontSize": "0.7rem"})
+                                            "n (N 상수) ", 
+                                            html.Small("0.5~0.7", className="text-muted", style={"fontSize": "0.7rem"})
                                         ], className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
                                         dbc.Input(id="analysis-n", type="number", min=0.5, max=0.7, step=0.01, className="form-control-sm")
                                     ], md=4),
@@ -482,14 +482,7 @@ layout = html.Div([
                     ], className="g-2"),
                 ], className="bg-white p-2 rounded shadow-sm border mb-2"),
                 
-                # 중단: 매개변수 및 주요 결과 (아래로 이동)
-                html.Div([
-                    dbc.Row([
-                        dbc.Col([
-                            html.Div(id="age-analysis-params"),
-                        ], md=12),
-                    ]),
-                ], className="mb-3"),
+
                 
                 # 하단: 결과 섹션
                 html.Div([
@@ -1323,7 +1316,6 @@ def fill_analysis_inputs(is_open, source, add_e, add_b, add_n, edit_e, edit_b, e
 
 # ───────────────────── ⑭ 재령분석 계산 및 표시
 @callback(
-    Output("age-analysis-params", "children"),
     Output("age-analysis-table", "children"),
     Output("age-analysis-graph", "figure"),
     Output("age-analysis-alert", "children"),
@@ -1345,10 +1337,6 @@ def calculate_age_analysis(e28, beta, n, is_open):
         if beta is None: missing_params.append("β")
         if n is None: missing_params.append("n")
         
-        params_display = html.Div([
-            dbc.Alert("매개변수를 입력해주세요.", color="info", className="mb-0 text-center")
-        ])
-        
         empty_table = dbc.Alert("매개변수를 입력하면 결과가 표시됩니다.", color="info", className="text-center")
         empty_fig = go.Figure()
         empty_fig.update_layout(
@@ -1359,7 +1347,7 @@ def calculate_age_analysis(e28, beta, n, is_open):
         )
         
         alert_msg = f"다음 값들을 먼저 입력해주세요: {', '.join(missing_params)}"
-        return params_display, empty_table, empty_fig, alert_msg, True
+        return empty_table, empty_fig, alert_msg, True
     
     # 범위 자동 조정 (범위를 벗어나면 자동으로 제한)
     e28 = max(1, min(100, e28))
@@ -1374,27 +1362,7 @@ def calculate_age_analysis(e28, beta, n, is_open):
         e_t = e28 * ((t / (t + beta)) ** n)
         elasticity_values.append(e_t)
     
-    # 매개변수 표시 (깔끔하게 정리)
-    params_display = [
-        # 매개변수 섹션
-        html.Div([
-            html.H6("📋 사용된 매개변수", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
-            html.Div([
-                html.Span(f"E₂₈ = {e28} GPa", className="badge bg-primary me-2", style={"fontSize": "0.8rem"}),
-                html.Span(f"β = {beta}", className="badge bg-secondary me-2", style={"fontSize": "0.8rem"}),
-                html.Span(f"n = {n}", className="badge bg-info", style={"fontSize": "0.8rem"}),
-            ], className="mb-3"),
-            
-            html.H6("🎯 주요 결과", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
-            html.Div([
-                html.Div(f"1일차: {elasticity_values[0]:.1f} GPa ({elasticity_values[0]/e28*100:.0f}%)", style={"fontSize": "0.8rem"}),
-                html.Div(f"7일차: {elasticity_values[6]:.1f} GPa ({elasticity_values[6]/e28*100:.0f}%)", style={"fontSize": "0.8rem"}),
-                html.Div(f"14일차: {elasticity_values[13]:.1f} GPa ({elasticity_values[13]/e28*100:.0f}%)", style={"fontSize": "0.8rem"}),
-                html.Div(f"21일차: {elasticity_values[20]:.1f} GPa ({elasticity_values[20]/e28*100:.0f}%)", style={"fontSize": "0.8rem"}),
-                html.Div(f"28일차: {elasticity_values[27]:.1f} GPa ({elasticity_values[27]/e28*100:.0f}%)", className="fw-bold text-primary", style={"fontSize": "0.8rem"}),
-            ], className="mb-2"),
-        ], className="bg-light p-3 rounded")
-    ]
+
     
     # 테이블 생성 (1일부터 28일까지, 4주간 데이터)
     table_data = []
@@ -1493,7 +1461,7 @@ def calculate_age_analysis(e28, beta, n, is_open):
         ticktext=[f'{d}일' for d in highlight_days]
     )
     
-    return params_display, table, fig, "", False
+    return table, fig, "", False
 
 # ───────────────────── ⑮ 재령분석 결과 적용
 @callback(
