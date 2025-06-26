@@ -199,7 +199,6 @@ layout = html.Div([
                 html.H4("🧱 콘크리트 추가", className="mb-0 text-secondary fw-bold")
             ], className="border-0 pb-2"),
             dbc.ModalBody([
-                dbc.Alert(id="add-alert", is_open=False, duration=3000, color="danger", className="mb-3"),
                 dbc.Row([
                     # 왼쪽 칼럼: 기본 정보 + 3D 미리보기
                     dbc.Col([
@@ -293,6 +292,11 @@ layout = html.Div([
                         ], className="bg-light p-3 rounded", style={"height": "fit-content"}),
                     ], md=6),
                 ], className="g-3"),
+                
+                # 경고 메시지 영역 (저장 버튼 근처)
+                html.Div([
+                    dbc.Alert(id="add-alert", is_open=False, duration=3000, color="danger", className="mb-0"),
+                ], className="mt-3"),
             ]),
             dbc.ModalFooter([
                 dbc.Button("미리보기", id="add-build", color="info", className="px-4"),
@@ -309,7 +313,6 @@ layout = html.Div([
             ], className="border-0 pb-2"),
             dbc.ModalBody([
                 dcc.Store(id="edit-id"),
-                dbc.Alert(id="edit-alert", is_open=False, duration=3000, color="danger", className="mb-3"),
                 dbc.Row([
                     # 왼쪽 칼럼: 기본 정보 + 3D 미리보기
                     dbc.Col([
@@ -403,6 +406,11 @@ layout = html.Div([
                         ], className="bg-light p-3 rounded", style={"height": "fit-content"}),
                     ], md=6),
                 ], className="g-3"),
+                
+                # 경고 메시지 영역 (저장 버튼 근처)
+                html.Div([
+                    dbc.Alert(id="edit-alert", is_open=False, duration=3000, color="danger", className="mb-0"),
+                ], className="mt-3"),
             ]),
             dbc.ModalFooter([
                 dbc.Button("미리보기", id="edit-build", color="info", className="px-4"),
