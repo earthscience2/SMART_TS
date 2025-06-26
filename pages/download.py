@@ -491,12 +491,23 @@ def dl_switch_tab(file_data, start_date, end_date):
                     date_display = date_key
                     date_badge = "📅"
             
+            # full_datetime 계산 개선
+            if f["datetime"] and isinstance(f["datetime"], datetime):
+                full_datetime_str = f["datetime"].strftime("%Y-%m-%d %H:%M")
+            else:
+                # datetime이 없는 경우 파일명에서 다시 파싱 시도
+                dt = parse_filename_datetime(f["filename"])
+                if dt:
+                    full_datetime_str = dt.strftime("%Y-%m-%d %H:%M")
+                else:
+                    full_datetime_str = "N/A"
+            
             all_files_data.append({
                 "filename": f["filename"],
                 "date": f"{date_badge} {date_display}",
                 "time": f["time_str"] if f["time_str"] != "N/A" else "00:00",
                 "size": f["size"],
-                "full_datetime": f["datetime"].strftime("%Y-%m-%d %H:%M") if f["datetime"] and isinstance(f["datetime"], datetime) else "N/A",
+                "full_datetime": full_datetime_str,
                 "sort_key": f["datetime"] if f["datetime"] and isinstance(f["datetime"], datetime) else datetime.min
             })
     
@@ -575,8 +586,7 @@ def dl_switch_tab(file_data, start_date, end_date):
                         }
                     ],
                     style_table={"borderRadius": "6px", "overflow": "hidden"},
-                    filter_action="native",  # 컬럼별 필터링 기능 추가
-                    sort_action="native"     # 컬럼별 정렬 기능 추가
+                    filter_action="native"   # 컬럼별 필터링 기능만 유지
                 )
             ], className="p-0")
         ], className="mb-3", style={"border": "1px solid #dee2e6", "boxShadow": "0 2px 4px rgba(0,0,0,0.1)"})
