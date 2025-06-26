@@ -1313,20 +1313,21 @@ def calculate_age_analysis(is_open, source, add_e, add_b, add_n, edit_e, edit_b,
     table_data = []
     for i, (day, e_val) in enumerate(zip(days, elasticity_values)):
         table_data.append({
-            "재령": f"{day}일",
-            "E(t)": f"{e_val:.2f} GPa",
-            "비율": f"{e_val/e28*100:.1f}%"
+            "day": f"{day}일",
+            "elasticity": f"{e_val:.2f} GPa",
+            "ratio": f"{e_val/e28*100:.1f}%"
         })
     
     # 주요 시점들 강조
     highlight_days = [1, 7, 14, 21, 28]
+    highlight_day_strings = [f'{d}일' for d in highlight_days]
     
     table = dash_table.DataTable(
         data=table_data,
         columns=[
-            {"name": "재령", "id": "재령", "type": "text"},
-            {"name": "E(t) (GPa)", "id": "E(t)", "type": "text"},
-            {"name": "E28 대비", "id": "비율", "type": "text"},
+            {"name": "재령", "id": "day", "type": "text"},
+            {"name": "E(t) (GPa)", "id": "elasticity", "type": "text"},
+            {"name": "E28 대비", "id": "ratio", "type": "text"},
         ],
         style_table={"height": "28vh", "overflowY": "auto"},
         style_cell={
@@ -1343,7 +1344,7 @@ def calculate_age_analysis(is_open, source, add_e, add_b, add_n, edit_e, edit_b,
         style_data_conditional=[
             {
                 'if': {
-                    'filter_query': '{재령} in {{{}}}'.format(', '.join([f'{d}일' for d in highlight_days]))
+                    'filter_query': '{day} in (' + ', '.join([f'"{day_str}"' for day_str in highlight_day_strings]) + ')'
                 },
                 'backgroundColor': '#fff3cd',
                 'fontWeight': 'bold'
