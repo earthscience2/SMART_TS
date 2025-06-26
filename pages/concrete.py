@@ -194,47 +194,47 @@ layout = html.Div([
         ),
 
         # 추가 모달
-        dbc.Modal(id="modal-add", is_open=False, size="xl", className="modal-notion", children=[
+        dbc.Modal(id="modal-add", is_open=False, size="lg", className="modal-notion", children=[
             dbc.ModalHeader([
-                html.H4("🧱 콘크리트 추가", className="mb-0 text-secondary fw-bold")
-            ], className="border-0 pb-2"),
+                html.H5("🧱 콘크리트 추가", className="mb-0 text-secondary fw-bold", style={"fontSize": "1.1rem"})
+            ], className="border-0 pb-1"),
             dbc.ModalBody([
                 dbc.Row([
                     # 왼쪽 칼럼: 기본 정보 + 3D 미리보기
                     dbc.Col([
                         # 기본 정보 섹션
                         html.Div([
-                            html.H6("📝 기본 정보", className="mb-3 text-secondary fw-bold"),
+                            html.H6("📝 기본 정보", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("콘크리트 이름", className="form-label fw-semibold"),
-                                    dbc.Input(id="add-name", placeholder="콘크리트 이름을 입력하세요", className="form-control")
+                                    dbc.Label("콘크리트 이름", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                    dbc.Input(id="add-name", placeholder="콘크리트 이름을 입력하세요", className="form-control", style={"fontSize": "0.85rem"})
                                 ], width=12),
-                            ], className="mb-3"),
+                            ], className="mb-2"),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("노드 목록 (예: [[1,0],[1,1],[0,1],[0,0]])", className="form-label fw-semibold"),
-                                    dbc.Textarea(id="add-nodes", rows=3, placeholder="노드 좌표를 입력하세요", className="form-control")
+                                    dbc.Label("노드 목록 (예: [[1,0],[1,1],[0,1],[0,0]])", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                    dbc.Textarea(id="add-nodes", rows=2, placeholder="노드 좌표를 입력하세요", className="form-control", style={"fontSize": "0.85rem"})
                                 ], width=12),
-                            ], className="mb-3"),
+                            ], className="mb-2"),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("높이 (m)", className="form-label fw-semibold"),
-                                    dbc.Input(id="add-h", type="number", placeholder="높이를 입력하세요", step=0.1, className="form-control")
+                                    dbc.Label("높이 (m)", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                    dbc.Input(id="add-h", type="number", placeholder="높이를 입력하세요", step=0.1, className="form-control", style={"fontSize": "0.85rem"})
                                 ], width=6),
                                 dbc.Col([
-                                    dbc.Label("Solid 요소크기 [m]", className="form-label fw-semibold"),
+                                    dbc.Label("Solid 요소크기 [m]", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
                                     dbc.Input(id="add-unit", type="number", placeholder="요소크기", 
-                                             min=0.1, max=1.0, step=0.1, className="form-control")
+                                             min=0.1, max=1.0, step=0.1, className="form-control", style={"fontSize": "0.85rem"})
                                 ], width=6),
-                            ], className="mb-3"),
-                        ], className="bg-light p-3 rounded mb-3"),
+                            ], className="mb-2"),
+                        ], className="bg-light p-2 rounded mb-2"),
                         
                         # 미리보기 섹션
                         html.Div([
-                            html.H6("👁️ 3D 미리보기", className="mb-3 text-secondary fw-bold"),
-                            dcc.Graph(id="add-preview", style={"height": "40vh"}, className="rounded", config={'displayModeBar': False}),
-                        ], className="bg-light p-3 rounded"),
+                            html.H6("👁️ 3D 미리보기", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                            dcc.Graph(id="add-preview", style={"height": "30vh"}, className="rounded", config={'displayModeBar': False}),
+                        ], className="bg-light p-2 rounded"),
                     ], md=6),
                     
                     # 오른쪽 칼럼: 콘크리트 물성치
