@@ -98,9 +98,7 @@ def layout():
 
     # 로컬 프로젝트 카드 생성
     if not local_projects_df.empty:
-        if cards:  # ITS 프로젝트가 있으면 구분선 추가
-            cards.append(html.Hr(className="my-5"))
-        cards.append(html.H3("로컬 프로젝트", className="text-center mb-4 text-info"))
+        cards.append(html.H3("프로젝트 목록", className="text-center mb-4 text-info"))
         
         # 콘크리트 및 센서 메타데이터 로드
         df_concrete = api_db.get_concrete_data()
@@ -157,30 +155,29 @@ def layout():
                 ], xs=12, sm=6, md=3, lg=3)
             )
 
-    # 프로젝트와 구조가 모두 없는 경우
-    if not sections and not cards:
+    # 프로젝트가 없는 경우
+    if not cards:
         return html.Div([
             dbc.Container([
+                html.H2(f"프로젝트 목록 ({user_id})", className="text-center mb-4"),
                 dbc.Alert([
-                    html.H4("프로젝트가 없습니다", className="alert-heading"),
-                    html.P("현재 접근 가능한 프로젝트가 없습니다."),
+                    html.H4("접근 가능한 프로젝트가 없습니다", className="alert-heading"),
+                    html.P("현재 권한으로 접근 가능한 프로젝트가 없습니다."),
                     html.Hr(),
                     html.P("관리자에게 문의하시기 바랍니다.", className="mb-0")
                 ], color="info", className="mt-5")
             ])
         ])
 
-    # 카드가 있으면 카드 그리드 생성
-    card_grid = None
-    if cards:
-        card_grid = dbc.Row(
-            cards,
-            justify="center",
-            style={
-                "rowGap": "4rem",       # 세로 간격
-                "columnGap": "4rem"     # 가로 간격
-            }
-        )
+    # 카드 그리드 생성
+    card_grid = dbc.Row(
+        cards,
+        justify="center",
+        style={
+            "rowGap": "4rem",       # 세로 간격
+            "columnGap": "4rem"     # 가로 간격
+        }
+    )
 
     return html.Div([
         dbc.Container(
@@ -188,8 +185,7 @@ def layout():
             className="mt-5 d-flex flex-column align-items-center",
             children=[
                 html.H2(f"프로젝트 목록 ({user_id})", className="text-center mb-4"),
-                *sections,  # 프로젝트-구조 테이블
-                card_grid if card_grid else html.Div()  # 프로젝트 카드들
+                card_grid  # 프로젝트 카드들
             ]
         )
     ])
