@@ -99,7 +99,11 @@ layout = html.Div([
                 # 콘크리트 목록 카드
                 html.Div([
                     html.Div([
-                        html.H6("🧱 콘크리트 목록", className="mb-2 text-secondary fw-bold"),
+                        # 제목과 추가 버튼
+                        html.Div([
+                            html.H6("🧱 콘크리트 목록", className="mb-0 text-secondary fw-bold"),
+                            dbc.Button("+ 추가", id="btn-add", color="success", size="sm", className="px-3")
+                        ], className="d-flex justify-content-between align-items-center mb-2"),
                         html.Small("💡 컬럼 헤더를 클릭하여 정렬할 수 있습니다", className="text-muted mb-2 d-block"),
                         html.Div([
                             dash_table.DataTable(
@@ -160,13 +164,15 @@ layout = html.Div([
                             ),
                         ], style={"borderRadius": "8px", "overflow": "hidden", "border": "1px solid #dee2e6"}),
                         
-                        # 버튼 그룹
+                        # 선택된 콘크리트 작업 버튼
                         html.Div([
-                            dbc.ButtonGroup([
-                                dbc.Button("+ 추가", id="btn-add", color="success", size="sm", className="px-3"),
-                                dbc.Button("수정", id="btn-edit", color="secondary", size="sm", className="px-3", disabled=True),
-                                dbc.Button("삭제", id="btn-del", color="danger", size="sm", className="px-3", disabled=True),
-                            ], className="w-100"),
+                            html.Div([
+                                html.Small("선택된 콘크리트:", className="text-muted me-2"),
+                                dbc.ButtonGroup([
+                                    dbc.Button("수정", id="btn-edit", color="secondary", size="sm", className="px-3", disabled=True),
+                                    dbc.Button("삭제", id="btn-del", color="danger", size="sm", className="px-3", disabled=True),
+                                ]),
+                            ], className="d-flex align-items-center justify-content-center")
                         ], className="mt-2")
                     ], className="p-3")
                 ], className="bg-white rounded shadow-sm border"),
