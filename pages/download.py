@@ -470,112 +470,117 @@ def dl_switch_tab(file_data, start_date, end_date):
         ], className="mb-3", style={"backgroundColor": "#f8f9fa", "border": "1px solid #dee2e6"})
     )
     
-    # 날짜별 그룹 표시
+    # 모든 파일을 하나의 리스트로 통합
+    all_files_data = []
     for date_key in sorted_dates:
         files = filtered_groups[date_key]
-        
-        # 날짜 헤더
-        if date_key == "기타":
-            date_display = "📂 기타 파일"
-            badge_color = "secondary"
-        else:
-            date_obj = datetime.strptime(date_key, "%Y-%m-%d")
-            if date_obj.date() == datetime.now().date():
-                date_display = f"📅 오늘 ({date_key})"
-                badge_color = "success"
-            elif date_obj.date() == datetime.now().date() - timedelta(days=1):
-                date_display = f"📅 어제 ({date_key})"
-                badge_color = "warning"
+        for f in files:
+            # 날짜 표시 준비
+            if date_key == "기타":
+                date_display = "기타"
+                date_badge = "🗂️"
             else:
-                date_display = f"📅 {date_key}"
-                badge_color = "info"
-        
-        # 날짜별 섹션
-        content.append(
-            dbc.Card([
-                dbc.CardHeader([
-                    html.Div([
-                        html.Span(date_display, className=f"badge bg-{badge_color} me-2", style={"fontSize": "0.9rem"}),
-                        html.Span(f"{len(files)}개 파일", className="text-muted", style={"fontSize": "0.85rem"}),
-                        dbc.Button("📦 날짜별 다운로드", 
-                                 id=f"btn-dl-date-{date_key}-{active_tab}", 
-                                 color="outline-success", 
-                                 size="sm", 
-                                 className="ms-auto",
-                                 style={"fontSize": "0.75rem"},
-                                 n_clicks=0)
-                    ], className="d-flex align-items-center")
-                ], className="py-2", style={"backgroundColor": "#f8f9fa"}),
-                
-                dbc.CardBody([
-                    # 파일 테이블
-                    dash_table.DataTable(
-                        id=f"tbl-{date_key}-{active_tab}",
-                        data=[{
-                            "filename": f["filename"],
-                            "time": f["time_str"] if f["time_str"] != "N/A" else "00:00",
-                            "size": f["size"],
-                            "full_datetime": f["datetime"].strftime("%Y-%m-%d %H:%M") if f["datetime"] and isinstance(f["datetime"], datetime) else "N/A"
-                        } for f in files],
-                        columns=[
-                            {"name": "📄 파일명", "id": "filename", "type": "text"},
-                            {"name": "🕐 시간", "id": "time", "type": "text"},
-                            {"name": "💾 크기", "id": "size", "type": "text"},
-                            {"name": "📅 전체 날짜", "id": "full_datetime", "type": "text"}
-                        ],
-                        row_selectable="multi",
-                        page_size=10,
-                        style_cell={
-                            "textAlign": "center",
-                            "fontSize": "0.8rem",
-                            "padding": "10px 8px",
-                            "border": "none",
-                            "borderBottom": "1px solid #e9ecef",
-                            "fontFamily": "'Inter', sans-serif"
+                date_obj = datetime.strptime(date_key, "%Y-%m-%d")
+                if date_obj.date() == datetime.now().date():
+                    date_display = "오늘"
+                    date_badge = "📅"
+                elif date_obj.date() == datetime.now().date() - timedelta(days=1):
+                    date_display = "어제"
+                    date_badge = "📅"
+                else:
+                    date_display = date_key
+                    date_badge = "📅"
+            
+            all_files_data.append({
+                "filename": f["filename"],
+                "date": f"{date_badge} {date_display}",
+                "time": f["time_str"] if f["time_str"] != "N/A" else "00:00",
+                "size": f["size"],
+                "full_datetime": f["datetime"].strftime("%Y-%m-%d %H:%M") if f["datetime"] and isinstance(f["datetime"], datetime) else "N/A",
+                "sort_key": f["datetime"] if f["datetime"] and isinstance(f["datetime"], datetime) else datetime.min
+            })
+    
+    # 날짜시간 순으로 정렬 (최신 순)
+    all_files_data.sort(key=lambda x: x["sort_key"], reverse=True)
+    
+    # sort_key 제거 (테이블에 표시하지 않음)
+    for item in all_files_data:
+        del item["sort_key"]
+    
+    # 통합된 파일 테이블
+    content.append(
+        dbc.Card([
+            dbc.CardBody([
+                dash_table.DataTable(
+                    id=f"tbl-all-files-{active_tab}",
+                    data=all_files_data,
+                    columns=[
+                        {"name": "📄 파일명", "id": "filename", "type": "text"},
+                        {"name": "📅 날짜", "id": "date", "type": "text"},
+                        {"name": "🕐 시간", "id": "time", "type": "text"},
+                        {"name": "💾 크기", "id": "size", "type": "text"},
+                        {"name": "📅 전체 날짜시간", "id": "full_datetime", "type": "text"}
+                    ],
+                    row_selectable="multi",
+                    page_size=15,
+                    style_cell={
+                        "textAlign": "center",
+                        "fontSize": "0.8rem",
+                        "padding": "12px 10px",
+                        "border": "none",
+                        "borderBottom": "1px solid #e9ecef",
+                        "fontFamily": "'Inter', sans-serif"
+                    },
+                    style_header={
+                        "backgroundColor": "#f8f9fa", 
+                        "fontWeight": 600,
+                        "color": "#495057",
+                        "border": "none",
+                        "borderBottom": "2px solid #dee2e6",
+                        "fontSize": "0.8rem",
+                        "textAlign": "center"
+                    },
+                    style_data={
+                        "backgroundColor": "white",
+                        "border": "none",
+                        "color": "#212529"
+                    },
+                    style_data_conditional=[
+                        {
+                            'if': {'row_index': 'odd'},
+                            'backgroundColor': '#f8f9fa'
                         },
-                        style_header={
-                            "backgroundColor": "#ffffff", 
-                            "fontWeight": 600,
-                            "color": "#495057",
-                            "border": "none",
-                            "borderBottom": "2px solid #dee2e6",
-                            "fontSize": "0.8rem",
-                            "textAlign": "center"
+                        {
+                            'if': {'state': 'selected'},
+                            'backgroundColor': '#e3f2fd',
+                            'border': '1px solid #2196f3',
+                            'color': '#1565c0',
+                            'fontWeight': '500'
                         },
-                        style_data={
-                            "backgroundColor": "white",
-                            "border": "none",
-                            "color": "#212529"
+                        {
+                            'if': {'column_id': 'filename'},
+                            'textAlign': 'left',
+                            'fontWeight': '500'
                         },
-                        style_data_conditional=[
-                            {
-                                'if': {'row_index': 'odd'},
-                                'backgroundColor': '#f8f9fa'
-                            },
-                            {
-                                'if': {'state': 'selected'},
-                                'backgroundColor': '#e3f2fd',
-                                'border': '1px solid #2196f3',
-                                'color': '#1565c0',
-                                'fontWeight': '500'
-                            },
-                            {
-                                'if': {'column_id': 'filename'},
-                                'textAlign': 'left',
-                                'fontWeight': '500'
-                            }
-                        ],
-                        css=[
-                            {
-                                'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr:hover',
-                                'rule': 'background-color: #e8f5e8 !important; transition: all 0.2s ease;'
-                            }
-                        ],
-                        style_table={"borderRadius": "0", "overflow": "hidden"}
-                    )
-                ], className="p-0")
-            ], className="mb-3", style={"border": "1px solid #dee2e6", "boxShadow": "0 2px 4px rgba(0,0,0,0.1)"})
-        )
+                        {
+                            'if': {'column_id': 'date'},
+                            'textAlign': 'center',
+                            'fontWeight': '500'
+                        }
+                    ],
+                    css=[
+                        {
+                            'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr:hover',
+                            'rule': 'background-color: #e8f5e8 !important; transition: all 0.2s ease;'
+                        }
+                    ],
+                    style_table={"borderRadius": "6px", "overflow": "hidden"},
+                    filter_action="native",  # 컬럼별 필터링 기능 추가
+                    sort_action="native"     # 컬럼별 정렬 기능 추가
+                )
+            ], className="p-0")
+        ], className="mb-3", style={"border": "1px solid #dee2e6", "boxShadow": "0 2px 4px rgba(0,0,0,0.1)"})
+    )
     
     return html.Div(content)
 
