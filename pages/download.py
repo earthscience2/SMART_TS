@@ -110,22 +110,6 @@ def get_file_info_grouped(folder, ext):
 
 # ────────────────────────────── 레이아웃 ────────────────────────────
 layout = html.Div([
-    # 날짜 선택기 높이 조정을 위한 CSS
-    html.Style("""
-        .date-picker-compact .DateInput_input {
-            height: 32px !important;
-            padding: 4px 8px !important;
-            font-size: 0.8rem !important;
-            line-height: 1.2 !important;
-        }
-        .date-picker-compact .DateRangePickerInput {
-            border: 1px solid #ced4da !important;
-            border-radius: 4px !important;
-        }
-        .date-picker-compact .DateRangePickerInput__block {
-            padding: 0 !important;
-        }
-    """),
     dcc.Location(id="download-url", refresh=False),
     dcc.Store(id="selected-project-store"),
     dbc.Container([
@@ -243,17 +227,18 @@ layout = html.Div([
                     ], md=6),
                     dbc.Col([
                         html.Label("날짜 범위 (자동 조회)", className="form-label mb-2", style={"fontSize": "0.8rem", "fontWeight": "600", "color": "#6c757d"}),
-                        html.Div([
-                            dcc.DatePickerRange(
-                                id="date-range-picker",
-                                start_date=datetime.now() - timedelta(days=365),  # 기본값을 1년으로 확장
-                                end_date=datetime.now(),
-                                display_format="YYYY-MM-DD",
-                                style={"fontSize": "0.8rem", "width": "100%"}
-                            )
-                        ], style={
-                            "fontSize": "0.8rem"
-                        }, className="date-picker-compact")
+                        dcc.DatePickerRange(
+                            id="date-range-picker",
+                            start_date=datetime.now() - timedelta(days=365),  # 기본값을 1년으로 확장
+                            end_date=datetime.now(),
+                            display_format="YYYY-MM-DD",
+                            style={
+                                "fontSize": "0.8rem", 
+                                "width": "100%",
+                                "height": "32px",
+                                "lineHeight": "32px"
+                            }
+                        )
                     ], md=6),
                 ], className="g-2")
             ], className="py-2")
