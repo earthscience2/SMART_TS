@@ -196,9 +196,9 @@ def layout():
                     
                     sensor_list.append(
                         html.Tr([
-                            html.Td(device_id, className="py-2"),
-                            html.Td(f"Ch.{channel}", className="py-2"),
-                            html.Td(dbc.Badge(status_text, color=badge_color, className="px-2"), className="py-2")
+                            html.Td(device_id, className="py-2 text-center"),
+                            html.Td(f"Ch.{channel}", className="py-2 text-center"),
+                            html.Td(dbc.Badge(status_text, color=badge_color, className="px-2"), className="py-2 text-center")
                         ])
                     )
 
@@ -231,10 +231,10 @@ def layout():
                                         html.Thead([
                                             html.Tr([
                                                 html.Th("이름", className="border-0 text-muted small", style={"width": "30%"}),
-                                                html.Th("생성일", className="border-0 text-muted small", style={"width": "20%"}),
-                                                html.Th("경과시간", className="border-0 text-muted small", style={"width": "20%"}),
-                                                html.Th("센서", className="border-0 text-muted small", style={"width": "15%"}),
-                                                html.Th("분석", className="border-0 text-muted small", style={"width": "15%"})
+                                                html.Th("생성일", className="border-0 text-muted small text-center", style={"width": "20%"}),
+                                                html.Th("경과시간", className="border-0 text-muted small text-center", style={"width": "20%"}),
+                                                html.Th("센서", className="border-0 text-muted small text-center", style={"width": "15%"}),
+                                                html.Th("분석", className="border-0 text-muted small text-center", style={"width": "15%"})
                                             ])
                                         ]),
                                         html.Tbody(concrete_list)
