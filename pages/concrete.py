@@ -942,7 +942,7 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t_date, t_tim
     
     if range_errors:
         return (
-            f"다음 항목에 올바른 범위값을 입력해주세요: {', '.join(range_errors)}",
+            f"다음 항목의 수치를 입력범위 안으로 조절해주세요: {', '.join(range_errors)}",
             True,                                       # add-alert.is_open
             dash.no_update,                             # tbl.data_timestamp
             True,                                       # modal-add.is_open
@@ -1269,11 +1269,13 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
     
     if range_errors:
         return (
-            f"다음 항목에 올바른 범위값을 입력해주세요: {', '.join(range_errors)}",
-            True,                  # edit-alert 열기
-            dash.no_update,        # 테이블 미갱신
-            True,                  # 모달 닫지 않음
-            "", "", False          # 전역 msg 없음
+            f"다음 항목의 수치를 입력범위 안으로 조절해주세요: {', '.join(range_errors)}",
+            True,                                       # edit-alert.is_open
+            dash.no_update,                             # tbl.data_timestamp
+            True,                                       # modal-edit.is_open
+            "",                                         # msg.children
+            "",                                         # msg.color
+            False                                       # msg.is_open
         )
 
     # 2) 노드 파싱
