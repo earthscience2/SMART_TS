@@ -445,17 +445,45 @@ layout = dbc.Container(
     Output("btn-concrete-del", "disabled"),
     Output("btn-concrete-analyze", "disabled"),
     Output("concrete-title", "children"),
-    Output("time-slider", "min", allow_duplicate=True),
-    Output("time-slider", "max", allow_duplicate=True),
-    Output("time-slider", "value", allow_duplicate=True),
-    Output("time-slider", "marks", allow_duplicate=True),
+    Output("time-slider", "min"),
+    Output("time-slider", "max"),
+    Output("time-slider", "value"),
+    Output("time-slider", "marks"),
     Output("current-time-store", "data"),
+    Input("project-url", "search"),
     Input("project-url", "pathname"),
     prevent_initial_call=False,
 )
-def load_concrete_data(pathname):
-    # 모든 콘크리트 데이터 로드 (프로젝트 구분 없이)
-    df_conc = api_db.get_concrete_data()
+def load_concrete_data(search, pathname):
+    # URL에서 프로젝트 정보 추출
+    project_pk = None
+    if search:
+        try:
+            qs = parse_qs(search.lstrip('?'))
+            project_pk = qs.get('page', [None])[0]
+        except Exception:
+            pass
+    
+    if not project_pk:
+        return [], [], [], [], True, True, "프로젝트를 선택하세요", 0, 5, 0, {}, None
+    
+    try:
+        # 프로젝트 정보 로드
+        df_proj = api_db.get_project_data(project_pk=project_pk)
+        if df_proj.empty:
+            return [], [], [], [], True, True, "존재하지 않는 프로젝트", 0, 5, 0, {}, None
+            
+        proj_row = df_proj.iloc[0]
+        proj_name = proj_row["name"]
+        
+        # 해당 프로젝트의 콘크리트 데이터 로드
+        df_conc = api_db.get_concrete_data(project_pk=project_pk)
+        if df_conc.empty:
+            return [], [], [], [], True, True, f"{proj_name} · 콘크리트 목록 (0개)", 0, 5, 0, {}, None
+        
+    except Exception as e:
+        print(f"프로젝트 로딩 오류: {e}")
+        return [], [], [], [], True, True, "프로젝트 정보를 불러올 수 없음", 0, 5, 0, {}, None
     table_data = []
     for _, row in df_conc.iterrows():
         try:
@@ -547,7 +575,7 @@ def load_concrete_data(pathname):
         {"name": "경과일", "id": "elapsed_days", "type": "numeric"},
     ]
 
-    title = "전체 콘크리트 목록"
+    title = f"{proj_name} · 콘크리트 목록"
     
     # 테이블 스타일 설정 (상태별 색상)
     style_data_conditional = []
