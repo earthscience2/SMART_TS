@@ -27,15 +27,31 @@ def parse_filename_datetime(filename):
     """파일명에서 날짜시간 추출 (YYYYMMDDHHMM 형식)"""
     try:
         base_name = filename.split('.')[0]
-        if len(base_name) >= 12 and base_name.isdigit():
+        # 숫자만으로 구성되고 10자리 이상인 경우 처리
+        if base_name.isdigit() and len(base_name) >= 10:
             year = int(base_name[:4])
             month = int(base_name[4:6])
             day = int(base_name[6:8])
-            hour = int(base_name[8:10])
-            minute = int(base_name[10:12])
+            
+            # 시간과 분이 있는 경우만 처리 (YYYYMMDDHHMM)
+            if len(base_name) >= 12:
+                hour = int(base_name[8:10])
+                minute = int(base_name[10:12])
+            # 시간이 없는 경우 (YYYYMMDD)
+            elif len(base_name) == 10:
+                hour = 0
+                minute = 0
+            # 시간만 있는 경우 (YYYYMMDDHH)
+            elif len(base_name) == 10:
+                hour = int(base_name[8:10])
+                minute = 0
+            else:
+                hour = 0
+                minute = 0
+                
             return datetime(year, month, day, hour, minute)
-    except:
-        pass
+    except Exception as e:
+        print(f"파일명 파싱 오류 ({filename}): {e}")  # 디버깅용
     return None
 
 def format_file_size(size_bytes):
@@ -188,35 +204,40 @@ layout = html.Div([
                                    active_label_style={"backgroundColor": "#e8f4fd", "color": "#1d4ed8", "fontWeight": "600"}),
                         ], id="dl-tabs", active_tab="tab-inp", className="mb-3"),
                         
-                        # 날짜 필터 영역
-                        html.Div([
-                            html.Div([
-                                html.Label("📅 날짜 범위", className="form-label", style={"fontSize": "0.8rem", "fontWeight": "600"}),
-                                dcc.DatePickerRange(
-                                    id="date-range-picker",
-                                    start_date=datetime.now() - timedelta(days=30),
-                                    end_date=datetime.now(),
-                                    display_format="YYYY-MM-DD",
-                                    style={"fontSize": "0.8rem"}
-                                )
-                            ], className="col-md-6"),
-                            html.Div([
-                                html.Label("🔍 빠른 필터", className="form-label", style={"fontSize": "0.8rem", "fontWeight": "600"}),
-                                dcc.Dropdown(
-                                    id="quick-filter",
-                                    options=[
-                                        {"label": "전체", "value": "all"},
-                                        {"label": "오늘", "value": "today"},
-                                        {"label": "최근 3일", "value": "3days"},
-                                        {"label": "최근 7일", "value": "7days"},
-                                        {"label": "최근 30일", "value": "30days"}
-                                    ],
-                                    value="30days",
-                                    clearable=False,
-                                    style={"fontSize": "0.8rem"}
-                                )
-                            ], className="col-md-6")
-                        ], className="row mb-3"),
+                                # 필터 컨트롤 영역
+        dbc.Card([
+            dbc.CardBody([
+                html.H6("🔍 파일 필터링", className="mb-3 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                dbc.Row([
+                    dbc.Col([
+                        html.Label("빠른 필터", className="form-label mb-2", style={"fontSize": "0.8rem", "fontWeight": "600", "color": "#6c757d"}),
+                        dcc.Dropdown(
+                            id="quick-filter",
+                            options=[
+                                {"label": "🕐 오늘", "value": "today"},
+                                {"label": "📅 최근 3일", "value": "3days"},
+                                {"label": "📅 최근 7일", "value": "7days"},
+                                {"label": "📅 최근 30일", "value": "30days"},
+                                {"label": "📂 전체", "value": "all"}
+                            ],
+                            value="all",
+                            clearable=False,
+                            style={"fontSize": "0.8rem"}
+                        )
+                    ], md=6),
+                    dbc.Col([
+                        html.Label("날짜 범위 (자동 조회)", className="form-label mb-2", style={"fontSize": "0.8rem", "fontWeight": "600", "color": "#6c757d"}),
+                        dcc.DatePickerRange(
+                            id="date-range-picker",
+                            start_date=datetime.now() - timedelta(days=365),  # 기본값을 1년으로 확장
+                            end_date=datetime.now(),
+                            display_format="YYYY-MM-DD",
+                            style={"fontSize": "0.8rem", "width": "100%"}
+                        )
+                    ], md=6),
+                ], className="g-2")
+            ], className="py-2")
+        ], className="mb-3", style={"border": "1px solid #e9ecef"}),
                         
                         html.Div(id="dl-tab-content"),
                     ], className="p-3")
@@ -418,12 +439,35 @@ def dl_switch_tab(file_data, start_date, end_date):
     
     # 전체 제어 버튼
     content.append(
-        html.Div([
-            dbc.Button("📋 모든 파일 선택", id=f"btn-select-all-{active_tab}", color="outline-primary", size="sm", className="me-2", n_clicks=0),
-            dbc.Button("🗑️ 선택 해제", id=f"btn-deselect-all-{active_tab}", color="outline-secondary", size="sm", className="me-2", n_clicks=0),
-            dbc.Button("📥 선택한 파일 다운로드", id=f"btn-dl-{active_tab.split('-')[1]}", color="success", size="sm", n_clicks=0),
-            dcc.Download(id=f"dl-{active_tab.split('-')[1]}-download")
-        ], className="mb-3 text-center")
+        dbc.Card([
+            dbc.CardBody([
+                html.Div([
+                    html.Div([
+                        dbc.Button("📋 모든 파일 선택", 
+                                 id=f"btn-select-all-{active_tab}", 
+                                 color="outline-primary", 
+                                 size="sm", 
+                                 className="me-2",
+                                 style={"fontSize": "0.8rem"},
+                                 n_clicks=0),
+                        dbc.Button("🗑️ 선택 해제", 
+                                 id=f"btn-deselect-all-{active_tab}", 
+                                 color="outline-secondary", 
+                                 size="sm", 
+                                 className="me-2",
+                                 style={"fontSize": "0.8rem"},
+                                 n_clicks=0),
+                    ], className="d-flex"),
+                    dbc.Button("📥 선택한 파일 다운로드", 
+                             id=f"btn-dl-{active_tab.split('-')[1]}", 
+                             color="success", 
+                             size="sm",
+                             style={"fontSize": "0.8rem", "fontWeight": "600"},
+                             n_clicks=0),
+                    dcc.Download(id=f"dl-{active_tab.split('-')[1]}-download")
+                ], className="d-flex justify-content-between align-items-center")
+            ], className="py-2")
+        ], className="mb-3", style={"backgroundColor": "#f8f9fa", "border": "1px solid #dee2e6"})
     )
     
     # 날짜별 그룹 표시
@@ -448,61 +492,89 @@ def dl_switch_tab(file_data, start_date, end_date):
         
         # 날짜별 섹션
         content.append(
-            html.Div([
-                html.Div([
-                    html.Span(date_display, className=f"badge bg-{badge_color} me-2", style={"fontSize": "0.85rem"}),
-                    html.Span(f"{len(files)}개", className="text-muted", style={"fontSize": "0.8rem"}),
-                    dbc.Button(f"날짜별 다운로드", id=f"btn-dl-date-{date_key}-{active_tab}", color="outline-success", size="sm", className="ms-auto", n_clicks=0)
-                ], className="d-flex align-items-center mb-2"),
+            dbc.Card([
+                dbc.CardHeader([
+                    html.Div([
+                        html.Span(date_display, className=f"badge bg-{badge_color} me-2", style={"fontSize": "0.9rem"}),
+                        html.Span(f"{len(files)}개 파일", className="text-muted", style={"fontSize": "0.85rem"}),
+                        dbc.Button("📦 날짜별 다운로드", 
+                                 id=f"btn-dl-date-{date_key}-{active_tab}", 
+                                 color="outline-success", 
+                                 size="sm", 
+                                 className="ms-auto",
+                                 style={"fontSize": "0.75rem"},
+                                 n_clicks=0)
+                    ], className="d-flex align-items-center")
+                ], className="py-2", style={"backgroundColor": "#f8f9fa"}),
                 
-                # 파일 테이블
-                dash_table.DataTable(
-                    id=f"tbl-{date_key}-{active_tab}",
-                    data=[{
-                        "filename": f["filename"],
-                        "time": f["time_str"],
-                        "size": f["size"],
-                        "select": False
-                    } for f in files],
-                    columns=[
-                        {"name": "파일명", "id": "filename"},
-                        {"name": "시간", "id": "time"},
-                        {"name": "크기", "id": "size"}
-                    ],
-                    row_selectable="multi",
-                    page_size=8,
-                    style_cell={
-                        "textAlign": "center",
-                        "fontSize": "0.75rem",
-                        "padding": "8px 6px",
-                        "border": "none",
-                        "borderBottom": "1px solid #f1f1f0",
-                        "fontFamily": "'Inter', sans-serif"
-                    },
-                    style_header={
-                        "backgroundColor": "#f8f9fa", 
-                        "fontWeight": 600,
-                        "color": "#495057",
-                        "border": "none",
-                        "fontSize": "0.7rem",
-                        "textTransform": "uppercase"
-                    },
-                    style_data={
-                        "backgroundColor": "white",
-                        "border": "none",
-                        "color": "#37352f"
-                    },
-                    style_data_conditional=[
-                        {
-                            'if': {'state': 'selected'},
-                            'backgroundColor': '#e8f4fd',
-                            'border': '1px solid #579ddb',
-                            'color': '#1d4ed8'
-                        }
-                    ],
-                    style_table={"marginBottom": "10px", "borderRadius": "6px", "overflow": "hidden"}
-                )
-            ], className="mb-4 p-3", style={"backgroundColor": "#fdfdfd", "borderRadius": "8px", "border": "1px solid #e9ecef"})
+                dbc.CardBody([
+                    # 파일 테이블
+                    dash_table.DataTable(
+                        id=f"tbl-{date_key}-{active_tab}",
+                        data=[{
+                            "filename": f["filename"],
+                            "time": f["time_str"] if f["time_str"] != "N/A" else "00:00",
+                            "size": f["size"],
+                            "full_datetime": f["datetime"].strftime("%Y-%m-%d %H:%M") if f["datetime"] else "N/A"
+                        } for f in files],
+                        columns=[
+                            {"name": "📄 파일명", "id": "filename", "type": "text"},
+                            {"name": "🕐 시간", "id": "time", "type": "text"},
+                            {"name": "💾 크기", "id": "size", "type": "text"},
+                            {"name": "📅 전체 날짜", "id": "full_datetime", "type": "text"}
+                        ],
+                        row_selectable="multi",
+                        page_size=10,
+                        style_cell={
+                            "textAlign": "center",
+                            "fontSize": "0.8rem",
+                            "padding": "10px 8px",
+                            "border": "none",
+                            "borderBottom": "1px solid #e9ecef",
+                            "fontFamily": "'Inter', sans-serif"
+                        },
+                        style_header={
+                            "backgroundColor": "#ffffff", 
+                            "fontWeight": 600,
+                            "color": "#495057",
+                            "border": "none",
+                            "borderBottom": "2px solid #dee2e6",
+                            "fontSize": "0.8rem",
+                            "textAlign": "center"
+                        },
+                        style_data={
+                            "backgroundColor": "white",
+                            "border": "none",
+                            "color": "#212529"
+                        },
+                        style_data_conditional=[
+                            {
+                                'if': {'row_index': 'odd'},
+                                'backgroundColor': '#f8f9fa'
+                            },
+                            {
+                                'if': {'state': 'selected'},
+                                'backgroundColor': '#e3f2fd',
+                                'border': '1px solid #2196f3',
+                                'color': '#1565c0',
+                                'fontWeight': '500'
+                            },
+                            {
+                                'if': {'column_id': 'filename'},
+                                'textAlign': 'left',
+                                'fontWeight': '500'
+                            }
+                        ],
+                        css=[
+                            {
+                                'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr:hover',
+                                'rule': 'background-color: #e8f5e8 !important; transition: all 0.2s ease;'
+                            }
+                        ],
+                        style_table={"borderRadius": "0", "overflow": "hidden"}
+                    )
+                ], className="p-0")
+            ], className="mb-3", style={"border": "1px solid #dee2e6", "boxShadow": "0 2px 4px rgba(0,0,0,0.1)"})
         )
     
     return html.Div(content)
