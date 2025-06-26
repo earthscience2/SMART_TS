@@ -31,11 +31,11 @@ import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
 import api_db
 
-# 프로젝트 메타데이터 로드
-projects_df = api_db.get_project_data()
-
 # 페이지 등록
 register_page(__name__, path="/concrete", title="콘크리트 관리")
+
+# 프로젝트 메타데이터 (URL 파라미터 파싱에 사용)
+projects_df = api_db.get_project_data()
 
 # ────────────────────────────── 3-D 헬퍼 ─────────────────────────────
 
@@ -84,17 +84,13 @@ def make_fig(nodes: list[list[float]], h: float) -> go.Figure:
 layout = dbc.Container(
     fluid=True,
     children=[
+        dcc.Location(id="concrete-url", refresh=False),
+        dcc.Store(id="selected-project-store"),
         dbc.Row([
-            # 좌측: 상세정보 + 프로젝트 드롭다운 + 콘크리트 목록
+            # 좌측: 상세정보 + 현재 프로젝트 표시 + 콘크리트 목록
             dbc.Col([
                 html.Div(id="concrete-details", className="mb-3"),
-                dcc.Dropdown(
-                    id="project-dropdown",
-                    options=[{"label": row["name"], "value": row["project_pk"]} for _, row in projects_df.iterrows()],
-                    value=projects_df["project_pk"].iloc[0] if not projects_df.empty else None,
-                    clearable=False,
-                    className="mb-3"
-                ),
+                dbc.Alert(id="current-project-info", color="info", className="mb-3"),
                 html.Hr(className="my-2"),
                 html.Small("💡 컬럼 헤더를 클릭하여 정렬할 수 있습니다", className="text-muted mb-2 d-block"),
                 dash_table.DataTable(
@@ -136,7 +132,7 @@ layout = dbc.Container(
                     dbc.Button("+ 추가", id="btn-add", color="success", className="mt-2"),
                     dbc.Button("수정", id="btn-edit", color="secondary", className="mt-2", disabled=True),
                     dbc.Button("삭제", id="btn-del",  color="danger", className="mt-2", disabled=True),
-                ], size="sm", vertical=True, className="w-100 mt-2"),
+                ], size="sm", vertical=True, className="w-100 mt-2", id="btn-group"),
             ], md=4),
             # 우측: 3D 뷰
             dbc.Col([
@@ -317,22 +313,64 @@ layout = dbc.Container(
     ]
 )
 
-# ───────────────────── ① 테이블 로드 및 필터링
+# ───────────────────── ① URL에서 프로젝트 정보 읽기
+@callback(
+    Output("selected-project-store", "data"),
+    Output("current-project-info", "children"),
+    Input("concrete-url", "search"),
+    prevent_initial_call=False
+)
+def parse_url_project(search):
+    if not search:
+        return None, [
+            "프로젝트가 선택되지 않았습니다. ",
+            html.A("홈으로 돌아가기", href="/", className="alert-link")
+        ]
+    
+    try:
+        from urllib.parse import parse_qs
+        params = parse_qs(search.lstrip('?'))
+        project_pk = params.get('page', [None])[0]
+        
+        if not project_pk:
+            return None, [
+                "프로젝트가 선택되지 않았습니다. ",
+                html.A("홈으로 돌아가기", href="/", className="alert-link")
+            ]
+        
+        # 프로젝트 정보 조회
+        project_info = projects_df[projects_df["project_pk"] == int(project_pk)]
+        if project_info.empty:
+            return None, [
+                f"프로젝트 ID {project_pk}를 찾을 수 없습니다. ",
+                html.A("홈으로 돌아가기", href="/", className="alert-link")
+            ]
+        
+        project_name = project_info.iloc[0]["name"]
+        return int(project_pk), f"📁 현재 프로젝트: {project_name}"
+        
+    except Exception as e:
+        return None, [
+            f"프로젝트 정보를 읽는 중 오류가 발생했습니다: {str(e)} ",
+            html.A("홈으로 돌아가기", href="/", className="alert-link")
+        ]
+
+# ───────────────────── ② 테이블 로드 및 필터링
 @callback(
     Output("tbl", "data"),
     Output("tbl", "columns"),
     Output("tbl", "selected_rows"),
     Input("init", "n_intervals"),
-    Input("project-dropdown", "value"),
+    Input("selected-project-store", "data"),
     Input("tbl", "data_timestamp"),   # ← 추가
     prevent_initial_call=False
 )
 def refresh_table(n, project_pk, _data_ts):
     df_all = api_db.get_concrete_data()
     if project_pk:
-        df = df_all[df_all["project_pk"] == project_pk]
+        df = df_all[df_all["project_pk"] == str(project_pk)]
     else:
-        df = pd.DataFrame(columns=df_all.columns)
+        df = pd.DataFrame(columns=df_all.columns if not df_all.empty else [])
     
     # 상태 정보와 타설 날짜 추가
     if not df.empty:
@@ -515,7 +553,16 @@ def show_selected(sel, data):
         # 활성화된 경우: 수정/삭제 활성화
         return fig, details, False, False
 
-# ───────────────────── ③ 추가 모달 토글
+# ───────────────────── ③ 버튼 활성화 제어
+@callback(
+    Output("btn-add", "disabled"),
+    Input("selected-project-store", "data"),
+    prevent_initial_call=False
+)
+def control_add_button(project_pk):
+    return project_pk is None
+
+# ───────────────────── ④ 추가 모달 토글
 @callback(
     Output("modal-add", "is_open"),
     Input("btn-add", "n_clicks"),
@@ -532,7 +579,7 @@ def toggle_add(b1, b2, b3, is_open):
         return False
     return is_open
 
-# ───────────────────── ④ 추가 미리보기
+# ───────────────────── ⑤ 추가 미리보기
 @callback(
     Output("add-preview", "figure"),
     Output("add-alert",   "children", allow_duplicate=True),
@@ -554,7 +601,7 @@ def add_preview(_, nodes_txt, h):
         return dash.no_update, "높이 입력요", True
     return make_fig(nodes, float(h)), "", False
 
-# ───────────────────── ⑤ 추가 저장
+# ───────────────────── ⑥ 추가 저장
 @callback(
     Output("add-alert",  "children",      allow_duplicate=True),
     Output("add-alert",  "is_open",       allow_duplicate=True),
@@ -564,7 +611,7 @@ def add_preview(_, nodes_txt, h):
     Output("msg",        "color",         allow_duplicate=True),
     Output("msg",        "is_open",       allow_duplicate=True),
     Input("add-save",    "n_clicks"),
-    State("project-dropdown", "value"),
+    State("selected-project-store", "data"),
     State("add-name",    "value"),
     State("add-nodes",   "value"),
     State("add-h",       "value"),
@@ -596,7 +643,7 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t_date, t_tim
 
     # 1) 빈값 체크
     missing = []
-    if not project_pk: missing.append("프로젝트")
+    if not project_pk: missing.append("프로젝트 선택")
     if not name:       missing.append("이름")
     if not nodes_txt:  missing.append("노드 목록")
     if h    is None:   missing.append("높이 H")
@@ -691,7 +738,7 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t_date, t_tim
         True                            # msg.is_open
     )
 
-# ───────────────────── ⑥ 삭제 수행
+# ───────────────────── ⑦ 삭제 수행
 @callback(
     Output("confirm-del", "displayed"),
     Input("btn-del", "n_clicks"),
@@ -738,7 +785,7 @@ def delete_row(_, sel, data):
     except Exception as e:
         return dash.no_update, f"'{concrete_name}' 삭제 중 오류 발생: {str(e)}", "danger", True
 
-# ───────────────────── ⑦ 수정 모달 열기
+# ───────────────────── ⑧ 수정 모달 열기
 @callback(
     Output("modal-edit", "is_open"),
     Output("edit-id", "data"),
@@ -753,7 +800,7 @@ def open_edit(b1, b2, sel, data):
         return True, data[sel[0]]["concrete_pk"]
     return False, dash.no_update
 
-# ───────────────────── ⑧ 수정 필드 채우기
+# ───────────────────── ⑨ 수정 필드 채우기
 @callback(
     Output("edit-name",     "value"),
     Output("edit-nodes",    "value"),
@@ -858,7 +905,7 @@ def fill_edit(opened: bool, cid):
     return name, nodes, h_value, con_unit, con_b, con_n, con_t_date, con_t_time, con_a, con_p, con_d, con_e, fig
 
 
-# ───────────────────── ⑨ 수정 미리보기
+# ───────────────────── ⑩ 수정 미리보기
 @callback(
     Output("edit-preview", "figure", allow_duplicate=True),
     Output("edit-alert", "children"),
@@ -881,7 +928,7 @@ def edit_preview(_, nodes_txt, h):
         return dash.no_update, "높이 입력", True
     return make_fig(nodes, float(h)), "", False
 
-# ───────────────────── ⑩ 수정 저장
+# ───────────────────── ⑪ 수정 저장
 @callback(
     Output("edit-alert",  "children",      allow_duplicate=True),
     Output("edit-alert",  "is_open",       allow_duplicate=True),

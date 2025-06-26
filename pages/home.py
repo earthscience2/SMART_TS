@@ -215,7 +215,12 @@ def layout():
                             dcc.Link(
                                 "프로젝트 열기 →",
                                 href=f"/project?page={proj_pk}",
-                                className="btn btn-outline-primary btn-sm"
+                                className="btn btn-outline-primary btn-sm me-2"
+                            ),
+                            dcc.Link(
+                                "콘크리트 관리 →",
+                                href=f"/concrete?page={proj_pk}",
+                                className="btn btn-outline-secondary btn-sm"
                             )
                         ])
                     ], className="d-flex justify-content-between align-items-center mb-4"),
