@@ -295,8 +295,9 @@ layout = html.Div([
                 ], className="g-3"),
             ]),
             dbc.ModalFooter([
-                dbc.Button("미리보기", id="add-build", color="info", className="me-auto px-4"),
-                dbc.Button("저장", id="add-save", color="success", className="px-4 fw-semibold"),
+                dbc.Button("미리보기", id="add-build", color="info", className="px-4"),
+                dbc.Button("재령분석", id="add-age-analysis", color="warning", className="px-4"),
+                dbc.Button("저장", id="add-save", color="success", className="px-4 fw-semibold ms-auto"),
                 dbc.Button("닫기", id="add-close", color="secondary", className="px-4"),
             ], className="border-0 pt-3"),
         ]),
@@ -404,9 +405,61 @@ layout = html.Div([
                 ], className="g-3"),
             ]),
             dbc.ModalFooter([
-                dbc.Button("미리보기", id="edit-build", color="info", className="me-auto px-4"),
-                dbc.Button("저장", id="edit-save", color="success", className="px-4 fw-semibold"),
+                dbc.Button("미리보기", id="edit-build", color="info", className="px-4"),
+                dbc.Button("재령분석", id="edit-age-analysis", color="warning", className="px-4"),
+                dbc.Button("저장", id="edit-save", color="success", className="px-4 fw-semibold ms-auto"),
                 dbc.Button("닫기", id="edit-close", color="secondary", className="px-4"),
+            ], className="border-0 pt-3"),
+        ]),
+
+        # 재령분석 모달
+        dbc.Modal(id="modal-age-analysis", is_open=False, size="xl", className="modal-notion", children=[
+            dcc.Store(id="age-analysis-source"),  # 어느 모달에서 호출되었는지 저장
+            dbc.ModalHeader([
+                html.H4("📊 재령일별 탄성계수 분석 (CEB-FIB Model)", className="mb-0 text-secondary fw-bold")
+            ], className="border-0 pb-2"),
+            dbc.ModalBody([
+                dbc.Row([
+                    # 왼쪽: 수식 및 설명
+                    dbc.Col([
+                        html.Div([
+                            html.H6("🔬 CEB-FIB Model 수식", className="mb-3 text-secondary fw-bold"),
+                            html.Div([
+                                html.P("E(t) = E₂₈ × (t/(t+β))ⁿ", className="text-center", style={"fontSize": "1.2rem", "fontWeight": "bold", "color": "#495057", "backgroundColor": "#f8f9fa", "padding": "15px", "borderRadius": "8px", "fontFamily": "monospace"}),
+                                html.Ul([
+                                    html.Li("E(t): t일 재령에서의 탄성계수 [GPa]"),
+                                    html.Li("E₂₈: 재령 28일 압축 탄성계수 [GPa]"),
+                                    html.Li("t: 경과일 (재령일) [day]"),
+                                    html.Li("β: 베타 상수 (0.1 ~ 1.0)"),
+                                    html.Li("n: N 상수 (0.5 ~ 0.7)"),
+                                ], className="mb-3", style={"fontSize": "0.9rem"}),
+                            ], className="mb-3"),
+                            html.Div(id="age-analysis-params", className="p-3 bg-light rounded"),
+                        ], className="bg-white p-3 rounded shadow-sm border"),
+                    ], md=4),
+                    
+                    # 오른쪽: 결과 테이블과 그래프
+                    dbc.Col([
+                        html.Div([
+                            html.H6("📈 재령일별 탄성계수 변화", className="mb-3 text-secondary fw-bold"),
+                            dbc.Row([
+                                # 테이블
+                                dbc.Col([
+                                    html.H6("📋 수치 결과", className="mb-2", style={"fontSize": "0.9rem"}),
+                                    html.Div(id="age-analysis-table", style={"height": "30vh", "overflowY": "auto"}),
+                                ], md=6),
+                                # 그래프
+                                dbc.Col([
+                                    html.H6("📊 그래프", className="mb-2", style={"fontSize": "0.9rem"}),
+                                    dcc.Graph(id="age-analysis-graph", style={"height": "30vh"}, config={'displayModeBar': False}),
+                                ], md=6),
+                            ]),
+                        ], className="bg-white p-3 rounded shadow-sm border"),
+                    ], md=8),
+                ], className="g-3"),
+            ]),
+            dbc.ModalFooter([
+                dbc.Button("닫기", id="age-analysis-close", color="secondary", className="px-4"),
             ], className="border-0 pt-3"),
         ]),
 ], style={"backgroundColor": "#f8f9fa", "minHeight": "100vh"})
@@ -1156,6 +1209,201 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
         "success",                      # 전역 msg 색상
         True                            # 전역 msg 열기
     )
+
+# ───────────────────── ⑫ 재령분석 모달 토글 및 소스 추적
+@callback(
+    Output("modal-age-analysis", "is_open"),
+    Output("age-analysis-source", "data"),
+    Input("add-age-analysis", "n_clicks"),
+    Input("edit-age-analysis", "n_clicks"),
+    Input("age-analysis-close", "n_clicks"),
+    State("modal-age-analysis", "is_open"),
+    prevent_initial_call=True
+)
+def toggle_age_analysis(add_btn, edit_btn, close_btn, is_open):
+    trig = ctx.triggered_id
+    if trig == "add-age-analysis":
+        return True, "add"
+    elif trig == "edit-age-analysis":
+        return True, "edit"
+    elif trig == "age-analysis-close":
+        return False, dash.no_update
+    return is_open, dash.no_update
+
+# ───────────────────── ⑬ 재령분석 계산 및 표시
+@callback(
+    Output("age-analysis-params", "children"),
+    Output("age-analysis-table", "children"),
+    Output("age-analysis-graph", "figure"),
+    Input("modal-age-analysis", "is_open"),
+    State("age-analysis-source", "data"),
+    State("add-e", "value"),
+    State("add-b", "value"),
+    State("add-n", "value"),
+    State("edit-e", "value"),
+    State("edit-b", "value"),
+    State("edit-n", "value"),
+    prevent_initial_call=True
+)
+def calculate_age_analysis(is_open, source, add_e, add_b, add_n, edit_e, edit_b, edit_n):
+    if not is_open:
+        raise PreventUpdate
+    
+    # 소스에 따라 적절한 값 사용
+    if source == "add":
+        e28, beta, n = add_e, add_b, add_n
+    elif source == "edit":
+        e28, beta, n = edit_e, edit_b, edit_n
+    else:
+        # 기본값으로 add 사용
+        e28, beta, n = add_e, add_b, add_n
+    
+    # 값 유효성 검사
+    if e28 is None or beta is None or n is None:
+        missing_params = []
+        if e28 is None: missing_params.append("E28(재령 28일 압축 탄성계수)")
+        if beta is None: missing_params.append("베타 상수")
+        if n is None: missing_params.append("N 상수")
+        
+        params_display = dbc.Alert(
+            f"다음 값들을 먼저 입력해주세요: {', '.join(missing_params)}",
+            color="warning",
+            className="mb-0"
+        )
+        
+        empty_table = dbc.Alert("매개변수를 입력하면 결과가 표시됩니다.", color="info", className="text-center")
+        empty_fig = go.Figure()
+        empty_fig.update_layout(
+            title="매개변수 입력 후 그래프가 표시됩니다",
+            xaxis_title="재령일 [day]",
+            yaxis_title="탄성계수 E(t) [GPa]",
+            margin=dict(l=40, r=40, t=60, b=40)
+        )
+        
+        return params_display, empty_table, empty_fig
+    
+    # CEB-FIB 모델 계산: E(t) = E28 * (t/(t+β))^n
+    days = list(range(1, 29))  # 1일부터 28일까지
+    elasticity_values = []
+    
+    for t in days:
+        e_t = e28 * ((t / (t + beta)) ** n)
+        elasticity_values.append(e_t)
+    
+    # 매개변수 표시
+    params_display = [
+        html.H6("📋 사용된 매개변수", className="mb-3", style={"fontSize": "0.9rem", "fontWeight": "bold"}),
+        html.Div([
+            html.P(f"E₂₈ = {e28} GPa", className="mb-1", style={"fontSize": "0.9rem"}),
+            html.P(f"β = {beta}", className="mb-1", style={"fontSize": "0.9rem"}),
+            html.P(f"n = {n}", className="mb-1", style={"fontSize": "0.9rem"}),
+        ], className="bg-white p-2 rounded border"),
+        html.Hr(className="my-2"),
+        html.H6("🎯 주요 결과", className="mb-2", style={"fontSize": "0.9rem", "fontWeight": "bold"}),
+        html.Div([
+            html.P(f"1일차: {elasticity_values[0]:.2f} GPa ({elasticity_values[0]/e28*100:.1f}%)", className="mb-1", style={"fontSize": "0.85rem"}),
+            html.P(f"7일차: {elasticity_values[6]:.2f} GPa ({elasticity_values[6]/e28*100:.1f}%)", className="mb-1", style={"fontSize": "0.85rem"}),
+            html.P(f"14일차: {elasticity_values[13]:.2f} GPa ({elasticity_values[13]/e28*100:.1f}%)", className="mb-1", style={"fontSize": "0.85rem"}),
+            html.P(f"21일차: {elasticity_values[20]:.2f} GPa ({elasticity_values[20]/e28*100:.1f}%)", className="mb-1", style={"fontSize": "0.85rem"}),
+            html.P(f"28일차: {elasticity_values[27]:.2f} GPa ({elasticity_values[27]/e28*100:.1f}%)", className="mb-1", style={"fontSize": "0.85rem", "fontWeight": "bold"}),
+        ], className="bg-light p-2 rounded")
+    ]
+    
+    # 테이블 생성 (1일부터 28일까지, 4주간 데이터)
+    table_data = []
+    for i, (day, e_val) in enumerate(zip(days, elasticity_values)):
+        table_data.append({
+            "재령": f"{day}일",
+            "E(t)": f"{e_val:.2f} GPa",
+            "비율": f"{e_val/e28*100:.1f}%"
+        })
+    
+    # 주요 시점들 강조
+    highlight_days = [1, 7, 14, 21, 28]
+    
+    table = dash_table.DataTable(
+        data=table_data,
+        columns=[
+            {"name": "재령", "id": "재령", "type": "text"},
+            {"name": "E(t) (GPa)", "id": "E(t)", "type": "text"},
+            {"name": "E28 대비", "id": "비율", "type": "text"},
+        ],
+        style_table={"height": "28vh", "overflowY": "auto"},
+        style_cell={
+            "textAlign": "center",
+            "fontSize": "0.8rem",
+            "padding": "6px",
+            "border": "1px solid #ddd"
+        },
+        style_header={
+            "backgroundColor": "#f8f9fa",
+            "fontWeight": "bold",
+            "fontSize": "0.8rem"
+        },
+        style_data_conditional=[
+            {
+                'if': {
+                    'filter_query': '{재령} in {{{}}}'.format(', '.join([f'{d}일' for d in highlight_days]))
+                },
+                'backgroundColor': '#fff3cd',
+                'fontWeight': 'bold'
+            }
+        ]
+    )
+    
+    # 그래프 생성
+    fig = go.Figure()
+    
+    # 메인 곡선
+    fig.add_trace(go.Scatter(
+        x=days,
+        y=elasticity_values,
+        mode='lines+markers',
+        name='E(t)',
+        line=dict(color='#1f77b4', width=3),
+        marker=dict(size=6)
+    ))
+    
+    # 주요 포인트 강조
+    highlight_indices = [d-1 for d in highlight_days]
+    fig.add_trace(go.Scatter(
+        x=[days[i] for i in highlight_indices],
+        y=[elasticity_values[i] for i in highlight_indices],
+        mode='markers',
+        name='주요 시점',
+        marker=dict(
+            size=10,
+            color='red',
+            symbol='diamond'
+        )
+    ))
+    
+    # E28 기준선
+    fig.add_hline(
+        y=e28,
+        line_dash="dash",
+        line_color="green",
+        annotation_text=f"E28 = {e28} GPa",
+        annotation_position="top right"
+    )
+    
+    fig.update_layout(
+        title="재령일별 탄성계수 변화 (CEB-FIB Model)",
+        xaxis_title="재령일 [day]",
+        yaxis_title="탄성계수 E(t) [GPa]",
+        margin=dict(l=40, r=40, t=60, b=40),
+        showlegend=False,
+        hovermode='x unified'
+    )
+    
+    # x축 설정 (주요 시점들만 표시)
+    fig.update_xaxes(
+        tickmode='array',
+        tickvals=highlight_days,
+        ticktext=[f'{d}일' for d in highlight_days]
+    )
+    
+    return params_display, table, fig
 
 
 
