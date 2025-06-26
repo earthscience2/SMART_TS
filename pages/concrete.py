@@ -117,52 +117,104 @@ layout = html.Div([
                                     "whiteSpace": "nowrap", 
                                     "textAlign": "center",
                                     "fontSize": "0.9rem",
-                                    "padding": "12px 8px",
+                                    "padding": "14px 12px",
                                     "border": "none",
-                                    "borderBottom": "1px solid #eee"
+                                    "borderBottom": "1px solid #f1f1f0",
+                                    "fontFamily": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
                                 },
                                 style_header={
-                                    "backgroundColor": "#f8f9fa", 
+                                    "backgroundColor": "#fafafa", 
                                     "fontWeight": 600,
-                                    "color": "#495057",
+                                    "color": "#37352f",
                                     "border": "none",
-                                    "borderBottom": "2px solid #dee2e6"
+                                    "borderBottom": "1px solid #e9e9e7",
+                                    "fontSize": "0.8rem",
+                                    "textTransform": "uppercase",
+                                    "letterSpacing": "0.5px"
                                 },
                                 style_data={
                                     "backgroundColor": "white",
-                                    "border": "none"
+                                    "border": "none",
+                                    "color": "#37352f"
                                 },
                                 style_data_conditional=[
                                     {
                                         'if': {'row_index': 'odd'},
-                                        'backgroundColor': '#f8f9fa'
+                                        'backgroundColor': '#fbfbfa'
+                                    },
+                                    {
+                                        'if': {'state': 'selected'},
+                                        'backgroundColor': '#e8f4fd',
+                                        'border': '1px solid #579ddb',
+                                        'borderRadius': '6px',
+                                        'boxShadow': '0 0 0 1px rgba(87, 157, 219, 0.3)',
+                                        'color': '#1d4ed8'
                                     },
                                     {
                                         'if': {
                                             'filter_query': '{status} = 분석중',
                                             'column_id': 'status'
                                         },
-                                        'backgroundColor': '#fff3cd',
-                                        'color': '#856404',
-                                        'fontWeight': 'bold'
+                                        'backgroundColor': '#fef3c7',
+                                        'color': '#92400e',
+                                        'fontWeight': '600',
+                                        'borderRadius': '4px',
+                                        'textAlign': 'center'
                                     },
                                     {
                                         'if': {
                                             'filter_query': '{status} = 수정가능',
                                             'column_id': 'status'
                                         },
-                                        'backgroundColor': '#d1ecf1',
-                                        'color': '#0c5460',
-                                        'fontWeight': 'bold'
+                                        'backgroundColor': '#dcfce7',
+                                        'color': '#166534',
+                                        'fontWeight': '600',
+                                        'borderRadius': '4px',
+                                        'textAlign': 'center'
                                     },
                                     {
                                         'if': {'column_id': 'pour_date'},
                                         'fontSize': '0.85rem',
-                                        'color': '#6c757d'
+                                        'color': '#6b7280',
+                                        'fontWeight': '500'
+                                    },
+                                    {
+                                        'if': {'column_id': 'name'},
+                                        'fontWeight': '600',
+                                        'color': '#111827',
+                                        'textAlign': 'left',
+                                        'paddingLeft': '16px'
                                     }
                                 ],
+                                css=[
+                                    {
+                                        'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner table',
+                                        'rule': 'border-collapse: separate; border-spacing: 0;'
+                                    },
+                                    {
+                                        'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr:hover',
+                                        'rule': 'background-color: #f8fafc !important; transition: background-color 0.15s ease;'
+                                    },
+                                    {
+                                        'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr.row-selected',
+                                        'rule': '''
+                                            background-color: #eff6ff !important;
+                                            box-shadow: inset 3px 0 0 #3b82f6;
+                                            border-left: 3px solid #3b82f6;
+                                        '''
+                                    },
+                                    {
+                                        'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner td',
+                                        'rule': 'cursor: pointer; transition: all 0.15s ease;'
+                                    }
+                                ]
                             ),
-                        ], style={"borderRadius": "8px", "overflow": "hidden", "border": "1px solid #dee2e6"}),
+                        ], style={
+                            "borderRadius": "12px", 
+                            "overflow": "hidden", 
+                            "border": "1px solid #e5e5e4",
+                            "boxShadow": "0 1px 3px rgba(0, 0, 0, 0.05)"
+                        }),
                         
                         # 선택된 콘크리트 작업 버튼
                         html.Div([
@@ -656,6 +708,18 @@ def refresh_table(n, project_pk, _data_ts):
 
         
         df["pour_date"] = df["con_t"].apply(format_date_display)
+        
+        # 최신 업데이트 순으로 정렬 (updated_at이 있으면 사용, 없으면 concrete_pk 역순)
+        if 'updated_at' in df.columns:
+            df = df.sort_values('updated_at', ascending=False)
+        elif 'created_at' in df.columns:
+            df = df.sort_values('created_at', ascending=False)
+        else:
+            # concrete_pk를 역순으로 정렬 (최신 생성 순)
+            df = df.sort_values('concrete_pk', ascending=False)
+        
+        # 인덱스 재설정
+        df = df.reset_index(drop=True)
     
     cols = [
         {"name": "이름", "id": "name", "type": "text"},
