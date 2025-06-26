@@ -49,29 +49,7 @@ layout = dbc.Container(
     children=[
         dcc.Location(id="project-url", refresh=False),
         
-        # 상단 헤더
-        dbc.Row([
-            dbc.Col([
-                html.Div([
-                    html.H2("프로젝트 관리", className="mb-2", style={
-                        "fontWeight": "700", 
-                        "color": "#1a202c",
-                        "fontSize": "28px"
-                    }),
-                    html.P("프로젝트별 콘크리트 구조물 분석 및 관리", className="text-muted mb-0", style={
-                        "fontSize": "16px",
-                        "lineHeight": "1.5"
-                    })
-                ], style={
-                    "backgroundColor": "white",
-                    "padding": "24px",
-                    "borderRadius": "12px",
-                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
-                    "border": "1px solid #e2e8f0",
-                    "marginBottom": "24px"
-                })
-            ])
-        ]),
+
 
         # ── 컨펌 다이얼로그 및 알림
         dcc.ConfirmDialog(
