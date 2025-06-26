@@ -314,10 +314,6 @@ def layout():
                                     f"센서 : {sensor_cnt} 개",
                                     className="card-text fs-7 mb-1"
                                 ),
-                                html.P(
-                                    f"{row['user_company_pk']}",
-                                    className="card-text fs-9 mb-1"
-                                ),
                             ], className="d-flex flex-column align-items-center justify-content-center h-100"),
                             style=card_style,
                             className="project-card mb-4"
