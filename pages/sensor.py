@@ -416,10 +416,15 @@ def init_dropdown(selected_value):
     페이지 로드 또는 값이 None일 때 콘크리트 목록을 Dropdown 옵션으로 설정.
     """
     df_conc = api_db.get_concrete_data()
-    options = [
-        {"label": f"{row['name']}", "value": row["concrete_pk"]}
-        for _, row in df_conc.iterrows()
-    ]
+    options = []
+    for _, row in df_conc.iterrows():
+        # activate 상태에 따라 상태 텍스트 결정
+        status = "수정가능" if row.get("activate", 1) == 1 else "분석중"
+        status_icon = "🟢" if row.get("activate", 1) == 1 else "🟡"
+        
+        label = f"{status_icon} {row['name']} [{status}]"
+        options.append({"label": label, "value": row["concrete_pk"]})
+    
     if not options:
         return [], None
 
