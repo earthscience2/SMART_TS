@@ -220,7 +220,7 @@ layout = html.Div([
                         html.Div([
                             dbc.Button("수정", id="btn-edit", color="secondary", size="sm", className="px-3", disabled=True),
                             dbc.Button("삭제", id="btn-del", color="danger", size="sm", className="px-3", disabled=True),
-                        ], className="d-flex justify-content-around mt-2")
+                        ], className="d-flex justify-content-center gap-2 mt-2")
                     ], className="p-3")
                 ], className="bg-white rounded shadow-sm border"),
             ], md=4),
