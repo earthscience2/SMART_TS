@@ -377,16 +377,9 @@ layout = dbc.Container(
                     
                     # 숨김 처리된 콜백 대상 컴포넌트들 (항상 포함)
                     html.Div([
-                        dcc.Slider(
-                            id="time-slider",
-                            min=0, max=5, step=1, value=0, marks={},
-                            style={"display": "block"}  # 항상 표시되도록 설정
-                        ),
+                        dcc.Slider(id="time-slider", min=0, max=5, step=1, value=0, marks={}),
                         dcc.Slider(id="time-slider-section", min=0, max=5, step=1, value=0, marks={}),
-                        dcc.Graph(
-                            id="viewer-3d",
-                            style={"display": "block"}  # 항상 표시되도록 설정
-                        ),
+                        dcc.Graph(id="viewer-3d"),
                         dbc.Input(id="section-x-input", type="number", value=None),
                         dbc.Input(id="section-y-input", type="number", value=None),
                         dbc.Input(id="section-z-input", type="number", value=None),
