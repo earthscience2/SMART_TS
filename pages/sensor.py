@@ -38,7 +38,7 @@ import api_db
 
 register_page(__name__, path="/sensor")
 
-# ────────────────────────────── 3-D 헬퍼 ─────────────────────────────
+# ────────────────────────────── 3-D 헬퍼 ────────────────────────────
 def make_concrete_fig(nodes: list[list[float]], h: float) -> go.Figure:
     fig = go.Figure()
     poly = np.array(nodes)
@@ -129,177 +129,289 @@ def get_polygon_intersections_y(x: float, nodes: list[list[float]]) -> list[floa
 
 
 # ────────────────────────────── 레이아웃 ────────────────────────────
-layout = dbc.Container(
-    fluid=True,
-    children=[
-        # ── (★) 카메라 정보를 저장하기 위한 Store
-        dcc.Store(id="camera-store", data=None),
+layout = html.Div([
+    dbc.Container(
+        fluid=True,
+        children=[
+            # ── (★) 카메라 정보를 저장하기 위한 Store
+            dcc.Store(id="camera-store", data=None),
 
-        # ── (★) 보조선 토글 상태를 저장하기 위한 Store(메인 뷰)
-        dcc.Store(id="helper-toggle-store", data=True),
+            # ── (★) 보조선 토글 상태를 저장하기 위한 Store(메인 뷰)
+            dcc.Store(id="helper-toggle-store", data=True),
 
-        # ── (★) 카메라 저장 시 알림을 띄우기 위한 Toast (디버깅용)
-        dbc.Toast(
-            id="camera-toast",
-            header="카메라 저장됨",
-            is_open=False,
-            duration=2000,
-            icon="info",
-            style={"position": "fixed", "top": 10, "right": 10, "width": "300px"},
-            children="",
-        ),
+            # ── (★) 카메라 저장 시 알림을 띄우기 위한 Toast (디버깅용)
+            dbc.Toast(
+                id="camera-toast",
+                header="카메라 저장됨",
+                is_open=False,
+                duration=2000,
+                icon="info",
+                style={"position": "fixed", "top": 10, "right": 10, "width": "300px"},
+                children="",
+            ),
 
-        # ── (★) 메인 뷰 보조선 토글 스위치 ───────────────────────────
-        dbc.Row(
-            dbc.Col(
-                dbc.Switch(
-                    id="toggle-lines",
-                    label="보조선 표시",
-                    value=True,
-                    style={"marginBottom": "10px"},
-                ),
-                width=3,
-            )
-        ),
+            dbc.Row([
+                # 좌측: 콘크리트 선택 + 센서 목록
+                dbc.Col([
+                    # 콘크리트 선택 카드
+                    html.Div([
+                        html.Div([
+                            html.H6("🧱 콘크리트 선택", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                            dcc.Dropdown(
+                                id="ddl-concrete",
+                                placeholder="콘크리트를 선택하세요",
+                                clearable=False,
+                                style={"fontSize": "0.85rem"},
+                                className="mb-2"
+                            ),
+                        ], className="p-3")
+                    ], className="bg-white rounded shadow-sm border mb-3"),
 
-        # 상단: 콘크리트 선택 → 센서 테이블 + 버튼
-        dbc.Row(
-            [
-                dbc.Col(
-                    [
-                        html.H6("콘크리트 선택"),
-                        dcc.Dropdown(
-                            id="ddl-concrete",
-                            placeholder="콘크리트 선택",
-                            clearable=False,
-                        ),
-                        html.H6("센서 리스트", className="mt-3"),
-                        dash_table.DataTable(
-                            id="tbl-sensor",
-                            page_size=10,
-                            row_selectable="single",
-                            style_table={"overflowY": "auto", "height": "45vh"},
-                            style_cell={"whiteSpace": "nowrap", "textAlign": "center"},
-                            style_header={"backgroundColor": "#f1f3f5", "fontWeight": 600},
-                        ),
-                        dbc.ButtonGroup(
-                            [
-                                dbc.Button("+ 추가", id="btn-sensor-add", color="success", className="mt-2"),
-                                dbc.Button("수정", id="btn-sensor-edit", color="secondary", className="mt-2", disabled=True),
-                                dbc.Button("삭제", id="btn-sensor-del",  color="danger", className="mt-2", disabled=True),
-                            ],
-                            size="sm",
-                            vertical=True,
-                            className="w-100",
-                        ),
-                        dcc.ConfirmDialog(
-                            id="confirm-del-sensor",
-                            message="선택한 센서를 정말 삭제하시겠습니까?"
-                        ),
-                    ],
-                    md=3,
-                ),
-                dbc.Col(
-                    [
-                        dcc.Graph(
-                            id="viewer-sensor",
-                            style={"height": "75vh"},
-                            config={"scrollZoom": True},
-                        ),
-                    ],
-                    md=9,
-                ),
-            ],
-            className="g-3",
-        ),
+                    # 보조선 토글 카드
+                    html.Div([
+                        html.Div([
+                            dbc.Switch(
+                                id="toggle-lines",
+                                label="🔗 보조선 표시",
+                                value=True,
+                                style={"fontSize": "0.85rem", "fontWeight": "500"},
+                            ),
+                        ], className="p-2")
+                    ], className="bg-white rounded shadow-sm border mb-3"),
 
-        # ── 추가 모달 ──────────────────────────────────────────
-        dbc.Modal(
-            id="modal-sensor-add",
-            is_open=False,
-            size="lg",
-            children=[
-                dbc.ModalHeader("센서 추가"),
-                dbc.ModalBody(
-                    [
+                    # 센서 목록 카드
+                    html.Div([
+                        html.Div([
+                            # 제목과 추가 버튼
+                            html.Div([
+                                html.H6("📡 센서 목록", className="mb-0 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                                dbc.Button("+ 추가", id="btn-sensor-add", color="success", size="sm", className="px-3")
+                            ], className="d-flex justify-content-between align-items-center mb-2"),
+                            html.Small("💡 센서를 클릭하여 선택할 수 있습니다", className="text-muted mb-2 d-block", style={"fontSize": "0.75rem"}),
+                            
+                            # 센서 테이블
+                            html.Div([
+                                dash_table.DataTable(
+                                    id="tbl-sensor",
+                                    page_size=10,
+                                    row_selectable="single",
+                                    style_table={"overflowY": "auto", "height": "45vh"},
+                                    style_cell={
+                                        "whiteSpace": "nowrap", 
+                                        "textAlign": "center",
+                                        "fontSize": "0.8rem",
+                                        "padding": "12px 10px",
+                                        "border": "none",
+                                        "borderBottom": "1px solid #f1f1f0",
+                                        "fontFamily": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+                                    },
+                                    style_header={
+                                        "backgroundColor": "#fafafa", 
+                                        "fontWeight": 600,
+                                        "color": "#37352f",
+                                        "border": "none",
+                                        "borderBottom": "1px solid #e9e9e7",
+                                        "fontSize": "0.75rem",
+                                        "textTransform": "uppercase",
+                                        "letterSpacing": "0.5px"
+                                    },
+                                    style_data={
+                                        "backgroundColor": "white",
+                                        "border": "none",
+                                        "color": "#37352f"
+                                    },
+                                    style_data_conditional=[
+                                        {
+                                            'if': {'row_index': 'odd'},
+                                            'backgroundColor': '#fbfbfa'
+                                        },
+                                        {
+                                            'if': {'state': 'selected'},
+                                            'backgroundColor': '#e8f4fd',
+                                            'border': '1px solid #579ddb',
+                                            'borderRadius': '6px',
+                                            'boxShadow': '0 0 0 1px rgba(87, 157, 219, 0.3)',
+                                            'color': '#1d4ed8'
+                                        },
+                                        {
+                                            'if': {'column_id': 'device_id'},
+                                            'fontWeight': '600',
+                                            'color': '#111827',
+                                            'textAlign': 'left',
+                                            'paddingLeft': '12px'
+                                        }
+                                    ],
+                                    css=[
+                                        {
+                                            'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner table',
+                                            'rule': 'border-collapse: separate; border-spacing: 0;'
+                                        },
+                                        {
+                                            'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr:hover',
+                                            'rule': 'background-color: #f8fafc !important; transition: background-color 0.15s ease;'
+                                        },
+                                        {
+                                            'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr.row-selected',
+                                            'rule': '''
+                                                background-color: #eff6ff !important;
+                                                box-shadow: inset 3px 0 0 #3b82f6;
+                                                border-left: 3px solid #3b82f6;
+                                            '''
+                                        },
+                                        {
+                                            'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner td',
+                                            'rule': 'cursor: pointer; transition: all 0.15s ease;'
+                                        }
+                                    ]
+                                ),
+                            ], style={
+                                "borderRadius": "12px", 
+                                "overflow": "hidden", 
+                                "border": "1px solid #e5e5e4",
+                                "boxShadow": "0 1px 3px rgba(0, 0, 0, 0.05)"
+                            }),
+                            
+                            # 선택된 센서 작업 버튼
+                            html.Div([
+                                dbc.Button("수정", id="btn-sensor-edit", color="secondary", size="sm", className="px-3", disabled=True),
+                                dbc.Button("삭제", id="btn-sensor-del", color="danger", size="sm", className="px-3", disabled=True),
+                            ], className="d-flex justify-content-center gap-2 mt-2"),
+
+                            dcc.ConfirmDialog(
+                                id="confirm-del-sensor",
+                                message="선택한 센서를 정말 삭제하시겠습니까?"
+                            ),
+                        ], className="p-3")
+                    ], className="bg-white rounded shadow-sm border"),
+                ], md=4),
+                
+                # 우측: 3D 뷰
+                dbc.Col([
+                    html.Div([
+                        html.Div([
+                            html.H6("🔍 3D 센서 배치 뷰", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                            html.Small("💡 마우스로 회전/줌/이동이 가능합니다", className="text-muted mb-2 d-block", style={"fontSize": "0.75rem"}),
+                            dcc.Graph(
+                                id="viewer-sensor",
+                                style={"height": "75vh"},
+                                config={"scrollZoom": True, "displayModeBar": False},
+                            ),
+                        ], className="p-3")
+                    ], className="bg-white rounded shadow-sm border"),
+                ], md=8),
+            ], className="g-3", style={"height": "85vh"}),
+
+            # ── 추가 모달 ──────────────────────────────────────────
+            dbc.Modal(
+                id="modal-sensor-add",
+                is_open=False,
+                size="lg",
+                className="modal-notion",
+                children=[
+                    dbc.ModalHeader([
+                        html.H5("📡 센서 추가", className="mb-0 text-secondary fw-bold", style={"fontSize": "1.1rem"})
+                    ], className="border-0 pb-1"),
+                    dbc.ModalBody([
                         dbc.Alert(id="add-sensor-alert", is_open=False, duration=3000, color="danger"),
-                        dbc.Row([
-                            dbc.Col([
-                                html.Label("Device ID", className="form-label"),
-                                dbc.Input(id="add-sensor-device-id", placeholder="Device ID (예: DEVICE001)", className="mb-2"),
-                            ], width=6),
-                            dbc.Col([
-                                html.Label("Channel", className="form-label"),
-                                dbc.Input(id="add-sensor-channel", type="number", placeholder="채널 번호", className="mb-2"),
-                            ], width=6)
-                        ], className="mb-3"),
-                        dbc.Input(id="add-sensor-coords", placeholder="센서 좌표 [x, y, z] (예: [1, 1, 0])", className="mb-2"),
-                        dcc.Graph(id="add-sensor-preview", style={"height": "45vh"}, className="border"),
-                    ]
-                ),
-                dbc.ModalFooter(
-                    [
-                        dbc.Button("새로고침", id="add-sensor-build", color="info", className="me-auto"),
-                        dbc.Button("저장", id="add-sensor-save", color="primary"),
-                        dbc.Button("닫기", id="add-sensor-close", color="secondary"),
-                    ]
-                ),
-            ],
-        ),
+                        
+                        # 센서 정보 입력 영역
+                        html.Div([
+                            html.H6("📝 센서 정보", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("Device ID", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                    dbc.Input(id="add-sensor-device-id", placeholder="Device ID (예: DEVICE001)", className="form-control", style={"fontSize": "0.85rem"}),
+                                ], width=6),
+                                dbc.Col([
+                                    dbc.Label("채널", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                    dbc.Input(id="add-sensor-channel", type="number", placeholder="채널 번호", className="form-control", style={"fontSize": "0.85rem"}),
+                                ], width=6)
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("센서 좌표 [x, y, z]", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                    dbc.Input(id="add-sensor-coords", placeholder="센서 좌표 (예: [1, 1, 0])", className="form-control", style={"fontSize": "0.85rem"}),
+                                ], width=12)
+                            ], className="mb-2"),
+                        ], className="bg-light p-2 rounded mb-3"),
+                        
+                        # 3D 미리보기 영역
+                        html.Div([
+                            html.H6("👁️ 3D 미리보기", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                            dcc.Graph(id="add-sensor-preview", style={"height": "45vh"}, className="rounded", config={'displayModeBar': False}),
+                        ], className="bg-light p-2 rounded"),
+                    ]),
+                    dbc.ModalFooter([
+                        dbc.Button("새로고침", id="add-sensor-build", color="info", className="px-3", size="sm"),
+                        dbc.Button("저장", id="add-sensor-save", color="success", className="px-3 fw-semibold ms-auto", size="sm"),
+                        dbc.Button("닫기", id="add-sensor-close", color="secondary", className="px-3", size="sm"),
+                    ], className="border-0 pt-2"),
+                ],
+            ),
 
-        # ── 수정 모달 ──────────────────────────────────────────
-        dbc.Modal(
-            id="modal-sensor-edit",
-            is_open=False,
-            size="lg",
-            children=[
-                dbc.ModalHeader(f"센서 수정"),
-                dbc.ModalBody(
-                    [
+            # ── 수정 모달 ──────────────────────────────────────────
+            dbc.Modal(
+                id="modal-sensor-edit",
+                is_open=False,
+                size="lg",
+                className="modal-notion",
+                children=[
+                    dbc.ModalHeader([
+                        html.H5("✏️ 센서 수정", className="mb-0 text-secondary fw-bold", style={"fontSize": "1.1rem"})
+                    ], className="border-0 pb-1"),
+                    dbc.ModalBody([
                         dcc.Store(id="edit-sensor-concrete-id"),
                         dcc.Store(id="edit-sensor-id-store"),
                         dbc.Alert(id="edit-sensor-alert", is_open=False, duration=3000, color="danger"),
-                        # 센서 정보 표시
-                        dbc.Row([
-                            dbc.Col([
-                                html.Label("Device ID", className="form-label"),
-                                html.Div(id="edit-sensor-device-id", className="form-control bg-light")
-                            ], width=6),
-                            dbc.Col([
-                                html.Label("Channel", className="form-label"),
-                                html.Div(id="edit-sensor-channel", className="form-control bg-light")
-                            ], width=6)
-                        ], className="mb-3"),
-                        # 좌표 입력 필드
-                        dbc.Input(id="edit-sensor-coords", placeholder="센서 좌표 [x, y, z] (예: [1, 1, 0])", className="mb-2"),
-                        # (★) 수정 모달 보조선 토글 스위치
-                        dbc.Row(
-                            dbc.Col(
-                                dbc.Switch(
-                                    id="edit-toggle-lines",
-                                    label="모달 내 보조선 표시",
-                                    value=True,
-                                    style={"marginBottom": "10px"},
-                                ),
-                                width=4,
-                            ),
-                            className="mb-2",
-                        ),
-                        # 센서 수정 3D 뷰(미리보기 영역)
-                        dcc.Graph(id="edit-sensor-preview", style={"height": "45vh"}, className="border"),
-                    ]
-                ),
-                dbc.ModalFooter(
-                    [
-                        dbc.Button("새로고침", id="edit-sensor-build", color="info", className="me-auto"),
-                        dbc.Button("저장", id="edit-sensor-save", color="primary"),
-                        dbc.Button("닫기", id="edit-sensor-close", color="secondary"),
-                    ]
-                ),
-            ],
-        ),
-    ],
-)
+                        
+                        # 센서 정보 표시 영역
+                        html.Div([
+                            html.H6("📝 센서 정보", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("Device ID", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                    html.Div(id="edit-sensor-device-id", className="form-control bg-light", style={"fontSize": "0.85rem"})
+                                ], width=6),
+                                dbc.Col([
+                                    dbc.Label("채널", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                    html.Div(id="edit-sensor-channel", className="form-control bg-light", style={"fontSize": "0.85rem"})
+                                ], width=6)
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("센서 좌표 [x, y, z]", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                    dbc.Input(id="edit-sensor-coords", placeholder="센서 좌표 (예: [1, 1, 0])", className="form-control", style={"fontSize": "0.85rem"}),
+                                ], width=8),
+                                dbc.Col([
+                                    dbc.Switch(
+                                        id="edit-toggle-lines",
+                                        label="보조선 표시",
+                                        value=True,
+                                        style={"fontSize": "0.8rem", "marginTop": "28px"},
+                                    ),
+                                ], width=4)
+                            ], className="mb-2"),
+                        ], className="bg-light p-2 rounded mb-3"),
+                        
+                        # 3D 미리보기 영역
+                        html.Div([
+                            html.H6("👁️ 3D 미리보기", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                            dcc.Graph(id="edit-sensor-preview", style={"height": "45vh"}, className="rounded", config={'displayModeBar': False}),
+                        ], className="bg-light p-2 rounded"),
+                    ]),
+                    dbc.ModalFooter([
+                        dbc.Button("새로고침", id="edit-sensor-build", color="info", className="px-3", size="sm"),
+                        dbc.Button("저장", id="edit-sensor-save", color="success", className="px-3 fw-semibold ms-auto", size="sm"),
+                        dbc.Button("닫기", id="edit-sensor-close", color="secondary", className="px-3", size="sm"),
+                    ], className="border-0 pt-2"),
+                ],
+            ),
+        ],
+        className="py-2", 
+        style={"maxWidth": "1400px", "height": "100vh"}, 
+        fluid=False
+    ),
+], style={"backgroundColor": "#f8f9fa", "minHeight": "100vh"})
 
 
 # ── 콜백 함수들 ──
