@@ -186,29 +186,9 @@ layout = dbc.Container(
 
         # 메인 콘텐츠 영역
         dbc.Row([
-            # 왼쪽 사이드바 - 프로젝트 및 콘크리트 목록
+            # 왼쪽 사이드바 - 콘크리트 목록
             dbc.Col([
                 html.Div([
-                    # 프로젝트 선택 섹션
-                    html.Div([
-                        html.H5("📋 프로젝트 선택", className="mb-3", style={
-                            "fontWeight": "600", 
-                            "color": "#2d3748",
-                            "fontSize": "16px",
-                            "display": "flex",
-                            "alignItems": "center"
-                        }),
-                        dcc.Dropdown(
-                            id="ddl-project",
-                            placeholder="프로젝트를 선택하세요",
-                            clearable=False,
-                            style={
-                                "borderRadius": "8px",
-                                "border": "1px solid #e2e8f0"
-                            }
-                        ),
-                    ], style={"marginBottom": "24px"}),
-                    
                     # 콘크리트 목록 섹션
                     html.Div([
                         html.Div([
@@ -226,13 +206,13 @@ layout = dbc.Container(
                         html.Div([
                             dash_table.DataTable(
                                 id="tbl-concrete",
-                                page_size=8,
+                                page_size=10,
                                 row_selectable="single",
                                 sort_action="native",
                                 sort_mode="single",
                                 style_table={
                                     "overflowY": "auto", 
-                                    "height": "400px",
+                                    "height": "500px",
                                     "borderRadius": "8px",
                                     "border": "1px solid #e2e8f0"
                                 },
@@ -415,8 +395,11 @@ layout = dbc.Container(
                         })
                     ]),
                     
-                    # 숨김 처리된 단면도 콜백 대상 컴포넌트들
+                    # 숨김 처리된 콜백 대상 컴포넌트들 (항상 포함)
                     html.Div([
+                        dcc.Slider(id="time-slider", min=0, max=5, step=1, value=0, marks={}),
+                        dcc.Slider(id="time-slider-section", min=0, max=5, step=1, value=0, marks={}),
+                        dcc.Graph(id="viewer-3d"),
                         dbc.Input(id="section-x-input", type="number", value=None),
                         dbc.Input(id="section-y-input", type="number", value=None),
                         dbc.Input(id="section-z-input", type="number", value=None),
@@ -424,6 +407,21 @@ layout = dbc.Container(
                         dcc.Graph(id="viewer-section-x"),
                         dcc.Graph(id="viewer-section-y"),
                         dcc.Graph(id="viewer-section-z"),
+                        dcc.Store(id="temp-coord-store", data={}),
+                        dbc.Input(id="temp-x-input", type="number", value=0),
+                        dbc.Input(id="temp-y-input", type="number", value=0),
+                        dbc.Input(id="temp-z-input", type="number", value=0),
+                        dcc.Graph(id="temp-viewer-3d"),
+                        dcc.Graph(id="temp-time-graph"),
+                        dcc.Dropdown(id="analysis-field-dropdown", value=None),
+                        dcc.Dropdown(id="analysis-preset-dropdown", value="rainbow"),
+                        dcc.Slider(id="analysis-time-slider", min=0, max=5, value=0),
+                        dbc.Checklist(id="slice-enable", value=[]),
+                        dcc.Dropdown(id="slice-axis", value="Z"),
+                        dcc.Slider(id="slice-slider", min=0, max=1, value=0.5),
+                        html.Div(id="analysis-3d-viewer"),
+                        html.Div(id="analysis-current-file-label"),
+                        dcc.Graph(id="analysis-colorbar"),
                     ], style={"display": "none"}),
                     
                 ], style={
@@ -438,42 +436,7 @@ layout = dbc.Container(
     ],
 )
 
-# ───────────────────── ① 프로젝트 목록 초기화 ─────────────────────
-@callback(
-    Output("ddl-project", "options"),
-    Output("ddl-project", "value"),
-    Input("ddl-project", "value"),
-    Input("project-url", "search"),
-    prevent_initial_call=False,
-)
-def init_dropdown(selected_value, search):
-    """
-    페이지 로드 또는 값이 None일 때 프로젝트 목록을 Dropdown 옵션으로 설정.
-    URL 쿼리스트링에 page=프로젝트PK가 있으면 해당 값을 우선 적용.
-    """
-    df_proj = api_db.get_project_data()
-    options = [
-        {"label": f"{row['name']}", "value": row["project_pk"]}
-        for _, row in df_proj.iterrows()
-    ]
-    if not options:
-        return [], None
-
-    # 쿼리스트링에서 page 파라미터 추출
-    project_from_url = None
-    if search:
-        qs = parse_qs(search.lstrip('?'))
-        project_from_url = qs.get('page', [None])[0]
-        if project_from_url and project_from_url in [opt['value'] for opt in options]:
-            return options, project_from_url
-
-    # 초기 로드 시(= selected_value가 None일 때)만 첫 번째 옵션을 기본값으로 지정
-    if selected_value is None:
-        return options, options[0]["value"]
-    # 사용자가 이미 선택한 값이 있으면 그대로 유지
-    return options, selected_value
-
-# ───────────────────── ② 프로젝트 선택 콜백 ─────────────────────
+# ───────────────────── ① 콘크리트 목록 초기화 ─────────────────────
 @callback(
     Output("tbl-concrete", "data"),
     Output("tbl-concrete", "columns"),
@@ -487,22 +450,12 @@ def init_dropdown(selected_value, search):
     Output("time-slider", "value", allow_duplicate=True),
     Output("time-slider", "marks", allow_duplicate=True),
     Output("current-time-store", "data"),
-    Input("ddl-project", "value"),
-    prevent_initial_call=True,
+    Input("project-url", "pathname"),
+    prevent_initial_call=False,
 )
-def on_project_change(selected_proj):
-    if not selected_proj:
-        return [], [], [], [], True, True, "", 0, 5, 0, {}, None
-
-    # 1) 프로젝트 정보 로드
-    try:
-        proj_row = api_db.get_project_data(project_pk=selected_proj).iloc[0]
-        proj_name = proj_row["name"]
-    except Exception:
-        return [], [], [], [], True, True, "프로젝트 정보를 불러올 수 없음", 0, 5, 0, {}, None
-
-    # 2) 콘크리트 데이터 로드
-    df_conc = api_db.get_concrete_data(project_pk=selected_proj)
+def load_concrete_data(pathname):
+    # 모든 콘크리트 데이터 로드 (프로젝트 구분 없이)
+    df_conc = api_db.get_concrete_data()
     table_data = []
     for _, row in df_conc.iterrows():
         try:
@@ -515,7 +468,10 @@ def on_project_change(selected_proj):
         
         # 센서 데이터 확인
         concrete_pk = row["concrete_pk"]
-        df_sensors = api_db.get_sensors_data(concrete_pk=concrete_pk)
+        try:
+            df_sensors = api_db.get_sensors_data(concrete_pk=concrete_pk)
+        except:
+            df_sensors = pd.DataFrame()
         has_sensors = not df_sensors.empty
         
         # 상태 결정 (정렬을 위해 우선순위도 함께 설정)
@@ -591,7 +547,7 @@ def on_project_change(selected_proj):
         {"name": "경과일", "id": "elapsed_days", "type": "numeric"},
     ]
 
-    title = f"{proj_name} · 콘크리트 전체"
+    title = "전체 콘크리트 목록"
     
     # 테이블 스타일 설정 (상태별 색상)
     style_data_conditional = []
@@ -1035,43 +991,6 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
         guide_message = "분석할 콘크리트를 추가하세요."
     if guide_message:
         return html.Div([
-            # 시간 슬라이더 (항상 포함, 숨김 처리)
-            html.Div([
-                html.Label("시간", className="form-label"),
-                dcc.Slider(
-                    id="time-slider",
-                    min=0,
-                    step=1,
-                    value=0,
-                    marks={},
-                    tooltip={"placement": "bottom", "always_visible": True},
-                ),
-            ], className="mb-3", style={"display": "none"}),
-            # 3D 뷰어 (항상 포함, 숨김 처리)
-            dcc.Graph(
-                id="viewer-3d",
-                style={"display": "none"},
-                config={"scrollZoom": True},
-            ),
-            # 단면도 탭 관련 컴포넌트들 (숨김 처리)
-            html.Div([
-                dcc.Slider(id="time-slider-section", min=0, max=5, value=0, marks={}),
-            ], style={"display": "none"}),
-            dcc.Graph(id="viewer-3d-section", style={"display": "none"}),
-            dcc.Graph(id="viewer-section-x", style={"display": "none"}),
-            dcc.Graph(id="viewer-section-y", style={"display": "none"}),
-            dcc.Graph(id="viewer-section-z", style={"display": "none"}),
-            dbc.Input(id="section-x-input", type="number", value=0, style={"display": "none"}),
-            dbc.Input(id="section-y-input", type="number", value=0, style={"display": "none"}),
-            dbc.Input(id="section-z-input", type="number", value=0, style={"display": "none"}),
-            # 온도 탭 관련 컴포넌트들 (숨김 처리)
-            dcc.Store(id="temp-coord-store", data={}),
-            dbc.Input(id="temp-x-input", type="number", value=0, style={"display": "none"}),
-            dbc.Input(id="temp-y-input", type="number", value=0, style={"display": "none"}),
-            dbc.Input(id="temp-z-input", type="number", value=0, style={"display": "none"}),
-            dcc.Graph(id="temp-viewer-3d", style={"display": "none"}),
-            dcc.Graph(id="temp-time-graph", style={"display": "none"}),
-            
             # 안내 메시지 (노션 스타일)
             html.Div([
                 html.Div([
@@ -1250,30 +1169,7 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                 })
             ]),
             
-            # 숨김용 섹션 슬라이더 (3D 탭에서도 콜백 대상 유지)
-            html.Div([
-                dcc.Slider(
-                    id="time-slider-section",
-                    min=slider_min,
-                    max=slider_max,
-                    step=1,
-                    value=slider_value,
-                    marks=slider_marks,
-                )
-            ], style={"display": "none"}),
-            
-            # --- 단면도 콜백 대상 컴포넌트들(3D 탭에서도 항상 존재하도록 숨김) ---
-            html.Div([
-                # Section inputs
-                dbc.Input(id="section-x-input", type="number", value=None),
-                dbc.Input(id="section-y-input", type="number", value=None),
-                dbc.Input(id="section-z-input", type="number", value=None),
-                # Section graphs
-                dcc.Graph(id="viewer-3d-section"),
-                dcc.Graph(id="viewer-section-x"),
-                dcc.Graph(id="viewer-section-y"),
-                dcc.Graph(id="viewer-section-z"),
-            ], style={"display": "none"}),
+
         ])
     elif active_tab == "tab-section":
         # 단면도 탭: 2x2 배열 배치, 입력창 상단, 3D 뷰/단면도
@@ -1370,18 +1266,7 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     "borderRadius": "8px",
                     "border": "1px solid #e5e7eb",
                     "marginBottom": "16px"
-                }),
-                # 숨김용 메인 슬라이더 (단면도 탭에서도 컴포넌트 유지)
-                html.Div([
-                    dcc.Slider(
-                        id="time-slider",
-                        min=slider_min,
-                        max=slider_max,
-                        step=1,
-                        value=slider_value,
-                        marks=slider_marks,
-                    )
-                ], style={"display": "none"}),
+                })
             ]),
             
             # 현재 시간 정보 (노션 스타일 카드)
@@ -1559,10 +1444,7 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                         })
                     ], md=6),
                 ]),
-            ]),
-            
-            # 숨김용 3D 메인 뷰(단면도에서도 콜백 대상 유지)
-            dcc.Graph(id="viewer-3d", style={"display": "none"}, config={"scrollZoom": True}),
+            ])
         ])
     elif active_tab == "tab-temp":
         # 온도 변화 탭: 입력창(맨 위), 3D 뷰(왼쪽, 콘크리트 모양만, 온도 없음, 입력 위치 표시), 오른쪽 시간에 따른 온도 정보(그래프)
