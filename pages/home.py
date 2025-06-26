@@ -213,7 +213,7 @@ def layout():
                         ], className="d-flex flex-column"),
                         html.Div([
                             dcc.Link(
-                                "프로젝트 열기 →",
+                                "분석결과 보기 →",
                                 href=f"/project?page={proj_pk}",
                                 className="btn btn-outline-primary btn-sm me-2"
                             ),
