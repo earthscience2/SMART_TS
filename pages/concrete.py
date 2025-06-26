@@ -299,18 +299,18 @@ layout = html.Div([
                 ], className="mt-3"),
             ]),
             dbc.ModalFooter([
-                dbc.Button("미리보기", id="add-build", color="info", className="px-4"),
-                dbc.Button("재령분석", id="add-age-analysis", color="warning", className="px-4"),
-                dbc.Button("저장", id="add-save", color="success", className="px-4 fw-semibold ms-auto"),
-                dbc.Button("닫기", id="add-close", color="secondary", className="px-4"),
-            ], className="border-0 pt-3"),
+                dbc.Button("미리보기", id="add-build", color="info", className="px-3", size="sm"),
+                dbc.Button("재령분석", id="add-age-analysis", color="warning", className="px-3", size="sm"),
+                dbc.Button("저장", id="add-save", color="success", className="px-3 fw-semibold ms-auto", size="sm"),
+                dbc.Button("닫기", id="add-close", color="secondary", className="px-3", size="sm"),
+            ], className="border-0 pt-2"),
         ]),
 
         # 수정 모달
-        dbc.Modal(id="modal-edit", is_open=False, size="xl", className="modal-notion", children=[
+        dbc.Modal(id="modal-edit", is_open=False, size="lg", className="modal-notion", children=[
             dbc.ModalHeader([
-                html.H4("✏️ 콘크리트 수정", className="mb-0 text-secondary fw-bold")
-            ], className="border-0 pb-2"),
+                html.H5("✏️ 콘크리트 수정", className="mb-0 text-secondary fw-bold", style={"fontSize": "1.1rem"})
+            ], className="border-0 pb-1"),
             dbc.ModalBody([
                 dcc.Store(id="edit-id"),
                 dbc.Row([
@@ -413,19 +413,19 @@ layout = html.Div([
                 ], className="mt-3"),
             ]),
             dbc.ModalFooter([
-                dbc.Button("미리보기", id="edit-build", color="info", className="px-4"),
-                dbc.Button("재령분석", id="edit-age-analysis", color="warning", className="px-4"),
-                dbc.Button("저장", id="edit-save", color="success", className="px-4 fw-semibold ms-auto"),
-                dbc.Button("닫기", id="edit-close", color="secondary", className="px-4"),
-            ], className="border-0 pt-3"),
+                dbc.Button("미리보기", id="edit-build", color="info", className="px-3", size="sm"),
+                dbc.Button("재령분석", id="edit-age-analysis", color="warning", className="px-3", size="sm"),
+                dbc.Button("저장", id="edit-save", color="success", className="px-3 fw-semibold ms-auto", size="sm"),
+                dbc.Button("닫기", id="edit-close", color="secondary", className="px-3", size="sm"),
+            ], className="border-0 pt-2"),
         ]),
 
         # 재령분석 모달
-        dbc.Modal(id="modal-age-analysis", is_open=False, size="xl", className="modal-notion", children=[
+        dbc.Modal(id="modal-age-analysis", is_open=False, size="lg", className="modal-notion", children=[
             dcc.Store(id="age-analysis-source"),  # 어느 모달에서 호출되었는지 저장
             dbc.ModalHeader([
-                html.H4("📊 재령일별 탄성계수 분석 (CEB-FIB Model)", className="mb-0 text-secondary fw-bold")
-            ], className="border-0 pb-2"),
+                html.H5("📊 재령일별 탄성계수 분석 (CEB-FIB Model)", className="mb-0 text-secondary fw-bold", style={"fontSize": "1.1rem"})
+            ], className="border-0 pb-1"),
             dbc.ModalBody([
                 # 상단: 수식과 매개변수 섹션
                 html.Div([
@@ -434,25 +434,25 @@ layout = html.Div([
                         dbc.Col([
                             # 수식 영역
                             html.Div([
-                                html.H6("🔬 CEB-FIB Model", className="mb-2 text-secondary fw-bold"),
+                                html.H6("🔬 CEB-FIB Model", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
                                 html.Div([
                                     html.P("E(t) = E₂₈ × (t/(t+β))ⁿ", 
                                           className="text-center mb-0", 
                                           style={
-                                              "fontSize": "1.1rem", 
+                                              "fontSize": "1.0rem", 
                                               "fontWeight": "bold", 
                                               "color": "#495057", 
                                               "backgroundColor": "#f8f9fa", 
-                                              "padding": "12px", 
+                                              "padding": "8px", 
                                               "borderRadius": "6px", 
                                               "fontFamily": "monospace"
                                           }),
-                                ], className="border rounded p-1 mb-3"),
+                                ], className="border rounded p-1 mb-2"),
                             ]),
                             
                             # 매개변수 설정 영역
                             html.Div([
-                                html.H6("⚙️ 매개변수 설정", className="mb-3 text-secondary fw-bold"),
+                                html.H6("⚙️ 매개변수 설정", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
                                 dbc.Row([
                                     dbc.Col([
                                         dbc.Label([
@@ -475,12 +475,12 @@ layout = html.Div([
                                         ], className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
                                         dbc.Input(id="analysis-n", type="number", min=0.5, max=0.7, step=0.01, className="form-control-sm")
                                     ], md=4),
-                                ], className="g-2 mb-3"),
+                                ], className="g-2 mb-2"),
 
-                            ], className="bg-light p-3 rounded"),
+                            ], className="bg-light p-2 rounded"),
                         ], md=12),  # 전체 너비로 변경
-                    ], className="g-3"),
-                ], className="bg-white p-3 rounded shadow-sm border mb-3"),
+                    ], className="g-2"),
+                ], className="bg-white p-2 rounded shadow-sm border mb-2"),
                 
                 # 중단: 매개변수 및 주요 결과 (아래로 이동)
                 html.Div([
@@ -497,20 +497,20 @@ layout = html.Div([
                         # 수치 결과 테이블
                         dbc.Col([
                             html.Div([
-                                html.H6("📋 수치 결과", className="mb-3 text-secondary fw-bold"),
-                                html.Div(id="age-analysis-table", style={"height": "35vh", "overflowY": "auto"}),
+                                html.H6("📋 수치 결과", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                                html.Div(id="age-analysis-table", style={"height": "25vh", "overflowY": "auto"}),
                             ]),
                         ], md=5),
                         
                         # 그래프
                         dbc.Col([
                             html.Div([
-                                html.H6("📊 재령일별 탄성계수 변화", className="mb-3 text-secondary fw-bold"),
-                                dcc.Graph(id="age-analysis-graph", style={"height": "35vh"}, config={'displayModeBar': False}),
+                                html.H6("📊 재령일별 탄성계수 변화", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                                dcc.Graph(id="age-analysis-graph", style={"height": "25vh"}, config={'displayModeBar': False}),
                             ]),
                         ], md=7),
-                    ], className="g-3"),
-                ], className="bg-white p-3 rounded shadow-sm border mb-3"),
+                    ], className="g-2"),
+                ], className="bg-white p-2 rounded shadow-sm border mb-2"),
                 
                 # 경고 메시지 영역 (저장 버튼 근처)
                 html.Div([
@@ -518,9 +518,9 @@ layout = html.Div([
                 ]),
             ]),
             dbc.ModalFooter([
-                dbc.Button("적용", id="age-analysis-apply", color="success", className="px-4 fw-semibold"),
-                dbc.Button("닫기", id="age-analysis-close", color="secondary", className="px-4"),
-            ], className="border-0 pt-3"),
+                dbc.Button("적용", id="age-analysis-apply", color="success", className="px-3 fw-semibold", size="sm"),
+                dbc.Button("닫기", id="age-analysis-close", color="secondary", className="px-3", size="sm"),
+            ], className="border-0 pt-2"),
         ]),
 ], style={"backgroundColor": "#f8f9fa", "minHeight": "100vh"})
 
