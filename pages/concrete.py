@@ -239,7 +239,7 @@ layout = html.Div([
                         # 미리보기 섹션
                         html.Div([
                             html.H6("👁️ 3D 미리보기", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
-                            dcc.Graph(id="add-preview", style={"height": "39vh"}, className="rounded", config={'displayModeBar': False}),
+                            dcc.Graph(id="add-preview", style={"height": "50vh"}, className="rounded", config={'displayModeBar': False}),
                         ], className="bg-light p-2 rounded"),
                     ], md=6),
                     
@@ -377,7 +377,7 @@ layout = html.Div([
                         # 미리보기 섹션
                         html.Div([
                             html.H6("👁️ 3D 미리보기", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
-                            dcc.Graph(id="edit-preview", style={"height": "39vh"}, className="rounded", config={'displayModeBar': False}),
+                            dcc.Graph(id="edit-preview", style={"height": "50vh"}, className="rounded", config={'displayModeBar': False}),
                         ], className="bg-light p-2 rounded"),
                     ], md=6),
                     
