@@ -491,7 +491,7 @@ layout = html.Div([
                         dbc.Col([
                             html.Div([
                                 html.H6("📋 수치 결과", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
-                                html.Div(id="age-analysis-table", style={"height": "25vh", "overflowY": "auto"}),
+                                html.Div(id="age-analysis-table", style={"height": "35vh", "overflowY": "auto"}),
                             ]),
                         ], md=5),
                         
@@ -499,7 +499,7 @@ layout = html.Div([
                         dbc.Col([
                             html.Div([
                                 html.H6("📊 재령일별 탄성계수 변화", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
-                                dcc.Graph(id="age-analysis-graph", style={"height": "25vh"}, config={'displayModeBar': False}),
+                                dcc.Graph(id="age-analysis-graph", style={"height": "35vh"}, config={'displayModeBar': False}),
                             ]),
                         ], md=7),
                     ], className="g-2"),
@@ -1394,7 +1394,7 @@ def calculate_age_analysis(e28, beta, n, is_open):
             {"name": "E(t) (GPa)", "id": "elasticity", "type": "text"},
             {"name": "E28 대비", "id": "ratio", "type": "text"},
         ],
-        style_table={"height": "28vh", "overflowY": "auto"},
+        style_table={"height": "35vh", "overflowY": "auto"},
         style_cell={
             "textAlign": "center",
             "fontSize": "0.8rem",
