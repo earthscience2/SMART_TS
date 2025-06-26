@@ -470,14 +470,18 @@ layout = html.Div([
                                 ], className="g-2 mb-3"),
 
                             ], className="bg-light p-3 rounded"),
-                        ], md=8),
-                        
-                        # 오른쪽: 사용된 매개변수 및 주요 결과
-                        dbc.Col([
-                            html.Div(id="age-analysis-params"),
-                        ], md=4),
+                        ], md=12),  # 전체 너비로 변경
                     ], className="g-3"),
                 ], className="bg-white p-3 rounded shadow-sm border mb-3"),
+                
+                # 중단: 매개변수 및 주요 결과 (아래로 이동)
+                html.Div([
+                    dbc.Row([
+                        dbc.Col([
+                            html.Div(id="age-analysis-params"),
+                        ], md=12),
+                    ]),
+                ], className="mb-3"),
                 
                 # 하단: 결과 섹션
                 html.Div([
@@ -486,7 +490,7 @@ layout = html.Div([
                         dbc.Col([
                             html.Div([
                                 html.H6("📋 수치 결과", className="mb-3 text-secondary fw-bold"),
-                                html.Div(id="age-analysis-table", style={"height": "40vh", "overflowY": "auto"}),
+                                html.Div(id="age-analysis-table", style={"height": "35vh", "overflowY": "auto"}),
                             ]),
                         ], md=5),
                         
@@ -494,11 +498,16 @@ layout = html.Div([
                         dbc.Col([
                             html.Div([
                                 html.H6("📊 재령일별 탄성계수 변화", className="mb-3 text-secondary fw-bold"),
-                                dcc.Graph(id="age-analysis-graph", style={"height": "40vh"}, config={'displayModeBar': False}),
+                                dcc.Graph(id="age-analysis-graph", style={"height": "35vh"}, config={'displayModeBar': False}),
                             ]),
                         ], md=7),
                     ], className="g-3"),
-                ], className="bg-white p-3 rounded shadow-sm border"),
+                ], className="bg-white p-3 rounded shadow-sm border mb-3"),
+                
+                # 경고 메시지 영역 (저장 버튼 근처)
+                html.Div([
+                    dbc.Alert(id="age-analysis-alert", is_open=False, duration=3000, color="warning", className="mb-0"),
+                ]),
             ]),
             dbc.ModalFooter([
                 dbc.Button("적용", id="age-analysis-apply", color="success", className="px-4 fw-semibold"),
@@ -1309,6 +1318,8 @@ def fill_analysis_inputs(is_open, source, add_e, add_b, add_n, edit_e, edit_b, e
     Output("age-analysis-params", "children"),
     Output("age-analysis-table", "children"),
     Output("age-analysis-graph", "figure"),
+    Output("age-analysis-alert", "children"),
+    Output("age-analysis-alert", "is_open"),
     Input("analysis-e28", "value"),
     Input("analysis-beta", "value"),
     Input("analysis-n", "value"),
@@ -1326,11 +1337,9 @@ def calculate_age_analysis(e28, beta, n, is_open):
         if beta is None: missing_params.append("β")
         if n is None: missing_params.append("n")
         
-        params_display = dbc.Alert(
-            f"다음 값들을 먼저 입력해주세요: {', '.join(missing_params)}",
-            color="warning",
-            className="mb-0"
-        )
+        params_display = html.Div([
+            dbc.Alert("매개변수를 입력해주세요.", color="info", className="mb-0 text-center")
+        ])
         
         empty_table = dbc.Alert("매개변수를 입력하면 결과가 표시됩니다.", color="info", className="text-center")
         empty_fig = go.Figure()
@@ -1341,7 +1350,8 @@ def calculate_age_analysis(e28, beta, n, is_open):
             margin=dict(l=40, r=40, t=60, b=40)
         )
         
-        return params_display, empty_table, empty_fig
+        alert_msg = f"다음 값들을 먼저 입력해주세요: {', '.join(missing_params)}"
+        return params_display, empty_table, empty_fig, alert_msg, True
     
     # 범위 자동 조정 (범위를 벗어나면 자동으로 제한)
     e28 = max(1, min(100, e28))
@@ -1475,7 +1485,7 @@ def calculate_age_analysis(e28, beta, n, is_open):
         ticktext=[f'{d}일' for d in highlight_days]
     )
     
-    return params_display, table, fig
+    return params_display, table, fig, "", False
 
 # ───────────────────── ⑮ 재령분석 결과 적용
 @callback(
