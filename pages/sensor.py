@@ -131,7 +131,6 @@ def get_polygon_intersections_y(x: float, nodes: list[list[float]]) -> list[floa
 # ────────────────────────────── 레이아웃 ────────────────────────────
 layout = html.Div([
     dbc.Container(
-        fluid=True,
         children=[
             # ── (★) 카메라 정보를 저장하기 위한 Store
             dcc.Store(id="camera-store", data=None),
