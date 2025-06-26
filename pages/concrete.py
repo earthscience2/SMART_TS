@@ -245,7 +245,7 @@ layout = html.Div([
                                 dbc.Col([
                                     dbc.Label([
                                         "베타 상수 ",
-                                        html.Small("0.1~1.0", className="text-muted", style={"fontSize": "0.7rem"})
+                                        html.Small("(0.1~1.0)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="add-b", type="number", min=0.1, max=1.0, step=0.1, placeholder="베타 상수(con_b)", className="form-control")
                                 ], width=12),
@@ -254,7 +254,7 @@ layout = html.Div([
                                 dbc.Col([
                                     dbc.Label([
                                         "N 상수 ",
-                                        html.Small("0.5~0.7", className="text-muted", style={"fontSize": "0.7rem"})
+                                        html.Small("(0.5~0.7)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="add-n", type="number", min=0.5, max=0.7, step=0.1, placeholder="N 상수(con_n)", className="form-control")
                                 ], width=12),
@@ -263,7 +263,7 @@ layout = html.Div([
                                 dbc.Col([
                                     dbc.Label([
                                         "E28(재령 28일 압축 탄성계수) ",
-                                        html.Small("1~100 GPa", className="text-muted", style={"fontSize": "0.7rem"})
+                                        html.Small("(1~100 GPa)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="add-e", type="number", min=1, max=100, step=0.1, placeholder="탄성계수(con_e)", className="form-control")
                                 ], width=12),
@@ -284,7 +284,7 @@ layout = html.Div([
                                 dbc.Col([
                                     dbc.Label([
                                         "열팽창계수 [×10⁻⁵/°C] ",
-                                        html.Small("0.1~10.0", className="text-muted", style={"fontSize": "0.7rem"})
+                                        html.Small("(0.1~10.0)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="add-a", type="number", min=0.1, max=10.0, step=0.1, placeholder="열팽창계수(con_a)", className="form-control")
                                 ], width=12),
@@ -293,7 +293,7 @@ layout = html.Div([
                                 dbc.Col([
                                     dbc.Label([
                                         "포아송비 ",
-                                        html.Small("0.01~1.00", className="text-muted", style={"fontSize": "0.7rem"})
+                                        html.Small("(0.01~1.00)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="add-p", type="number", min=0.01, max=1.00, step=0.01, placeholder="포아송비(con_p)", className="form-control")
                                 ], width=12),
@@ -302,7 +302,7 @@ layout = html.Div([
                                 dbc.Col([
                                     dbc.Label([
                                         "밀도 [kg/m³] ",
-                                        html.Small("500~5000", className="text-muted", style={"fontSize": "0.7rem"})
+                                        html.Small("(500~5000)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="add-d", type="number", min=500, max=5000, step=10, placeholder="밀도(con_d)", className="form-control")
                                 ], width=12),
@@ -377,7 +377,7 @@ layout = html.Div([
                                 dbc.Col([
                                     dbc.Label([
                                         "베타 상수 ",
-                                        html.Small("0.1~1.0", className="text-muted", style={"fontSize": "0.7rem"})
+                                        html.Small("(0.1~1.0)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="edit-b", type="number", min=0.1, max=1.0, step=0.1, placeholder="베타 상수(con_b)", className="form-control")
                                 ], width=12),
@@ -386,7 +386,7 @@ layout = html.Div([
                                 dbc.Col([
                                     dbc.Label([
                                         "N 상수 ",
-                                        html.Small("0.5~0.7", className="text-muted", style={"fontSize": "0.7rem"})
+                                        html.Small("(0.5~0.7)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="edit-n", type="number", min=0.5, max=0.7, step=0.1, placeholder="N 상수(con_n)", className="form-control")
                                 ], width=12),
@@ -395,7 +395,7 @@ layout = html.Div([
                                 dbc.Col([
                                     dbc.Label([
                                         "E28(재령 28일 압축 탄성계수) ",
-                                        html.Small("1~100 GPa", className="text-muted", style={"fontSize": "0.7rem"})
+                                        html.Small("(1~100 GPa)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="edit-e", type="number", min=1, max=100, step=0.1, placeholder="탄성계수(con_e)", className="form-control")
                                 ], width=12),
@@ -416,7 +416,7 @@ layout = html.Div([
                                 dbc.Col([
                                     dbc.Label([
                                         "열팽창계수 [×10⁻⁵/°C] ",
-                                        html.Small("0.1~10.0", className="text-muted", style={"fontSize": "0.7rem"})
+                                        html.Small("(0.1~10.0)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="edit-a", type="number", min=0.1, max=10.0, step=0.1, placeholder="열팽창계수(con_a)", className="form-control")
                                 ], width=12),
@@ -425,7 +425,7 @@ layout = html.Div([
                                 dbc.Col([
                                     dbc.Label([
                                         "포아송비 ",
-                                        html.Small("0.01~1.00", className="text-muted", style={"fontSize": "0.7rem"})
+                                        html.Small("(0.01~1.00)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="edit-p", type="number", min=0.01, max=1.00, step=0.01, placeholder="포아송비(con_p)", className="form-control")
                                 ], width=12),
@@ -434,7 +434,7 @@ layout = html.Div([
                                 dbc.Col([
                                     dbc.Label([
                                         "밀도 [kg/m³] ",
-                                        html.Small("500~5000", className="text-muted", style={"fontSize": "0.7rem"})
+                                        html.Small("(500~5000)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="edit-d", type="number", min=500, max=5000, step=10, placeholder="밀도(con_d)", className="form-control")
                                 ], width=12),
@@ -493,21 +493,21 @@ layout = html.Div([
                                     dbc.Col([
                                         dbc.Label([
                                             "E₂₈ (재령 28일 압축 탄성계수) ", 
-                                            html.Small("1~100 GPa", className="text-muted", style={"fontSize": "0.7rem"})
+                                            html.Small("(1~100 GPa)", className="text-muted", style={"fontSize": "0.7rem"})
                                         ], className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
                                         dbc.Input(id="analysis-e28", type="number", min=1, max=100, step=0.1, className="form-control-sm")
                                     ], md=4),
                                     dbc.Col([
                                         dbc.Label([
                                             "β (베타 상수) ", 
-                                            html.Small("0.1~1.0", className="text-muted", style={"fontSize": "0.7rem"})
+                                            html.Small("(0.1~1.0)", className="text-muted", style={"fontSize": "0.7rem"})
                                         ], className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
                                         dbc.Input(id="analysis-beta", type="number", min=0.1, max=1.0, step=0.1, className="form-control-sm")
                                     ], md=4),
                                     dbc.Col([
                                         dbc.Label([
                                             "n (N 상수) ", 
-                                            html.Small("0.5~0.7", className="text-muted", style={"fontSize": "0.7rem"})
+                                            html.Small("(0.5~0.7)", className="text-muted", style={"fontSize": "0.7rem"})
                                         ], className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
                                         dbc.Input(id="analysis-n", type="number", min=0.5, max=0.7, step=0.01, className="form-control-sm")
                                     ], md=4),
