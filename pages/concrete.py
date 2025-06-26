@@ -1311,16 +1311,26 @@ def calculate_age_analysis(is_open, source, add_e, add_b, add_n, edit_e, edit_b,
     
     # 테이블 생성 (1일부터 28일까지, 4주간 데이터)
     table_data = []
+    highlight_days = [1, 7, 14, 21, 28]
+    
     for i, (day, e_val) in enumerate(zip(days, elasticity_values)):
+        is_highlight = day in highlight_days
         table_data.append({
             "day": f"{day}일",
             "elasticity": f"{e_val:.2f} GPa",
-            "ratio": f"{e_val/e28*100:.1f}%"
+            "ratio": f"{e_val/e28*100:.1f}%",
+            "highlight": is_highlight  # 강조 여부 플래그
         })
     
-    # 주요 시점들 강조
-    highlight_days = [1, 7, 14, 21, 28]
-    highlight_day_strings = [f'{d}일' for d in highlight_days]
+    # 조건부 스타일링을 위한 스타일 리스트 생성
+    style_data_conditional = []
+    for i, row in enumerate(table_data):
+        if row["highlight"]:
+            style_data_conditional.append({
+                'if': {'row_index': i},
+                'backgroundColor': '#fff3cd',
+                'fontWeight': 'bold'
+            })
     
     table = dash_table.DataTable(
         data=table_data,
@@ -1341,15 +1351,7 @@ def calculate_age_analysis(is_open, source, add_e, add_b, add_n, edit_e, edit_b,
             "fontWeight": "bold",
             "fontSize": "0.8rem"
         },
-        style_data_conditional=[
-            {
-                'if': {
-                    'filter_query': '{day} in (' + ', '.join([f'"{day_str}"' for day_str in highlight_day_strings]) + ')'
-                },
-                'backgroundColor': '#fff3cd',
-                'fontWeight': 'bold'
-            }
-        ]
+        style_data_conditional=style_data_conditional
     )
     
     # 그래프 생성
