@@ -90,17 +90,17 @@ layout = html.Div([
             dbc.Col([
                 # 프로젝트 정보 카드
                 html.Div([
-                    dbc.Alert(id="current-project-info", color="info", className="mb-0"),
-                ], className="mb-4"),
+                    dbc.Alert(id="current-project-info", color="info", className="mb-0 py-2"),
+                ], className="mb-2"),
                 
                 # 콘크리트 상세정보 카드
-                html.Div(id="concrete-details", className="mb-4"),
+                html.Div(id="concrete-details", className="mb-2"),
                 
                 # 콘크리트 목록 카드
                 html.Div([
                     html.Div([
-                        html.H6("🧱 콘크리트 목록", className="mb-3 text-secondary fw-bold"),
-                        html.Small("💡 컬럼 헤더를 클릭하여 정렬할 수 있습니다", className="text-muted mb-3 d-block"),
+                        html.H6("🧱 콘크리트 목록", className="mb-2 text-secondary fw-bold"),
+                        html.Small("💡 컬럼 헤더를 클릭하여 정렬할 수 있습니다", className="text-muted mb-2 d-block"),
                         html.Div([
                             dash_table.DataTable(
                                 id="tbl",
@@ -167,8 +167,8 @@ layout = html.Div([
                                 dbc.Button("수정", id="btn-edit", color="secondary", size="sm", className="px-3", disabled=True),
                                 dbc.Button("삭제", id="btn-del", color="danger", size="sm", className="px-3", disabled=True),
                             ], className="w-100"),
-                        ], className="mt-3")
-                    ], className="p-4")
+                        ], className="mt-2")
+                    ], className="p-3")
                 ], className="bg-white rounded shadow-sm border"),
             ], md=4),
             
@@ -176,13 +176,13 @@ layout = html.Div([
             dbc.Col([
                 html.Div([
                     html.Div([
-                        html.H6("🔍 3D 미리보기", className="mb-3 text-secondary fw-bold"),
-                        dcc.Graph(id="viewer", style={"height": "75vh"}, config={'displayModeBar': False}),
-                    ], className="p-4")
+                        html.H6("🔍 3D 미리보기", className="mb-2 text-secondary fw-bold"),
+                        dcc.Graph(id="viewer", style={"height": "82vh"}, config={'displayModeBar': False}),
+                    ], className="p-3")
                 ], className="bg-white rounded shadow-sm border"),
             ], md=8),
-        ], className="g-4"),
-    ], className="py-4", style={"maxWidth": "1400px"}, fluid=False),
+        ], className="g-3", style={"height": "90vh"}),
+    ], className="py-2", style={"maxWidth": "1400px", "height": "100vh"}, fluid=False),
     
     # 알림, 인터벌, 삭제 확인
     dbc.Alert(id="msg", is_open=False, duration=4000),
