@@ -231,7 +231,7 @@ layout = html.Div([
     Output("selected-project-store", "data"),
     Output("current-project-info", "children", allow_duplicate=True),
     Input("download-url", "search"),
-    prevent_initial_call=False
+    prevent_initial_call='initial_duplicate'
 )
 def parse_url_project(search):
     if not search:
