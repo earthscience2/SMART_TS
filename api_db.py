@@ -542,6 +542,39 @@ def parse_ymdh(ts: str) -> datetime:
 def format_sql_datetime(dt: datetime) -> str:
     return dt.strftime('%Y-%m-%d %H:%M:%S')
 
+def get_latest_sensor_data_time(device_id: str, channel: str) -> dict:
+    """센서의 가장 최근 데이터 시간을 조회합니다.
+    
+    Args:
+        device_id: 디바이스 ID
+        channel: 채널 번호
+    
+    Returns:
+        dict: {'status': 'success'|'fail', 'time': datetime|None, 'msg': str}
+    """
+    try:
+        # 로컬 센서 데이터 DB에서 조회 (SQLite)
+        query = text("""
+            SELECT time 
+            FROM sensor_data 
+            WHERE device_id = :device_id AND channel = :channel 
+            ORDER BY time DESC 
+            LIMIT 1
+        """)
+        
+        df = pd.read_sql(query, engine, params={"device_id": device_id, "channel": channel})
+        
+        if df.empty:
+            return {"status": "fail", "time": None, "msg": "데이터 없음"}
+        
+        latest_time = pd.to_datetime(df.iloc[0]['time'])
+        return {"status": "success", "time": latest_time, "msg": ""}
+        
+    except Exception as e:
+        print(f"Error getting latest sensor data time for {device_id}/{channel}: {e}")
+        return {"status": "fail", "time": None, "msg": str(e)}
+
+
 def get_sensor_list_for_structure(s_code: str, its_num: int = 1) -> pd.DataFrame:
     """P_000078 프로젝트에서 특정 구조ID의 센서 리스트를 조회합니다.
     

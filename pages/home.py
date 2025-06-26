@@ -21,7 +21,7 @@ def format_date(value):
 
 
 def calculate_elapsed_time(created_at):
-    """생성일로부터 경과 시간을 DD.HH 형식으로 계산"""
+    """생성일로부터 경과 시간을 DD일 HH시간 형식으로 계산"""
     try:
         if isinstance(created_at, str):
             created_time = datetime.fromisoformat(created_at.replace('Z', ''))
@@ -33,9 +33,41 @@ def calculate_elapsed_time(created_at):
         days = elapsed.days
         hours = elapsed.seconds // 3600
         
-        return f"{days:02d}.{hours:02d}"
+        return f"{days}일 {hours}시간"
     except:
-        return "00.00"
+        return "0일 0시간"
+
+
+def check_sensor_data_status(device_id: str, channel: str):
+    """센서 데이터 수집 상태를 확인합니다.
+    
+    Args:
+        device_id: 디바이스 ID
+        channel: 채널 번호
+    
+    Returns:
+        tuple: (status_text, badge_color)
+    """
+    try:
+        result = api_db.get_latest_sensor_data_time(device_id, channel)
+        
+        if result["status"] == "fail":
+            return ("데이터없음", "secondary")
+        
+        latest_time = result["time"]
+        now = datetime.now()
+        
+        # 시간 차이 계산 (시간 단위)
+        time_diff = (now - latest_time).total_seconds() / 3600
+        
+        if time_diff <= 2:  # 2시간 이하
+            return ("수집중", "success")
+        else:  # 2시간 초과
+            return ("수집불가", "danger")
+            
+    except Exception as e:
+        print(f"Error checking sensor status for {device_id}/{channel}: {e}")
+        return ("오류", "warning")
 
 
 
@@ -156,11 +188,17 @@ def layout():
             sensor_list = []
             if not its_sensors_df.empty:
                 for _, sensor in its_sensors_df.iterrows():
+                    device_id = sensor["deviceid"]
+                    channel = sensor["channel"]
+                    
+                    # 실제 센서 데이터 수집 상태 확인
+                    status_text, badge_color = check_sensor_data_status(device_id, channel)
+                    
                     sensor_list.append(
                         html.Tr([
-                            html.Td(sensor["deviceid"], className="py-2"),
-                            html.Td(f"Ch.{sensor['channel']}", className="py-2"),
-                            html.Td(dbc.Badge("정상", color="success", className="px-2"), className="py-2")
+                            html.Td(device_id, className="py-2"),
+                            html.Td(f"Ch.{channel}", className="py-2"),
+                            html.Td(dbc.Badge(status_text, color=badge_color, className="px-2"), className="py-2")
                         ])
                     )
 
@@ -194,7 +232,7 @@ def layout():
                                             html.Tr([
                                                 html.Th("이름", className="border-0 text-muted small"),
                                                 html.Th("생성일", className="border-0 text-muted small"),
-                                                html.Th("경과일", className="border-0 text-muted small"),
+                                                html.Th("경과시간", className="border-0 text-muted small"),
                                                 html.Th("센서", className="border-0 text-muted small"),
                                                 html.Th("분석", className="border-0 text-muted small")
                                             ])
@@ -216,7 +254,7 @@ def layout():
                                             html.Tr([
                                                 html.Th("Device ID", className="border-0 text-muted small"),
                                                 html.Th("채널", className="border-0 text-muted small"),
-                                                html.Th("수집", className="border-0 text-muted small")
+                                                html.Th("데이터", className="border-0 text-muted small")
                                             ])
                                         ]),
                                         html.Tbody(sensor_list)
