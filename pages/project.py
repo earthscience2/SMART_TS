@@ -1112,35 +1112,79 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
             display_title = viewer_data['current_file_title']
         
         return html.Div([
-            # 시간 슬라이더
+            # 시간 컨트롤 섹션 (노션 스타일)
             html.Div([
-                html.H5("시간 설정", className="mb-3"),
-                dcc.Slider(
-                    id="time-slider-display",  # 다른 ID 사용
-                    min=slider_min,
-                    max=slider_max,
-                    step=1,
-                    value=slider_value,
-                    marks=slider_marks,
-                    tooltip={"placement": "bottom", "always_visible": True},
-                ),
-            ], className="mb-4"),
+                html.Div([
+                    html.H6("⏰ 시간 설정", style={
+                        "fontWeight": "600",
+                        "color": "#374151",
+                        "marginBottom": "12px",
+                        "fontSize": "14px"
+                    }),
+                    dcc.Slider(
+                        id="time-slider-display",
+                        min=slider_min,
+                        max=slider_max,
+                        step=1,
+                        value=slider_value,
+                        marks=slider_marks,
+                        tooltip={"placement": "bottom", "always_visible": True},
+                    ),
+                ], style={
+                    "padding": "16px 20px",
+                    "backgroundColor": "#f9fafb",
+                    "borderRadius": "8px",
+                    "border": "1px solid #e5e7eb",
+                    "marginBottom": "16px"
+                })
+            ]),
             
-            # 현재 시간 정보
+            # 현재 시간 정보 (노션 스타일 카드)
             html.Div([
-                html.H6(display_title or "시간 정보 없음", className="text-muted")
-            ], className="mb-3"),
+                html.Div([
+                    html.I(className="fas fa-clock me-2", style={"color": "#6366f1"}),
+                    html.Span(display_title or "시간 정보 없음", style={
+                        "fontWeight": "500",
+                        "color": "#374151"
+                    })
+                ], style={
+                    "padding": "12px 16px",
+                    "backgroundColor": "white",
+                    "borderRadius": "8px",
+                    "border": "1px solid #e5e7eb",
+                    "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
+                    "marginBottom": "20px",
+                    "fontSize": "14px"
+                })
+            ]),
             
-            # 3D 뷰어
+            # 3D 뷰어 (노션 스타일)
             html.Div([
-                html.H5("3D 히트맵 뷰어", className="mb-3"),
-                dcc.Graph(
-                    id="viewer-3d-display",  # 다른 ID 사용  
-                    figure=fig_3d,
-                    style={"height": "60vh"},
-                    config={"scrollZoom": True}
-                ),
-            ])
+                html.Div([
+                    html.H6("🎯 3D 히트맵 뷰어", style={
+                        "fontWeight": "600",
+                        "color": "#374151",
+                        "marginBottom": "16px",
+                        "fontSize": "16px"
+                    }),
+                    dcc.Graph(
+                        id="viewer-3d-display",
+                        style={
+                            "height": "65vh", 
+                            "borderRadius": "8px",
+                            "overflow": "hidden"
+                        },
+                        config={"scrollZoom": True},
+                        figure=fig_3d,
+                    ),
+                ], style={
+                    "padding": "20px",
+                    "backgroundColor": "white",
+                    "borderRadius": "12px",
+                    "border": "1px solid #e5e7eb",
+                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
+                })
+            ]),
         ])
     elif active_tab == "tab-section":
         # 단면도 탭: 2x2 배열 배치, 입력창 상단, 3D 뷰/단면도
