@@ -220,9 +220,19 @@ def layout():
                             dcc.Link(
                                 "콘크리트 관리 →",
                                 href=f"/concrete?page={proj_pk}",
-                                className="btn btn-outline-secondary btn-sm"
+                                className="btn btn-outline-secondary btn-sm me-2"
+                            ),
+                            dcc.Link(
+                                "센서 관리 →",
+                                href=f"/sensor?page={proj_pk}",
+                                className="btn btn-outline-info btn-sm me-2"
+                            ),
+                            dcc.Link(
+                                "데이터 다운로드 →",
+                                href=f"/download?page={proj_pk}",
+                                className="btn btn-outline-warning btn-sm"
                             )
-                        ])
+                        ], className="d-flex flex-wrap gap-1")
                     ], className="d-flex justify-content-between align-items-center mb-4"),
                     
                     # 콘텐츠 그리드

@@ -338,8 +338,8 @@ def parse_url_project(search):
                 html.A("홈으로 돌아가기", href="/", className="alert-link")
             ]
         
-        # 프로젝트 정보 조회
-        project_info = projects_df[projects_df["project_pk"] == int(project_pk)]
+        # 프로젝트 정보 조회 (project_pk가 문자열일 수 있음)
+        project_info = projects_df[projects_df["project_pk"] == project_pk]
         if project_info.empty:
             return None, [
                 f"프로젝트 ID {project_pk}를 찾을 수 없습니다. ",
@@ -347,7 +347,7 @@ def parse_url_project(search):
             ]
         
         project_name = project_info.iloc[0]["name"]
-        return int(project_pk), f"📁 현재 프로젝트: {project_name}"
+        return project_pk, f"📁 현재 프로젝트: {project_name}"
         
     except Exception as e:
         return None, [
@@ -368,7 +368,7 @@ def parse_url_project(search):
 def refresh_table(n, project_pk, _data_ts):
     df_all = api_db.get_concrete_data()
     if project_pk:
-        df = df_all[df_all["project_pk"] == str(project_pk)]
+        df = df_all[df_all["project_pk"] == project_pk]
     else:
         df = pd.DataFrame(columns=df_all.columns if not df_all.empty else [])
     

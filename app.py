@@ -98,11 +98,12 @@ def _build_navbar():
     user_id = flask_request.cookies.get("login_user")
 
     children = [
-        dbc.NavItem(dcc.Link("Home", href="/", className="nav-link", id="nav-home")),
-        dbc.NavItem(dcc.Link("Project", href="/project", className="nav-link", id="nav-project")),
-        dbc.NavItem(dcc.Link("Sensor", href="/sensor", className="nav-link", id="nav-sensor")),
-        dbc.NavItem(dcc.Link("Concrete", href="/concrete", className="nav-link", id="nav-concrete")),
-        dbc.NavItem(dcc.Link("Download", href="/download", className="nav-link", id="nav-download")),
+        # 네비게이션 링크들 (숨김처리하되 주소는 유지)
+        dbc.NavItem(dcc.Link("", href="/", className="nav-link d-none", id="nav-home")),
+        dbc.NavItem(dcc.Link("", href="/project", className="nav-link d-none", id="nav-project")),
+        dbc.NavItem(dcc.Link("", href="/sensor", className="nav-link d-none", id="nav-sensor")),
+        dbc.NavItem(dcc.Link("", href="/concrete", className="nav-link d-none", id="nav-concrete")),
+        dbc.NavItem(dcc.Link("", href="/download", className="nav-link d-none", id="nav-download")),
         # Login / Logout (보기/숨김 및 정렬)
         dbc.NavItem(dcc.Link("Login", href="/login", className="nav-link", id="nav-login")),
         dbc.NavItem(
