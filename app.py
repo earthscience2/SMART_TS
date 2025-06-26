@@ -178,24 +178,103 @@ from dash.dependencies import Input, Output
      Output("nav-concrete", "className"),
      Output("nav-download", "className"),
      Output("nav-login", "className"),
-     Output("nav-logout", "className")],
-    Input("url", "pathname")
+     Output("nav-logout", "className"),
+     Output("nav-home", "children"),
+     Output("nav-project", "children"),
+     Output("nav-sensor", "children"),
+     Output("nav-concrete", "children"),
+     Output("nav-download", "children")],
+    [Input("url", "pathname"),
+     Input("url", "search")]
 )
-def update_nav_active(pathname):
-    classes = ["nav-link"] * 7
+def update_nav_active(pathname, search):
+    # 프로젝트 ID 추출
+    project_pk = None
+    if search:
+        try:
+            from urllib.parse import parse_qs
+            params = parse_qs(search.lstrip('?'))
+            project_pk = params.get('page', [None])[0]
+        except Exception:
+            pass
+    
+    # 홈 페이지인지 확인
+    is_home = pathname == "/"
+    
+    # 기본 클래스 설정
+    if is_home:
+        # 홈에서는 모든 네비게이션 링크 숨김
+        base_classes = ["nav-link d-none"] * 5
+    else:
+        # 다른 페이지에서는 네비게이션 링크 표시
+        base_classes = ["nav-link"] * 5
+    
+    login_logout_classes = ["nav-link"] * 2
+    
+    # Active 클래스 추가
     if pathname == "/":
-        classes[0] += " active"
+        base_classes[0] += " active"
     elif pathname.startswith("/project"):
-        classes[1] += " active"
+        base_classes[1] += " active"
     elif pathname.startswith("/sensor"):
-        classes[2] += " active"
+        base_classes[2] += " active"
     elif pathname.startswith("/concrete"):
-        classes[3] += " active"
+        base_classes[3] += " active"
     elif pathname.startswith("/download"):
-        classes[4] += " active"
+        base_classes[4] += " active"
     elif pathname.startswith("/login"):
-        classes[5] += " active"
-    return classes
+        login_logout_classes[0] += " active"
+    
+    # 네비게이션 링크 텍스트 및 아이콘 설정
+    if project_pk and not is_home:
+        nav_texts = [
+            [html.Span("🏠", className="me-2"), "홈"],
+            [html.Span("📊", className="me-2"), "분석"],
+            [html.Span("📡", className="me-2"), "센서"],
+            [html.Span("🧱", className="me-2"), "콘크리트"],
+            [html.Span("💾", className="me-2"), "다운로드"]
+        ]
+    else:
+        nav_texts = [""] * 5
+    
+    return (
+        base_classes[0], base_classes[1], base_classes[2], base_classes[3], base_classes[4],
+        login_logout_classes[0], login_logout_classes[1],
+        nav_texts[0], nav_texts[1], nav_texts[2], nav_texts[3], nav_texts[4]
+    )
+
+# 네비게이션 링크 href 동적 업데이트
+@app.callback(
+    [Output("nav-home", "href"),
+     Output("nav-project", "href"),
+     Output("nav-sensor", "href"),
+     Output("nav-concrete", "href"),
+     Output("nav-download", "href")],
+    [Input("url", "pathname"),
+     Input("url", "search")]
+)
+def update_nav_links(pathname, search):
+    # 프로젝트 ID 추출
+    project_pk = None
+    if search:
+        try:
+            from urllib.parse import parse_qs
+            params = parse_qs(search.lstrip('?'))
+            project_pk = params.get('page', [None])[0]
+        except Exception:
+            pass
+    
+    # 기본 링크
+    if project_pk and pathname != "/":
+        return (
+            "/",
+            f"/project?page={project_pk}",
+            f"/sensor?page={project_pk}",
+            f"/concrete?page={project_pk}",
+            f"/download?page={project_pk}"
+        )
+    else:
+        return "/", "/project", "/sensor", "/concrete", "/download"
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=23022)
