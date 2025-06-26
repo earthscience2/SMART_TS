@@ -252,9 +252,9 @@ def layout():
                                     dbc.Table([
                                         html.Thead([
                                             html.Tr([
-                                                html.Th("Device ID", className="border-0 text-muted small", style={"width": "40%"}),
-                                                html.Th("채널", className="border-0 text-muted small", style={"width": "30%"}),
-                                                html.Th("데이터", className="border-0 text-muted small", style={"width": "30%"})
+                                                html.Th("Device ID", className="border-0 text-muted small text-center", style={"width": "40%"}),
+                                                html.Th("채널", className="border-0 text-muted small text-center", style={"width": "30%"}),
+                                                html.Th("데이터", className="border-0 text-muted small text-center", style={"width": "30%"})
                                             ])
                                         ]),
                                         html.Tbody(sensor_list)
