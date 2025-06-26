@@ -235,8 +235,8 @@ layout = html.Div([
                             style={
                                 "fontSize": "0.8rem", 
                                 "width": "100%",
-                                "height": "32px",
-                                "lineHeight": "32px"
+                                "height": "25px",
+                                "lineHeight": "25px"
                             }
                         )
                     ], md=6),
