@@ -20,6 +20,24 @@ def format_date(value):
     return dt.strftime("%Y.%m.%d")
 
 
+def calculate_elapsed_time(created_at):
+    """생성일로부터 경과 시간을 DD.HH 형식으로 계산"""
+    try:
+        if isinstance(created_at, str):
+            created_time = datetime.fromisoformat(created_at.replace('Z', ''))
+        else:
+            created_time = created_at
+        
+        now = datetime.now()
+        elapsed = now - created_time
+        days = elapsed.days
+        hours = elapsed.seconds // 3600
+        
+        return f"{days:02d}.{hours:02d}"
+    except:
+        return "00.00"
+
+
 
 def filter_local_projects(grade: str, auth_list: list) -> pd.DataFrame:
     """사용자 권한에 따라 로컬 프로젝트를 필터링합니다.
@@ -95,12 +113,10 @@ def layout():
     # 로컬 프로젝트 필터링 로직
     local_projects_df = filter_local_projects(grade, auth_list)
 
-    cards = []
+    projects = []
 
-    # 로컬 프로젝트 카드 생성
+    # 로컬 프로젝트 생성
     if not local_projects_df.empty:
-        cards.append(html.H3("프로젝트 목록", className="text-center mb-4 text-info"))
-        
         # 콘크리트 및 센서 메타데이터 로드
         df_concrete = api_db.get_concrete_data()
         df_sensors = api_db.get_sensors_data()
@@ -109,133 +125,145 @@ def layout():
             proj_pk = row["project_pk"]
             s_code = row["s_code"]
             
-            # 해당 프로젝트의 콘크리트 개수
-            conc_cnt = df_concrete[df_concrete["project_pk"] == str(proj_pk)].shape[0]
-            # 해당 콘크리트의 sensor 개수
-            conc_ids = df_concrete[df_concrete["project_pk"] == str(proj_pk)]["concrete_pk"].tolist()
-            local_sensor_cnt = df_sensors[df_sensors["concrete_pk"].isin(conc_ids)].shape[0]
+            # 해당 프로젝트의 콘크리트 데이터
+            project_concretes = df_concrete[df_concrete["project_pk"] == str(proj_pk)]
             
             # P_000078 프로젝트에서 해당 구조의 ITS 센서 리스트 조회
             its_sensors_df = api_db.get_sensor_list_for_structure(s_code)
-            its_sensor_cnt = len(its_sensors_df) if not its_sensors_df.empty else 0
 
-            card_style = {
-                "width": "300px",
-                "height": "380px",
-                "backgroundColor": "#f0f8ff",
-                "borderRadius": "0.5rem",
-                "overflow": "hidden",
-                "transition": "transform 0.2s, box-shadow 0.2s",
-                "boxShadow": "0 4px 8px rgba(135, 206, 250, 0.4)",
-                "cursor": "pointer",
-                "textDecoration": "none"
-            }
-
-            # ITS 센서 정보 표시
-            its_sensor_info = []
-            if its_sensor_cnt > 0:
-                # 센서 상세 목록 생성
-                sensor_details = [
-                    html.P(f"📋 ITS 센서: {its_sensor_cnt} 개", className="card-text fs-7 mb-2 text-success fw-bold")
-                ]
-                
-                for _, sensor_row in its_sensors_df.iterrows():
-                    device_type = sensor_row.get('device_type', 'N/A')
-                    data_type = sensor_row.get('data_type', 'N/A')
-                    is3axis = "3축" if sensor_row.get('is3axis') == 'Y' else "1축"
+            # 콘크리트 리스트 생성
+            concrete_list = []
+            if not project_concretes.empty:
+                for _, concrete in project_concretes.iterrows():
+                    concrete_pk = concrete["concrete_pk"]
+                    concrete_sensors = df_sensors[df_sensors["concrete_pk"] == concrete_pk]
+                    sensor_count = len(concrete_sensors)
                     
-                    sensor_details.append(
-                        html.Div([
-                            html.P(f"📡 {sensor_row['deviceid']} (Ch.{sensor_row['channel']})", 
-                                   className="fs-9 mb-1 fw-bold text-primary"),
-                            html.P(f"• 장비: {device_type}", 
-                                   className="fs-10 mb-0 text-muted"),
-                            html.P(f"• 데이터: {data_type}", 
-                                   className="fs-10 mb-0 text-muted"),
-                            html.P(f"• 타입: {is3axis}", 
-                                   className="fs-10 mb-1 text-muted"),
-                        ], className="border-bottom border-light pb-1 mb-2")
+                    analysis_status = "분석중" if concrete["activate"] == 1 else "미분석"
+                    status_color = "success" if concrete["activate"] == 1 else "secondary"
+                    
+                    concrete_list.append(
+                        html.Tr([
+                            html.Td(concrete["name"], className="py-2"),
+                            html.Td(format_date(concrete["created_at"]), className="py-2"),
+                            html.Td(calculate_elapsed_time(concrete["created_at"]), className="py-2"),
+                            html.Td(f"{sensor_count}개", className="py-2"),
+                            html.Td(dbc.Badge(analysis_status, color=status_color, className="px-2"), className="py-2")
+                        ])
                     )
-                
-                its_sensor_info = [
-                    html.Div(
-                        sensor_details,
-                        className="mt-1",
-                        style={"maxHeight": "180px", "overflowY": "auto"}
-                    )
-                ]
-            else:
-                its_sensor_info = [
-                    html.P("📋 ITS 센서: 없음", className="card-text fs-7 mb-1 text-muted")
-                ]
 
-            cards.append(
-                dbc.Col([
-                    dcc.Link(
-                        href=f"/project?page={proj_pk}",
-                        style={"textDecoration": "none"},
-                        children=dbc.Card(
-                            dbc.CardBody([
-                                html.H5(
-                                    row["name"],
-                                    className="card-title fw-bold fs-5 mb-2"
-                                ),
-                                html.P(
-                                    f"구조 ID: {s_code}",
-                                    className="card-text fs-8 mb-1 text-primary"
-                                ),
-                                html.P(
-                                    f"생성일: {format_date(row['created_at'])}",
-                                    className="card-text fs-7 mb-1"
-                                ),
-                                html.P(
-                                    f"콘크리트: {conc_cnt} 개",
-                                    className="card-text fs-7 mb-1"
-                                ),
-                                html.P(
-                                    f"로컬 센서: {local_sensor_cnt} 개",
-                                    className="card-text fs-7 mb-1"
-                                ),
-                                *its_sensor_info
-                            ], className="d-flex flex-column align-items-center justify-content-start h-100 p-2"),
-                            style=card_style,
-                            className="project-card mb-4"
-                        )
+            # ITS 센서 리스트 생성
+            sensor_list = []
+            if not its_sensors_df.empty:
+                for _, sensor in its_sensors_df.iterrows():
+                    sensor_list.append(
+                        html.Tr([
+                            html.Td(sensor["deviceid"], className="py-2"),
+                            html.Td(f"Ch.{sensor['channel']}", className="py-2"),
+                            html.Td(dbc.Badge("정상", color="success", className="px-2"), className="py-2")
+                        ])
                     )
-                ], xs=12, sm=6, md=4, lg=3)
+
+            # 프로젝트 카드 생성
+            projects.append(
+                html.Div([
+                    # 프로젝트 헤더
+                    html.Div([
+                        html.Div([
+                            html.H4(f"📁 {row['name']}", className="mb-1 text-dark"),
+                            html.P(f"생성일: {format_date(row['created_at'])}", className="text-muted mb-0")
+                        ], className="d-flex flex-column"),
+                        html.Div([
+                            dcc.Link(
+                                "프로젝트 열기 →",
+                                href=f"/project?page={proj_pk}",
+                                className="btn btn-outline-primary btn-sm"
+                            )
+                        ])
+                    ], className="d-flex justify-content-between align-items-center mb-4"),
+                    
+                    # 콘텐츠 그리드
+                    dbc.Row([
+                        # 콘크리트 섹션
+                        dbc.Col([
+                            html.Div([
+                                html.H6("🧱 콘크리트", className="mb-3 text-secondary fw-bold"),
+                                html.Div([
+                                    dbc.Table([
+                                        html.Thead([
+                                            html.Tr([
+                                                html.Th("이름", className="border-0 text-muted small"),
+                                                html.Th("생성일", className="border-0 text-muted small"),
+                                                html.Th("경과일", className="border-0 text-muted small"),
+                                                html.Th("센서", className="border-0 text-muted small"),
+                                                html.Th("분석", className="border-0 text-muted small")
+                                            ])
+                                        ]),
+                                        html.Tbody(concrete_list)
+                                    ], className="table-sm", hover=True, borderless=True) if concrete_list else 
+                                    html.P("콘크리트가 없습니다", className="text-muted small")
+                                ], style={"maxHeight": "300px", "overflowY": "auto"})
+                            ], className="bg-light p-3 rounded")
+                        ], md=8),
+                        
+                        # 센서 섹션
+                        dbc.Col([
+                            html.Div([
+                                html.H6("📡 ITS 센서", className="mb-3 text-secondary fw-bold"),
+                                html.Div([
+                                    dbc.Table([
+                                        html.Thead([
+                                            html.Tr([
+                                                html.Th("Device ID", className="border-0 text-muted small"),
+                                                html.Th("채널", className="border-0 text-muted small"),
+                                                html.Th("수집", className="border-0 text-muted small")
+                                            ])
+                                        ]),
+                                        html.Tbody(sensor_list)
+                                    ], className="table-sm", hover=True, borderless=True) if sensor_list else 
+                                    html.P("센서가 없습니다", className="text-muted small")
+                                ], style={"maxHeight": "300px", "overflowY": "auto"})
+                            ], className="bg-light p-3 rounded")
+                        ], md=4)
+                    ])
+                ], className="mb-5 p-4 bg-white rounded shadow-sm border", 
+                   style={"transition": "all 0.2s ease"})
             )
 
     # 프로젝트가 없는 경우
-    if not cards:
+    if not projects:
         return html.Div([
             dbc.Container([
-                html.H2(f"프로젝트 목록 ({user_id})", className="text-center mb-4"),
-                dbc.Alert([
-                    html.H4("접근 가능한 프로젝트가 없습니다", className="alert-heading"),
-                    html.P("현재 권한으로 접근 가능한 프로젝트가 없습니다."),
-                    html.Hr(),
-                    html.P("관리자에게 문의하시기 바랍니다.", className="mb-0")
-                ], color="info", className="mt-5")
-            ])
-        ])
+                # 헤더
+                html.Div([
+                    html.H2("📋 프로젝트 대시보드", className="mb-2"),
+                    html.P(f"안녕하세요, {user_id}님!", className="text-muted mb-4")
+                ], className="mb-5"),
+                
+                # 빈 상태
+                html.Div([
+                    html.Div([
+                        html.H4("🏗️", className="mb-3", style={"fontSize": "3rem"}),
+                        html.H5("접근 가능한 프로젝트가 없습니다", className="text-muted mb-3"),
+                        html.P("현재 권한으로 접근할 수 있는 프로젝트가 없습니다.", className="text-muted"),
+                        html.P("관리자에게 문의하시기 바랍니다.", className="text-muted")
+                    ], className="text-center py-5")
+                ], className="bg-light rounded p-5")
+            ], className="py-5", style={"maxWidth": "1200px"}, fluid=False)
+        ], style={"backgroundColor": "#f8f9fa", "minHeight": "100vh"})
 
-    # 카드 그리드 생성
-    card_grid = dbc.Row(
-        cards,
-        justify="center",
-        style={
-            "rowGap": "4rem",       # 세로 간격
-            "columnGap": "4rem"     # 가로 간격
-        }
-    )
-
+    # 메인 레이아웃
     return html.Div([
-        dbc.Container(
-            fluid=True,
-            className="mt-5 d-flex flex-column align-items-center",
-            children=[
-                html.H2(f"프로젝트 목록 ({user_id})", className="text-center mb-4"),
-                card_grid  # 프로젝트 카드들
-            ]
-        )
-    ])
+        dbc.Container([
+            # 헤더
+            html.Div([
+                html.H2("📋 프로젝트 대시보드", className="mb-2"),
+                html.P(f"안녕하세요, {user_id}님! 총 {len(projects)}개의 프로젝트에 접근할 수 있습니다.", 
+                       className="text-muted mb-4")
+            ], className="mb-5"),
+            
+            # 프로젝트 리스트
+            html.Div(projects)
+            
+        ], className="py-5", style={"maxWidth": "1200px"}, fluid=False)
+    ], style={"backgroundColor": "#f8f9fa", "minHeight": "100vh"})
