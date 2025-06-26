@@ -625,12 +625,16 @@ def handle_select_all(select_clicks, deselect_clicks, data):
     if not ctx.triggered or not data:
         raise PreventUpdate
     
-    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    # callback_context.triggered_id를 사용하여 더 간단하게 처리
+    triggered_id = ctx.triggered_id
     
-    if "select-all-btn" in trigger_id:
-        return list(range(len(data)))
-    elif "deselect-all-btn" in trigger_id:
-        return []
+    if triggered_id and 'type' in triggered_id:
+        button_type = triggered_id['type']
+        
+        if button_type == "select-all-btn":
+            return list(range(len(data)))
+        elif button_type == "deselect-all-btn":
+            return []
     
     raise PreventUpdate
 
