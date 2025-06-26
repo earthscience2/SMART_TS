@@ -270,14 +270,7 @@ layout = dbc.Container(
             # 오른쪽 메인 콘텐츠 영역
             dbc.Col([
                 html.Div([
-                    # 상단 제목 영역
-                    html.Div([
-                        html.H4(id="concrete-title", className="mb-3", style={
-                            "fontWeight": "600",
-                            "color": "#1a202c",
-                            "fontSize": "20px"
-                        }),
-                    ], style={"marginBottom": "20px"}),
+
                     
                     # 탭 메뉴 (노션 스타일)
                     html.Div([
@@ -2616,7 +2609,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
     from dash_vtk.utils import to_mesh_state
     
     if not selected_rows or not tbl_data:
-        return html.Div("콘크리트를 선택하세요."), go.Figure(), 0.0, 1.0
+        return html.Div("콘크리트를 선택하세요."), "", go.Figure(), 0.0, 1.0
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
@@ -2631,7 +2624,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         vtp_files = sorted([f for f in os.listdir(assets_vtp_dir) if f.endswith('.vtp')])
     
     if not vtk_files and not vtp_files:
-        return html.Div("VTK/VTP 파일이 없습니다."), go.Figure(), 0.0, 1.0
+        return html.Div("VTK/VTP 파일이 없습니다."), "", go.Figure(), 0.0, 1.0
     
     from datetime import datetime
     times = []
@@ -2654,7 +2647,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             continue
     
     if not times:
-        return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다."), go.Figure(), 0.0, 1.0
+        return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다."), "", go.Figure(), 0.0, 1.0
     
     times.sort()
     max_idx = len(times) - 1
@@ -2693,7 +2686,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             return html.Div([
                 html.H5("VTK 파일 읽기 실패", style={"color": "red"}),
                 html.P(f"파일: {selected_file}")
-            ]), go.Figure(), 0.0, 1.0
+            ]), "", go.Figure(), 0.0, 1.0
         
         # 점의 개수 확인
         num_points = ds.GetNumberOfPoints()
@@ -2702,7 +2695,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 html.H5("빈 데이터셋", style={"color": "red"}),
                 html.P(f"파일: {selected_file}"),
                 html.P("점이 없는 데이터셋입니다.")
-            ]), go.Figure(), 0.0, 1.0
+            ]), "", go.Figure(), 0.0, 1.0
         
         # 바운딩 박스 정보 추출 (단면 슬라이더용)
         bounds = ds.GetBounds()  # (xmin,xmax,ymin,ymax,zmin,zmax)
@@ -2922,7 +2915,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 html.P(f"셀 개수: {ds_for_vis.GetNumberOfCells()}"),
                 html.Hr(),
                 html.P("VTK 파일 형식을 확인해주세요. FRD → VTK 변환이 올바르게 되었는지 점검이 필요합니다.", style={"color": "gray"})
-            ]), go.Figure(), slice_min, slice_max
+            ]), "", go.Figure(), slice_min, slice_max
         
         # 컬러 데이터 범위 추출
         color_range = None
@@ -3107,7 +3100,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 html.P(f"오류: {str(vtk_error)}"),
                 html.Hr(),
                 html.P("브라우저를 새로고침하거나 다른 파일을 선택해보세요.", style={"color": "gray"})
-            ]), go.Figure(), slice_min, slice_max
+            ]), "", go.Figure(), slice_min, slice_max
         
     except Exception as e:
         print(f"VTK 처리 전체 오류: {e}")
@@ -3118,7 +3111,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             html.P(f"오류: {str(e)}"),
             html.Hr(),
             html.P("다른 파일을 선택하거나 VTK 파일을 확인해주세요.", style={"color": "gray"})
-        ]), go.Figure(), 0.0, 1.0
+        ]), "", go.Figure(), 0.0, 1.0
 
 # 수치해석 컬러바 표시/숨김 콜백
 @callback(
