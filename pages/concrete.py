@@ -421,52 +421,50 @@ layout = html.Div([
             dbc.ModalBody([
                 # 상단: 수식과 매개변수 섹션
                 html.Div([
-                    dbc.Row([
-                        # 수식 영역
-                        dbc.Col([
-                            html.H6("🔬 CEB-FIB Model", className="mb-2 text-secondary fw-bold"),
-                            html.Div([
-                                html.P("E(t) = E₂₈ × (t/(t+β))ⁿ", 
-                                      className="text-center mb-0", 
-                                      style={
-                                          "fontSize": "1.1rem", 
-                                          "fontWeight": "bold", 
-                                          "color": "#495057", 
-                                          "backgroundColor": "#f8f9fa", 
-                                          "padding": "12px", 
-                                          "borderRadius": "6px", 
-                                          "fontFamily": "monospace"
-                                      }),
-                            ], className="border rounded p-1"),
-                        ], md=4),
-                        
-                        # 매개변수 입력 및 주요 결과
-                        dbc.Col([
-                            html.Div([
-                                html.H6("⚙️ 매개변수 설정", className="mb-3 text-secondary fw-bold"),
-                                dbc.Row([
-                                    dbc.Col([
-                                        dbc.Label("E₂₈ (재령 28일 탄성계수) [GPa]", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
-                                        dbc.Input(id="analysis-e28", type="number", min=1, max=100, step=0.1, className="form-control-sm")
-                                    ], md=4),
-                                    dbc.Col([
-                                        dbc.Label("β (베타 상수)", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
-                                        dbc.Input(id="analysis-beta", type="number", min=0.1, max=1.0, step=0.1, className="form-control-sm")
-                                    ], md=4),
-                                    dbc.Col([
-                                        dbc.Label("n (N 상수)", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
-                                        dbc.Input(id="analysis-n", type="number", min=0.5, max=0.7, step=0.1, className="form-control-sm")
-                                    ], md=4),
-                                ], className="g-2 mb-3"),
-                                dbc.Row([
-                                    dbc.Col([
-                                        dbc.Button("📊 재분석", id="reanalyze-btn", color="primary", size="sm", className="px-3 fw-semibold"),
-                                    ], md="auto"),
-                                ], className="justify-content-center"),
-                            ], className="bg-light p-3 rounded mb-3"),
-                            html.Div(id="age-analysis-params"),
-                        ], md=8),
-                    ], className="g-3"),
+                    # 수식 영역
+                    html.Div([
+                        html.H6("🔬 CEB-FIB Model", className="mb-2 text-secondary fw-bold"),
+                        html.Div([
+                            html.P("E(t) = E₂₈ × (t/(t+β))ⁿ", 
+                                  className="text-center mb-0", 
+                                  style={
+                                      "fontSize": "1.1rem", 
+                                      "fontWeight": "bold", 
+                                      "color": "#495057", 
+                                      "backgroundColor": "#f8f9fa", 
+                                      "padding": "12px", 
+                                      "borderRadius": "6px", 
+                                      "fontFamily": "monospace"
+                                  }),
+                        ], className="border rounded p-1 mb-3"),
+                    ]),
+                    
+                    # 매개변수 설정 영역
+                    html.Div([
+                        html.H6("⚙️ 매개변수 설정", className="mb-3 text-secondary fw-bold"),
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Label("E₂₈ (재령 28일 탄성계수) [GPa]", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                dbc.Input(id="analysis-e28", type="number", min=1, max=100, step=0.1, className="form-control-sm")
+                            ], md=4),
+                            dbc.Col([
+                                dbc.Label("β (베타 상수)", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                dbc.Input(id="analysis-beta", type="number", min=0.1, max=1.0, step=0.1, className="form-control-sm")
+                            ], md=4),
+                            dbc.Col([
+                                dbc.Label("n (N 상수)", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                dbc.Input(id="analysis-n", type="number", min=0.5, max=0.7, step=0.1, className="form-control-sm")
+                            ], md=4),
+                        ], className="g-2 mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Button("📊 재분석", id="reanalyze-btn", color="primary", size="sm", className="px-3 fw-semibold"),
+                            ], md="auto"),
+                        ], className="justify-content-center"),
+                    ], className="bg-light p-3 rounded mb-3"),
+                    
+                    # 결과 표시 영역
+                    html.Div(id="age-analysis-params"),
                 ], className="bg-white p-3 rounded shadow-sm border mb-3"),
                 
                 # 하단: 결과 섹션
@@ -1295,14 +1293,14 @@ def fill_analysis_inputs(is_open, source, add_e, add_b, add_n, edit_e, edit_b, e
     Output("age-analysis-params", "children"),
     Output("age-analysis-table", "children"),
     Output("age-analysis-graph", "figure"),
-    Input("modal-age-analysis", "is_open"),
+    Input("analysis-e28", "value"),
+    Input("analysis-beta", "value"),
+    Input("analysis-n", "value"),
     Input("reanalyze-btn", "n_clicks"),
-    State("analysis-e28", "value"),
-    State("analysis-beta", "value"),
-    State("analysis-n", "value"),
+    State("modal-age-analysis", "is_open"),
     prevent_initial_call=True
 )
-def calculate_age_analysis(is_open, reanalyze_clicks, e28, beta, n):
+def calculate_age_analysis(e28, beta, n, reanalyze_clicks, is_open):
     if not is_open:
         raise PreventUpdate
     
