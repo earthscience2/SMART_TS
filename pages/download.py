@@ -229,7 +229,7 @@ layout = html.Div([
 # ───────────────────── ① URL에서 프로젝트 정보 파싱 ─────────────────────
 @dash.callback(
     Output("selected-project-store", "data"),
-    Output("current-project-info", "children"),
+    Output("current-project-info", "children", allow_duplicate=True),
     Input("download-url", "search"),
     prevent_initial_call=False
 )
