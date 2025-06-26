@@ -234,15 +234,13 @@ layout = html.Div([
                                 end_date=datetime.now(),
                                 display_format="YYYY-MM-DD",
                                 style={
-                                    "fontSize": "0.8rem", 
+                                    "fontSize": "0.75rem", 
                                     "width": "100%"
                                 }
                             )
                         ], style={
-                            "transform": "scale(0.9)",
-                            "transformOrigin": "left top",
-                            "height": "32px",
-                            "overflow": "hidden"
+                            "fontSize": "0.75rem",
+                            "lineHeight": "1.2"
                         })
                     ], md=6),
                 ], className="g-2")
