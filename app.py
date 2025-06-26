@@ -126,7 +126,7 @@ def _build_navbar():
         children[-2].className += " ms-auto"
 
     brand_component = html.Span([
-        html.Span("Concrete MONITORㅤㅤ| ", className="fw-bold"),
+        html.Span("Concrete MONITORㅤ| ", className="fw-bold"),
         html.Span(f"  {user_id}", className="ms-2 fw-bold text-warning") if user_id else None
     ])
 
@@ -136,7 +136,7 @@ def _build_navbar():
             dbc.Nav(
                 children,
                 navbar=True,
-                className="ms-3"  # 브랜드 옆에 여백을 두고 배치
+                className="ms-1"  # 브랜드 옆 여백을 줄여서 왼쪽으로 이동
             ),
         ], fluid=True),
         color="dark",
