@@ -1369,21 +1369,11 @@ def calculate_age_analysis(e28, beta, n, is_open):
             
             html.H6("🎯 주요 결과", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
             html.Div([
-                html.Span("1일차: ", className="text-muted me-1", style={"fontSize": "0.8rem"}),
-                html.Span(f"{elasticity_values[0]:.1f} GPa", className="fw-bold me-1", style={"fontSize": "0.8rem"}),
-                html.Span(f"({elasticity_values[0]/e28*100:.0f}%)", className="text-success me-3", style={"fontSize": "0.75rem"}),
-                html.Span("7일차: ", className="text-muted me-1", style={"fontSize": "0.8rem"}),
-                html.Span(f"{elasticity_values[6]:.1f} GPa", className="fw-bold me-1", style={"fontSize": "0.8rem"}),
-                html.Span(f"({elasticity_values[6]/e28*100:.0f}%)", className="text-success me-3", style={"fontSize": "0.75rem"}),
-                html.Span("14일차: ", className="text-muted me-1", style={"fontSize": "0.8rem"}),
-                html.Span(f"{elasticity_values[13]:.1f} GPa", className="fw-bold me-1", style={"fontSize": "0.8rem"}),
-                html.Span(f"({elasticity_values[13]/e28*100:.0f}%)", className="text-success me-3", style={"fontSize": "0.75rem"}),
-                html.Span("21일차: ", className="text-muted me-1", style={"fontSize": "0.8rem"}),
-                html.Span(f"{elasticity_values[20]:.1f} GPa", className="fw-bold me-1", style={"fontSize": "0.8rem"}),
-                html.Span(f"({elasticity_values[20]/e28*100:.0f}%)", className="text-success me-3", style={"fontSize": "0.75rem"}),
-                html.Span("28일차: ", className="text-muted me-1", style={"fontSize": "0.8rem"}),
-                html.Span(f"{elasticity_values[27]:.1f} GPa", className="fw-bold text-primary me-1", style={"fontSize": "0.8rem"}),
-                html.Span(f"({elasticity_values[27]/e28*100:.0f}%)", className="text-primary fw-bold", style={"fontSize": "0.75rem"}),
+                html.Div(f"1일차: {elasticity_values[0]:.1f} GPa ({elasticity_values[0]/e28*100:.0f}%)", style={"fontSize": "0.8rem"}),
+                html.Div(f"7일차: {elasticity_values[6]:.1f} GPa ({elasticity_values[6]/e28*100:.0f}%)", style={"fontSize": "0.8rem"}),
+                html.Div(f"14일차: {elasticity_values[13]:.1f} GPa ({elasticity_values[13]/e28*100:.0f}%)", style={"fontSize": "0.8rem"}),
+                html.Div(f"21일차: {elasticity_values[20]:.1f} GPa ({elasticity_values[20]/e28*100:.0f}%)", style={"fontSize": "0.8rem"}),
+                html.Div(f"28일차: {elasticity_values[27]:.1f} GPa ({elasticity_values[27]/e28*100:.0f}%)", className="fw-bold text-primary", style={"fontSize": "0.8rem"}),
             ], className="mb-2"),
         ], className="bg-light p-3 rounded")
     ]
