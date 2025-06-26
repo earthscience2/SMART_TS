@@ -232,7 +232,7 @@ layout = html.Div([
                             start_date=datetime.now() - timedelta(days=365),  # 기본값을 1년으로 확장
                             end_date=datetime.now(),
                             display_format="YYYY-MM-DD",
-                            style={"fontSize": "0.8rem", "width": "100%"}
+                            style={"fontSize": "0.8rem", "width": "100%", "height": "32px"}
                         )
                     ], md=6),
                 ], className="g-2")
