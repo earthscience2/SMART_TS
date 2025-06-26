@@ -176,7 +176,7 @@ def layout():
                     
                     concrete_list.append(
                         html.Tr([
-                            html.Td(concrete["name"], className="py-2"),
+                            html.Td(concrete["name"], className="py-2 text-center"),
                             html.Td(format_date(concrete["created_at"]), className="py-2 text-center"),
                             html.Td(calculate_elapsed_time(concrete["created_at"]), className="py-2 text-center"),
                             html.Td(f"{sensor_count}개", className="py-2 text-center"),
@@ -230,7 +230,7 @@ def layout():
                                     dbc.Table([
                                         html.Thead([
                                             html.Tr([
-                                                html.Th("이름", className="border-0 text-muted small", style={"width": "30%"}),
+                                                html.Th("이름", className="border-0 text-muted small text-center", style={"width": "30%"}),
                                                 html.Th("생성일", className="border-0 text-muted small text-center", style={"width": "20%"}),
                                                 html.Th("경과시간", className="border-0 text-muted small text-center", style={"width": "20%"}),
                                                 html.Th("센서", className="border-0 text-muted small text-center", style={"width": "15%"}),
