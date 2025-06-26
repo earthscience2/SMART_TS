@@ -468,11 +468,7 @@ layout = html.Div([
                                         dbc.Input(id="analysis-n", type="number", min=0.5, max=0.7, step=0.01, className="form-control-sm")
                                     ], md=4),
                                 ], className="g-2 mb-3"),
-                                dbc.Row([
-                                    dbc.Col([
-                                        dbc.Button("📊 재분석", id="reanalyze-btn", color="primary", size="sm", className="px-3 fw-semibold"),
-                                    ], md="auto"),
-                                ], className="justify-content-center"),
+
                             ], className="bg-light p-3 rounded"),
                         ], md=8),
                         
@@ -505,6 +501,7 @@ layout = html.Div([
                 ], className="bg-white p-3 rounded shadow-sm border"),
             ]),
             dbc.ModalFooter([
+                dbc.Button("적용", id="age-analysis-apply", color="success", className="px-4 fw-semibold"),
                 dbc.Button("닫기", id="age-analysis-close", color="secondary", className="px-4"),
             ], className="border-0 pt-3"),
         ]),
@@ -1265,16 +1262,17 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
     Input("add-age-analysis", "n_clicks"),
     Input("edit-age-analysis", "n_clicks"),
     Input("age-analysis-close", "n_clicks"),
+    Input("age-analysis-apply", "n_clicks"),
     State("modal-age-analysis", "is_open"),
     prevent_initial_call=True
 )
-def toggle_age_analysis(add_btn, edit_btn, close_btn, is_open):
+def toggle_age_analysis(add_btn, edit_btn, close_btn, apply_btn, is_open):
     trig = ctx.triggered_id
     if trig == "add-age-analysis":
         return True, "add"
     elif trig == "edit-age-analysis":
         return True, "edit"
-    elif trig == "age-analysis-close":
+    elif trig in ("age-analysis-close", "age-analysis-apply"):
         return False, dash.no_update
     return is_open, dash.no_update
 
@@ -1314,11 +1312,10 @@ def fill_analysis_inputs(is_open, source, add_e, add_b, add_n, edit_e, edit_b, e
     Input("analysis-e28", "value"),
     Input("analysis-beta", "value"),
     Input("analysis-n", "value"),
-    Input("reanalyze-btn", "n_clicks"),
     State("modal-age-analysis", "is_open"),
     prevent_initial_call=True
 )
-def calculate_age_analysis(e28, beta, n, reanalyze_clicks, is_open):
+def calculate_age_analysis(e28, beta, n, is_open):
     if not is_open:
         raise PreventUpdate
     
@@ -1371,37 +1368,23 @@ def calculate_age_analysis(e28, beta, n, reanalyze_clicks, is_open):
             ], className="mb-3"),
             
             html.H6("🎯 주요 결과", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
-            dbc.Row([
-                dbc.Col([
-                    html.Div([
-                        html.Span("1일차: ", className="text-muted", style={"fontSize": "0.8rem"}),
-                        html.Span(f"{elasticity_values[0]:.1f} GPa", className="fw-bold", style={"fontSize": "0.8rem"}),
-                        html.Span(f" ({elasticity_values[0]/e28*100:.0f}%)", className="text-success", style={"fontSize": "0.75rem"}),
-                    ], className="mb-1"),
-                    html.Div([
-                        html.Span("7일차: ", className="text-muted", style={"fontSize": "0.8rem"}),
-                        html.Span(f"{elasticity_values[6]:.1f} GPa", className="fw-bold", style={"fontSize": "0.8rem"}),
-                        html.Span(f" ({elasticity_values[6]/e28*100:.0f}%)", className="text-success", style={"fontSize": "0.75rem"}),
-                    ], className="mb-1"),
-                    html.Div([
-                        html.Span("14일차: ", className="text-muted", style={"fontSize": "0.8rem"}),
-                        html.Span(f"{elasticity_values[13]:.1f} GPa", className="fw-bold", style={"fontSize": "0.8rem"}),
-                        html.Span(f" ({elasticity_values[13]/e28*100:.0f}%)", className="text-success", style={"fontSize": "0.75rem"}),
-                    ], className="mb-1"),
-                ], md=6),
-                dbc.Col([
-                    html.Div([
-                        html.Span("21일차: ", className="text-muted", style={"fontSize": "0.8rem"}),
-                        html.Span(f"{elasticity_values[20]:.1f} GPa", className="fw-bold", style={"fontSize": "0.8rem"}),
-                        html.Span(f" ({elasticity_values[20]/e28*100:.0f}%)", className="text-success", style={"fontSize": "0.75rem"}),
-                    ], className="mb-1"),
-                    html.Div([
-                        html.Span("28일차: ", className="text-muted", style={"fontSize": "0.8rem"}),
-                        html.Span(f"{elasticity_values[27]:.1f} GPa", className="fw-bold text-primary", style={"fontSize": "0.8rem"}),
-                        html.Span(f" ({elasticity_values[27]/e28*100:.0f}%)", className="text-primary fw-bold", style={"fontSize": "0.75rem"}),
-                    ], className="mb-1"),
-                ], md=6),
-            ], className="g-2"),
+            html.Div([
+                html.Span("1일차: ", className="text-muted me-1", style={"fontSize": "0.8rem"}),
+                html.Span(f"{elasticity_values[0]:.1f} GPa", className="fw-bold me-1", style={"fontSize": "0.8rem"}),
+                html.Span(f"({elasticity_values[0]/e28*100:.0f}%)", className="text-success me-3", style={"fontSize": "0.75rem"}),
+                html.Span("7일차: ", className="text-muted me-1", style={"fontSize": "0.8rem"}),
+                html.Span(f"{elasticity_values[6]:.1f} GPa", className="fw-bold me-1", style={"fontSize": "0.8rem"}),
+                html.Span(f"({elasticity_values[6]/e28*100:.0f}%)", className="text-success me-3", style={"fontSize": "0.75rem"}),
+                html.Span("14일차: ", className="text-muted me-1", style={"fontSize": "0.8rem"}),
+                html.Span(f"{elasticity_values[13]:.1f} GPa", className="fw-bold me-1", style={"fontSize": "0.8rem"}),
+                html.Span(f"({elasticity_values[13]/e28*100:.0f}%)", className="text-success me-3", style={"fontSize": "0.75rem"}),
+                html.Span("21일차: ", className="text-muted me-1", style={"fontSize": "0.8rem"}),
+                html.Span(f"{elasticity_values[20]:.1f} GPa", className="fw-bold me-1", style={"fontSize": "0.8rem"}),
+                html.Span(f"({elasticity_values[20]/e28*100:.0f}%)", className="text-success me-3", style={"fontSize": "0.75rem"}),
+                html.Span("28일차: ", className="text-muted me-1", style={"fontSize": "0.8rem"}),
+                html.Span(f"{elasticity_values[27]:.1f} GPa", className="fw-bold text-primary me-1", style={"fontSize": "0.8rem"}),
+                html.Span(f"({elasticity_values[27]/e28*100:.0f}%)", className="text-primary fw-bold", style={"fontSize": "0.75rem"}),
+            ], className="mb-2"),
         ], className="bg-light p-3 rounded")
     ]
     
@@ -1503,6 +1486,36 @@ def calculate_age_analysis(e28, beta, n, reanalyze_clicks, is_open):
     )
     
     return params_display, table, fig
+
+# ───────────────────── ⑮ 재령분석 결과 적용
+@callback(
+    Output("add-e", "value", allow_duplicate=True),
+    Output("add-b", "value", allow_duplicate=True),
+    Output("add-n", "value", allow_duplicate=True),
+    Output("edit-e", "value", allow_duplicate=True),
+    Output("edit-b", "value", allow_duplicate=True),
+    Output("edit-n", "value", allow_duplicate=True),
+    Input("age-analysis-apply", "n_clicks"),
+    State("age-analysis-source", "data"),
+    State("analysis-e28", "value"),
+    State("analysis-beta", "value"),
+    State("analysis-n", "value"),
+    prevent_initial_call=True
+)
+def apply_age_analysis_values(apply_clicks, source, e28, beta, n):
+    if not apply_clicks:
+        raise PreventUpdate
+    
+    # 소스에 따라 적절한 모달에 값 적용
+    if source == "add":
+        # add 모달에만 적용
+        return e28, beta, n, dash.no_update, dash.no_update, dash.no_update
+    elif source == "edit":
+        # edit 모달에만 적용
+        return dash.no_update, dash.no_update, dash.no_update, e28, beta, n
+    else:
+        # 소스가 명확하지 않으면 아무것도 하지 않음
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
 
 
