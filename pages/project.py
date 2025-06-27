@@ -759,6 +759,9 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     if not inp_files:
         raise PreventUpdate
 
+    # 초기값 설정
+    current_file_title = ""
+
     # 시간 파싱 및 슬라이더 상태 계산
     times = []
     for f in inp_files:
