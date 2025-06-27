@@ -1293,7 +1293,7 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
             ]),
         ])
     elif active_tab == "tab-section":
-        # 단면도 탭: 독립적인 슬라이더 설정
+        # 단면도 탭: 독립적인 슬라이더 설정 (기본값 먼저 설정)
         slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
         
         # 선택된 콘크리트가 있으면 해당 INP 파일 기반으로 슬라이더 설정
@@ -1340,8 +1340,8 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                 inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
                 
                 if inp_files:
-                    # 현재 슬라이더 값에 해당하는 파일 선택
-                    file_idx = min(slider_value if slider_value is not None else len(inp_files)-1, len(inp_files)-1)
+                    # 현재 슬라이더 값에 해당하는 파일 선택 (기본값으로 최신 파일 사용)
+                    file_idx = len(inp_files) - 1  # 항상 최신 파일 사용
                     current_file = inp_files[file_idx]
                     time_str = os.path.basename(current_file).split(".")[0]
                     dt = datetime.strptime(time_str, "%Y%m%d%H")
