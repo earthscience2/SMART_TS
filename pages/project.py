@@ -2210,6 +2210,7 @@ def update_section_views(time_idx,
     import plotly.graph_objects as go
     import numpy as np
     from scipy.interpolate import griddata
+    from datetime import datetime
     
     print(f"단면도 뷰 업데이트: time_idx={time_idx}, selected_rows={selected_rows}")  # 디버깅
     
@@ -2243,10 +2244,10 @@ def update_section_views(time_idx,
             parts = line.strip().split(',')
             if len(parts) >= 4:
                 node_id = int(parts[0])
-                x = float(parts[1])
-                y = float(parts[2])
-                z = float(parts[3])
-                nodes[node_id] = {'x': x, 'y': y, 'z': z}
+                nx = float(parts[1])
+                ny = float(parts[2])
+                nz = float(parts[3])
+                nodes[node_id] = {'x': nx, 'y': ny, 'z': nz}
     temperatures = {}
     temp_section = False
     for line in lines:
@@ -2280,7 +2281,7 @@ def update_section_views(time_idx,
     y0 = round01(y_val) if y_val is not None else round01(y_mid)
     z0 = round01(z_val) if z_val is not None else round01(z_mid)
     # 3D 뷰(작게)
-    coords = np.array([[x, y, z] for x, y, z in zip(x_coords, y_coords, z_coords)])
+    coords = np.array([[cx, cy, cz] for cx, cy, cz in zip(x_coords, y_coords, z_coords)])
     fig_3d = go.Figure(data=go.Volume(
         x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
         opacity=0.1, surface_count=15, colorscale=[[0, 'blue'], [1, 'red']],
