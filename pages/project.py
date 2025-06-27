@@ -456,6 +456,7 @@ layout = dbc.Container(
                     html.Div([
                         dcc.Slider(id="time-slider", min=0, max=5, step=1, value=0, marks={}),
                         dcc.Slider(id="time-slider-display", min=0, max=5, step=1, value=0, marks={}),
+                        dcc.Slider(id="time-slider-section", min=0, max=5, step=1, value=0, marks={}),  # 단면도용 독립 슬라이더 복원
                         dcc.Graph(id="viewer-3d"),
                         dcc.Graph(id="viewer-3d-display"),
                         dbc.Input(id="section-x-input", type="number", value=None),
@@ -1365,7 +1366,7 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
             section_display_title = viewer_data['current_file_title']
         
         return html.Div([
-            # 시간 컨트롤 섹션 (노션 스타일) - 메인 슬라이더 정보 표시만
+            # 시간 컨트롤 섹션 (노션 스타일) - 독립적인 단면도용 슬라이더
             html.Div([
                 html.Div([
                     html.H6("⏰ 시간 설정", style={
@@ -1374,11 +1375,15 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                         "marginBottom": "12px",
                         "fontSize": "14px"
                     }),
-                    html.P("메인 3D 뷰의 시간 슬라이더를 사용하여 시간을 조절하세요.", style={
-                        "fontSize": "13px",
-                        "color": "#6b7280",
-                        "margin": "0"
-                    }),
+                    dcc.Slider(
+                        id="time-slider-section",
+                        min=slider_min,
+                        max=slider_max,
+                        step=1,
+                        value=slider_value,
+                        marks=slider_marks,
+                        tooltip={"placement": "bottom", "always_visible": True},
+                    ),
                 ], style={
                     "padding": "16px 20px",
                     "backgroundColor": "#f9fafb",
@@ -2165,7 +2170,7 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     Output("section-y-input", "min"), Output("section-y-input", "max"), Output("section-y-input", "value"),
     Output("section-z-input", "min"), Output("section-z-input", "max"), Output("section-z-input", "value"),
     Output("current-file-title-store", "data", allow_duplicate=True),
-    Input("time-slider", "value"),  # Changed from time-slider-section to time-slider
+    Input("time-slider-section", "value"),  # 단면도용 독립 슬라이더 사용
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
     Input("section-z-input", "value"),
@@ -3248,5 +3253,53 @@ def sync_main_slider_to_display(main_value, main_min, main_max, main_marks):
 )
 def sync_viewer_to_display(main_figure):
     return main_figure
+
+# 단면도 슬라이더 초기화 콜백 (3D 뷰와 독립적)
+@callback(
+    Output("time-slider-section", "min"),
+    Output("time-slider-section", "max"),
+    Output("time-slider-section", "value"),
+    Output("time-slider-section", "marks"),
+    Input("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    prevent_initial_call=True,
+)
+def init_section_slider(selected_rows, tbl_data):
+    if not selected_rows:
+        return 0, 5, 0, {}
+    
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    inp_dir = f"inp/{concrete_pk}"
+    inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+    
+    if not inp_files:
+        return 0, 5, 0, {}
+    
+    # 시간 파싱
+    times = []
+    for f in inp_files:
+        try:
+            time_str = os.path.basename(f).split(".")[0]
+            dt = datetime.strptime(time_str, "%Y%m%d%H")
+            times.append(dt)
+        except:
+            continue
+    
+    if not times:
+        return 0, 5, 0, {}
+    
+    max_idx = len(times) - 1
+    
+    # 슬라이더 마크: 모든 시간을 일 단위로 표시
+    marks = {}
+    seen_dates = set()
+    for i, dt in enumerate(times):
+        date_str = dt.strftime("%-m/%-d")  # 6/13, 6/14 형식
+        if date_str not in seen_dates:
+            marks[i] = date_str
+            seen_dates.add(date_str)
+    
+    return 0, max_idx, max_idx, marks  # 최신 파일로 초기화
 
 
