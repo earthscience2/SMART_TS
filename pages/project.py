@@ -3326,7 +3326,7 @@ clientside_callback(
     Input("tabs-main", "active_tab"),  # 탭 변경 시 초기화
     Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
-    prevent_initial_call=False,  # 초기 호출 허용
+    prevent_initial_call='initial_duplicate',  # allow_duplicate과 함께 사용 가능한 설정
 )
 def init_section_slider(active_tab, selected_rows, tbl_data):
     print(f"단면도 슬라이더 초기화: active_tab={active_tab}, selected_rows={selected_rows}")  # 디버깅
