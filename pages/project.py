@@ -1293,15 +1293,41 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
             ]),
         ])
     elif active_tab == "tab-section":
-        # 단면도 탭: 2x2 배열 배치, 입력창 상단, 3D 뷰/단면도
-        if viewer_data and 'slider' in viewer_data:
-            slider = viewer_data['slider']
-            slider_min = slider.get('min', 0)
-            slider_max = slider.get('max', 5)
-            slider_marks = slider.get('marks', {})
-            slider_value = slider.get('value', 0)
-        else:
-            slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
+        # 단면도 탭: 독립적인 슬라이더 설정
+        slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
+        
+        # 선택된 콘크리트가 있으면 해당 INP 파일 기반으로 슬라이더 설정
+        if selected_rows and tbl_data:
+            row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+            concrete_pk = row["concrete_pk"]
+            inp_dir = f"inp/{concrete_pk}"
+            inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+            
+            if inp_files:
+                # 시간 파싱
+                times = []
+                for f in inp_files:
+                    try:
+                        time_str = os.path.basename(f).split(".")[0]
+                        dt = datetime.strptime(time_str, "%Y%m%d%H")
+                        times.append(dt)
+                    except:
+                        continue
+                
+                if times:
+                    max_idx = len(times) - 1
+                    slider_min, slider_max = 0, max_idx
+                    slider_value = max_idx  # 최신 파일로 초기화
+                    
+                    # 슬라이더 마크 설정
+                    marks = {}
+                    seen_dates = set()
+                    for i, dt in enumerate(times):
+                        date_str = dt.strftime("%-m/%-d")  # 6/13, 6/14 형식
+                        if date_str not in seen_dates:
+                            marks[i] = date_str
+                            seen_dates.add(date_str)
+                    slider_marks = marks
         
         # 단면도 탭에서도 시간 정보를 직접 계산
         section_display_title = current_file_title
@@ -2181,11 +2207,14 @@ def delete_concrete_confirm(_click, sel, tbl_data):
 def update_section_views(time_idx,
                          x_val, y_val, z_val,
                          selected_rows, tbl_data):
-    """time_idx는 두 슬라이더 중 변경된 쪽을 우선 사용"""
+    """단면도 탭 전용 뷰 업데이트 (독립적)"""
     import math
     import plotly.graph_objects as go
     import numpy as np
     from scipy.interpolate import griddata
+    
+    print(f"단면도 뷰 업데이트: time_idx={time_idx}, selected_rows={selected_rows}")  # 디버깅
+    
     if not selected_rows:
         return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, ""
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
@@ -3222,7 +3251,7 @@ def toggle_colorbar_visibility(field_name):
     else:
         return {"height": "120px", "display": "none"}
 
-# 시간 슬라이더 동기화 콜백 (display용 슬라이더와 실제 슬라이더)
+# 3D 뷰 슬라이더 동기화 콜백 (display용 슬라이더와 실제 슬라이더만, 단면도 슬라이더는 제외)
 @callback(
     Output("time-slider", "value", allow_duplicate=True),
     Input("time-slider-display", "value"),
@@ -3254,17 +3283,49 @@ def sync_main_slider_to_display(main_value, main_min, main_max, main_marks):
 def sync_viewer_to_display(main_figure):
     return main_figure
 
+# 단면도 탭 활성화 시 슬라이더 강제 업데이트 (클라이언트 사이드)
+clientside_callback(
+    """
+    function(active_tab, selected_rows, tbl_data) {
+        if (active_tab !== 'tab-section' || !selected_rows || selected_rows.length === 0) {
+            return window.dash_clientside.no_update;
+        }
+        
+        // 단면도 탭이 활성화되었을 때 슬라이더 요소를 찾아서 업데이트
+        setTimeout(function() {
+            const sectionSlider = document.getElementById('time-slider-section');
+            if (sectionSlider) {
+                // 슬라이더가 존재하면 강제로 다시 렌더링
+                const event = new Event('input', { bubbles: true });
+                sectionSlider.dispatchEvent(event);
+            }
+        }, 100);
+        
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output("time-slider-section", "id"),  # 더미 출력
+    Input("tabs-main", "active_tab"),
+    Input("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+)
+
 # 단면도 슬라이더 초기화 콜백 (3D 뷰와 독립적)
 @callback(
-    Output("time-slider-section", "min"),
-    Output("time-slider-section", "max"),
-    Output("time-slider-section", "value"),
-    Output("time-slider-section", "marks"),
+    Output("time-slider-section", "min", allow_duplicate=True),
+    Output("time-slider-section", "max", allow_duplicate=True), 
+    Output("time-slider-section", "value", allow_duplicate=True),
+    Output("time-slider-section", "marks", allow_duplicate=True),
+    Input("tabs-main", "active_tab"),  # 탭 변경 시 초기화
     Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def init_section_slider(selected_rows, tbl_data):
+def init_section_slider(active_tab, selected_rows, tbl_data):
+    # 단면도 탭이 아니면 기본값 반환
+    if active_tab != "tab-section":
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+        
     if not selected_rows:
         return 0, 5, 0, {}
     
