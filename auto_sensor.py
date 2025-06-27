@@ -12,6 +12,7 @@ from ITS_CLI import config, tcp_client
 
 # 0) 로거 설정
 LOG_PATH = 'log/auto_sensor.log'
+os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
 logging.basicConfig(
     filename=LOG_PATH,
     level=logging.INFO,
@@ -23,11 +24,6 @@ logger = logging.getLogger(__name__)
 # 센서 데이터 조회 및 추출
 def export_sensor_data(deviceid, channel, sd_start=None):
     # --- 1) ITS 설정 로드 ---
-    # 현재 작업 디렉토리를 프로젝트 루트로 변경
-    current_dir = os.getcwd()
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    os.chdir(project_root)
-    
     try:
         config.config_load()
         if not hasattr(config, 'SERVER_IP') or not config.SERVER_IP:
@@ -36,15 +32,12 @@ def export_sensor_data(deviceid, channel, sd_start=None):
     except Exception as e:
         logger.error(f"ITS 설정 로드 실패: {e}")
         # config.ini 파일 존재 확인
-        config_path = os.path.join(project_root, 'config.ini')
+        config_path = 'config.ini'
         logger.error(f"config.ini 경로: {config_path}, 존재: {os.path.exists(config_path)}")
         if os.path.exists(config_path):
             with open(config_path, 'r') as f:
                 logger.error(f"config.ini 내용:\n{f.read()}")
         return None
-    finally:
-        # 원래 디렉토리로 복원
-        os.chdir(current_dir)
     
     # --- 2) ITS 클라이언트 연결 ---
     user_id = 'cbk4689'
@@ -299,6 +292,7 @@ def auto_sensor_data():
                 print(f"✅ 완료 (신규:{insert_count}, 갱신:{update_count})")
                 success_count += 1
                 processed_count += 1
+                
         # 작업 완료 통계 표시
         elapsed_time = datetime.now() - start_time
         print("\n" + "=" * 60)
@@ -313,4 +307,5 @@ def auto_sensor_data():
     finally:
         conn.close()
 
-auto_sensor_data()
+if __name__ == '__main__':
+    auto_sensor_data()

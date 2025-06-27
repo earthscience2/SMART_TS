@@ -222,7 +222,7 @@ def generate_calculix_inp(nodes, elements, node_temperatures, output_path, concr
     except Exception as e:
         logger.exception(f"generate_calculix_inp error for '{output_path}': {e}")
 
-# 3) epsilon 계산 함수
+# 4) epsilon 계산 함수
 def compute_epsilon(sensor_coords, sensor_temps, alpha=1.0):
     try:
         N = sensor_coords.shape[0]
@@ -241,7 +241,7 @@ def compute_epsilon(sensor_coords, sensor_temps, alpha=1.0):
         logger.exception(f"compute_epsilon error: {e}")
         return None
 
-# 4) INP 생성 메인 함수
+# 5) INP 생성 메인 함수
 def make_inp(concrete, sensor_data_list, latest_csv):
     try:
         cpk = concrete['concrete_pk']
@@ -252,7 +252,11 @@ def make_inp(concrete, sensor_data_list, latest_csv):
         time_list = get_hourly_time_list(latest_csv)
         sensor_count = len(sensor_data_list)
 
-        for time in time_list:
+        print(f"📊 콘크리트 {cpk}: 센서 {sensor_count}개, 시간 {len(time_list)}개 처리 예정")
+
+        for time_idx, time in enumerate(time_list, 1):
+            print(f"  [{time_idx:3d}/{len(time_list)}] {time} 처리 중...", end=" ")
+            
             sensors = []
             num = 1
             for sensor in sensor_data_list:
@@ -269,6 +273,7 @@ def make_inp(concrete, sensor_data_list, latest_csv):
                 temps  = np.array([t for *_, t in sensors])
                 epsilon = compute_epsilon(coords, temps)
                 if epsilon is None:
+                    print("❌ epsilon 계산 실패")
                     logger.error(f"Skipping interpolation at time={time} due to epsilon error")
                     continue
 
@@ -319,37 +324,59 @@ def make_inp(concrete, sensor_data_list, latest_csv):
                 ts_str = time_dt.strftime('%Y%m%d%H')
                 final_path = f"inp/{cpk}/{ts_str}.inp"
                 generate_calculix_inp(nodes, elements, node_temp_map, final_path, concrete, time)
+                print(f"✅ INP 생성 완료 (노드:{len(nodes)}, 요소:{len(elements)})")
+            else:
+                print(f"❌ 센서 데이터 부족 ({len(sensors)}/{sensor_count})")
 
         logger.info(f"make_inp completed for concrete_pk={cpk}")
     except Exception as e:
         logger.exception(f"make_inp error for concrete_pk={concrete.get('concrete_pk')}: {e}")
 
-# 5) 전체 실행 함수
+# 6) 전체 실행 함수
 def auto_inp():
-    print("auto_inp started")
+    print("🚀 INP 파일 자동 생성 시작")
     logger.info("auto_inp started")
     try:
         concrete_list = api_db.get_concrete_data().to_dict(orient='records')
         existing = get_subfolders('inp')
-        logger.info(f"Concretes to process: {[c['concrete_pk'] for c in concrete_list]}")
-        for conc in concrete_list:
-            # activate가 0인 경우에만 처리
-            if conc.get('activate', 1) != 0:
-                logger.info(f"Skipping concrete_pk={conc['concrete_pk']} because activate != 0")
-                continue
-                
+        
+        # activate가 0인 콘크리트만 필터링
+        active_concretes = [c for c in concrete_list if c.get('activate', 1) == 0]
+        
+        print(f"📋 처리 대상: {len(active_concretes)}개 콘크리트 (activate=0)")
+        for idx, conc in enumerate(active_concretes, 1):
+            print(f"  {idx}. {conc['concrete_pk']}")
+        print("=" * 60)
+        
+        logger.info(f"Concretes to process: {[c['concrete_pk'] for c in active_concretes]}")
+        
+        for conc_idx, conc in enumerate(active_concretes, 1):
             cpk = conc['concrete_pk']
+            print(f"\n[{conc_idx}/{len(active_concretes)}] 콘크리트 {cpk} 처리 중...")
+            
             if cpk not in existing:
                 os.makedirs(f'inp/{cpk}', exist_ok=True)
                 logger.info(f"Created folder for {cpk}")
+                
             files = get_files(f'inp/{cpk}')
             latest = get_latest_csv(f'inp/{cpk}')
-            logger.info(f"Processing {cpk}: existing files={files}, latest={latest}")
+            logger.info(f"Processing {cpk}: existing files={len(files)}, latest={latest}")
+            
             sensor_data_list = api_db.get_sensors_data(concrete_pk=cpk).to_dict('records')
+            if not sensor_data_list:
+                print(f"  ⚠️  센서 데이터 없음 - 건너뜀")
+                continue
+                
             make_inp(conc, sensor_data_list, latest)
+            
+        print("\n" + "=" * 60)
+        print("🏁 INP 파일 자동 생성 완료!")
+        print("=" * 60)
         logger.info("auto_inp completed successfully")
+        
     except Exception as e:
         logger.exception(f"auto_inp error: {e}")
+        print(f"\n❌ 전체 작업 실패: {e}")
 
-
-auto_inp()
+if __name__ == '__main__':
+    auto_inp()
