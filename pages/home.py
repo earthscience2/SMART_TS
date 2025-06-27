@@ -171,8 +171,8 @@ def layout():
                     concrete_sensors = df_sensors[df_sensors["concrete_pk"] == concrete_pk]
                     sensor_count = len(concrete_sensors)
                     
-                    analysis_status = "분석중" if concrete["activate"] == 1 else "미분석"
-                    status_color = "success" if concrete["activate"] == 1 else "secondary"
+                    analysis_status = "분석중" if concrete["activate"] == 0 else "미분석"
+                    status_color = "success" if concrete["activate"] == 0 else "secondary"
                     
                     concrete_list.append(
                         html.Tr([
@@ -215,22 +215,26 @@ def layout():
                             dcc.Link(
                                 "분석결과 보기 →",
                                 href=f"/project?page={proj_pk}",
-                                className="btn btn-outline-primary btn-sm me-2"
+                                className="btn btn-primary btn-sm me-2",
+                                style={"boxShadow": "0 2px 4px rgba(0,0,0,0.1)"}
                             ),
                             dcc.Link(
                                 "콘크리트 관리 →",
                                 href=f"/concrete?page={proj_pk}",
-                                className="btn btn-outline-secondary btn-sm me-2"
+                                className="btn btn-secondary btn-sm me-2",
+                                style={"boxShadow": "0 2px 4px rgba(0,0,0,0.1)"}
                             ),
                             dcc.Link(
                                 "센서 관리 →",
                                 href=f"/sensor?page={proj_pk}",
-                                className="btn btn-outline-info btn-sm me-2"
+                                className="btn btn-info btn-sm me-2",
+                                style={"boxShadow": "0 2px 4px rgba(0,0,0,0.1)"}
                             ),
                             dcc.Link(
                                 "데이터 다운로드 →",
                                 href=f"/download?page={proj_pk}",
-                                className="btn btn-outline-warning btn-sm"
+                                className="btn btn-warning btn-sm",
+                                style={"boxShadow": "0 2px 4px rgba(0,0,0,0.1)"}
                             )
                         ], className="d-flex flex-wrap gap-1")
                     ], className="d-flex justify-content-between align-items-center mb-4"),
