@@ -90,9 +90,19 @@ def auto_sensor_data():
     try:
         df_sensors = pd.read_sql("SELECT device_id,channel,d_type FROM sensor;", engine)
         records = df_sensors.to_dict(orient='records')
+        
+        # 진행도 추적 변수들
+        total_sensors = len(records)
+        processed_count = 0
+        success_count = 0
+        fail_count = 0
+        start_time = datetime.now()
+        
+        print(f"🚀 센서 데이터 수집 시작 - 총 {total_sensors}개 센서")
+        print("=" * 60)
 
         with conn.cursor() as cursor:
-            for rec in records:
+            for idx, rec in enumerate(records, 1):
                 device_id = rec['device_id']
                 channel = rec['channel']
                 cursor.execute(
@@ -109,41 +119,70 @@ def auto_sensor_data():
                 else:
                     sd_start = None
 
+                # 진행도 표시
+                progress = (idx / total_sensors) * 100
+                print(f"[{idx:3d}/{total_sensors}] ({progress:5.1f}%) 처리 중: {device_id}/{channel}", end=" ")
+                
                 logger.info(f"{device_id}/{channel} 기준 start_date={sd_start}")
 
-                agg = export_sensor_data(device_id, channel, sd_start)
-                if agg is None or agg.empty:
-                    continue
+                try:
+                    agg = export_sensor_data(device_id, channel, sd_start)
+                    if agg is None or agg.empty:
+                        print("❌ 신규 데이터 없음")
+                        processed_count += 1
+                        continue
 
-                # INSERT/UPDATE
-                for row in agg.to_dict(orient='records'):
-                    ts = row['time'].strftime('%Y-%m-%d %H:%M:%S')
-                    hmd, sv, tmp = row['humidity'], row['sv'], row['temperature']
+                    # INSERT/UPDATE
+                    insert_count = 0
+                    update_count = 0
+                    for row in agg.to_dict(orient='records'):
+                        ts = row['time'].strftime('%Y-%m-%d %H:%M:%S')
+                        hmd, sv, tmp = row['humidity'], row['sv'], row['temperature']
 
-                    cursor.execute(
-                        "SELECT COUNT(*) FROM sensor_data WHERE device_id=%s AND channel=%s AND time=%s",
-                        (device_id, channel, ts)
-                    )
-                    exists = cursor.fetchone()[0] > 0
+                        cursor.execute(
+                            "SELECT COUNT(*) FROM sensor_data WHERE device_id=%s AND channel=%s AND time=%s",
+                            (device_id, channel, ts)
+                        )
+                        exists = cursor.fetchone()[0] > 0
 
-                    if exists:
-                        cursor.execute("""
-                            UPDATE sensor_data
-                            SET humidity=%s, sv=%s, temperature=%s, updated_at=NOW()
-                            WHERE device_id=%s AND channel=%s AND time=%s
-                        """, (hmd, sv, tmp, device_id, channel, ts))
-                        logger.info(f"UPDATED {device_id}/{channel} @ {ts}: hmd={hmd}, sv={sv}, tmp={tmp}")
-                    else:
-                        cursor.execute("""
-                            INSERT INTO sensor_data
-                              (device_id, channel, time, humidity, sv, temperature, created_at, updated_at)
-                            VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
-                        """, (device_id, channel, ts, hmd, sv, tmp))
-                        logger.info(f"INSERTED {device_id}/{channel} @ {ts}: hmd={hmd}, sv={sv}, tmp={tmp}")
+                        if exists:
+                            cursor.execute("""
+                                UPDATE sensor_data
+                                SET humidity=%s, sv=%s, temperature=%s, updated_at=NOW()
+                                WHERE device_id=%s AND channel=%s AND time=%s
+                            """, (hmd, sv, tmp, device_id, channel, ts))
+                            update_count += 1
+                            logger.info(f"UPDATED {device_id}/{channel} @ {ts}: hmd={hmd}, sv={sv}, tmp={tmp}")
+                        else:
+                            cursor.execute("""
+                                INSERT INTO sensor_data
+                                  (device_id, channel, time, humidity, sv, temperature, created_at, updated_at)
+                                VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
+                            """, (device_id, channel, ts, hmd, sv, tmp))
+                            insert_count += 1
+                            logger.info(f"INSERTED {device_id}/{channel} @ {ts}: hmd={hmd}, sv={sv}, tmp={tmp}")
 
-                conn.commit()
+                    conn.commit()
+                    print(f"✅ 완료 (신규:{insert_count}, 갱신:{update_count})")
+                    success_count += 1
+                    processed_count += 1
+                    
+                except Exception as e:
+                    print(f"❌ 실패: {str(e)[:50]}...")
+                    logger.error(f"{device_id}/{channel} 처리 오류: {e}")
+                    fail_count += 1
+                    processed_count += 1
+        # 작업 완료 통계 표시
+        elapsed_time = datetime.now() - start_time
+        print("\n" + "=" * 60)
+        print(f"🏁 센서 데이터 수집 완료!")
+        print(f"📊 처리 결과: 총 {processed_count}개 / 성공 {success_count}개 / 실패 {fail_count}개")
+        print(f"⏱️  소요 시간: {elapsed_time}")
+        print("=" * 60)
+        
     except Exception as e:
         logger.error(f"auto_sensor_data 오류: {e}")
+        print(f"\n❌ 전체 작업 실패: {e}")
     finally:
         conn.close()
 
