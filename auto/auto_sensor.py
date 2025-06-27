@@ -23,24 +23,45 @@ logger = logging.getLogger(__name__)
 
 # 센서 데이터 조회 및 추출
 def export_sensor_data(deviceid, channel, sd_start=None):
-    # --- 1) ITS 로그인 및 연결 설정 ---
+    # --- 1) ITS 설정 로드 ---
+    config.config_load()
+    if not hasattr(config, 'SERVER_IP') or not config.SERVER_IP:
+        logger.error("ITS 서버 설정이 누락되었습니다")
+        return None
+    
+    # --- 2) ITS 클라이언트 연결 ---
     user_id = 'cbk4689'
     user_pass = 'qudrhks7460!@'
-    config.config_load()
+    
     ITS_CLIENT = tcp_client.TCPClient(
         config.SERVER_IP, config.SERVER_PORT, config.ITS_NUM, config.certfile
     )
+    
+    if not ITS_CLIENT:
+        logger.error("ITS 클라이언트 생성 실패")
+        return None
+    
     t = threading.Thread(target=ITS_CLIENT.receive_messages)
     t.daemon = True
     t.start()
     time.sleep(1)
+    
+    # --- 3) ITS 로그인 ---
     ITS_CLIENT.set_user_password(user_id, user_pass)
     res = ITS_CLIENT.message('login')
+    
+    if not res:
+        logger.error("ITS 로그인 응답이 없습니다")
+        return None
+        
     if res.get('result') != 'Success':
-        logger.error(f"ITS 로그인 실패: {res.get('msg')}")
-        return
+        login_msg = res.get('msg', '알 수 없는 오류')
+        logger.error(f"ITS 로그인 실패: {login_msg}")
+        return None
+        
     logger.info("ITS 로그인 성공")
 
+    # --- 4) 센서 데이터 조회 ---
     result = ITS_CLIENT.message_getdata(
         'query_device_channel_data',
         start_date=sd_start,
@@ -51,20 +72,52 @@ def export_sensor_data(deviceid, channel, sd_start=None):
         channel=channel
     )
 
+    if not result:
+        logger.warning(f"{deviceid}/{channel} 조회 결과가 없습니다")
+        return pd.DataFrame()  # 빈 DataFrame 반환
+    
+    if not isinstance(result, list):
+        logger.error(f"{deviceid}/{channel} 조회 결과 형식 오류: {type(result)}")
+        return None
+
+    # --- 5) 데이터 프레임 생성 및 검증 ---
     df = pd.DataFrame(result)
     if df.empty:
         logger.info(f"{deviceid}/{channel} 신규 데이터 없음.")
-        return
+        return df
 
-    df['time'] = pd.to_datetime(df['time'])
-    # temperature 필터
+    # 필수 컬럼 확인
+    required_columns = ['time', 'temperature', 'humidity', 'sv']
+    missing_columns = [col for col in required_columns if col not in df.columns]
+    if missing_columns:
+        logger.error(f"{deviceid}/{channel} 필수 컬럼 누락: {missing_columns}")
+        return None
+
+    # --- 6) 시간 데이터 처리 ---
+    if df['time'].dtype == 'object':
+        df['time'] = pd.to_datetime(df['time'])
+    
+    original_count = len(df)
+    
+    # --- 7) 온도 필터링 ---
     df = df[(df['temperature'] > -20) & (df['temperature'] < 80)]
+    filtered_count = len(df)
+    
+    if filtered_count < original_count:
+        logger.info(f"{deviceid}/{channel} 온도 필터링: {original_count} → {filtered_count}")
+    
     if df.empty:
         logger.info(f"{deviceid}/{channel} 필터 후 데이터 없음.")
-        return
+        return df
 
+    # --- 8) 시간별 집계 ---
     df['hour'] = df['time'].dt.floor('h')
     numeric_cols = df.select_dtypes(include='number').columns.tolist()
+    
+    if not numeric_cols:
+        logger.error(f"{deviceid}/{channel} 집계할 수치 데이터가 없습니다")
+        return None
+    
     agg = (
         df
         .groupby('hour', as_index=False)[numeric_cols]
@@ -125,53 +178,84 @@ def auto_sensor_data():
                 
                 logger.info(f"{device_id}/{channel} 기준 start_date={sd_start}")
 
-                try:
-                    agg = export_sensor_data(device_id, channel, sd_start)
-                    if agg is None or agg.empty:
-                        print("❌ 신규 데이터 없음")
-                        processed_count += 1
-                        continue
-
-                    # INSERT/UPDATE
-                    insert_count = 0
-                    update_count = 0
-                    for row in agg.to_dict(orient='records'):
-                        ts = row['time'].strftime('%Y-%m-%d %H:%M:%S')
-                        hmd, sv, tmp = row['humidity'], row['sv'], row['temperature']
-
-                        cursor.execute(
-                            "SELECT COUNT(*) FROM sensor_data WHERE device_id=%s AND channel=%s AND time=%s",
-                            (device_id, channel, ts)
-                        )
-                        exists = cursor.fetchone()[0] > 0
-
-                        if exists:
-                            cursor.execute("""
-                                UPDATE sensor_data
-                                SET humidity=%s, sv=%s, temperature=%s, updated_at=NOW()
-                                WHERE device_id=%s AND channel=%s AND time=%s
-                            """, (hmd, sv, tmp, device_id, channel, ts))
-                            update_count += 1
-                            logger.info(f"UPDATED {device_id}/{channel} @ {ts}: hmd={hmd}, sv={sv}, tmp={tmp}")
-                        else:
-                            cursor.execute("""
-                                INSERT INTO sensor_data
-                                  (device_id, channel, time, humidity, sv, temperature, created_at, updated_at)
-                                VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
-                            """, (device_id, channel, ts, hmd, sv, tmp))
-                            insert_count += 1
-                            logger.info(f"INSERTED {device_id}/{channel} @ {ts}: hmd={hmd}, sv={sv}, tmp={tmp}")
-
-                    conn.commit()
-                    print(f"✅ 완료 (신규:{insert_count}, 갱신:{update_count})")
-                    success_count += 1
-                    processed_count += 1
-                    
-                except Exception as e:
-                    print(f"❌ 실패: {str(e)[:50]}...")
-                    logger.error(f"{device_id}/{channel} 처리 오류: {e}")
+                # 1단계: 센서 데이터 수집
+                print("📡 데이터 수집 중...", end=" ")
+                agg = export_sensor_data(device_id, channel, sd_start)
+                
+                if agg is None:
+                    print("❌ ITS 시스템 연결 실패 또는 데이터 조회 오류")
                     fail_count += 1
                     processed_count += 1
+                    continue
+                    
+                if agg.empty:
+                    print("⚠️  신규 데이터 없음")
+                    processed_count += 1
+                    continue
+
+                # 2단계: 데이터 검증
+                print(f"📊 {len(agg)}건 수집 →", end=" ")
+                
+                # 필수 컬럼 존재 확인
+                required_cols = ['time', 'humidity', 'sv', 'temperature']
+                missing_cols = [col for col in required_cols if col not in agg.columns]
+                if missing_cols:
+                    print(f"❌ 필수 컬럼 누락: {missing_cols}")
+                    fail_count += 1
+                    processed_count += 1
+                    continue
+
+                # 3단계: 데이터베이스 저장
+                print("💾 DB 저장 중...", end=" ")
+                insert_count = 0
+                update_count = 0
+                
+                for row_idx, row in enumerate(agg.to_dict(orient='records')):
+                    # 데이터 유효성 검증
+                    if pd.isna(row['time']):
+                        print(f"❌ {row_idx+1}번째 행: 시간 정보 누락")
+                        fail_count += 1
+                        processed_count += 1
+                        continue
+                        
+                    ts = row['time'].strftime('%Y-%m-%d %H:%M:%S')
+                    hmd, sv, tmp = row['humidity'], row['sv'], row['temperature']
+                    
+                    # NULL 값 검증
+                    if pd.isna(hmd) or pd.isna(sv) or pd.isna(tmp):
+                        print(f"❌ {row_idx+1}번째 행 ({ts}): 센서값 누락 (hmd:{hmd}, sv:{sv}, tmp:{tmp})")
+                        continue
+
+                    # 중복 확인
+                    cursor.execute(
+                        "SELECT COUNT(*) FROM sensor_data WHERE device_id=%s AND channel=%s AND time=%s",
+                        (device_id, channel, ts)
+                    )
+                    exists = cursor.fetchone()[0] > 0
+
+                    if exists:
+                        cursor.execute("""
+                            UPDATE sensor_data
+                            SET humidity=%s, sv=%s, temperature=%s, updated_at=NOW()
+                            WHERE device_id=%s AND channel=%s AND time=%s
+                        """, (hmd, sv, tmp, device_id, channel, ts))
+                        update_count += 1
+                        logger.info(f"UPDATED {device_id}/{channel} @ {ts}: hmd={hmd}, sv={sv}, tmp={tmp}")
+                    else:
+                        cursor.execute("""
+                            INSERT INTO sensor_data
+                              (device_id, channel, time, humidity, sv, temperature, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
+                        """, (device_id, channel, ts, hmd, sv, tmp))
+                        insert_count += 1
+                        logger.info(f"INSERTED {device_id}/{channel} @ {ts}: hmd={hmd}, sv={sv}, tmp={tmp}")
+
+                # 4단계: 커밋
+                print("🔄 커밋 중...", end=" ")
+                conn.commit()
+                print(f"✅ 완료 (신규:{insert_count}, 갱신:{update_count})")
+                success_count += 1
+                processed_count += 1
         # 작업 완료 통계 표시
         elapsed_time = datetime.now() - start_time
         print("\n" + "=" * 60)
