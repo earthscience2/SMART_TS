@@ -3310,4 +3310,41 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
     
     return 0, max_idx, max_idx, marks
 
+# 3D 뷰 탭 시간 정보 업데이트 콜백
+@callback(
+    Output("viewer-3d-time-info", "children"),
+    Input("current-file-title-store", "data"),
+    Input("tabs-main", "active_tab"),
+    prevent_initial_call=True,
+)
+def update_viewer3d_time_info(current_file_title, active_tab):
+    """3D 뷰 탭에서 시간/물성치 정보를 업데이트"""
+    if active_tab != "tab-3d":
+        return html.Div()
+    if not current_file_title:
+        current_file_title = "시간 정보 없음"
+    return html.Div([
+        html.Div([
+            html.I(className="fas fa-clock me-2", style={"color": "#6366f1"}),
+            html.Div([
+                html.Div(line, style={"margin": "0"}) for line in current_file_title.split('\n')
+            ], style={
+                "fontWeight": "500",
+                "color": "#374151",
+                "lineHeight": "1.4"
+            })
+        ], style={
+            "padding": "12px 16px",
+            "backgroundColor": "white",
+            "borderRadius": "8px",
+            "border": "1px solid #e5e7eb",
+            "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
+            "marginBottom": "20px",
+            "fontSize": "14px",
+            "display": "flex",
+            "alignItems": "flex-start",
+            "gap": "8px"
+        })
+    ])
+
 
