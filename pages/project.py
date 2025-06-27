@@ -1293,22 +1293,95 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
             ]),
         ])
     elif active_tab == "tab-section":
-        # 단면도 탭: 3D 뷰와 동일한 슬라이더 값 사용
-        if viewer_data and 'slider' in viewer_data:
-            slider_info = viewer_data['slider']
-            slider_min = slider_info.get('min', 0)
-            slider_max = slider_info.get('max', 5)
-            slider_marks = slider_info.get('marks', {})
-            slider_value = slider_info.get('value', 0)
-        else:
-            slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
+        # 단면도 탭: 독립적인 슬라이더 설정
+        slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
         
-        # 단면도 탭에서도 시간 정보 표시 (3D 뷰와 동일)
-        section_display_title = current_file_title
+        # 선택된 콘크리트가 있으면 해당 INP 파일 기반으로 슬라이더 설정
+        if selected_rows and tbl_data:
+            row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+            concrete_pk = row["concrete_pk"]
+            inp_dir = f"inp/{concrete_pk}"
+            inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+            
+            if inp_files:
+                # 시간 파싱
+                times = []
+                for f in inp_files:
+                    try:
+                        time_str = os.path.basename(f).split(".")[0]
+                        dt = datetime.strptime(time_str, "%Y%m%d%H")
+                        times.append(dt)
+                    except:
+                        continue
+                
+                if times:
+                    max_idx = len(times) - 1
+                    slider_min, slider_max = 0, max_idx
+                    slider_value = max_idx  # 최신 파일로 초기화
+                    
+                    # 슬라이더 마크 설정
+                    marks = {}
+                    seen_dates = set()
+                    for i, dt in enumerate(times):
+                        date_str = dt.strftime("%m/%d")
+                        if date_str not in seen_dates:
+                            marks[i] = date_str
+                            seen_dates.add(date_str)
+                    slider_marks = marks
         
-        # viewer_data에서 시간 정보 가져오기
-        if not section_display_title and viewer_data and 'current_file_title' in viewer_data:
-            section_display_title = viewer_data['current_file_title']
+        # 단면도 탭에서 시간 정보 표시 - 현재 선택된 콘크리트의 최신 파일 정보
+        section_display_title = "시간 정보 없음"
+        
+        if selected_rows and tbl_data:
+            try:
+                row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+                concrete_pk = row["concrete_pk"]
+                inp_dir = f"inp/{concrete_pk}"
+                inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+                
+                if inp_files:
+                    # 현재 슬라이더 값에 해당하는 파일 선택
+                    file_idx = min(slider_value if slider_value is not None else len(inp_files)-1, len(inp_files)-1)
+                    current_file = inp_files[file_idx]
+                    time_str = os.path.basename(current_file).split(".")[0]
+                    dt = datetime.strptime(time_str, "%Y%m%d%H")
+                    formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
+                    
+                    # 온도 데이터 파싱
+                    with open(current_file, 'r') as f:
+                        lines = f.readlines()
+                    
+                    current_temps = []
+                    temp_section = False
+                    for line in lines:
+                        if line.startswith('*TEMPERATURE'):
+                            temp_section = True
+                            continue
+                        elif line.startswith('*'):
+                            temp_section = False
+                            continue
+                        if temp_section and ',' in line:
+                            parts = line.strip().split(',')
+                            if len(parts) >= 2:
+                                try:
+                                    temp = float(parts[1])
+                                    current_temps.append(temp)
+                                except:
+                                    continue
+                    
+                    # INP 파일에서 물성치 정보 추출
+                    material_info = parse_material_info_from_inp(lines)
+                    
+                    if current_temps:
+                        current_min = float(np.nanmin(current_temps))
+                        current_max = float(np.nanmax(current_temps))
+                        current_avg = float(np.nanmean(current_temps))
+                        section_display_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)\n{material_info}"
+                    else:
+                        section_display_title = f"{formatted_time}\n{material_info}"
+            except Exception as e:
+                print(f"단면도 제목 계산 오류: {e}")
+                section_display_title = "시간 정보 계산 오류"
         
         return html.Div([
             # 시간 컨트롤 섹션 (노션 스타일) - 독립적인 단면도용 슬라이더
@@ -3210,27 +3283,59 @@ def sync_viewer_to_display(main_figure):
 
 # 클라이언트 사이드 콜백 제거 - 충돌 방지
 
-# 단면도 탭 전용 시간 슬라이더 동기화 콜백 (3D 뷰 슬라이더와 동기화)
+# 단면도 탭 전용 시간 슬라이더 초기화 콜백 (독립적)
 @callback(
-    Output("time-slider-section", "min", allow_duplicate=True),
-    Output("time-slider-section", "max", allow_duplicate=True), 
-    Output("time-slider-section", "value", allow_duplicate=True),
-    Output("time-slider-section", "marks", allow_duplicate=True),
-    Input("time-slider", "min"),    # 3D 뷰 슬라이더와 동기화
-    Input("time-slider", "max"),
-    Input("time-slider", "value"),
-    Input("time-slider", "marks"),
-    Input("tabs-main", "active_tab"),  # 탭 변경 시에도 반응
-    prevent_initial_call=False,
+    Output("time-slider-section", "min"),
+    Output("time-slider-section", "max"), 
+    Output("time-slider-section", "value"),
+    Output("time-slider-section", "marks"),
+    Input("tabs-main", "active_tab"),
+    Input("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    prevent_initial_call=True,
 )
-def sync_section_slider_with_main(slider_min, slider_max, slider_value, slider_marks, active_tab):
-    """단면도 탭의 슬라이더를 3D 뷰 슬라이더와 동기화"""
+def init_section_slider_independent(active_tab, selected_rows, tbl_data):
+    """단면도 탭의 슬라이더를 독립적으로 초기화"""
     
-    # 단면도 탭일 때만 동기화
-    if active_tab == "tab-section":
-        return slider_min, slider_max, slider_value, slider_marks
-    else:
-        # 다른 탭일 때는 현재 값 유지
+    # 단면도 탭이 아니면 기본값 유지
+    if active_tab != "tab-section":
         return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+        
+    if not selected_rows or not tbl_data:
+        return 0, 5, 0, {}
+    
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    inp_dir = f"inp/{concrete_pk}"
+    inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+    
+    if not inp_files:
+        return 0, 5, 0, {}
+    
+    # 시간 파싱
+    times = []
+    for f in inp_files:
+        try:
+            time_str = os.path.basename(f).split(".")[0]
+            dt = datetime.strptime(time_str, "%Y%m%d%H")
+            times.append(dt)
+        except:
+            continue
+    
+    if not times:
+        return 0, 5, 0, {}
+    
+    max_idx = len(times) - 1
+    
+    # 슬라이더 마크 생성
+    marks = {}
+    seen_dates = set()
+    for i, dt in enumerate(times):
+        date_str = dt.strftime("%m/%d")
+        if date_str not in seen_dates:
+            marks[i] = date_str
+            seen_dates.add(date_str)
+    
+    return 0, max_idx, max_idx, marks
 
 
