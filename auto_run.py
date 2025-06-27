@@ -13,5 +13,5 @@ if __name__ == '__main__':
         auto_inp_to_frd.convert_all_inp_to_frd()
         time.sleep(10)
         auto_frd_to_vtk.convert_all_frd_to_vtk()
-        time.sleep(10)
+        time.sleep(1200)
 

@@ -209,28 +209,6 @@ def convert_all_frd_to_vtk(frd_root_dir="frd", vtk_root_dir="assets/vtk"):
             print(f"  - {error}")
 
 
-def test_single_conversion():
-    """단일 파일 변환 테스트"""
-    frd_path = "frd/C000001/2025061215.frd"
-    vtk_path = "assets/vtk/C000001/2025061215.vtk"
-    
-    if not os.path.exists(frd_path):
-        print(f"❌ 테스트 파일이 없습니다: {frd_path}")
-        return
-    
-    print(f"🧪 단일 파일 변환 테스트")
-    print(f"입력: {frd_path}")
-    print(f"출력: {vtk_path}")
-    
-    success, message = convert_frd_to_vtk(frd_path, vtk_path)
-    
-    if success:
-        is_valid, validation_msg = validate_vtk_file(vtk_path)
-        print(f"✅ 변환 성공: {validation_msg}")
-    else:
-        print(f"❌ 변환 실패: {message}")
-
-
 if __name__ == "__main__":
     # 로깅 설정
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
