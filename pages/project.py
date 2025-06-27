@@ -1317,11 +1317,6 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         "marginBottom": "12px",
                         "fontSize": "14px"
                     }),
-                    html.P(f"슬라이더 범위: {slider_min} ~ {slider_max} (현재: {slider_value})", style={
-                        "fontSize": "12px",
-                        "color": "#6b7280",
-                        "marginBottom": "8px"
-                    }),
                     dcc.Slider(
                         id="time-slider-section",
                         min=slider_min if slider_min is not None else 0,
