@@ -112,10 +112,101 @@ def get_hourly_time_list(start_time=None):
         logger.error(f"get_hourly_time_list error: {e}")
         return []
 
-# 2) INP 파일 생성 함수
-def generate_calculix_inp(nodes, elements, node_temperatures, output_path):
+# 2) 재령에 따른 탄성계수 계산 함수
+def calculate_elastic_modulus(concrete_data, analysis_time):
+    """
+    재령에 따른 탄성계수 계산 (CEB-FIB 모델)
+    E(t) = E28 * ((t / (t + β))^n)
+    concrete_data: 콘크리트 정보 딕셔너리
+    analysis_time: 해석 시간 (문자열, '%Y-%m-%d %H:%M:%S' 형식)
+    """
+    try:
+        # 타설일 가져오기
+        casting_date_str = concrete_data.get('con_t')
+        if not casting_date_str:
+            logger.warning("타설일 정보가 없습니다. 기본 탄성계수 30000 MPa 사용")
+            return 30000.0
+        
+        # CEB-FIB 모델 매개변수 가져오기
+        e28_gpa = concrete_data.get('con_e')  # E28 (GPa 단위)
+        beta = concrete_data.get('con_b')     # β (베타 상수)
+        n = concrete_data.get('con_n')        # n (지수)
+        
+        # 기본값 설정
+        if not e28_gpa:
+            logger.warning("E28 정보가 없습니다. 기본값 30 GPa 사용")
+            e28_gpa = 30.0
+        if not beta:
+            logger.warning("베타 상수 정보가 없습니다. 기본값 0.2 사용")
+            beta = 0.2
+        if not n:
+            logger.warning("N 상수 정보가 없습니다. 기본값 0.5 사용")
+            n = 0.5
+        
+        # 단위 변환: GPa -> MPa
+        e28_mpa = float(e28_gpa) * 1000.0
+        beta = float(beta)
+        n = float(n)
+        
+        # 재령 계산 (일 단위)
+        # 타설일이 datetime 형태인지 문자열인지 확인하여 처리
+        if isinstance(casting_date_str, str):
+            # 날짜 형식이 다양할 수 있으므로 처리
+            if 'T' in casting_date_str:
+                casting_date = datetime.fromisoformat(casting_date_str.replace('T', ' ').replace('Z', ''))
+            else:
+                casting_date = datetime.strptime(casting_date_str[:10], '%Y-%m-%d')
+        else:
+            casting_date = casting_date_str
+            
+        analysis_date = datetime.strptime(analysis_time, '%Y-%m-%d %H:%M:%S')
+        age_days = (analysis_date - casting_date).days + (analysis_date - casting_date).seconds / 86400.0
+        
+        # 재령이 음수이거나 0인 경우 처리
+        if age_days <= 0:
+            logger.warning(f"재령이 {age_days}일입니다. 최소값 0.1일로 설정")
+            age_days = 0.1
+        
+        # CEB-FIB 모델 적용: E(t) = E28 * ((t / (t + β))^n)
+        age_factor = (age_days / (age_days + beta)) ** n
+        elastic_modulus = e28_mpa * age_factor
+        
+        logger.info(f"재령 {age_days:.1f}일, E28={e28_mpa:.0f}MPa, β={beta}, n={n}, 계수={age_factor:.3f}, E(t)={elastic_modulus:.0f}MPa")
+        return elastic_modulus
+        
+    except Exception as e:
+        logger.error(f"탄성계수 계산 오류: {e}")
+        return 30000.0  # 기본값 반환
+
+# 3) INP 파일 생성 함수
+def generate_calculix_inp(nodes, elements, node_temperatures, output_path, concrete_data, analysis_time):
     try:
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        
+        # 재령에 따른 탄성계수 계산
+        elastic_modulus = calculate_elastic_modulus(concrete_data, analysis_time)
+        
+        # 콘크리트 물성치 가져오기
+        # 포아송비 (Poisson's ratio)
+        poisson_ratio = concrete_data.get('con_v', 0.2)  # 기본값 0.2
+        if not poisson_ratio:
+            logger.warning("포아송비 정보가 없습니다. 기본값 0.2 사용")
+            poisson_ratio = 0.2
+        
+        # 밀도 (Density, kg/m³)
+        density = concrete_data.get('con_d', 2400)  # 기본값 2400 kg/m³
+        if not density:
+            logger.warning("밀도 정보가 없습니다. 기본값 2400 kg/m³ 사용")
+            density = 2400
+        
+        # 열팽창계수 (Thermal expansion coefficient, /°C)
+        thermal_expansion = concrete_data.get('con_a', 1.0e-5)  # 기본값 1.0e-5 /°C
+        if not thermal_expansion:
+            logger.warning("열팽창계수 정보가 없습니다. 기본값 1.0e-5 /°C 사용")
+            thermal_expansion = 1.0e-5
+        
+        logger.info(f"물성치 적용: E={elastic_modulus:.0f}MPa, ν={poisson_ratio}, ρ={density}kg/m³, α={thermal_expansion:.1e}/°C")
+        
         with open(output_path, "w") as f:
             f.write("*HEADING\nConcrete Curing Thermal Stress Analysis\n\n")
             f.write("*NODE\n")
@@ -128,9 +219,9 @@ def generate_calculix_inp(nodes, elements, node_temperatures, output_path):
             for eid, node_list in elements.items():
                 f.write(f"{eid}, {', '.join(map(str, node_list))}\n")
             f.write("*MATERIAL, NAME=Conc\n")
-            f.write("*ELASTIC\n30000, 0.2\n")
-            f.write("*DENSITY\n2400\n")
-            f.write("*EXPANSION\n1.0e-5\n")
+            f.write(f"*ELASTIC\n{elastic_modulus:.0f}, {float(poisson_ratio):.3f}\n")
+            f.write(f"*DENSITY\n{float(density):.0f}\n")
+            f.write(f"*EXPANSION\n{float(thermal_expansion):.2e}\n")
             f.write("*SOLID SECTION, ELSET=SolidSet, MATERIAL=Conc\n\n")
             f.write("*INITIAL CONDITIONS, TYPE=TEMPERATURE\nALLNODES, 20.0\n")
             f.write("*STEP\n*STATIC\n")
@@ -150,7 +241,7 @@ def generate_calculix_inp(nodes, elements, node_temperatures, output_path):
     except Exception as e:
         logger.exception(f"generate_calculix_inp error for '{output_path}': {e}")
 
-# 3) epsilon 계산 함수
+# 4) epsilon 계산 함수
 def compute_epsilon(sensor_coords, sensor_temps, alpha=1.0):
     try:
         N = sensor_coords.shape[0]
@@ -169,7 +260,7 @@ def compute_epsilon(sensor_coords, sensor_temps, alpha=1.0):
         logger.exception(f"compute_epsilon error: {e}")
         return None
 
-# 4) INP 생성 메인 함수
+# 5) INP 생성 메인 함수
 def make_inp(concrete, sensor_data_list, latest_csv):
     try:
         cpk = concrete['concrete_pk']
@@ -250,14 +341,14 @@ def make_inp(concrete, sensor_data_list, latest_csv):
             time_dt = datetime.strptime(time, '%Y-%m-%d %H:%M:%S')
             ts_str = time_dt.strftime('%Y%m%d%H')
             final_path = f"inp/{cpk}/{ts_str}.inp"
-            generate_calculix_inp(nodes, elements, node_temp_map, final_path)
+            generate_calculix_inp(nodes, elements, node_temp_map, final_path, concrete, time)
             logger.info(f"Successfully generated INP file: {final_path}")
 
         logger.info(f"make_inp completed for concrete_pk={cpk}")
     except Exception as e:
         logger.exception(f"make_inp error for concrete_pk={concrete.get('concrete_pk')}: {e}")
 
-# 5) 전체 실행 함수
+# 6) 전체 실행 함수
 def auto_inp():
     print("auto_inp started")
     logger.info("auto_inp started")
