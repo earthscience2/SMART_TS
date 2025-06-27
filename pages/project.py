@@ -85,9 +85,9 @@ def parse_material_info_from_inp(lines):
                 elastic_modulus = float(tokens[0])
                 if len(tokens) >= 2:
                     poisson_ratio = float(tokens[1])
-                # Pa → GPa 변환
+                # Pa → GPa 변환 (1000 추가로 나누기)
                 if elastic_modulus > 1e6:
-                    elastic_modulus /= 1e9
+                    elastic_modulus /= 1e12
                 section = None  # 한 줄만 사용
 
             elif section == "density":
@@ -3200,30 +3200,49 @@ def update_section_time_info(current_file_title, active_tab):
     if not current_file_title:
         current_file_title = "시간 정보 없음"
     
+    # 시간과 물성치 정보 분리
+    lines = current_file_title.split('\n')
+    time_info = lines[0] if lines else "시간 정보 없음"
+    material_info = lines[1] if len(lines) > 1 else ""
+    
     # HTML 컴포넌트로 반환
     return html.Div([
+        # 시간 정보 카드
         html.Div([
-            html.I(className="fas fa-clock me-2", style={"color": "#6366f1"}),
-            html.Div([
-                html.Div(line, style={"margin": "0"}) 
-                for line in current_file_title.split('\n')
-            ], style={
-                "fontWeight": "500",
-                "color": "#374151",
-                "lineHeight": "1.4"
+            html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "16px"}),
+            html.Span(time_info, style={
+                "fontWeight": "600",
+                "color": "#1f2937",
+                "fontSize": "15px"
             })
         ], style={
             "padding": "12px 16px",
-            "backgroundColor": "white",
+            "backgroundColor": "#eff6ff",
             "borderRadius": "8px",
-            "border": "1px solid #e5e7eb",
-            "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
-            "marginBottom": "20px",
-            "fontSize": "14px",
+            "border": "1px solid #bfdbfe",
+            "marginBottom": "12px",
             "display": "flex",
-            "alignItems": "flex-start",
-            "gap": "8px"
-        })
+            "alignItems": "center",
+            "gap": "10px"
+        }),
+        
+        # 물성치 정보 카드 (있는 경우만)
+        html.Div([
+            html.I(className="fas fa-cog", style={"color": "#059669", "fontSize": "16px"}),
+            html.Span(material_info, style={
+                "fontWeight": "500",
+                "color": "#374151",
+                "fontSize": "14px"
+            })
+        ], style={
+            "padding": "12px 16px",
+            "backgroundColor": "#ecfdf5",
+            "borderRadius": "8px",
+            "border": "1px solid #a7f3d0",
+            "display": "flex",
+            "alignItems": "center",
+            "gap": "10px"
+        }) if material_info else html.Div()
     ])
 
 # 단면도 탭 전용 시간 슬라이더 초기화 콜백 (독립적)
@@ -3282,7 +3301,7 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
     
     return 0, max_idx, max_idx, marks
 
-# 3D 뷰 탭 시간 정보 업데이트 콜백
+    # 3D 뷰 탭 시간 정보 업데이트 콜백
 @callback(
     Output("viewer-3d-time-info", "children"),
     Input("current-file-title-store", "data"),
@@ -3295,28 +3314,49 @@ def update_viewer3d_time_info(current_file_title, active_tab):
         return html.Div()
     if not current_file_title:
         current_file_title = "시간 정보 없음"
+    
+    # 시간과 물성치 정보 분리
+    lines = current_file_title.split('\n')
+    time_info = lines[0] if lines else "시간 정보 없음"
+    material_info = lines[1] if len(lines) > 1 else ""
+    
     return html.Div([
+        # 시간 정보 카드
         html.Div([
-            html.I(className="fas fa-clock me-2", style={"color": "#6366f1"}),
-            html.Div([
-                html.Div(line, style={"margin": "0"}) for line in current_file_title.split('\n')
-            ], style={
-                "fontWeight": "500",
-                "color": "#374151",
-                "lineHeight": "1.4"
+            html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "16px"}),
+            html.Span(time_info, style={
+                "fontWeight": "600",
+                "color": "#1f2937",
+                "fontSize": "15px"
             })
         ], style={
             "padding": "12px 16px",
-            "backgroundColor": "white",
+            "backgroundColor": "#eff6ff",
             "borderRadius": "8px",
-            "border": "1px solid #e5e7eb",
-            "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
-            "marginBottom": "20px",
-            "fontSize": "14px",
+            "border": "1px solid #bfdbfe",
+            "marginBottom": "12px",
             "display": "flex",
-            "alignItems": "flex-start",
-            "gap": "8px"
-        })
+            "alignItems": "center",
+            "gap": "10px"
+        }),
+        
+        # 물성치 정보 카드 (있는 경우만)
+        html.Div([
+            html.I(className="fas fa-cog", style={"color": "#059669", "fontSize": "16px"}),
+            html.Span(material_info, style={
+                "fontWeight": "500",
+                "color": "#374151",
+                "fontSize": "14px"
+            })
+        ], style={
+            "padding": "12px 16px",
+            "backgroundColor": "#ecfdf5",
+            "borderRadius": "8px",
+            "border": "1px solid #a7f3d0",
+            "display": "flex",
+            "alignItems": "center",
+            "gap": "10px"
+        }) if material_info else html.Div()
     ])
 
 
