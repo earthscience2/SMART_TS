@@ -1239,31 +1239,8 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 })
             ]),
             
-            # 현재 시간 정보 (노션 스타일 카드)
-            html.Div([
-                html.Div([
-                    html.I(className="fas fa-clock me-2", style={"color": "#6366f1"}),
-                    html.Div([
-                        html.Div(line, style={"margin": "0"}) 
-                        for line in (display_title or "시간 정보 없음").split('\n')
-                    ], style={
-                        "fontWeight": "500",
-                        "color": "#374151",
-                        "lineHeight": "1.4"
-                    })
-                ], style={
-                    "padding": "12px 16px",
-                    "backgroundColor": "white",
-                    "borderRadius": "8px",
-                    "border": "1px solid #e5e7eb",
-                    "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
-                    "marginBottom": "20px",
-                    "fontSize": "14px",
-                    "display": "flex",
-                    "alignItems": "flex-start",
-                    "gap": "8px"
-                })
-            ]),
+            # 현재 시간 정보 (동적 업데이트)
+            html.Div(id="viewer-3d-time-info"),
             
             # 3D 뷰어 (노션 스타일)
             html.Div([
