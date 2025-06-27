@@ -85,9 +85,9 @@ def parse_material_info_from_inp(lines):
                 elastic_modulus = float(tokens[0])
                 if len(tokens) >= 2:
                     poisson_ratio = float(tokens[1])
-                # Pa → MPa 변환
+                # Pa → GPa 변환
                 if elastic_modulus > 1e6:
-                    elastic_modulus /= 1e6
+                    elastic_modulus /= 1e9
                 section = None  # 한 줄만 사용
 
             elif section == "density":
@@ -108,7 +108,7 @@ def parse_material_info_from_inp(lines):
 
     parts = []
     if elastic_modulus is not None:
-        parts.append(f"탄성계수: {elastic_modulus:.0f}MPa")
+        parts.append(f"탄성계수: {elastic_modulus:.1f}GPa")
     if poisson_ratio is not None:
         parts.append(f"포아송비: {poisson_ratio:.3f}")
     if density is not None:
