@@ -74,10 +74,12 @@ def convert_frd_to_vtk(frd_path, vtk_path):
         # ccx2paraview는 입력 파일과 같은 디렉토리에 출력
         generated_vtk = frd_path.replace('.frd', '.vtk')
         if os.path.exists(generated_vtk):
-            # 파일이 이미 존재하면 덮어쓰기
+            # 목적지에 파일이 이미 있으면 생성된 임시 파일 삭제
             if os.path.exists(vtk_path):
-                os.remove(vtk_path)
-            os.rename(generated_vtk, vtk_path)
+                os.remove(generated_vtk)
+                return True, "이미 존재하는 파일 (변환 건너뛰기)"
+            else:
+                os.rename(generated_vtk, vtk_path)
             
             # VTK 형식 수정
             fix_success, fix_message = fix_vtk_format(vtk_path)
@@ -168,6 +170,12 @@ def convert_all_frd_to_vtk(frd_root_dir="frd", vtk_root_dir="assets/vtk"):
                 frd_path = os.path.join(root, file)
                 vtk_filename = file[:-4] + '.vtk'  # .frd → .vtk
                 vtk_path = os.path.join(vtk_dir, vtk_filename)
+                
+                # 이미 VTK 파일이 존재하면 건너뛰기
+                if os.path.exists(vtk_path):
+                    print(f"⏭️ 건너뛰기 (이미 존재): {vtk_path}")
+                    converted_count += 1  # 이미 변환된 것으로 계산
+                    continue
                 
                 try:
                     print(f"변환 중: {frd_path} → {vtk_path}")
