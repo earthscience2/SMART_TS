@@ -24,10 +24,28 @@ logger = logging.getLogger(__name__)
 # 센서 데이터 조회 및 추출
 def export_sensor_data(deviceid, channel, sd_start=None):
     # --- 1) ITS 설정 로드 ---
-    config.config_load()
-    if not hasattr(config, 'SERVER_IP') or not config.SERVER_IP:
-        logger.error("ITS 서버 설정이 누락되었습니다")
+    # 현재 작업 디렉토리를 프로젝트 루트로 변경
+    current_dir = os.getcwd()
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    os.chdir(project_root)
+    
+    try:
+        config.config_load()
+        if not hasattr(config, 'SERVER_IP') or not config.SERVER_IP:
+            logger.error("ITS 서버 설정이 누락되었습니다")
+            return None
+    except Exception as e:
+        logger.error(f"ITS 설정 로드 실패: {e}")
+        # config.ini 파일 존재 확인
+        config_path = os.path.join(project_root, 'config.ini')
+        logger.error(f"config.ini 경로: {config_path}, 존재: {os.path.exists(config_path)}")
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                logger.error(f"config.ini 내용:\n{f.read()}")
         return None
+    finally:
+        # 원래 디렉토리로 복원
+        os.chdir(current_dir)
     
     # --- 2) ITS 클라이언트 연결 ---
     user_id = 'cbk4689'
@@ -141,7 +159,27 @@ def auto_sensor_data():
     )
 
     try:
-        df_sensors = pd.read_sql("SELECT device_id,channel,d_type FROM sensor;", engine)
+        # device_id, channel 기준으로 중복 제거 (최신 센서만 선택)
+        sql_query = """
+        SELECT s1.device_id, s1.channel, s1.d_type 
+        FROM sensor s1
+        INNER JOIN (
+            SELECT device_id, channel, MAX(created_at) as max_created_at
+            FROM sensor 
+            GROUP BY device_id, channel
+        ) s2 ON s1.device_id = s2.device_id 
+              AND s1.channel = s2.channel 
+              AND s1.created_at = s2.max_created_at
+        ORDER BY s1.device_id, s1.channel;
+        """
+        df_sensors = pd.read_sql(sql_query, engine)
+        
+        # 중복 제거 결과 로깅
+        total_sensors = pd.read_sql("SELECT COUNT(*) as cnt FROM sensor;", engine).iloc[0]['cnt']
+        unique_sensors = len(df_sensors)
+        if total_sensors != unique_sensors:
+            logger.info(f"센서 중복 제거: 전체 {total_sensors}개 → 유니크 {unique_sensors}개")
+            print(f"📊 센서 중복 제거: 전체 {total_sensors}개 → 유니크 {unique_sensors}개")
         records = df_sensors.to_dict(orient='records')
         
         # 진행도 추적 변수들
@@ -151,7 +189,13 @@ def auto_sensor_data():
         fail_count = 0
         start_time = datetime.now()
         
-        print(f"🚀 센서 데이터 수집 시작 - 총 {total_sensors}개 센서")
+        print(f"🚀 센서 데이터 수집 시작 - 총 {total_sensors}개 센서 (중복 제거 후)")
+        print("=" * 60)
+        
+        # 선택된 센서 목록 표시
+        print("📋 처리할 센서 목록:")
+        for idx, record in enumerate(records, 1):
+            print(f"  {idx:2d}. {record['device_id']}/{record['channel']} (타입: {record['d_type']})")
         print("=" * 60)
 
         with conn.cursor() as cursor:
