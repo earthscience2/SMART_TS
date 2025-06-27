@@ -1081,6 +1081,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     prevent_initial_call=True,
 )
 def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_data):
+    from datetime import datetime as dt_import  # 명시적 import로 충돌 방지
     # 안내 문구만 보여야 하는 경우(분석 시작 안내, 데이터 없음)
     guide_message = None
     if selected_rows and tbl_data:
@@ -1149,10 +1150,9 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
         # 시간 정보 계산 (콘크리트가 선택된 경우 항상 계산)
         display_title = current_file_title
         
-        # 콘크리트가 선택된 경우 시간 정보를 직접 계산하여 확실히 표시
+                        # 콘크리트가 선택된 경우 시간 정보를 직접 계산하여 확실히 표시
         if selected_rows and tbl_data:
             try:
-                from datetime import datetime as dt_module
                 row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
                 concrete_pk = row["concrete_pk"]
                 inp_dir = f"inp/{concrete_pk}"
@@ -1163,7 +1163,7 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     file_idx = min(slider_value if slider_value is not None else len(inp_files)-1, len(inp_files)-1)
                     latest_file = inp_files[file_idx]
                     time_str = os.path.basename(latest_file).split(".")[0]
-                    dt = dt_module.strptime(time_str, "%Y%m%d%H")
+                    dt = dt_import.strptime(time_str, "%Y%m%d%H")
                     formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
                     
                     # 온도 데이터 파싱
@@ -1309,7 +1309,7 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                 for f in inp_files:
                     try:
                         time_str = os.path.basename(f).split(".")[0]
-                        dt = datetime.strptime(time_str, "%Y%m%d%H")
+                        dt = dt_import.strptime(time_str, "%Y%m%d%H")
                         times.append(dt)
                     except:
                         continue
@@ -1344,7 +1344,7 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     file_idx = len(inp_files) - 1  # 항상 최신 파일 사용
                     current_file = inp_files[file_idx]
                     time_str = os.path.basename(current_file).split(".")[0]
-                    dt = datetime.strptime(time_str, "%Y%m%d%H")
+                    dt = dt_import.strptime(time_str, "%Y%m%d%H")
                     formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
                     
                     # 온도 데이터 파싱
@@ -2429,7 +2429,7 @@ def update_temp_tab(store_data, x, y, z, selected_rows, tbl_data):
     import plotly.graph_objects as go
     import numpy as np
     import glob, os
-    from datetime import datetime
+    from datetime import datetime as dt_import
     if not selected_rows or not tbl_data:
         return go.Figure(), go.Figure()
     # store_data가 있으면 기본값으로 사용, 입력값이 있으면 입력값 우선
@@ -2505,7 +2505,7 @@ def update_temp_tab(store_data, x, y, z, selected_rows, tbl_data):
         # 시간 파싱
         try:
             time_str = os.path.basename(f).split(".")[0]
-            dt = datetime.strptime(time_str, "%Y%m%d%H")
+            dt = dt_import.strptime(time_str, "%Y%m%d%H")
         except:
             continue
         # inp 파일 파싱 (노드, 온도)
@@ -3297,6 +3297,7 @@ def sync_viewer_to_display(main_figure):
 )
 def init_section_slider_independent(active_tab, selected_rows, tbl_data):
     """단면도 탭의 슬라이더를 독립적으로 초기화"""
+    from datetime import datetime as dt_import  # 명시적 import로 충돌 방지
     
     # 단면도 탭이 아니면 기본값 유지
     if active_tab != "tab-section":
@@ -3318,7 +3319,7 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
     for f in inp_files:
         try:
             time_str = os.path.basename(f).split(".")[0]
-            dt = datetime.strptime(time_str, "%Y%m%d%H")
+            dt = dt_import.strptime(time_str, "%Y%m%d%H")
             times.append(dt)
         except:
             continue
