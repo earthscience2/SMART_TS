@@ -3206,64 +3206,55 @@ def update_section_time_info(current_file_title, active_tab):
     
     # HTML 컴포넌트로 반환
     return html.Div([
-        # 시간 정보 카드
+        # 통합 정보 카드 (노션 스타일)
         html.Div([
-            html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "16px"}),
-            html.Span(time_info, style={
-                "fontWeight": "600",
-                "color": "#1f2937",
-                "fontSize": "15px"
-            })
-        ], style={
-            "padding": "12px 16px",
-            "backgroundColor": "#eff6ff",
-            "borderRadius": "8px",
-            "border": "1px solid #bfdbfe",
-            "marginBottom": "12px",
-            "display": "flex",
-            "alignItems": "center",
-            "gap": "10px"
-        }),
-        
-        # 물성치 정보 카드 (있는 경우만)
-        html.Div([
+            # 시간 정보 섹션
+            html.Div([
+                html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "14px"}),
+                html.Span(time_info, style={
+                    "fontWeight": "600",
+                    "color": "#1f2937",
+                    "fontSize": "14px",
+                    "marginLeft": "8px"
+                })
+            ], style={
+                "display": "flex",
+                "alignItems": "center",
+                "marginBottom": "10px" if material_info else "0"
+            }),
+            
+            # 물성치 정보 섹션 (있는 경우만, 인라인 형태)
             html.Div([
                 html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "14px"}),
-                html.Span("물성치", style={
-                    "fontWeight": "600",
-                    "color": "#4f46e5",
-                    "fontSize": "13px",
-                    "marginLeft": "6px"
-                })
-            ], style={"marginBottom": "8px"}),
-            html.Div([
                 html.Div([
-                    html.Span(prop.split(":")[0], style={
-                        "fontWeight": "500",
+                    html.Span(f"{prop.split(':')[0]}:", style={
                         "color": "#6b7280",
                         "fontSize": "12px",
-                        "width": "60px",
-                        "display": "inline-block"
+                        "marginRight": "4px"
                     }),
                     html.Span(prop.split(":", 1)[1].strip(), style={
-                        "fontWeight": "600",
                         "color": "#111827",
-                        "fontSize": "13px"
+                        "fontSize": "12px",
+                        "fontWeight": "500",
+                        "marginRight": "12px"
                     })
-                ], style={
-                    "display": "flex",
-                    "alignItems": "center",
-                    "marginBottom": "4px" if i < len(material_info.split(", ")) - 1 else "0"
-                })
-                for i, prop in enumerate(material_info.split(", "))
-            ])
+                ], style={"display": "inline"})
+                for prop in material_info.split(", ")
+            ], style={
+                "display": "flex",
+                "alignItems": "flex-start",
+                "gap": "8px",
+                "flexWrap": "wrap"
+            }) if material_info else html.Div()
+            
         ], style={
-            "padding": "14px 16px",
+            "padding": "12px 16px",
             "backgroundColor": "#f8fafc",
-            "borderRadius": "10px",
+            "borderRadius": "8px",
             "border": "1px solid #e2e8f0",
-            "boxShadow": "0 1px 3px rgba(0,0,0,0.08)"
-        }) if material_info else html.Div()
+            "boxShadow": "0 1px 3px rgba(0,0,0,0.05)",
+            "marginBottom": "16px"
+        })
     ])
 
 # 단면도 탭 전용 시간 슬라이더 초기화 콜백 (독립적)
@@ -3342,64 +3333,55 @@ def update_viewer3d_time_info(current_file_title, active_tab):
     material_info = lines[1] if len(lines) > 1 else ""
     
     return html.Div([
-        # 시간 정보 카드
+        # 통합 정보 카드 (노션 스타일)
         html.Div([
-            html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "16px"}),
-            html.Span(time_info, style={
-                "fontWeight": "600",
-                "color": "#1f2937",
-                "fontSize": "15px"
-            })
-        ], style={
-            "padding": "12px 16px",
-            "backgroundColor": "#eff6ff",
-            "borderRadius": "8px",
-            "border": "1px solid #bfdbfe",
-            "marginBottom": "12px",
-            "display": "flex",
-            "alignItems": "center",
-            "gap": "10px"
-        }),
-        
-        # 물성치 정보 카드 (있는 경우만)
-        html.Div([
+            # 시간 정보 섹션
+            html.Div([
+                html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "14px"}),
+                html.Span(time_info, style={
+                    "fontWeight": "600",
+                    "color": "#1f2937",
+                    "fontSize": "14px",
+                    "marginLeft": "8px"
+                })
+            ], style={
+                "display": "flex",
+                "alignItems": "center",
+                "marginBottom": "10px" if material_info else "0"
+            }),
+            
+            # 물성치 정보 섹션 (있는 경우만, 인라인 형태)
             html.Div([
                 html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "14px"}),
-                html.Span("물성치", style={
-                    "fontWeight": "600",
-                    "color": "#4f46e5",
-                    "fontSize": "13px",
-                    "marginLeft": "6px"
-                })
-            ], style={"marginBottom": "8px"}),
-            html.Div([
                 html.Div([
-                    html.Span(prop.split(":")[0], style={
-                        "fontWeight": "500",
+                    html.Span(f"{prop.split(':')[0]}:", style={
                         "color": "#6b7280",
                         "fontSize": "12px",
-                        "width": "60px",
-                        "display": "inline-block"
+                        "marginRight": "4px"
                     }),
                     html.Span(prop.split(":", 1)[1].strip(), style={
-                        "fontWeight": "600",
                         "color": "#111827",
-                        "fontSize": "13px"
+                        "fontSize": "12px",
+                        "fontWeight": "500",
+                        "marginRight": "12px"
                     })
-                ], style={
-                    "display": "flex",
-                    "alignItems": "center",
-                    "marginBottom": "4px" if i < len(material_info.split(", ")) - 1 else "0"
-                })
-                for i, prop in enumerate(material_info.split(", "))
-            ])
+                ], style={"display": "inline"})
+                for prop in material_info.split(", ")
+            ], style={
+                "display": "flex",
+                "alignItems": "flex-start",
+                "gap": "8px",
+                "flexWrap": "wrap"
+            }) if material_info else html.Div()
+            
         ], style={
-            "padding": "14px 16px",
+            "padding": "12px 16px",
             "backgroundColor": "#f8fafc",
-            "borderRadius": "10px",
+            "borderRadius": "8px",
             "border": "1px solid #e2e8f0",
-            "boxShadow": "0 1px 3px rgba(0,0,0,0.08)"
-        }) if material_info else html.Div()
+            "boxShadow": "0 1px 3px rgba(0,0,0,0.05)",
+            "marginBottom": "16px"
+        })
     ])
 
 
