@@ -1320,14 +1320,18 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     slider_value = max_idx  # 최신 파일로 초기화
                     
                     # 슬라이더 마크 설정
-                    marks = {}
-                    seen_dates = set()
-                    for i, dt in enumerate(times):
-                        date_str = dt.strftime("%-m/%-d")  # 6/13, 6/14 형식
-                        if date_str not in seen_dates:
-                            marks[i] = date_str
-                            seen_dates.add(date_str)
-                    slider_marks = marks
+                    try:
+                        marks = {}
+                        seen_dates = set()
+                        for i, dt in enumerate(times):
+                            date_str = dt.strftime("%m/%d")  # 플랫폼 호환성을 위해 %-m 제거
+                            if date_str not in seen_dates:
+                                marks[i] = date_str
+                                seen_dates.add(date_str)
+                        slider_marks = marks
+                    except Exception as e:
+                        print(f"슬라이더 마크 생성 오류: {e}")
+                        slider_marks = {}
         
         # 단면도 탭에서도 시간 정보를 직접 계산
         section_display_title = current_file_title
@@ -1408,14 +1412,13 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     }),
                     dcc.Slider(
                         id="time-slider-section",
-                        min=slider_min,
-                        max=slider_max,
+                        min=max(0, slider_min),  # 안전한 최소값
+                        max=max(1, slider_max),  # 안전한 최대값 (최소 1)
                         step=1,
-                        value=slider_value,
-                        marks=slider_marks,
+                        value=max(0, min(slider_value, slider_max)),  # 안전한 값
+                        marks=slider_marks if isinstance(slider_marks, dict) else {},  # 안전한 마크
                         tooltip={"placement": "bottom", "always_visible": True},
                         updatemode='drag',  # 드래그 중에도 업데이트
-                        key=f"section-slider-{slider_min}-{slider_max}-{slider_value}"  # 강제 재렌더링을 위한 키
                     ),
                 ], style={
                     "padding": "16px 20px",
@@ -3290,32 +3293,7 @@ def sync_main_slider_to_display(main_value, main_min, main_max, main_marks):
 def sync_viewer_to_display(main_figure):
     return main_figure
 
-# 단면도 탭 활성화 시 슬라이더 강제 업데이트 (클라이언트 사이드)
-clientside_callback(
-    """
-    function(active_tab, selected_rows, tbl_data) {
-        if (active_tab !== 'tab-section' || !selected_rows || selected_rows.length === 0) {
-            return window.dash_clientside.no_update;
-        }
-        
-        // 단면도 탭이 활성화되었을 때 슬라이더 요소를 찾아서 업데이트
-        setTimeout(function() {
-            const sectionSlider = document.getElementById('time-slider-section');
-            if (sectionSlider) {
-                // 슬라이더가 존재하면 강제로 다시 렌더링
-                const event = new Event('input', { bubbles: true });
-                sectionSlider.dispatchEvent(event);
-            }
-        }, 100);
-        
-        return window.dash_clientside.no_update;
-    }
-    """,
-    Output("time-slider-section", "id"),  # 더미 출력
-    Input("tabs-main", "active_tab"),
-    Input("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
-)
+# 클라이언트 사이드 콜백 제거 - 충돌 방지
 
 # 단면도 슬라이더 초기화 콜백 (3D 뷰와 독립적)
 @callback(
@@ -3326,7 +3304,7 @@ clientside_callback(
     Input("tabs-main", "active_tab"),  # 탭 변경 시 초기화
     Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
-    prevent_initial_call='initial_duplicate',  # allow_duplicate과 함께 사용 가능한 설정
+    prevent_initial_call=True,  # 안전한 설정으로 변경
 )
 def init_section_slider(active_tab, selected_rows, tbl_data):
     print(f"단면도 슬라이더 초기화: active_tab={active_tab}, selected_rows={selected_rows}")  # 디버깅
@@ -3367,15 +3345,19 @@ def init_section_slider(active_tab, selected_rows, tbl_data):
     max_idx = len(times) - 1
     
     # 슬라이더 마크: 모든 시간을 일 단위로 표시
-    marks = {}
-    seen_dates = set()
-    for i, dt in enumerate(times):
-        date_str = dt.strftime("%-m/%-d")  # 6/13, 6/14 형식
-        if date_str not in seen_dates:
-            marks[i] = date_str
-            seen_dates.add(date_str)
-    
-    print(f"슬라이더 설정: min=0, max={max_idx}, value={max_idx}, marks={marks}")  # 디버깅
-    return 0, max_idx, max_idx, marks  # 최신 파일로 초기화
+    try:
+        marks = {}
+        seen_dates = set()
+        for i, dt in enumerate(times):
+            date_str = dt.strftime("%m/%d")  # 플랫폼 호환성을 위해 %-m 제거
+            if date_str not in seen_dates:
+                marks[i] = date_str
+                seen_dates.add(date_str)
+        
+        print(f"슬라이더 설정: min=0, max={max_idx}, value={max_idx}, marks={marks}")  # 디버깅
+        return 0, max_idx, max_idx, marks  # 최신 파일로 초기화
+    except Exception as e:
+        print(f"슬라이더 마크 생성 오류: {e}")
+        return 0, max_idx, max_idx, {}  # 마크 없이 반환
 
 
