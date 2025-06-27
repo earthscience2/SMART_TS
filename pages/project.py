@@ -848,56 +848,87 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
                     except:
                         continue
         
-        # 콘크리트 물성치 정보 추출
+        # INP 파일에서 물성치 정보 추출
+        material_info = "물성치 정보 없음"
         try:
-            if selected_rows and tbl_data:
-                row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-                concrete_pk = row["concrete_pk"]
-                concrete_df = api_db.get_concrete_data(concrete_pk=concrete_pk)
-                if not concrete_df.empty:
-                    concrete_data = concrete_df.iloc[0]
-                    
-                    # 재령 기반 탄성계수 계산
-                    analysis_time = dt.strftime("%Y-%m-%d %H:%M:%S")
-                    
-                    # 탄성계수 계산 (CEB-FIB 모델)
+            # 이미 파싱된 INP 파일 내용에서 물성치 정보 추출
+            elastic_modulus = None
+            poisson_ratio = None
+            density = None
+            thermal_expansion = None
+            
+            material_section = False
+            elastic_section = False
+            density_section = False
+            expansion_section = False
+            
+            for line in lines:
+                line = line.strip()
+                
+                # 섹션 시작 감지
+                if line.startswith('*MATERIAL'):
+                    material_section = True
+                    continue
+                elif line.startswith('*ELASTIC'):
+                    elastic_section = True
+                    continue
+                elif line.startswith('*DENSITY'):
+                    density_section = True
+                    continue
+                elif line.startswith('*EXPANSION'):
+                    expansion_section = True
+                    continue
+                elif line.startswith('*'):
+                    # 다른 섹션 시작시 모든 플래그 리셋
+                    material_section = False
+                    elastic_section = False
+                    density_section = False
+                    expansion_section = False
+                    continue
+                
+                # 물성치 데이터 파싱
+                if elastic_section and ',' in line and not line.startswith('*'):
+                    parts = line.split(',')
+                    if len(parts) >= 2:
+                        try:
+                            elastic_modulus = float(parts[0])  # MPa 또는 Pa
+                            poisson_ratio = float(parts[1])
+                            # 탄성계수가 Pa 단위로 저장된 경우 MPa로 변환
+                            if elastic_modulus > 1000000:
+                                elastic_modulus = elastic_modulus / 1000000  # Pa to MPa
+                        except:
+                            pass
+                
+                if density_section and line and not line.startswith('*'):
                     try:
-                        casting_date_str = concrete_data.get('con_t')
-                        e28_gpa = concrete_data.get('con_e', 30.0)  # GPa
-                        beta = concrete_data.get('con_b', 0.2)
-                        n = concrete_data.get('con_n', 0.5)
-                        
-                        if casting_date_str:
-                            if isinstance(casting_date_str, str):
-                                if 'T' in casting_date_str:
-                                    casting_date = datetime.fromisoformat(casting_date_str.replace('T', ' ').replace('Z', ''))
-                                else:
-                                    casting_date = datetime.strptime(casting_date_str[:10], '%Y-%m-%d')
-                            else:
-                                casting_date = casting_date_str
-                            
-                            age_days = (dt - casting_date).days + (dt - casting_date).seconds / 86400.0
-                            age_days = max(age_days, 0.1)  # 최소 0.1일
-                            
-                            age_factor = (age_days / (age_days + beta)) ** n
-                            elastic_modulus = e28_gpa * 1000 * age_factor  # MPa로 변환
-                        else:
-                            elastic_modulus = e28_gpa * 1000
+                        density = float(line.split(',')[0])  # kg/m³
                     except:
-                        elastic_modulus = 30000  # 기본값 30 GPa
-                    
-                    # 다른 물성치들
-                    poisson_ratio = concrete_data.get('con_v', 0.2)
-                    density = concrete_data.get('con_d', 2400)  # kg/m³
-                    thermal_expansion = concrete_data.get('con_a', 1.0e-5)  # /°C
-                    
-                    material_info = f"탄성계수: {elastic_modulus:.0f}MPa, 포아송비: {poisson_ratio:.2f}, 밀도: {density:.0f}kg/m³, 열팽창: {thermal_expansion:.1e}/°C"
-                else:
-                    material_info = "물성치 정보 없음"
+                        pass
+                
+                if expansion_section and line and not line.startswith('*'):
+                    try:
+                        thermal_expansion = float(line.split(',')[0])  # /°C
+                    except:
+                        pass
+            
+            # 물성치 정보 문자열 생성
+            material_parts = []
+            if elastic_modulus is not None:
+                material_parts.append(f"탄성계수: {elastic_modulus:.0f}MPa")
+            if poisson_ratio is not None:
+                material_parts.append(f"포아송비: {poisson_ratio:.3f}")
+            if density is not None:
+                material_parts.append(f"밀도: {density:.0f}kg/m³")
+            if thermal_expansion is not None:
+                material_parts.append(f"열팽창: {thermal_expansion:.1e}/°C")
+            
+            if material_parts:
+                material_info = ", ".join(material_parts)
             else:
                 material_info = "물성치 정보 없음"
+                
         except Exception as e:
-            print(f"물성치 정보 추출 오류: {e}")
+            print(f"INP 파일에서 물성치 정보 추출 오류: {e}")
             material_info = "물성치 정보 없음"
         
         if current_temps:
@@ -1311,51 +1342,87 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                                 except:
                                     continue
                     
-                    # 콘크리트 물성치 정보 추출
+                    # INP 파일에서 물성치 정보 추출
+                    material_info = "물성치 정보 없음"
                     try:
-                        concrete_df = api_db.get_concrete_data(concrete_pk=concrete_pk)
-                        if not concrete_df.empty:
-                            concrete_data = concrete_df.iloc[0]
+                        # 이미 파싱된 INP 파일 내용에서 물성치 정보 추출
+                        elastic_modulus = None
+                        poisson_ratio = None
+                        density = None
+                        thermal_expansion = None
+                        
+                        material_section = False
+                        elastic_section = False
+                        density_section = False
+                        expansion_section = False
+                        
+                        for line in lines:
+                            line = line.strip()
                             
-                            # 재령 기반 탄성계수 계산
-                            analysis_time = dt.strftime("%Y-%m-%d %H:%M:%S")
+                            # 섹션 시작 감지
+                            if line.startswith('*MATERIAL'):
+                                material_section = True
+                                continue
+                            elif line.startswith('*ELASTIC'):
+                                elastic_section = True
+                                continue
+                            elif line.startswith('*DENSITY'):
+                                density_section = True
+                                continue
+                            elif line.startswith('*EXPANSION'):
+                                expansion_section = True
+                                continue
+                            elif line.startswith('*'):
+                                # 다른 섹션 시작시 모든 플래그 리셋
+                                material_section = False
+                                elastic_section = False
+                                density_section = False
+                                expansion_section = False
+                                continue
                             
-                            # 탄성계수 계산 (CEB-FIB 모델)
-                            try:
-                                casting_date_str = concrete_data.get('con_t')
-                                e28_gpa = concrete_data.get('con_e', 30.0)  # GPa
-                                beta = concrete_data.get('con_b', 0.2)
-                                n = concrete_data.get('con_n', 0.5)
-                                
-                                if casting_date_str:
-                                    if isinstance(casting_date_str, str):
-                                        if 'T' in casting_date_str:
-                                            casting_date = datetime.fromisoformat(casting_date_str.replace('T', ' ').replace('Z', ''))
-                                        else:
-                                            casting_date = datetime.strptime(casting_date_str[:10], '%Y-%m-%d')
-                                    else:
-                                        casting_date = casting_date_str
-                                    
-                                    age_days = (dt - casting_date).days + (dt - casting_date).seconds / 86400.0
-                                    age_days = max(age_days, 0.1)  # 최소 0.1일
-                                    
-                                    age_factor = (age_days / (age_days + beta)) ** n
-                                    elastic_modulus = e28_gpa * 1000 * age_factor  # MPa로 변환
-                                else:
-                                    elastic_modulus = e28_gpa * 1000
-                            except:
-                                elastic_modulus = 30000  # 기본값 30 GPa
+                            # 물성치 데이터 파싱
+                            if elastic_section and ',' in line and not line.startswith('*'):
+                                parts = line.split(',')
+                                if len(parts) >= 2:
+                                    try:
+                                        elastic_modulus = float(parts[0])  # MPa 또는 Pa
+                                        poisson_ratio = float(parts[1])
+                                        # 탄성계수가 Pa 단위로 저장된 경우 MPa로 변환
+                                        if elastic_modulus > 1000000:
+                                            elastic_modulus = elastic_modulus / 1000000  # Pa to MPa
+                                    except:
+                                        pass
                             
-                            # 다른 물성치들
-                            poisson_ratio = concrete_data.get('con_v', 0.2)
-                            density = concrete_data.get('con_d', 2400)  # kg/m³
-                            thermal_expansion = concrete_data.get('con_a', 1.0e-5)  # /°C
+                            if density_section and line and not line.startswith('*'):
+                                try:
+                                    density = float(line.split(',')[0])  # kg/m³
+                                except:
+                                    pass
                             
-                            material_info = f"탄성계수: {elastic_modulus:.0f}MPa, 포아송비: {poisson_ratio:.2f}, 밀도: {density:.0f}kg/m³, 열팽창: {thermal_expansion:.1e}/°C"
+                            if expansion_section and line and not line.startswith('*'):
+                                try:
+                                    thermal_expansion = float(line.split(',')[0])  # /°C
+                                except:
+                                    pass
+                        
+                        # 물성치 정보 문자열 생성
+                        material_parts = []
+                        if elastic_modulus is not None:
+                            material_parts.append(f"탄성계수: {elastic_modulus:.0f}MPa")
+                        if poisson_ratio is not None:
+                            material_parts.append(f"포아송비: {poisson_ratio:.3f}")
+                        if density is not None:
+                            material_parts.append(f"밀도: {density:.0f}kg/m³")
+                        if thermal_expansion is not None:
+                            material_parts.append(f"열팽창: {thermal_expansion:.1e}/°C")
+                        
+                        if material_parts:
+                            material_info = ", ".join(material_parts)
                         else:
                             material_info = "물성치 정보 없음"
+                            
                     except Exception as e:
-                        print(f"물성치 정보 추출 오류: {e}")
+                        print(f"INP 파일에서 물성치 정보 추출 오류: {e}")
                         material_info = "물성치 정보 없음"
                     
                     if current_temps:
@@ -2381,56 +2448,87 @@ def update_section_views(time_idx,
         except:
             formatted_time = time_str
         
-        # 콘크리트 물성치 정보 추출
+        # INP 파일에서 물성치 정보 추출
+        material_info = "물성치 정보 없음"
         try:
-            if selected_rows and tbl_data:
-                row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-                concrete_pk = row["concrete_pk"]
-                concrete_df = api_db.get_concrete_data(concrete_pk=concrete_pk)
-                if not concrete_df.empty:
-                    concrete_data = concrete_df.iloc[0]
-                    
-                    # 재령 기반 탄성계수 계산
-                    analysis_time = dt.strftime("%Y-%m-%d %H:%M:%S")
-                    
-                    # 탄성계수 계산 (CEB-FIB 모델)
+            # 이미 파싱된 INP 파일 내용에서 물성치 정보 추출
+            elastic_modulus = None
+            poisson_ratio = None
+            density = None
+            thermal_expansion = None
+            
+            material_section = False
+            elastic_section = False
+            density_section = False
+            expansion_section = False
+            
+            for line in lines:
+                line = line.strip()
+                
+                # 섹션 시작 감지
+                if line.startswith('*MATERIAL'):
+                    material_section = True
+                    continue
+                elif line.startswith('*ELASTIC'):
+                    elastic_section = True
+                    continue
+                elif line.startswith('*DENSITY'):
+                    density_section = True
+                    continue
+                elif line.startswith('*EXPANSION'):
+                    expansion_section = True
+                    continue
+                elif line.startswith('*'):
+                    # 다른 섹션 시작시 모든 플래그 리셋
+                    material_section = False
+                    elastic_section = False
+                    density_section = False
+                    expansion_section = False
+                    continue
+                
+                # 물성치 데이터 파싱
+                if elastic_section and ',' in line and not line.startswith('*'):
+                    parts = line.split(',')
+                    if len(parts) >= 2:
+                        try:
+                            elastic_modulus = float(parts[0])  # MPa 또는 Pa
+                            poisson_ratio = float(parts[1])
+                            # 탄성계수가 Pa 단위로 저장된 경우 MPa로 변환
+                            if elastic_modulus > 1000000:
+                                elastic_modulus = elastic_modulus / 1000000  # Pa to MPa
+                        except:
+                            pass
+                
+                if density_section and line and not line.startswith('*'):
                     try:
-                        casting_date_str = concrete_data.get('con_t')
-                        e28_gpa = concrete_data.get('con_e', 30.0)  # GPa
-                        beta = concrete_data.get('con_b', 0.2)
-                        n = concrete_data.get('con_n', 0.5)
-                        
-                        if casting_date_str:
-                            if isinstance(casting_date_str, str):
-                                if 'T' in casting_date_str:
-                                    casting_date = datetime.fromisoformat(casting_date_str.replace('T', ' ').replace('Z', ''))
-                                else:
-                                    casting_date = datetime.strptime(casting_date_str[:10], '%Y-%m-%d')
-                            else:
-                                casting_date = casting_date_str
-                            
-                            age_days = (dt - casting_date).days + (dt - casting_date).seconds / 86400.0
-                            age_days = max(age_days, 0.1)  # 최소 0.1일
-                            
-                            age_factor = (age_days / (age_days + beta)) ** n
-                            elastic_modulus = e28_gpa * 1000 * age_factor  # MPa로 변환
-                        else:
-                            elastic_modulus = e28_gpa * 1000
+                        density = float(line.split(',')[0])  # kg/m³
                     except:
-                        elastic_modulus = 30000  # 기본값 30 GPa
-                    
-                    # 다른 물성치들
-                    poisson_ratio = concrete_data.get('con_v', 0.2)
-                    density = concrete_data.get('con_d', 2400)  # kg/m³
-                    thermal_expansion = concrete_data.get('con_a', 1.0e-5)  # /°C
-                    
-                    material_info = f"탄성계수: {elastic_modulus:.0f}MPa, 포아송비: {poisson_ratio:.2f}, 밀도: {density:.0f}kg/m³, 열팽창: {thermal_expansion:.1e}/°C"
-                else:
-                    material_info = "물성치 정보 없음"
+                        pass
+                
+                if expansion_section and line and not line.startswith('*'):
+                    try:
+                        thermal_expansion = float(line.split(',')[0])  # /°C
+                    except:
+                        pass
+            
+            # 물성치 정보 문자열 생성
+            material_parts = []
+            if elastic_modulus is not None:
+                material_parts.append(f"탄성계수: {elastic_modulus:.0f}MPa")
+            if poisson_ratio is not None:
+                material_parts.append(f"포아송비: {poisson_ratio:.3f}")
+            if density is not None:
+                material_parts.append(f"밀도: {density:.0f}kg/m³")
+            if thermal_expansion is not None:
+                material_parts.append(f"열팽창: {thermal_expansion:.1e}/°C")
+            
+            if material_parts:
+                material_info = ", ".join(material_parts)
             else:
                 material_info = "물성치 정보 없음"
+                
         except Exception as e:
-            print(f"물성치 정보 추출 오류: {e}")
+            print(f"INP 파일에서 물성치 정보 추출 오류: {e}")
             material_info = "물성치 정보 없음"
         
         current_min = float(np.nanmin(temps))
