@@ -1,7 +1,5 @@
-import sys
-import os
-
 import api_db
+import os
 from datetime import datetime, timedelta
 import json
 from scipy.interpolate import RBFInterpolator
@@ -114,80 +112,10 @@ def get_hourly_time_list(start_time=None):
         logger.error(f"get_hourly_time_list error: {e}")
         return []
 
-# 2) 재령에 따른 탄성계수 계산 함수
-def calculate_elastic_modulus(concrete_data, analysis_time):
-    """
-    재령에 따른 탄성계수 계산 (CEB-FIB 모델)
-    E(t) = E28 * ((t / (t + β))^n)
-    concrete_data: 콘크리트 정보 딕셔너리
-    analysis_time: 해석 시간 (문자열, '%Y-%m-%d %H:%M:%S' 형식)
-    """
-    try:
-        # 타설일 가져오기
-        casting_date_str = concrete_data.get('con_t')
-        if not casting_date_str:
-            logger.warning("타설일 정보가 없습니다. 기본 탄성계수 30000 MPa 사용")
-            return 30000.0
-        
-        # CEB-FIB 모델 매개변수 가져오기
-        e28_gpa = concrete_data.get('con_e')  # E28 (GPa 단위)
-        beta = concrete_data.get('con_b')     # β (베타 상수)
-        n = concrete_data.get('con_n')        # n (지수)
-        
-        # 기본값 설정
-        if not e28_gpa:
-            logger.warning("E28 정보가 없습니다. 기본값 30 GPa 사용")
-            e28_gpa = 30.0
-        if not beta:
-            logger.warning("베타 상수 정보가 없습니다. 기본값 0.2 사용")
-            beta = 0.2
-        if not n:
-            logger.warning("N 상수 정보가 없습니다. 기본값 0.5 사용")
-            n = 0.5
-        
-        # 단위 변환: GPa -> MPa
-        e28_mpa = float(e28_gpa) * 1000.0
-        beta = float(beta)
-        n = float(n)
-        
-        # 재령 계산 (일 단위)
-        # 타설일이 datetime 형태인지 문자열인지 확인하여 처리
-        if isinstance(casting_date_str, str):
-            # 날짜 형식이 다양할 수 있으므로 처리
-            if 'T' in casting_date_str:
-                casting_date = datetime.fromisoformat(casting_date_str.replace('T', ' ').replace('Z', ''))
-            else:
-                casting_date = datetime.strptime(casting_date_str[:10], '%Y-%m-%d')
-        else:
-            casting_date = casting_date_str
-            
-        analysis_date = datetime.strptime(analysis_time, '%Y-%m-%d %H:%M:%S')
-        age_days = (analysis_date - casting_date).days + (analysis_date - casting_date).seconds / 86400.0
-        
-        # 재령이 음수이거나 0인 경우 처리
-        if age_days <= 0:
-            logger.warning(f"재령이 {age_days}일입니다. 최소값 0.1일로 설정")
-            age_days = 0.1
-        
-        # CEB-FIB 모델 적용: E(t) = E28 * ((t / (t + β))^n)
-        age_factor = (age_days / (age_days + beta)) ** n
-        elastic_modulus = e28_mpa * age_factor
-        
-        logger.info(f"재령 {age_days:.1f}일, E28={e28_mpa:.0f}MPa, β={beta}, n={n}, 계수={age_factor:.3f}, E(t)={elastic_modulus:.0f}MPa")
-        return elastic_modulus
-        
-    except Exception as e:
-        logger.error(f"탄성계수 계산 오류: {e}")
-        return 30000.0  # 기본값 반환
-
-# 3) INP 파일 생성 함수
-def generate_calculix_inp(nodes, elements, node_temperatures, output_path, concrete_data, analysis_time):
+# 2) INP 파일 생성 함수
+def generate_calculix_inp(nodes, elements, node_temperatures, output_path):
     try:
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        
-        # 재령에 따른 탄성계수 계산
-        elastic_modulus = calculate_elastic_modulus(concrete_data, analysis_time)
-        
         with open(output_path, "w") as f:
             f.write("*HEADING\nConcrete Curing Thermal Stress Analysis\n\n")
             f.write("*NODE\n")
@@ -200,7 +128,7 @@ def generate_calculix_inp(nodes, elements, node_temperatures, output_path, concr
             for eid, node_list in elements.items():
                 f.write(f"{eid}, {', '.join(map(str, node_list))}\n")
             f.write("*MATERIAL, NAME=Conc\n")
-            f.write(f"*ELASTIC\n{elastic_modulus:.0f}, 0.2\n")
+            f.write("*ELASTIC\n30000, 0.2\n")
             f.write("*DENSITY\n2400\n")
             f.write("*EXPANSION\n1.0e-5\n")
             f.write("*SOLID SECTION, ELSET=SolidSet, MATERIAL=Conc\n\n")
@@ -222,7 +150,7 @@ def generate_calculix_inp(nodes, elements, node_temperatures, output_path, concr
     except Exception as e:
         logger.exception(f"generate_calculix_inp error for '{output_path}': {e}")
 
-# 4) epsilon 계산 함수
+# 3) epsilon 계산 함수
 def compute_epsilon(sensor_coords, sensor_temps, alpha=1.0):
     try:
         N = sensor_coords.shape[0]
@@ -241,7 +169,7 @@ def compute_epsilon(sensor_coords, sensor_temps, alpha=1.0):
         logger.exception(f"compute_epsilon error: {e}")
         return None
 
-# 5) INP 생성 메인 함수
+# 4) INP 생성 메인 함수
 def make_inp(concrete, sensor_data_list, latest_csv):
     try:
         cpk = concrete['concrete_pk']
@@ -252,17 +180,13 @@ def make_inp(concrete, sensor_data_list, latest_csv):
         time_list = get_hourly_time_list(latest_csv)
         sensor_count = len(sensor_data_list)
 
-        print(f"📊 콘크리트 {cpk}: 센서 {sensor_count}개, 시간 {len(time_list)}개 처리 예정")
-
-        for time_idx, time in enumerate(time_list, 1):
-            print(f"  [{time_idx:3d}/{len(time_list)}] {time} 처리 중...", end=" ")
-            
+        for time in time_list:
             sensors = []
             num = 1
             for sensor in sensor_data_list:
                 df_time = api_db.get_sensor_data_by_time(device_id=sensor['device_id'], channel=sensor['channel'], time=time)
                 position = json.loads(sensor['dims'])['nodes']
-                if isinstance(df_time, pd.DataFrame) and not df_time.empty:
+                if not df_time.empty:
                     temp = float(df_time.iloc[0]['temperature'])
                     sensors.append((num, position[0], position[1], position[2], temp))
                     num += 1
@@ -273,7 +197,6 @@ def make_inp(concrete, sensor_data_list, latest_csv):
                 temps  = np.array([t for *_, t in sensors])
                 epsilon = compute_epsilon(coords, temps)
                 if epsilon is None:
-                    print("❌ epsilon 계산 실패")
                     logger.error(f"Skipping interpolation at time={time} due to epsilon error")
                     continue
 
@@ -323,60 +246,37 @@ def make_inp(concrete, sensor_data_list, latest_csv):
                 time_dt = datetime.strptime(time, '%Y-%m-%d %H:%M:%S')
                 ts_str = time_dt.strftime('%Y%m%d%H')
                 final_path = f"inp/{cpk}/{ts_str}.inp"
-                generate_calculix_inp(nodes, elements, node_temp_map, final_path, concrete, time)
-                print(f"✅ INP 생성 완료 (노드:{len(nodes)}, 요소:{len(elements)})")
-            else:
-                print(f"❌ 센서 데이터 부족 ({len(sensors)}/{sensor_count})")
+                generate_calculix_inp(nodes, elements, node_temp_map, final_path)
 
         logger.info(f"make_inp completed for concrete_pk={cpk}")
     except Exception as e:
         logger.exception(f"make_inp error for concrete_pk={concrete.get('concrete_pk')}: {e}")
 
-# 6) 전체 실행 함수
+# 5) 전체 실행 함수
 def auto_inp():
-    print("🚀 INP 파일 자동 생성 시작")
+    print("auto_inp started")
     logger.info("auto_inp started")
     try:
         concrete_list = api_db.get_concrete_data().to_dict(orient='records')
         existing = get_subfolders('inp')
-        
-        # activate가 0인 콘크리트만 필터링
-        active_concretes = [c for c in concrete_list if c.get('activate', 1) == 0]
-        
-        print(f"📋 처리 대상: {len(active_concretes)}개 콘크리트 (activate=0)")
-        for idx, conc in enumerate(active_concretes, 1):
-            print(f"  {idx}. {conc['concrete_pk']}")
-        print("=" * 60)
-        
-        logger.info(f"Concretes to process: {[c['concrete_pk'] for c in active_concretes]}")
-        
-        for conc_idx, conc in enumerate(active_concretes, 1):
+        logger.info(f"Concretes to process: {[c['concrete_pk'] for c in concrete_list]}")
+        for conc in concrete_list:
+            # activate가 0인 경우에만 처리
+            if conc.get('activate', 1) != 0:
+                logger.info(f"Skipping concrete_pk={conc['concrete_pk']} because activate != 0")
+                continue
+                
             cpk = conc['concrete_pk']
-            print(f"\n[{conc_idx}/{len(active_concretes)}] 콘크리트 {cpk} 처리 중...")
-            
             if cpk not in existing:
                 os.makedirs(f'inp/{cpk}', exist_ok=True)
                 logger.info(f"Created folder for {cpk}")
-                
             files = get_files(f'inp/{cpk}')
             latest = get_latest_csv(f'inp/{cpk}')
-            logger.info(f"Processing {cpk}: existing files={len(files)}, latest={latest}")
-            
+            logger.info(f"Processing {cpk}: existing files={files}, latest={latest}")
             sensor_data_list = api_db.get_sensors_data(concrete_pk=cpk).to_dict('records')
-            if not sensor_data_list:
-                print(f"  ⚠️  센서 데이터 없음 - 건너뜀")
-                continue
-                
             make_inp(conc, sensor_data_list, latest)
-            
-        print("\n" + "=" * 60)
-        print("🏁 INP 파일 자동 생성 완료!")
-        print("=" * 60)
         logger.info("auto_inp completed successfully")
-        
     except Exception as e:
         logger.exception(f"auto_inp error: {e}")
-        print(f"\n❌ 전체 작업 실패: {e}")
 
-if __name__ == '__main__':
-    auto_inp()
+auto_inp()
