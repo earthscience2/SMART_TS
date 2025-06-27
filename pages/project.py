@@ -456,6 +456,7 @@ layout = dbc.Container(
                     html.Div([
                         dcc.Slider(id="time-slider", min=0, max=5, step=1, value=0, marks={}),
                         dcc.Slider(id="time-slider-display", min=0, max=5, step=1, value=0, marks={}),
+                        # Conditionally include 'time-slider-section'
                         dcc.Slider(id="time-slider-section", min=0, max=5, step=1, value=0, marks={}),
                         dcc.Graph(id="viewer-3d"),
                         dcc.Graph(id="viewer-3d-display"),
