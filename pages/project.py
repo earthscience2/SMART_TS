@@ -481,6 +481,7 @@ layout = dbc.Container(
                         html.Div(id="analysis-3d-viewer"),
                         html.Div(id="analysis-current-file-label"),
                         dcc.Graph(id="analysis-colorbar"),
+                        html.Div(id="section-time-display"),  # 단면도용 시간 정보 표시 컴포넌트
                     ], style={"display": "none"}),
                     
                 ], style={
@@ -1329,60 +1330,6 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                             seen_dates.add(date_str)
                     slider_marks = marks
         
-        # 단면도 탭에서 시간 정보 표시 - 현재 선택된 콘크리트의 최신 파일 정보
-        section_display_title = "시간 정보 없음"
-        
-        if selected_rows and tbl_data:
-            try:
-                row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-                concrete_pk = row["concrete_pk"]
-                inp_dir = f"inp/{concrete_pk}"
-                inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
-                
-                if inp_files:
-                    # 현재 슬라이더 값에 해당하는 파일 선택 (기본값으로 최신 파일 사용)
-                    file_idx = len(inp_files) - 1  # 항상 최신 파일 사용
-                    current_file = inp_files[file_idx]
-                    time_str = os.path.basename(current_file).split(".")[0]
-                    dt = dt_import.strptime(time_str, "%Y%m%d%H")
-                    formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
-                    
-                    # 온도 데이터 파싱
-                    with open(current_file, 'r') as f:
-                        lines = f.readlines()
-                    
-                    current_temps = []
-                    temp_section = False
-                    for line in lines:
-                        if line.startswith('*TEMPERATURE'):
-                            temp_section = True
-                            continue
-                        elif line.startswith('*'):
-                            temp_section = False
-                            continue
-                        if temp_section and ',' in line:
-                            parts = line.strip().split(',')
-                            if len(parts) >= 2:
-                                try:
-                                    temp = float(parts[1])
-                                    current_temps.append(temp)
-                                except:
-                                    continue
-                    
-                    # INP 파일에서 물성치 정보 추출
-                    material_info = parse_material_info_from_inp(lines)
-                    
-                    if current_temps:
-                        current_min = float(np.nanmin(current_temps))
-                        current_max = float(np.nanmax(current_temps))
-                        current_avg = float(np.nanmean(current_temps))
-                        section_display_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)\n{material_info}"
-                    else:
-                        section_display_title = f"{formatted_time}\n{material_info}"
-            except Exception as e:
-                print(f"단면도 제목 계산 오류: {e}")
-                section_display_title = "시간 정보 계산 오류"
-        
         return html.Div([
             # 시간 컨트롤 섹션 (노션 스타일) - 독립적인 단면도용 슬라이더
             html.Div([
@@ -1417,31 +1364,8 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                 })
             ]),
             
-            # 현재 시간 정보 (노션 스타일 카드)
-            html.Div([
-                html.Div([
-                    html.I(className="fas fa-clock me-2", style={"color": "#6366f1"}),
-                    html.Div([
-                        html.Div(line, style={"margin": "0"}) 
-                        for line in (section_display_title or "시간 정보 없음").split('\n')
-                    ], style={
-                        "fontWeight": "500",
-                        "color": "#374151",
-                        "lineHeight": "1.4"
-                    })
-                ], style={
-                    "padding": "12px 16px",
-                    "backgroundColor": "white",
-                    "borderRadius": "8px",
-                    "border": "1px solid #e5e7eb",
-                    "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
-                    "marginBottom": "20px",
-                    "fontSize": "14px",
-                    "display": "flex",
-                    "alignItems": "flex-start",
-                    "gap": "8px"
-                })
-            ]),
+            # 현재 시간 정보 (노션 스타일 카드) - 동적 업데이트
+            html.Div(id="section-time-display"),
             
             # 단면 위치 설정 섹션 (노션 스타일)
             html.Div([
@@ -3283,6 +3207,165 @@ def sync_viewer_to_display(main_figure):
     return main_figure
 
 # 클라이언트 사이드 콜백 제거 - 충돌 방지
+
+# 단면도 탭 시간 정보 업데이트 콜백 (슬라이더 값 변경 시)
+@callback(
+    Output("section-time-display", "children"),
+    Input("time-slider-section", "value"),
+    Input("tabs-main", "active_tab"),
+    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    prevent_initial_call=True,
+)
+def update_section_time_display(time_idx, active_tab, selected_rows, tbl_data):
+    """단면도 탭의 시간 정보를 슬라이더 값에 따라 업데이트"""
+    from datetime import datetime as dt_import
+    
+    # 단면도 탭이 아니면 빈 div 반환
+    if active_tab != "tab-section":
+        return html.Div()
+    
+    if not selected_rows or not tbl_data or time_idx is None:
+        return html.Div([
+            html.Div([
+                html.I(className="fas fa-clock me-2", style={"color": "#6366f1"}),
+                html.Div("시간 정보 없음", style={
+                    "fontWeight": "500",
+                    "color": "#374151",
+                    "lineHeight": "1.4"
+                })
+            ], style={
+                "padding": "12px 16px",
+                "backgroundColor": "white",
+                "borderRadius": "8px",
+                "border": "1px solid #e5e7eb",
+                "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
+                "marginBottom": "20px",
+                "fontSize": "14px",
+                "display": "flex",
+                "alignItems": "flex-start",
+                "gap": "8px"
+            })
+        ])
+    
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    inp_dir = f"inp/{concrete_pk}"
+    inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+    
+    if not inp_files:
+        return html.Div([
+            html.Div([
+                html.I(className="fas fa-clock me-2", style={"color": "#6366f1"}),
+                html.Div("시간 정보 없음", style={
+                    "fontWeight": "500",
+                    "color": "#374151",
+                    "lineHeight": "1.4"
+                })
+            ], style={
+                "padding": "12px 16px",
+                "backgroundColor": "white",
+                "borderRadius": "8px",
+                "border": "1px solid #e5e7eb",
+                "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
+                "marginBottom": "20px",
+                "fontSize": "14px",
+                "display": "flex",
+                "alignItems": "flex-start",
+                "gap": "8px"
+            })
+        ])
+    
+    try:
+        # 슬라이더 값에 해당하는 파일 선택
+        file_idx = min(int(time_idx), len(inp_files) - 1)
+        current_file = inp_files[file_idx]
+        time_str = os.path.basename(current_file).split(".")[0]
+        dt = dt_import.strptime(time_str, "%Y%m%d%H")
+        formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
+        
+        # 온도 데이터 파싱
+        with open(current_file, 'r') as f:
+            lines = f.readlines()
+        
+        current_temps = []
+        temp_section = False
+        for line in lines:
+            if line.startswith('*TEMPERATURE'):
+                temp_section = True
+                continue
+            elif line.startswith('*'):
+                temp_section = False
+                continue
+            if temp_section and ',' in line:
+                parts = line.strip().split(',')
+                if len(parts) >= 2:
+                    try:
+                        temp = float(parts[1])
+                        current_temps.append(temp)
+                    except:
+                        continue
+        
+        # INP 파일에서 물성치 정보 추출
+        material_info = parse_material_info_from_inp(lines)
+        
+        if current_temps:
+            current_min = float(np.nanmin(current_temps))
+            current_max = float(np.nanmax(current_temps))
+            current_avg = float(np.nanmean(current_temps))
+            section_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)\n{material_info}"
+        else:
+            section_title = f"{formatted_time}\n{material_info}"
+        
+        # HTML 컴포넌트로 반환
+        return html.Div([
+            html.Div([
+                html.I(className="fas fa-clock me-2", style={"color": "#6366f1"}),
+                html.Div([
+                    html.Div(line, style={"margin": "0"}) 
+                    for line in section_title.split('\n')
+                ], style={
+                    "fontWeight": "500",
+                    "color": "#374151",
+                    "lineHeight": "1.4"
+                })
+            ], style={
+                "padding": "12px 16px",
+                "backgroundColor": "white",
+                "borderRadius": "8px",
+                "border": "1px solid #e5e7eb",
+                "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
+                "marginBottom": "20px",
+                "fontSize": "14px",
+                "display": "flex",
+                "alignItems": "flex-start",
+                "gap": "8px"
+            })
+        ])
+        
+    except Exception as e:
+        print(f"단면도 시간 정보 업데이트 오류: {e}")
+        return html.Div([
+            html.Div([
+                html.I(className="fas fa-exclamation-triangle me-2", style={"color": "#ef4444"}),
+                html.Div("시간 정보 계산 오류", style={
+                    "fontWeight": "500",
+                    "color": "#374151",
+                    "lineHeight": "1.4"
+                })
+            ], style={
+                "padding": "12px 16px",
+                "backgroundColor": "white",
+                "borderRadius": "8px",
+                "border": "1px solid #e5e7eb",
+                "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
+                "marginBottom": "20px",
+                "fontSize": "14px",
+                "display": "flex",
+                "alignItems": "flex-start",
+                "gap": "8px"
+            })
+        ])
 
 # 단면도 탭 전용 시간 슬라이더 초기화 콜백 (독립적)
 @callback(
