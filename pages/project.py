@@ -1075,13 +1075,13 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
 @callback(
     Output("tab-content", "children"),
     Input("tabs-main", "active_tab"),
-    Input("current-file-title-store", "data"),
     Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     State("viewer-3d-store", "data"),
+    State("current-file-title-store", "data"),
     prevent_initial_call=True,
 )
-def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_data):
+def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_title):
     from datetime import datetime as dt_import  # 명시적 import로 충돌 방지
     # 안내 문구만 보여야 하는 경우(분석 시작 안내, 데이터 없음)
     guide_message = None
