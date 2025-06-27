@@ -1,5 +1,8 @@
-import api_db
+import sys
 import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import api_db
 from datetime import datetime, timedelta
 import json
 from scipy.interpolate import RBFInterpolator
