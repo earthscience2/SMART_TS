@@ -94,7 +94,7 @@ def export_sensor_data(deviceid, channel, sd_start=None):
     df = pd.DataFrame(result)
     if df.empty:
         logger.info(f"{deviceid}/{channel} 신규 데이터 없음.")
-        return df
+        return pd.DataFrame()  # 명시적으로 빈 DataFrame 반환
 
     # 필수 컬럼 확인
     required_columns = ['time', 'temperature', 'humidity', 'sv']
@@ -118,7 +118,7 @@ def export_sensor_data(deviceid, channel, sd_start=None):
     
     if df.empty:
         logger.info(f"{deviceid}/{channel} 필터 후 데이터 없음.")
-        return df
+        return pd.DataFrame()  # 명시적으로 빈 DataFrame 반환
 
     # --- 8) 시간별 집계 ---
     df['hour'] = df['time'].dt.floor('h')
@@ -223,9 +223,17 @@ def auto_sensor_data():
                     fail_count += 1
                     processed_count += 1
                     continue
-                    
-                if agg.empty:
+                
+                # DataFrame인지 확인 후 empty 체크
+                if isinstance(agg, pd.DataFrame) and agg.empty:
                     print("⚠️  신규 데이터 없음")
+                    processed_count += 1
+                    continue
+                
+                # None이 아니고 DataFrame도 아닌 경우 처리
+                if not isinstance(agg, pd.DataFrame):
+                    print("❌ 데이터 형식 오류")
+                    fail_count += 1
                     processed_count += 1
                     continue
 
