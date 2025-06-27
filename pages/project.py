@@ -1401,6 +1401,11 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                         "marginBottom": "12px",
                         "fontSize": "14px"
                     }),
+                    html.P(f"슬라이더 범위: {slider_min} ~ {slider_max} (현재: {slider_value})", style={
+                        "fontSize": "12px",
+                        "color": "#6b7280",
+                        "marginBottom": "8px"
+                    }),
                     dcc.Slider(
                         id="time-slider-section",
                         min=slider_min,
@@ -1409,6 +1414,8 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                         value=slider_value,
                         marks=slider_marks,
                         tooltip={"placement": "bottom", "always_visible": True},
+                        updatemode='drag',  # 드래그 중에도 업데이트
+                        key=f"section-slider-{slider_min}-{slider_max}-{slider_value}"  # 강제 재렌더링을 위한 키
                     ),
                 ], style={
                     "padding": "16px 20px",
@@ -3319,14 +3326,17 @@ clientside_callback(
     Input("tabs-main", "active_tab"),  # 탭 변경 시 초기화
     Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
-    prevent_initial_call=True,
+    prevent_initial_call=False,  # 초기 호출 허용
 )
 def init_section_slider(active_tab, selected_rows, tbl_data):
-    # 단면도 탭이 아니면 기본값 반환
+    print(f"단면도 슬라이더 초기화: active_tab={active_tab}, selected_rows={selected_rows}")  # 디버깅
+    
+    # 단면도 탭이 아니면 업데이트하지 않음
     if active_tab != "tab-section":
         return dash.no_update, dash.no_update, dash.no_update, dash.no_update
         
-    if not selected_rows:
+    if not selected_rows or not tbl_data:
+        print("선택된 콘크리트 없음 - 기본값 반환")
         return 0, 5, 0, {}
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
@@ -3334,7 +3344,10 @@ def init_section_slider(active_tab, selected_rows, tbl_data):
     inp_dir = f"inp/{concrete_pk}"
     inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
     
+    print(f"INP 파일 개수: {len(inp_files)}")  # 디버깅
+    
     if not inp_files:
+        print("INP 파일 없음 - 기본값 반환")
         return 0, 5, 0, {}
     
     # 시간 파싱
@@ -3348,6 +3361,7 @@ def init_section_slider(active_tab, selected_rows, tbl_data):
             continue
     
     if not times:
+        print("시간 파싱 실패 - 기본값 반환")
         return 0, 5, 0, {}
     
     max_idx = len(times) - 1
@@ -3361,6 +3375,7 @@ def init_section_slider(active_tab, selected_rows, tbl_data):
             marks[i] = date_str
             seen_dates.add(date_str)
     
+    print(f"슬라이더 설정: min=0, max={max_idx}, value={max_idx}, marks={marks}")  # 디버깅
     return 0, max_idx, max_idx, marks  # 최신 파일로 초기화
 
 
