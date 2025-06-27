@@ -129,7 +129,7 @@ layout = dbc.Container(
                                                 track.style.width = percentage + '%';
                                             }
                                             
-                                            // 툴팁 업데이트
+                                            // 툴클 업데이트
                                             const tooltip = activeSlider.querySelector('.rc-slider-tooltip-content');
                                             if (tooltip) {
                                                 tooltip.textContent = newValue;
@@ -827,117 +827,125 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     except:
         formatted_time = current_time
     
-            # 현재 파일의 온도 통계 계산
-        current_temps = []
-        with open(current_file, 'r') as f:
-            lines = f.readlines()
-        temp_section = False
+    # 현재 파일의 온도 통계 계산
+    current_temps = []
+    with open(current_file, 'r') as f:
+        lines = f.readlines()
+    temp_section = False
+    for line in lines:
+        if line.startswith('*TEMPERATURE'):
+            temp_section = True
+            continue
+        elif line.startswith('*'):
+            temp_section = False
+            continue
+        if temp_section and ',' in line:
+            parts = line.strip().split(',')
+            if len(parts) >= 2:
+                try:
+                    temp = float(parts[1])
+                    current_temps.append(temp)
+                except:
+                    continue
+    
+    # INP 파일에서 물성치 정보 추출
+    material_info = "물성치 정보 없음"
+    try:
+        # 이미 파싱된 INP 파일 내용에서 물성치 정보 추출
+        elastic_modulus = None
+        poisson_ratio = None
+        density = None
+        thermal_expansion = None
+        
+        material_section = False
+        elastic_section = False
+        density_section = False
+        expansion_section = False
+        
         for line in lines:
-            if line.startswith('*TEMPERATURE'):
-                temp_section = True
+            line = line.strip()
+            
+            # 섹션 시작 감지
+            if line.startswith('*MATERIAL'):
+                material_section = True
+                continue
+            elif line.startswith('*ELASTIC'):
+                elastic_section = True
+                continue
+            elif line.startswith('*DENSITY'):
+                density_section = True
+                continue
+            elif line.startswith('*EXPANSION'):
+                expansion_section = True
                 continue
             elif line.startswith('*'):
-                temp_section = False
+                # 다른 섹션 시작시 모든 플래그 리셋
+                material_section = False
+                elastic_section = False
+                density_section = False
+                expansion_section = False
                 continue
-            if temp_section and ',' in line:
-                parts = line.strip().split(',')
+            
+            # 물성치 데이터 파싱
+            if elastic_section and ',' in line and not line.startswith('*'):
+                parts = line.split(',')
                 if len(parts) >= 2:
                     try:
-                        temp = float(parts[1])
-                        current_temps.append(temp)
+                        elastic_modulus = float(parts[0])  # MPa 또는 Pa
+                        poisson_ratio = float(parts[1])
+                        # 탄성계수가 Pa 단위로 저장된 경우 MPa로 변환
+                        if elastic_modulus > 1000000:
+                            elastic_modulus = elastic_modulus / 1000000  # Pa to MPa
                     except:
-                        continue
-        
-        # INP 파일에서 물성치 정보 추출
-        material_info = "물성치 정보 없음"
-        try:
-            # 이미 파싱된 INP 파일 내용에서 물성치 정보 추출
-            elastic_modulus = None
-            poisson_ratio = None
-            density = None
-            thermal_expansion = None
+                        pass
             
-            material_section = False
-            elastic_section = False
-            density_section = False
-            expansion_section = False
-            
-            for line in lines:
-                line = line.strip()
-                
-                # 섹션 시작 감지
-                if line.startswith('*MATERIAL'):
-                    material_section = True
-                    continue
-                elif line.startswith('*ELASTIC'):
-                    elastic_section = True
-                    continue
-                elif line.startswith('*DENSITY'):
-                    density_section = True
-                    continue
-                elif line.startswith('*EXPANSION'):
-                    expansion_section = True
-                    continue
-                elif line.startswith('*'):
-                    # 다른 섹션 시작시 모든 플래그 리셋
-                    material_section = False
-                    elastic_section = False
-                    density_section = False
-                    expansion_section = False
-                    continue
-                
-                # 물성치 데이터 파싱
-                if elastic_section and ',' in line and not line.startswith('*'):
-                    parts = line.split(',')
-                    if len(parts) >= 2:
-                        try:
-                            elastic_modulus = float(parts[0])  # MPa 또는 Pa
-                            poisson_ratio = float(parts[1])
-                            # 탄성계수가 Pa 단위로 저장된 경우 MPa로 변환
-                            if elastic_modulus > 1000000:
-                                elastic_modulus = elastic_modulus / 1000000  # Pa to MPa
-                        except:
-                            pass
-                
-                if density_section and line and not line.startswith('*'):
-                    try:
+            if density_section and line and not line.startswith('*'):
+                try:
+                    # 밀도는 쉼표가 있을 수도 없을 수도 있음 (예: "2500" 또는 "2500,")
+                    if ',' in line:
                         density = float(line.split(',')[0])  # kg/m³
-                    except:
-                        pass
-                
-                if expansion_section and line and not line.startswith('*'):
-                    try:
+                    else:
+                        density = float(line.strip())  # kg/m³
+                except:
+                    pass
+            
+            if expansion_section and line and not line.startswith('*'):
+                try:
+                    # 열팽창계수도 쉼표가 있을 수도 없을 수도 있음 (예: "5.00e-01" 또는 "5.00e-01,")
+                    if ',' in line:
                         thermal_expansion = float(line.split(',')[0])  # /°C
-                    except:
-                        pass
-            
-            # 물성치 정보 문자열 생성
-            material_parts = []
-            if elastic_modulus is not None:
-                material_parts.append(f"탄성계수: {elastic_modulus:.0f}MPa")
-            if poisson_ratio is not None:
-                material_parts.append(f"포아송비: {poisson_ratio:.3f}")
-            if density is not None:
-                material_parts.append(f"밀도: {density:.0f}kg/m³")
-            if thermal_expansion is not None:
-                material_parts.append(f"열팽창: {thermal_expansion:.1e}/°C")
-            
-            if material_parts:
-                material_info = ", ".join(material_parts)
-            else:
-                material_info = "물성치 정보 없음"
-                
-        except Exception as e:
-            print(f"INP 파일에서 물성치 정보 추출 오류: {e}")
-            material_info = "물성치 정보 없음"
+                    else:
+                        thermal_expansion = float(line.strip())  # /°C
+                except:
+                    pass
         
-        if current_temps:
-            current_min = float(np.nanmin(current_temps))
-            current_max = float(np.nanmax(current_temps))
-            current_avg = float(np.nanmean(current_temps))
-            current_file_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)\n{material_info}"
+        # 물성치 정보 문자열 생성
+        material_parts = []
+        if elastic_modulus is not None:
+            material_parts.append(f"탄성계수: {elastic_modulus:.0f}MPa")
+        if poisson_ratio is not None:
+            material_parts.append(f"포아송비: {poisson_ratio:.3f}")
+        if density is not None:
+            material_parts.append(f"밀도: {density:.0f}kg/m³")
+        if thermal_expansion is not None:
+            material_parts.append(f"열팽창: {thermal_expansion:.1e}/°C")
+        
+        if material_parts:
+            material_info = ", ".join(material_parts)
         else:
-            current_file_title = f"{formatted_time}\n{material_info}"
+            material_info = "물성치 정보 없음"
+            
+    except Exception as e:
+        print(f"INP 파일에서 물성치 정보 추출 오류: {e}")
+        material_info = "물성치 정보 없음"
+    
+    if current_temps:
+        current_min = float(np.nanmin(current_temps))
+        current_max = float(np.nanmax(current_temps))
+        current_avg = float(np.nanmean(current_temps))
+        current_file_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)\n{material_info}"
+    else:
+        current_file_title = f"{formatted_time}\n{material_info}"
 
     # inp 파일 파싱 (노드, 온도)
     with open(current_file, 'r') as f:
@@ -2501,12 +2509,17 @@ def update_section_views(time_idx,
                 
                 if density_section and line and not line.startswith('*'):
                     try:
-                        density = float(line.split(',')[0])  # kg/m³
+                        # 밀도는 쉼표가 있을 수도 없을 수도 있음 (예: "2500" 또는 "2500,")
+                        if ',' in line:
+                            density = float(line.split(',')[0])  # kg/m³
+                        else:
+                            density = float(line.strip())  # kg/m³
                     except:
                         pass
                 
                 if expansion_section and line and not line.startswith('*'):
                     try:
+                        # 열팽창계수도 쉼표가 있을 수도 없을 수도 있음 (예: "5.00e-01" 또는 "5.00e-01,")
                         thermal_expansion = float(line.split(',')[0])  # /°C
                     except:
                         pass
