@@ -926,94 +926,8 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
                     continue
     
     # INP 파일에서 물성치 정보 추출
-    material_info = "물성치 정보 없음"
-    try:
-        # 이미 파싱된 INP 파일 내용에서 물성치 정보 추출
-        elastic_modulus = None
-        poisson_ratio = None
-        density = None
-        thermal_expansion = None
-        
-        material_section = False
-        elastic_section = False
-        density_section = False
-        expansion_section = False
-        
-        for line in lines:
-            line = line.strip()
-            
-            # 섹션 시작 감지
-            if line.startswith('*MATERIAL'):
-                material_section = True
-                continue
-            elif line.startswith('*ELASTIC'):
-                elastic_section = True
-                continue
-            elif line.startswith('*DENSITY'):
-                density_section = True
-                continue
-            elif line.startswith('*EXPANSION'):
-                expansion_section = True
-                continue
-            elif line.startswith('*'):
-                # 다른 섹션 시작시 모든 플래그 리셋
-                material_section = False
-                elastic_section = False
-                density_section = False
-                expansion_section = False
-                continue
-            
-            # 물성치 데이터 파싱
-            if elastic_section and ',' in line and not line.startswith('*'):
-                parts = line.split(',')
-                if len(parts) >= 2:
-                    try:
-                        elastic_modulus = float(parts[0])  # MPa 또는 Pa
-                        poisson_ratio = float(parts[1])
-                        # 탄성계수가 Pa 단위로 저장된 경우 MPa로 변환
-                    except:
-                        pass
-            
-            if density_section and line and not line.startswith('*'):
-                try:
-                    # 밀도는 쉼표가 있을 수도 없을 수도 있음 (예: "2500" 또는 "2500,")
-                    if ',' in line:
-                        density = float(line.split(',')[0])  # kg/m³
-                    else:
-                        density = float(line.strip())  # kg/m³
-                except:
-                    pass
-            
-            if expansion_section and line and not line.startswith('*'):
-                try:
-                    # 열팽창계수도 쉼표가 있을 수도 없을 수도 있음 (예: "5.00e-01" 또는 "5.00e-01,")
-                    if ',' in line:
-                        thermal_expansion = float(line.split(',')[0])  # /°C
-                    else:
-                        thermal_expansion = float(line.strip())  # /°C
-                except:
-                    pass
-        
-        # 물성치 정보 문자열 생성
-        material_parts = []
-        if elastic_modulus is not None:
-            material_parts.append(f"탄성계수: {elastic_modulus:.0f}MPa")
-        if poisson_ratio is not None:
-            material_parts.append(f"포아송비: {poisson_ratio:.3f}")
-        if density is not None:
-            material_parts.append(f"밀도: {density:.0f}kg/m³")
-        if thermal_expansion is not None:
-            material_parts.append(f"열팽창: {thermal_expansion:.1e}/°C")
-        
-        if material_parts:
-            material_info = ", ".join(material_parts)
-        else:
-            material_info = "물성치 정보 없음"
-            
-    except Exception as e:
-        print(f"INP 파일에서 물성치 정보 추출 오류: {e}")
-        material_info = "물성치 정보 없음"
-    
+    material_info = parse_material_info_from_inp(lines)
+
     if current_temps:
         current_min = float(np.nanmin(current_temps))
         current_max = float(np.nanmax(current_temps))
@@ -1209,7 +1123,7 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
         ])
     # 이하 기존 코드 유지
     if active_tab == "tab-3d":
-        # 저장된 3D 뷰 정보가 있으면 복원, 없으면 기본 뷰
+        # 저장된 3D 뷰 정보가 있으면 복원, 없으면 기본 빈 3D 뷰
         if viewer_data and 'figure' in viewer_data:
             fig_3d = viewer_data['figure']
             slider = viewer_data.get('slider', {})
@@ -1426,87 +1340,7 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                                     continue
                     
                     # INP 파일에서 물성치 정보 추출
-                    material_info = "물성치 정보 없음"
-                    try:
-                        # 이미 파싱된 INP 파일 내용에서 물성치 정보 추출
-                        elastic_modulus = None
-                        poisson_ratio = None
-                        density = None
-                        thermal_expansion = None
-                        
-                        material_section = False
-                        elastic_section = False
-                        density_section = False
-                        expansion_section = False
-                        
-                        for line in lines:
-                            line = line.strip()
-                            
-                            # 섹션 시작 감지
-                            if line.startswith('*MATERIAL'):
-                                material_section = True
-                                continue
-                            elif line.startswith('*ELASTIC'):
-                                elastic_section = True
-                                continue
-                            elif line.startswith('*DENSITY'):
-                                density_section = True
-                                continue
-                            elif line.startswith('*EXPANSION'):
-                                expansion_section = True
-                                continue
-                            elif line.startswith('*'):
-                                # 다른 섹션 시작시 모든 플래그 리셋
-                                material_section = False
-                                elastic_section = False
-                                density_section = False
-                                expansion_section = False
-                                continue
-                            
-                            # 물성치 데이터 파싱
-                            if elastic_section and ',' in line and not line.startswith('*'):
-                                parts = line.split(',')
-                                if len(parts) >= 2:
-                                    try:
-                                        elastic_modulus = float(parts[0])  # MPa 또는 Pa
-                                        poisson_ratio = float(parts[1])
-                                        # 탄성계수가 Pa 단위로 저장된 경우 MPa로 변환
-                                        if elastic_modulus > 1000000:
-                                            elastic_modulus = elastic_modulus / 1000000  # Pa to MPa
-                                    except:
-                                        pass
-                            
-                            if density_section and line and not line.startswith('*'):
-                                try:
-                                    density = float(line.split(',')[0])  # kg/m³
-                                except:
-                                    pass
-                            
-                            if expansion_section and line and not line.startswith('*'):
-                                try:
-                                    thermal_expansion = float(line.split(',')[0])  # /°C
-                                except:
-                                    pass
-                        
-                        # 물성치 정보 문자열 생성
-                        material_parts = []
-                        if elastic_modulus is not None:
-                            material_parts.append(f"탄성계수: {elastic_modulus:.0f}MPa")
-                        if poisson_ratio is not None:
-                            material_parts.append(f"포아송비: {poisson_ratio:.3f}")
-                        if density is not None:
-                            material_parts.append(f"밀도: {density:.0f}kg/m³")
-                        if thermal_expansion is not None:
-                            material_parts.append(f"열팽창: {thermal_expansion:.1e}/°C")
-                        
-                        if material_parts:
-                            material_info = ", ".join(material_parts)
-                        else:
-                            material_info = "물성치 정보 없음"
-                            
-                    except Exception as e:
-                        print(f"INP 파일에서 물성치 정보 추출 오류: {e}")
-                        material_info = "물성치 정보 없음"
+                    material_info = parse_material_info_from_inp(lines)
                     
                     if current_temps:
                         current_min = float(np.nanmin(current_temps))
@@ -2532,92 +2366,7 @@ def update_section_views(time_idx,
             formatted_time = time_str
         
         # INP 파일에서 물성치 정보 추출
-        material_info = "물성치 정보 없음"
-        try:
-            # 이미 파싱된 INP 파일 내용에서 물성치 정보 추출
-            elastic_modulus = None
-            poisson_ratio = None
-            density = None
-            thermal_expansion = None
-            
-            material_section = False
-            elastic_section = False
-            density_section = False
-            expansion_section = False
-            
-            for line in lines:
-                line = line.strip()
-                
-                # 섹션 시작 감지
-                if line.startswith('*MATERIAL'):
-                    material_section = True
-                    continue
-                elif line.startswith('*ELASTIC'):
-                    elastic_section = True
-                    continue
-                elif line.startswith('*DENSITY'):
-                    density_section = True
-                    continue
-                elif line.startswith('*EXPANSION'):
-                    expansion_section = True
-                    continue
-                elif line.startswith('*'):
-                    # 다른 섹션 시작시 모든 플래그 리셋
-                    material_section = False
-                    elastic_section = False
-                    density_section = False
-                    expansion_section = False
-                    continue
-                
-                # 물성치 데이터 파싱
-                if elastic_section and ',' in line and not line.startswith('*'):
-                    parts = line.split(',')
-                    if len(parts) >= 2:
-                        try:
-                            elastic_modulus = float(parts[0])  # MPa 또는 Pa
-                            poisson_ratio = float(parts[1])
-                            # 탄성계수가 Pa 단위로 저장된 경우 MPa로 변환
-                            if elastic_modulus > 1000000:
-                                elastic_modulus = elastic_modulus / 1000000  # Pa to MPa
-                        except:
-                            pass
-                
-                if density_section and line and not line.startswith('*'):
-                    try:
-                        # 밀도는 쉼표가 있을 수도 없을 수도 있음 (예: "2500" 또는 "2500,")
-                        if ',' in line:
-                            density = float(line.split(',')[0])  # kg/m³
-                        else:
-                            density = float(line.strip())  # kg/m³
-                    except:
-                        pass
-                
-                if expansion_section and line and not line.startswith('*'):
-                    try:
-                        # 열팽창계수도 쉼표가 있을 수도 없을 수도 있음 (예: "5.00e-01" 또는 "5.00e-01,")
-                        thermal_expansion = float(line.split(',')[0])  # /°C
-                    except:
-                        pass
-            
-            # 물성치 정보 문자열 생성
-            material_parts = []
-            if elastic_modulus is not None:
-                material_parts.append(f"탄성계수: {elastic_modulus:.0f}MPa")
-            if poisson_ratio is not None:
-                material_parts.append(f"포아송비: {poisson_ratio:.3f}")
-            if density is not None:
-                material_parts.append(f"밀도: {density:.0f}kg/m³")
-            if thermal_expansion is not None:
-                material_parts.append(f"열팽창: {thermal_expansion:.1e}/°C")
-            
-            if material_parts:
-                material_info = ", ".join(material_parts)
-            else:
-                material_info = "물성치 정보 없음"
-                
-        except Exception as e:
-            print(f"INP 파일에서 물성치 정보 추출 오류: {e}")
-            material_info = "물성치 정보 없음"
+        material_info = parse_material_info_from_inp(lines)
         
         current_min = float(np.nanmin(temps))
         current_max = float(np.nanmax(temps))
