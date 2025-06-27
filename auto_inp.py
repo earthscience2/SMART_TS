@@ -262,7 +262,7 @@ def make_inp(concrete, sensor_data_list, latest_csv):
             for sensor in sensor_data_list:
                 df_time = api_db.get_sensor_data_by_time(device_id=sensor['device_id'], channel=sensor['channel'], time=time)
                 position = json.loads(sensor['dims'])['nodes']
-                if not df_time.empty:
+                if isinstance(df_time, pd.DataFrame) and not df_time.empty:
                     temp = float(df_time.iloc[0]['temperature'])
                     sensors.append((num, position[0], position[1], position[2], temp))
                     num += 1
