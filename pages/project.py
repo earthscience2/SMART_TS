@@ -41,6 +41,83 @@ register_page(__name__, path="/project")
 
 
 
+# ────────────────────────────── 유틸리티 함수 ──────────────────────────────
+# INP 파일 내 물성치(탄성계수, 포아송비, 밀도, 열팽창계수)를 보다 견고하게 추출하기 위한 헬퍼
+# 밀도 값이 0 으로 표시되던 문제를 단위 자동 변환(tonne/mm³, g/cm³ → kg/m³) 로 해결
+
+def parse_material_info_from_inp(lines):
+    """INP 파일 라인 리스트에서 물성치 정보를 추출하여 문자열로 반환합니다.
+
+    반환 형식 예시: "탄성계수: 30000MPa, 포아송비: 0.200, 밀도: 2500kg/m³, 열팽창: 1.0e-05/°C"
+    해당 값이 없으면 항목을 건너뛴다. 아무 항목도 없으면 "물성치 정보 없음" 반환.
+    """
+    elastic_modulus = None  # MPa
+    poisson_ratio = None
+    density = None          # kg/m³
+    expansion = None        # 1/°C
+
+    section = None  # 현재 파싱 중인 섹션 이름
+    for raw in lines:
+        line = raw.strip()
+
+        # 섹션 식별
+        if line.startswith("*"):
+            u = line.upper()
+            if u.startswith("*ELASTIC"):
+                section = "elastic"
+            elif u.startswith("*DENSITY"):
+                section = "density"
+            elif u.startswith("*EXPANSION"):
+                section = "expansion"
+            else:
+                section = None
+            continue
+
+        if not section or not line:
+            continue
+
+        tokens = [tok.strip() for tok in line.split(',') if tok.strip()]
+        if not tokens:
+            continue
+
+        try:
+            if section == "elastic":
+                elastic_modulus = float(tokens[0])
+                if len(tokens) >= 2:
+                    poisson_ratio = float(tokens[1])
+                # Pa → MPa 변환
+                if elastic_modulus > 1e6:
+                    elastic_modulus /= 1e6
+                section = None  # 한 줄만 사용
+
+            elif section == "density":
+                density = float(tokens[0])
+                # 단위 자동 변환
+                if density < 1e-3:      # tonne/mm^3 (예: 2.40e-9)
+                    density *= 1e12     # 1 tonne/mm³ = 1e12 kg/m³
+                elif density < 10:      # g/cm³ (예: 2.4)
+                    density *= 1000     # g/cm³ → kg/m³
+                section = None
+
+            elif section == "expansion":
+                expansion = float(tokens[0])
+                section = None
+        except ValueError:
+            # 숫자 파싱 실패 시 해당 항목 무시
+            continue
+
+    parts = []
+    if elastic_modulus is not None:
+        parts.append(f"탄성계수: {elastic_modulus:.0f}MPa")
+    if poisson_ratio is not None:
+        parts.append(f"포아송비: {poisson_ratio:.3f}")
+    if density is not None:
+        parts.append(f"밀도: {density:.0f}kg/m³")
+    if expansion is not None:
+        parts.append(f"열팽창: {expansion:.1e}/°C")
+
+    return ", ".join(parts) if parts else "물성치 정보 없음"
+
 # ────────────────────────────── 레이아웃 ────────────────────────────
 layout = dbc.Container(
     fluid=True,
@@ -894,8 +971,6 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
                         elastic_modulus = float(parts[0])  # MPa 또는 Pa
                         poisson_ratio = float(parts[1])
                         # 탄성계수가 Pa 단위로 저장된 경우 MPa로 변환
-                        if elastic_modulus > 1000000:
-                            elastic_modulus = elastic_modulus / 1000000  # Pa to MPa
                     except:
                         pass
             
