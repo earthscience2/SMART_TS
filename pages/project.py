@@ -824,34 +824,86 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
     except:
         formatted_time = current_time
     
-    # 현재 파일의 온도 통계 계산
-    current_temps = []
-    with open(current_file, 'r') as f:
-        lines = f.readlines()
-    temp_section = False
-    for line in lines:
-        if line.startswith('*TEMPERATURE'):
-            temp_section = True
-            continue
-        elif line.startswith('*'):
-            temp_section = False
-            continue
-        if temp_section and ',' in line:
-            parts = line.strip().split(',')
-            if len(parts) >= 2:
-                try:
-                    temp = float(parts[1])
-                    current_temps.append(temp)
-                except:
-                    continue
-    
-    if current_temps:
-        current_min = float(np.nanmin(current_temps))
-        current_max = float(np.nanmax(current_temps))
-        current_avg = float(np.nanmean(current_temps))
-        current_file_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)"
-    else:
-        current_file_title = f"{formatted_time}"
+            # 현재 파일의 온도 통계 계산
+        current_temps = []
+        with open(current_file, 'r') as f:
+            lines = f.readlines()
+        temp_section = False
+        for line in lines:
+            if line.startswith('*TEMPERATURE'):
+                temp_section = True
+                continue
+            elif line.startswith('*'):
+                temp_section = False
+                continue
+            if temp_section and ',' in line:
+                parts = line.strip().split(',')
+                if len(parts) >= 2:
+                    try:
+                        temp = float(parts[1])
+                        current_temps.append(temp)
+                    except:
+                        continue
+        
+        # 콘크리트 물성치 정보 추출
+        try:
+            if selected_rows and tbl_data:
+                row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+                concrete_pk = row["concrete_pk"]
+                concrete_df = api_db.get_concrete_data(concrete_pk=concrete_pk)
+                if not concrete_df.empty:
+                    concrete_data = concrete_df.iloc[0]
+                    
+                    # 재령 기반 탄성계수 계산
+                    analysis_time = dt.strftime("%Y-%m-%d %H:%M:%S")
+                    
+                    # 탄성계수 계산 (CEB-FIB 모델)
+                    try:
+                        casting_date_str = concrete_data.get('con_t')
+                        e28_gpa = concrete_data.get('con_e', 30.0)  # GPa
+                        beta = concrete_data.get('con_b', 0.2)
+                        n = concrete_data.get('con_n', 0.5)
+                        
+                        if casting_date_str:
+                            if isinstance(casting_date_str, str):
+                                if 'T' in casting_date_str:
+                                    casting_date = datetime.fromisoformat(casting_date_str.replace('T', ' ').replace('Z', ''))
+                                else:
+                                    casting_date = datetime.strptime(casting_date_str[:10], '%Y-%m-%d')
+                            else:
+                                casting_date = casting_date_str
+                            
+                            age_days = (dt - casting_date).days + (dt - casting_date).seconds / 86400.0
+                            age_days = max(age_days, 0.1)  # 최소 0.1일
+                            
+                            age_factor = (age_days / (age_days + beta)) ** n
+                            elastic_modulus = e28_gpa * 1000 * age_factor  # MPa로 변환
+                        else:
+                            elastic_modulus = e28_gpa * 1000
+                    except:
+                        elastic_modulus = 30000  # 기본값 30 GPa
+                    
+                    # 다른 물성치들
+                    poisson_ratio = concrete_data.get('con_v', 0.2)
+                    density = concrete_data.get('con_d', 2400)  # kg/m³
+                    thermal_expansion = concrete_data.get('con_a', 1.0e-5)  # /°C
+                    
+                    material_info = f"탄성계수: {elastic_modulus:.0f}MPa, 포아송비: {poisson_ratio:.2f}, 밀도: {density:.0f}kg/m³, 열팽창: {thermal_expansion:.1e}/°C"
+                else:
+                    material_info = "물성치 정보 없음"
+            else:
+                material_info = "물성치 정보 없음"
+        except Exception as e:
+            print(f"물성치 정보 추출 오류: {e}")
+            material_info = "물성치 정보 없음"
+        
+        if current_temps:
+            current_min = float(np.nanmin(current_temps))
+            current_max = float(np.nanmax(current_temps))
+            current_avg = float(np.nanmean(current_temps))
+            current_file_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)\n{material_info}"
+        else:
+            current_file_title = f"{formatted_time}\n{material_info}"
 
     # inp 파일 파싱 (노드, 온도)
     with open(current_file, 'r') as f:
@@ -1153,9 +1205,13 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
             html.Div([
                 html.Div([
                     html.I(className="fas fa-clock me-2", style={"color": "#6366f1"}),
-                    html.Span(display_title or "시간 정보 없음", style={
+                    html.Div([
+                        html.Div(line, style={"margin": "0"}) 
+                        for line in (display_title or "시간 정보 없음").split('\n')
+                    ], style={
                         "fontWeight": "500",
-                        "color": "#374151"
+                        "color": "#374151",
+                        "lineHeight": "1.4"
                     })
                 ], style={
                     "padding": "12px 16px",
@@ -1164,7 +1220,10 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     "border": "1px solid #e5e7eb",
                     "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
                     "marginBottom": "20px",
-                    "fontSize": "14px"
+                    "fontSize": "14px",
+                    "display": "flex",
+                    "alignItems": "flex-start",
+                    "gap": "8px"
                 })
             ]),
             
@@ -1249,13 +1308,60 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                                 except:
                                     continue
                     
+                    # 콘크리트 물성치 정보 추출
+                    try:
+                        concrete_df = api_db.get_concrete_data(concrete_pk=concrete_pk)
+                        if not concrete_df.empty:
+                            concrete_data = concrete_df.iloc[0]
+                            
+                            # 재령 기반 탄성계수 계산
+                            analysis_time = dt.strftime("%Y-%m-%d %H:%M:%S")
+                            
+                            # 탄성계수 계산 (CEB-FIB 모델)
+                            try:
+                                casting_date_str = concrete_data.get('con_t')
+                                e28_gpa = concrete_data.get('con_e', 30.0)  # GPa
+                                beta = concrete_data.get('con_b', 0.2)
+                                n = concrete_data.get('con_n', 0.5)
+                                
+                                if casting_date_str:
+                                    if isinstance(casting_date_str, str):
+                                        if 'T' in casting_date_str:
+                                            casting_date = datetime.fromisoformat(casting_date_str.replace('T', ' ').replace('Z', ''))
+                                        else:
+                                            casting_date = datetime.strptime(casting_date_str[:10], '%Y-%m-%d')
+                                    else:
+                                        casting_date = casting_date_str
+                                    
+                                    age_days = (dt - casting_date).days + (dt - casting_date).seconds / 86400.0
+                                    age_days = max(age_days, 0.1)  # 최소 0.1일
+                                    
+                                    age_factor = (age_days / (age_days + beta)) ** n
+                                    elastic_modulus = e28_gpa * 1000 * age_factor  # MPa로 변환
+                                else:
+                                    elastic_modulus = e28_gpa * 1000
+                            except:
+                                elastic_modulus = 30000  # 기본값 30 GPa
+                            
+                            # 다른 물성치들
+                            poisson_ratio = concrete_data.get('con_v', 0.2)
+                            density = concrete_data.get('con_d', 2400)  # kg/m³
+                            thermal_expansion = concrete_data.get('con_a', 1.0e-5)  # /°C
+                            
+                            material_info = f"탄성계수: {elastic_modulus:.0f}MPa, 포아송비: {poisson_ratio:.2f}, 밀도: {density:.0f}kg/m³, 열팽창: {thermal_expansion:.1e}/°C"
+                        else:
+                            material_info = "물성치 정보 없음"
+                    except Exception as e:
+                        print(f"물성치 정보 추출 오류: {e}")
+                        material_info = "물성치 정보 없음"
+                    
                     if current_temps:
                         current_min = float(np.nanmin(current_temps))
                         current_max = float(np.nanmax(current_temps))
                         current_avg = float(np.nanmean(current_temps))
-                        section_display_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)"
+                        section_display_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)\n{material_info}"
                     else:
-                        section_display_title = f"{formatted_time}"
+                        section_display_title = f"{formatted_time}\n{material_info}"
             except Exception as e:
                 print(f"단면도 제목 계산 오류: {e}")
                 # 계산 실패 시 기존 값 또는 viewer_data 사용
@@ -1298,9 +1404,13 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
             html.Div([
                 html.Div([
                     html.I(className="fas fa-clock me-2", style={"color": "#6366f1"}),
-                    html.Span(section_display_title or "시간 정보 없음", style={
+                    html.Div([
+                        html.Div(line, style={"margin": "0"}) 
+                        for line in (section_display_title or "시간 정보 없음").split('\n')
+                    ], style={
                         "fontWeight": "500",
-                        "color": "#374151"
+                        "color": "#374151",
+                        "lineHeight": "1.4"
                     })
                 ], style={
                     "padding": "12px 16px",
@@ -1309,7 +1419,10 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                     "border": "1px solid #e5e7eb",
                     "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
                     "marginBottom": "20px",
-                    "fontSize": "14px"
+                    "fontSize": "14px",
+                    "display": "flex",
+                    "alignItems": "flex-start",
+                    "gap": "8px"
                 })
             ]),
             
@@ -2265,10 +2378,62 @@ def update_section_views(time_idx,
         except:
             formatted_time = time_str
         
+        # 콘크리트 물성치 정보 추출
+        try:
+            if selected_rows and tbl_data:
+                row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+                concrete_pk = row["concrete_pk"]
+                concrete_df = api_db.get_concrete_data(concrete_pk=concrete_pk)
+                if not concrete_df.empty:
+                    concrete_data = concrete_df.iloc[0]
+                    
+                    # 재령 기반 탄성계수 계산
+                    analysis_time = dt.strftime("%Y-%m-%d %H:%M:%S")
+                    
+                    # 탄성계수 계산 (CEB-FIB 모델)
+                    try:
+                        casting_date_str = concrete_data.get('con_t')
+                        e28_gpa = concrete_data.get('con_e', 30.0)  # GPa
+                        beta = concrete_data.get('con_b', 0.2)
+                        n = concrete_data.get('con_n', 0.5)
+                        
+                        if casting_date_str:
+                            if isinstance(casting_date_str, str):
+                                if 'T' in casting_date_str:
+                                    casting_date = datetime.fromisoformat(casting_date_str.replace('T', ' ').replace('Z', ''))
+                                else:
+                                    casting_date = datetime.strptime(casting_date_str[:10], '%Y-%m-%d')
+                            else:
+                                casting_date = casting_date_str
+                            
+                            age_days = (dt - casting_date).days + (dt - casting_date).seconds / 86400.0
+                            age_days = max(age_days, 0.1)  # 최소 0.1일
+                            
+                            age_factor = (age_days / (age_days + beta)) ** n
+                            elastic_modulus = e28_gpa * 1000 * age_factor  # MPa로 변환
+                        else:
+                            elastic_modulus = e28_gpa * 1000
+                    except:
+                        elastic_modulus = 30000  # 기본값 30 GPa
+                    
+                    # 다른 물성치들
+                    poisson_ratio = concrete_data.get('con_v', 0.2)
+                    density = concrete_data.get('con_d', 2400)  # kg/m³
+                    thermal_expansion = concrete_data.get('con_a', 1.0e-5)  # /°C
+                    
+                    material_info = f"탄성계수: {elastic_modulus:.0f}MPa, 포아송비: {poisson_ratio:.2f}, 밀도: {density:.0f}kg/m³, 열팽창: {thermal_expansion:.1e}/°C"
+                else:
+                    material_info = "물성치 정보 없음"
+            else:
+                material_info = "물성치 정보 없음"
+        except Exception as e:
+            print(f"물성치 정보 추출 오류: {e}")
+            material_info = "물성치 정보 없음"
+        
         current_min = float(np.nanmin(temps))
         current_max = float(np.nanmax(temps))
         current_avg = float(np.nanmean(temps))
-        current_file_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)"
+        current_file_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)\n{material_info}"
     except Exception:
         current_file_title = f"{os.path.basename(current_file)}"
     # step=0.1로 반환
