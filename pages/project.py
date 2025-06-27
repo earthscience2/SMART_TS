@@ -3226,7 +3226,7 @@ def update_section_time_info(current_file_title, active_tab):
             # 물성치 정보 섹션 (있는 경우만, 인라인 형태)
             html.Div([
                 html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "14px"}),
-                html.Div([
+                *[html.Div([
                     html.Span(f"{prop.split(':')[0]}:", style={
                         "color": "#6b7280",
                         "fontSize": "12px",
@@ -3239,7 +3239,7 @@ def update_section_time_info(current_file_title, active_tab):
                         "marginRight": "12px"
                     })
                 ], style={"display": "inline"})
-                for prop in material_info.split(", ")
+                for prop in material_info.split(", ")]
             ], style={
                 "display": "flex",
                 "alignItems": "flex-start",
@@ -3353,7 +3353,7 @@ def update_viewer3d_time_info(current_file_title, active_tab):
             # 물성치 정보 섹션 (있는 경우만, 인라인 형태)
             html.Div([
                 html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "14px"}),
-                html.Div([
+                *[html.Div([
                     html.Span(f"{prop.split(':')[0]}:", style={
                         "color": "#6b7280",
                         "fontSize": "12px",
@@ -3366,7 +3366,7 @@ def update_viewer3d_time_info(current_file_title, active_tab):
                         "marginRight": "12px"
                     })
                 ], style={"display": "inline"})
-                for prop in material_info.split(", ")
+                for prop in material_info.split(", ")]
             ], style={
                 "display": "flex",
                 "alignItems": "flex-start",
