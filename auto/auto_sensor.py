@@ -1,4 +1,9 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import pymysql
+from sqlalchemy import create_engine
 from datetime import datetime, timedelta
 import pandas as pd
 import threading
@@ -72,6 +77,10 @@ def export_sensor_data(deviceid, channel, sd_start=None):
 
 # 센서 데이터 자동 저장 및 업데이트
 def auto_sensor_data():
+    # SQLAlchemy 엔진 생성
+    engine = create_engine('mysql+pymysql://root:smart001!@localhost:3306/ITS_TS?charset=utf8mb4')
+    
+    # PyMySQL 연결 (cursor 작업용)
     conn = pymysql.connect(
         host='localhost', port=3306,
         user='root', password='smart001!',
@@ -79,7 +88,7 @@ def auto_sensor_data():
     )
 
     try:
-        df_sensors = pd.read_sql("SELECT device_id,channel,d_type FROM sensor;", conn)
+        df_sensors = pd.read_sql("SELECT device_id,channel,d_type FROM sensor;", engine)
         records = df_sensors.to_dict(orient='records')
 
         with conn.cursor() as cursor:
