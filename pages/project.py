@@ -86,8 +86,7 @@ def parse_material_info_from_inp(lines):
                 if len(tokens) >= 2:
                     poisson_ratio = float(tokens[1])
                 # Pa → GPa 변환 (1000 추가로 나누기)
-                if elastic_modulus > 1e6:
-                    elastic_modulus /= 1e12
+                elastic_modulus /= 1e3
                 section = None  # 한 줄만 사용
 
             elif section == "density":
@@ -110,7 +109,7 @@ def parse_material_info_from_inp(lines):
     if elastic_modulus is not None:
         parts.append(f"탄성계수: {elastic_modulus:.1f}GPa")
     if poisson_ratio is not None:
-        parts.append(f"포아송비: {poisson_ratio:.3f}")
+        parts.append(f"포아송비: {poisson_ratio:.1f}")
     if density is not None:
         parts.append(f"밀도: {density:.0f}kg/m³")
     if expansion is not None:
@@ -3228,20 +3227,42 @@ def update_section_time_info(current_file_title, active_tab):
         
         # 물성치 정보 카드 (있는 경우만)
         html.Div([
-            html.I(className="fas fa-cog", style={"color": "#059669", "fontSize": "16px"}),
-            html.Span(material_info, style={
-                "fontWeight": "500",
-                "color": "#374151",
-                "fontSize": "14px"
-            })
+            html.Div([
+                html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "14px"}),
+                html.Span("물성치", style={
+                    "fontWeight": "600",
+                    "color": "#4f46e5",
+                    "fontSize": "13px",
+                    "marginLeft": "6px"
+                })
+            ], style={"marginBottom": "8px"}),
+            html.Div([
+                html.Div([
+                    html.Span(prop.split(":")[0], style={
+                        "fontWeight": "500",
+                        "color": "#6b7280",
+                        "fontSize": "12px",
+                        "width": "60px",
+                        "display": "inline-block"
+                    }),
+                    html.Span(prop.split(":", 1)[1].strip(), style={
+                        "fontWeight": "600",
+                        "color": "#111827",
+                        "fontSize": "13px"
+                    })
+                ], style={
+                    "display": "flex",
+                    "alignItems": "center",
+                    "marginBottom": "4px" if i < len(material_info.split(", ")) - 1 else "0"
+                })
+                for i, prop in enumerate(material_info.split(", "))
+            ])
         ], style={
-            "padding": "12px 16px",
-            "backgroundColor": "#ecfdf5",
-            "borderRadius": "8px",
-            "border": "1px solid #a7f3d0",
-            "display": "flex",
-            "alignItems": "center",
-            "gap": "10px"
+            "padding": "14px 16px",
+            "backgroundColor": "#f8fafc",
+            "borderRadius": "10px",
+            "border": "1px solid #e2e8f0",
+            "boxShadow": "0 1px 3px rgba(0,0,0,0.08)"
         }) if material_info else html.Div()
     ])
 
@@ -3342,20 +3363,42 @@ def update_viewer3d_time_info(current_file_title, active_tab):
         
         # 물성치 정보 카드 (있는 경우만)
         html.Div([
-            html.I(className="fas fa-cog", style={"color": "#059669", "fontSize": "16px"}),
-            html.Span(material_info, style={
-                "fontWeight": "500",
-                "color": "#374151",
-                "fontSize": "14px"
-            })
+            html.Div([
+                html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "14px"}),
+                html.Span("물성치", style={
+                    "fontWeight": "600",
+                    "color": "#4f46e5",
+                    "fontSize": "13px",
+                    "marginLeft": "6px"
+                })
+            ], style={"marginBottom": "8px"}),
+            html.Div([
+                html.Div([
+                    html.Span(prop.split(":")[0], style={
+                        "fontWeight": "500",
+                        "color": "#6b7280",
+                        "fontSize": "12px",
+                        "width": "60px",
+                        "display": "inline-block"
+                    }),
+                    html.Span(prop.split(":", 1)[1].strip(), style={
+                        "fontWeight": "600",
+                        "color": "#111827",
+                        "fontSize": "13px"
+                    })
+                ], style={
+                    "display": "flex",
+                    "alignItems": "center",
+                    "marginBottom": "4px" if i < len(material_info.split(", ")) - 1 else "0"
+                })
+                for i, prop in enumerate(material_info.split(", "))
+            ])
         ], style={
-            "padding": "12px 16px",
-            "backgroundColor": "#ecfdf5",
-            "borderRadius": "8px",
-            "border": "1px solid #a7f3d0",
-            "display": "flex",
-            "alignItems": "center",
-            "gap": "10px"
+            "padding": "14px 16px",
+            "backgroundColor": "#f8fafc",
+            "borderRadius": "10px",
+            "border": "1px solid #e2e8f0",
+            "boxShadow": "0 1px 3px rgba(0,0,0,0.08)"
         }) if material_info else html.Div()
     ])
 
