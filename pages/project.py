@@ -456,8 +456,6 @@ layout = dbc.Container(
                     html.Div([
                         dcc.Slider(id="time-slider", min=0, max=5, step=1, value=0, marks={}),
                         dcc.Slider(id="time-slider-display", min=0, max=5, step=1, value=0, marks={}),
-                        # Conditionally include 'time-slider-section'
-                        dcc.Slider(id="time-slider-section", min=0, max=5, step=1, value=0, marks={}),
                         dcc.Graph(id="viewer-3d"),
                         dcc.Graph(id="viewer-3d-display"),
                         dbc.Input(id="section-x-input", type="number", value=None),
@@ -784,13 +782,16 @@ def on_concrete_select(selected_rows, tbl_data):
                                 except:
                                     continue
                     
+                    # INP 파일에서 물성치 정보 추출
+                    material_info = parse_material_info_from_inp(lines)
+                    
                     if current_temps:
                         current_min = float(np.nanmin(current_temps))
                         current_max = float(np.nanmax(current_temps))
                         current_avg = float(np.nanmean(current_temps))
-                        current_file_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)"
+                        current_file_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)\n{material_info}"
                     else:
-                        current_file_title = f"{formatted_time}"
+                        current_file_title = f"{formatted_time}\n{material_info}"
                         
                 except Exception as e:
                     print(f"온도 데이터 파싱 오류: {e}")
@@ -1186,13 +1187,16 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                                 except:
                                     continue
                     
+                    # INP 파일에서 물성치 정보 추출
+                    material_info = parse_material_info_from_inp(lines)
+                    
                     if current_temps:
                         current_min = float(np.nanmin(current_temps))
                         current_max = float(np.nanmax(current_temps))
                         current_avg = float(np.nanmean(current_temps))
-                        display_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)"
+                        display_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)\n{material_info}"
                     else:
-                        display_title = f"{formatted_time}"
+                        display_title = f"{formatted_time}\n{material_info}"
             except Exception as e:
                 print(f"3D 뷰 제목 계산 오류: {e}")
                 # 계산 실패 시 viewer_data에서 가져오기 시도
@@ -1361,7 +1365,7 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
             section_display_title = viewer_data['current_file_title']
         
         return html.Div([
-            # 시간 컨트롤 섹션 (노션 스타일)
+            # 시간 컨트롤 섹션 (노션 스타일) - 메인 슬라이더 정보 표시만
             html.Div([
                 html.Div([
                     html.H6("⏰ 시간 설정", style={
@@ -1370,15 +1374,11 @@ def switch_tab(active_tab, current_file_title, selected_rows, tbl_data, viewer_d
                         "marginBottom": "12px",
                         "fontSize": "14px"
                     }),
-                    dcc.Slider(
-                        id="time-slider-section",
-                        min=slider_min,
-                        max=slider_max,
-                        step=1,
-                        value=slider_value,
-                        marks=slider_marks,
-                        tooltip={"placement": "bottom", "always_visible": True},
-                    ),
+                    html.P("메인 3D 뷰의 시간 슬라이더를 사용하여 시간을 조절하세요.", style={
+                        "fontSize": "13px",
+                        "color": "#6b7280",
+                        "margin": "0"
+                    }),
                 ], style={
                     "padding": "16px 20px",
                     "backgroundColor": "#f9fafb",
@@ -2165,7 +2165,7 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     Output("section-y-input", "min"), Output("section-y-input", "max"), Output("section-y-input", "value"),
     Output("section-z-input", "min"), Output("section-z-input", "max"), Output("section-z-input", "value"),
     Output("current-file-title-store", "data", allow_duplicate=True),
-    Input("time-slider-section", "value"),
+    Input("time-slider", "value"),  # Changed from time-slider-section to time-slider
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
     Input("section-z-input", "value"),
@@ -2379,43 +2379,6 @@ def update_section_views(time_idx,
     return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, current_file_title
 
 
-
-# 시간 슬라이더 동기화 콜백 (메인 3D 뷰 ↔ 단면도 탭)
-@callback(
-    Output("time-slider-section", "value", allow_duplicate=True),
-    Output("time-slider-section", "min", allow_duplicate=True),
-    Output("time-slider-section", "max", allow_duplicate=True),
-    Output("time-slider-section", "marks", allow_duplicate=True),
-    Input("time-slider", "value"),
-    Input("time-slider", "min"),
-    Input("time-slider", "max"),
-    Input("time-slider", "marks"),
-    Input("tabs-main", "active_tab"),  # 추가: 현재 활성 탭
-    prevent_initial_call=True,
-)
-def sync_time_sliders_to_section(main_value, main_min, main_max, main_marks, active_tab):
-    # 단면도 탭이 활성화되어 있을 때는 메인 슬라이더 변경을 섹션 슬라이더에 반영하지 않음
-    if active_tab == "tab-section":
-        raise PreventUpdate
-    return main_value, main_min, main_max, main_marks
-
-@callback(
-    Output("time-slider", "value", allow_duplicate=True),
-    Output("time-slider", "min", allow_duplicate=True),
-    Output("time-slider", "max", allow_duplicate=True),
-    Output("time-slider", "marks", allow_duplicate=True),
-    Input("time-slider-section", "value"),
-    State("time-slider-section", "min"),
-    State("time-slider-section", "max"),
-    State("time-slider-section", "marks"),
-    Input("tabs-main", "active_tab"),  # 추가: 현재 활성 탭
-    prevent_initial_call=True,
-)
-def sync_section_slider_to_main(section_value, section_min, section_max, section_marks, active_tab):
-    # 단면도 탭이 아닐 때는 섹션 슬라이더의 변경을 메인 슬라이더에 반영하지 않음
-    if active_tab != "tab-section":
-        raise PreventUpdate
-    return section_value, section_min, section_max, section_marks
 
 # 온도분포 탭 콜백: 입력값 변경 시 3D 뷰와 온도 정보 갱신
 @callback(
