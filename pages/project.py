@@ -85,8 +85,8 @@ def parse_material_info_from_inp(lines):
                 elastic_modulus = float(tokens[0])
                 if len(tokens) >= 2:
                     poisson_ratio = float(tokens[1])
-                # Pa → GPa 변환 (1000 추가로 나누기)
-                elastic_modulus /= 1e3
+                # Pa → GPa 변환
+                elastic_modulus /= 1e9
                 section = None  # 한 줄만 사용
 
             elif section == "density":

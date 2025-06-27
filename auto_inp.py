@@ -124,8 +124,8 @@ def calculate_elastic_modulus(concrete_data, analysis_time):
         # 타설일 가져오기
         casting_date_str = concrete_data.get('con_t')
         if not casting_date_str:
-            logger.warning("타설일 정보가 없습니다. 기본 탄성계수 30000 MPa 사용")
-            return 30000.0
+            logger.warning("타설일 정보가 없습니다. 기본 탄성계수 3.0e10 Pa 사용")
+            return 3.0e10
         
         # CEB-FIB 모델 매개변수 가져오기
         e28_gpa = concrete_data.get('con_e')  # E28 (GPa 단위)
@@ -143,8 +143,8 @@ def calculate_elastic_modulus(concrete_data, analysis_time):
             logger.warning("N 상수 정보가 없습니다. 기본값 0.5 사용")
             n = 0.5
         
-        # 단위 변환: GPa -> MPa
-        e28_mpa = float(e28_gpa) * 1000.0
+        # 단위 변환: GPa -> Pa
+        e28_pa = float(e28_gpa) * 1e9
         beta = float(beta)
         n = float(n)
         
@@ -169,14 +169,14 @@ def calculate_elastic_modulus(concrete_data, analysis_time):
         
         # CEB-FIB 모델 적용: E(t) = E28 * ((t / (t + β))^n)
         age_factor = (age_days / (age_days + beta)) ** n
-        elastic_modulus = e28_mpa * age_factor
+        elastic_modulus = e28_pa * age_factor
         
-        logger.info(f"재령 {age_days:.1f}일, E28={e28_mpa:.0f}MPa, β={beta}, n={n}, 계수={age_factor:.3f}, E(t)={elastic_modulus:.0f}MPa")
+        logger.info(f"재령 {age_days:.1f}일, E28={e28_pa:.0f}Pa, β={beta}, n={n}, 계수={age_factor:.3f}, E(t)={elastic_modulus:.0f}Pa")
         return elastic_modulus
         
     except Exception as e:
         logger.error(f"탄성계수 계산 오류: {e}")
-        return 30000.0  # 기본값 반환
+        return 3.0e10  # 기본값 반환 (30 GPa = 3.0e10 Pa)
 
 # 3) INP 파일 생성 함수
 def generate_calculix_inp(nodes, elements, node_temperatures, output_path, concrete_data, analysis_time):
@@ -205,7 +205,7 @@ def generate_calculix_inp(nodes, elements, node_temperatures, output_path, concr
             logger.warning("열팽창계수 정보가 없습니다. 기본값 1.0e-5 /°C 사용")
             thermal_expansion = 1.0e-5
         
-        logger.info(f"물성치 적용: E={elastic_modulus:.0f}MPa, ν={poisson_ratio}, ρ={density}kg/m³, α={thermal_expansion:.1e}/°C")
+        logger.info(f"물성치 적용: E={elastic_modulus:.0f}Pa, ν={poisson_ratio}, ρ={density}kg/m³, α={thermal_expansion:.1e}/°C")
         
         with open(output_path, "w") as f:
             f.write("*HEADING\nConcrete Curing Thermal Stress Analysis\n\n")
