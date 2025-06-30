@@ -1,8 +1,6 @@
-# pages/admin_projects.py
 from dash import html, dcc, register_page, callback, Input, Output, State, ALL
 import dash_bootstrap_components as dbc
 from flask import request as flask_request
-import pandas as pd
 from api_db import get_project_data_with_stats, get_all_sensor_structures
 from api_db_logger import add_project_data_with_log as add_project_data, update_project_data_with_log as update_project_data, delete_project_data_with_log as delete_project_data
 import json
@@ -133,6 +131,19 @@ def layout(**kwargs):
         ], id="toast", header="알림", is_open=False, dismissable=True, icon="primary", style={"position": "fixed", "top": 66, "right": 10, "width": 350})
     ])
 
+def format_project_data(df):
+    """프로젝트 데이터 형식 변환"""
+    if df.empty:
+        return []
+    
+    df_copy = df.copy()
+    # 날짜 형식 변환
+    for col in ['created_at', 'updated_at']:
+        if col in df_copy.columns:
+            df_copy[col] = df_copy[col].astype(str).str[:10]
+    
+    return df_copy.to_dict('records')
+
 @callback(
     Output("projects-data-store", "data"),
     Input("admin-projects-url", "pathname")
@@ -140,20 +151,8 @@ def layout(**kwargs):
 def load_projects_data(pathname):
     """프로젝트 데이터를 로드합니다."""
     try:
-        # get_project_data_with_stats 함수를 사용하여 통계 정보 포함 프로젝트 조회
         df = get_project_data_with_stats()
-        
-        if not df.empty:
-            # 날짜 형식 변환
-            df_copy = df.copy()
-            if 'created_at' in df_copy.columns:
-                df_copy['created_at'] = df_copy['created_at'].astype(str).str[:10]  # YYYY-MM-DD 형식
-            if 'updated_at' in df_copy.columns:
-                df_copy['updated_at'] = df_copy['updated_at'].astype(str).str[:10]  # YYYY-MM-DD 형식
-            
-            return df_copy.to_dict('records')
-        else:
-            return []
+        return format_project_data(df)
     except Exception as e:
         print(f"Error loading projects: {e}")
         return []
@@ -337,15 +336,7 @@ def handle_edit_modal(save_clicks, cancel_clicks, project_id, project_name, proj
             
             # 데이터 다시 로드
             df = get_project_data_with_stats()
-            if not df.empty:
-                df_copy = df.copy()
-                if 'created_at' in df_copy.columns:
-                    df_copy['created_at'] = df_copy['created_at'].astype(str).str[:10]
-                if 'updated_at' in df_copy.columns:
-                    df_copy['updated_at'] = df_copy['updated_at'].astype(str).str[:10]
-                new_data = df_copy.to_dict('records')
-            else:
-                new_data = []
+            new_data = format_project_data(df)
             
             return False, False, "", "danger", True, "프로젝트가 성공적으로 수정되었습니다.", new_data
         except Exception as e:
@@ -414,15 +405,7 @@ def handle_delete_modal(confirm_clicks, cancel_clicks, project_info, projects_da
             
             # 데이터 다시 로드
             df = get_project_data_with_stats()
-            if not df.empty:
-                df_copy = df.copy()
-                if 'created_at' in df_copy.columns:
-                    df_copy['created_at'] = df_copy['created_at'].astype(str).str[:10]
-                if 'updated_at' in df_copy.columns:
-                    df_copy['updated_at'] = df_copy['updated_at'].astype(str).str[:10]
-                new_data = df_copy.to_dict('records')
-            else:
-                new_data = []
+            new_data = format_project_data(df)
             
             return False, True, "프로젝트가 성공적으로 삭제되었습니다.", new_data
         except Exception as e:
@@ -562,15 +545,7 @@ def handle_add_modal(save_clicks, cancel_clicks, project_name, selected_structur
             
             # 데이터 다시 로드
             df = get_project_data_with_stats()
-            if not df.empty:
-                df_copy = df.copy()
-                if 'created_at' in df_copy.columns:
-                    df_copy['created_at'] = df_copy['created_at'].astype(str).str[:10]
-                if 'updated_at' in df_copy.columns:
-                    df_copy['updated_at'] = df_copy['updated_at'].astype(str).str[:10]
-                new_data = df_copy.to_dict('records')
-            else:
-                new_data = []
+            new_data = format_project_data(df)
             
             structure_info = f"구조 ID: {selected_structure.get('structure_id', '')}, 구조명: {selected_structure.get('structure_name', '')}"
             success_message = f"프로젝트 '{project_name.strip()}'이(가) 성공적으로 생성되었습니다. ({structure_info})"

@@ -1,9 +1,60 @@
 from dash import html, dcc, register_page, callback, Input, Output
 import dash_bootstrap_components as dbc
 from flask import request as flask_request
-import pandas as pd
+from api_db import get_project_data_with_stats, get_user_data
 
 register_page(__name__, path="/admin_dashboard", title="관리자 대시보드")
+
+def get_system_stats():
+    """시스템 통계 데이터를 가져옵니다"""
+    try:
+        # 프로젝트 데이터 조회
+        projects_df = get_project_data_with_stats()
+        active_projects = len(projects_df) if not projects_df.empty else 0
+        
+        # 사용자 데이터 조회 
+        users_df = get_user_data()
+        total_users = len(users_df) if not users_df.empty else 0
+        
+        # 센서 수는 프로젝트 데이터에서 집계
+        total_sensors = projects_df['sensor_count'].sum() if not projects_df.empty else 0
+        
+        return {
+            'active_projects': active_projects,
+            'total_users': total_users,
+            'active_sensors': total_sensors,
+            'system_status': '정상'
+        }
+    except Exception as e:
+        print(f"시스템 통계 조회 오류: {e}")
+        return {
+            'active_projects': 0,
+            'total_users': 0,
+            'active_sensors': 0,
+            'system_status': '오류'
+        }
+
+def create_feature_card(title, description, href, color):
+    """기능 카드 컴포넌트 생성"""
+    return dbc.Card([
+        dbc.CardBody([
+            html.H5(title, className=f"card-title text-{color}"),
+            html.P(description, className="card-text"),
+            dcc.Link(
+                dbc.Button(title.split(" ")[-1], color=color, className="w-100"),
+                href=href
+            )
+        ])
+    ], className="mb-3")
+
+def create_status_card(title, value, color):
+    """상태 카드 컴포넌트 생성"""
+    return dbc.Card([
+        dbc.CardBody([
+            html.H6(title, className=f"text-{color}"),
+            html.H3(str(value), className=f"fw-bold text-{color}")
+        ])
+    ])
 
 def layout(**kwargs):
     """Admin dashboard layout."""
@@ -20,52 +71,36 @@ def layout(**kwargs):
                         dbc.CardBody([
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Card([
-                                        dbc.CardBody([
-                                            html.H5("📊 프로젝트 관리", className="card-title text-primary"),
-                                            html.P("프로젝트 생성, 수정, 삭제 및 권한 관리", className="card-text"),
-                                            dcc.Link(
-                                                dbc.Button("프로젝트 관리", color="primary", className="w-100"),
-                                                href="/admin_projects"
-                                            )
-                                        ])
-                                    ], className="mb-3")
+                                    create_feature_card(
+                                        "📊 프로젝트 관리",
+                                        "프로젝트 생성, 수정, 삭제 및 권한 관리",
+                                        "/admin_projects",
+                                        "primary"
+                                    )
                                 ], width=3),
                                 dbc.Col([
-                                    dbc.Card([
-                                        dbc.CardBody([
-                                            html.H5("📋 일반 로그", className="card-title text-success"),
-                                            html.P("로그인, 센서, 프로젝트, 콘크리트 로그 확인", className="card-text"),
-                                            dcc.Link(
-                                                dbc.Button("일반 로그", color="success", className="w-100"),
-                                                href="/admin_logs"
-                                            )
-                                        ])
-                                    ], className="mb-3")
+                                    create_feature_card(
+                                        "📋 일반 로그",
+                                        "로그인, 센서, 프로젝트, 콘크리트 로그 확인",
+                                        "/admin_logs",
+                                        "success"
+                                    )
                                 ], width=3),
                                 dbc.Col([
-                                    dbc.Card([
-                                        dbc.CardBody([
-                                            html.H5("⚙️ 자동화 로그", className="card-title text-warning"),
-                                            html.P("자동화 작업 로그 및 모니터링", className="card-text"),
-                                            dcc.Link(
-                                                dbc.Button("자동화 로그", color="warning", className="w-100"),
-                                                href="/admin_automation"
-                                            )
-                                        ])
-                                    ], className="mb-3")
+                                    create_feature_card(
+                                        "⚙️ 자동화 로그",
+                                        "자동화 작업 로그 및 모니터링",
+                                        "/admin_automation",
+                                        "warning"
+                                    )
                                 ], width=3),
                                 dbc.Col([
-                                    dbc.Card([
-                                        dbc.CardBody([
-                                            html.H5("👥 사용자 관리", className="card-title text-info"),
-                                            html.P("사용자 계정 및 권한 관리", className="card-text"),
-                                            dcc.Link(
-                                                dbc.Button("사용자 관리", color="info", className="w-100"),
-                                                href="/admin_users"
-                                            )
-                                        ])
-                                    ], className="mb-3")
+                                    create_feature_card(
+                                        "👥 사용자 관리",
+                                        "사용자 계정 및 권한 관리",
+                                        "/admin_users",
+                                        "info"
+                                    )
                                 ], width=3),
                             ]),
                             
@@ -75,40 +110,7 @@ def layout(**kwargs):
                             dbc.Row([
                                 dbc.Col([
                                     html.H5("📈 시스템 상태", className="text-dark mb-3"),
-                                    dbc.Row([
-                                        dbc.Col([
-                                            dbc.Card([
-                                                dbc.CardBody([
-                                                    html.H6("활성 프로젝트", className="text-primary"),
-                                                    html.H3("12", className="fw-bold text-primary")
-                                                ])
-                                            ])
-                                        ], width=3),
-                                        dbc.Col([
-                                            dbc.Card([
-                                                dbc.CardBody([
-                                                    html.H6("등록된 사용자", className="text-success"),
-                                                    html.H3("45", className="fw-bold text-success")
-                                                ])
-                                            ])
-                                        ], width=3),
-                                        dbc.Col([
-                                            dbc.Card([
-                                                dbc.CardBody([
-                                                    html.H6("활성 센서", className="text-info"),
-                                                    html.H3("156", className="fw-bold text-info")
-                                                ])
-                                            ])
-                                        ], width=3),
-                                        dbc.Col([
-                                            dbc.Card([
-                                                dbc.CardBody([
-                                                    html.H6("시스템 상태", className="text-warning"),
-                                                    html.H3("정상", className="fw-bold text-warning")
-                                                ])
-                                            ])
-                                        ], width=3),
-                                    ])
+                                    html.Div(id="system-status-cards")
                                 ])
                             ])
                         ])
@@ -117,6 +119,33 @@ def layout(**kwargs):
             ])
         ], fluid=True)
     ])
+
+@callback(
+    Output("system-status-cards", "children"),
+    Input("admin-dashboard-url", "pathname")
+)
+def update_system_status(pathname):
+    """시스템 상태 카드 업데이트"""
+    stats = get_system_stats()
+    
+    status_color = "success" if stats['system_status'] == '정상' else "danger"
+    
+    cards = dbc.Row([
+        dbc.Col([
+            create_status_card("활성 프로젝트", stats['active_projects'], "primary")
+        ], width=3),
+        dbc.Col([
+            create_status_card("등록된 사용자", stats['total_users'], "success")
+        ], width=3),
+        dbc.Col([
+            create_status_card("활성 센서", stats['active_sensors'], "info")
+        ], width=3),
+        dbc.Col([
+            create_status_card("시스템 상태", stats['system_status'], status_color)
+        ], width=3),
+    ])
+    
+    return cards
 
 @callback(
     [Output("admin-dashboard-url", "pathname")],
