@@ -93,15 +93,22 @@ def read_automation_logs():
         else:
             debug_info.append(f"{log_file}: 파일 없음")
     
-    # 디버깅 정보를 로그에 추가 (개발 중에만)
-    if not all_logs:
-        for info in debug_info[:10]:  # 처음 10개만 표시
-            all_logs.append({
-                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'level': 'DEBUG',
-                'module': 'DEBUG',
-                'message': info
-            })
+    # 디버깅 정보를 로그에 추가 (항상 표시)
+    for info in debug_info[:5]:  # 처음 5개만 표시
+        all_logs.append({
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'level': 'DEBUG',
+            'module': 'DEBUG',
+            'message': info
+        })
+    
+    # 추가 디버깅 정보
+    all_logs.append({
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'level': 'DEBUG',
+        'module': 'DEBUG',
+        'message': f"콜백 실행됨 - 총 {len(all_logs)-6}개 로그 파싱"
+    })
     
     # 시간순으로 정렬 (최신순)
     all_logs.sort(key=lambda x: x['timestamp'], reverse=True)
