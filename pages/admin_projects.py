@@ -56,6 +56,13 @@ def layout(**kwargs):
         dbc.Modal([
             dbc.ModalHeader(dbc.ModalTitle("새 프로젝트 추가")),
             dbc.ModalBody([
+                # 모달 내부 알림
+                dbc.Alert(
+                    id="add-modal-alert",
+                    is_open=False,
+                    dismissable=True,
+                    className="mb-3"
+                ),
                 dbc.Form([
                     dbc.Row([
                         dbc.Col([
@@ -81,6 +88,13 @@ def layout(**kwargs):
         dbc.Modal([
             dbc.ModalHeader(dbc.ModalTitle("프로젝트 수정")),
             dbc.ModalBody([
+                # 모달 내부 알림
+                dbc.Alert(
+                    id="edit-modal-alert",
+                    is_open=False,
+                    dismissable=True,
+                    className="mb-3"
+                ),
                 dbc.Form([
                     dbc.Row([
                         dbc.Col([
@@ -253,7 +267,8 @@ def update_projects_table(projects_data, current_page):
 @callback(
     [Output("edit-modal", "is_open"),
      Output("edit-project-id", "value"),
-     Output("edit-project-name", "value")],
+     Output("edit-project-name", "value"),
+     Output("edit-modal-alert", "is_open", allow_duplicate=True)],
     [Input({"type": "edit-btn", "index": ALL}, "n_clicks")],
     [State("projects-data-store", "data")],
     prevent_initial_call=True
@@ -262,11 +277,11 @@ def open_edit_modal(n_clicks, projects_data):
     """수정 모달을 엽니다."""
     ctx = dash.callback_context
     if not ctx.triggered:
-        return False, "", ""
+        return False, "", "", False
     
     # n_clicks가 None이거나 모든 값이 None이면 초기 로드이므로 모달을 열지 않음
     if not n_clicks or all(click is None for click in n_clicks):
-        return False, "", ""
+        return False, "", "", False
     
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
     project_id = json.loads(button_id)['index']
@@ -274,12 +289,15 @@ def open_edit_modal(n_clicks, projects_data):
     # 프로젝트 데이터 찾기
     project = next((p for p in projects_data if p.get('project_pk') == project_id), None)
     if project:
-        return True, project.get('project_pk', ''), project.get('name', '')
+        return True, project.get('project_pk', ''), project.get('name', ''), False
     
-    return False, "", ""
+    return False, "", "", False
 
 @callback(
     [Output("edit-modal", "is_open", allow_duplicate=True),
+     Output("edit-modal-alert", "is_open"),
+     Output("edit-modal-alert", "children"),
+     Output("edit-modal-alert", "color"),
      Output("toast", "is_open"),
      Output("toast-message", "children"),
      Output("projects-data-store", "data", allow_duplicate=True)],
@@ -294,21 +312,21 @@ def handle_edit_modal(save_clicks, cancel_clicks, project_id, project_name, proj
     """수정 모달을 처리합니다."""
     ctx = dash.callback_context
     if not ctx.triggered:
-        return False, False, "", dash.no_update
+        return False, False, "", "danger", False, "", dash.no_update
     
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
     if button_id == "edit-cancel":
-        return False, False, "", dash.no_update
+        return False, False, "", "danger", False, "", dash.no_update
     
     if button_id == "edit-save":
         # 프로젝트 이름 검증
         if not project_name or not project_name.strip():
-            return True, True, "프로젝트명을 입력해주세요.", dash.no_update
+            return True, True, "프로젝트명을 입력해주세요.", "danger", False, "", dash.no_update
         
         # 프로젝트 ID 검증
         if not project_id:
-            return True, True, "프로젝트 ID가 없습니다.", dash.no_update
+            return True, True, "프로젝트 ID가 없습니다.", "danger", False, "", dash.no_update
         
         try:
             # 프로젝트 업데이트
@@ -329,11 +347,11 @@ def handle_edit_modal(save_clicks, cancel_clicks, project_id, project_name, proj
             else:
                 new_data = []
             
-            return False, True, "프로젝트가 성공적으로 수정되었습니다.", new_data
+            return False, False, "", "danger", True, "프로젝트가 성공적으로 수정되었습니다.", new_data
         except Exception as e:
-            return True, True, f"프로젝트 수정 중 오류가 발생했습니다: {str(e)}", dash.no_update
+            return True, True, f"프로젝트 수정 중 오류가 발생했습니다: {str(e)}", "danger", False, "", dash.no_update
     
-    return False, False, "", dash.no_update
+    return False, False, "", "danger", False, "", dash.no_update
 
 # 삭제 모달 관련 콜백
 @callback(
@@ -436,16 +454,17 @@ def check_admin_access(pathname):
 # 새 프로젝트 추가 모달 관련 콜백
 @callback(
     [Output("add-modal", "is_open"),
-     Output("new-project-name", "value")],
+     Output("new-project-name", "value"),
+     Output("add-modal-alert", "is_open", allow_duplicate=True)],
     [Input("add-project-btn", "n_clicks")],
     prevent_initial_call=True
 )
 def open_add_modal(n_clicks):
     """새 프로젝트 추가 모달을 엽니다."""
     if not n_clicks:
-        return False, ""
+        return False, "", False
     
-    return True, ""
+    return True, "", False
 
 @callback(
     Output("sensor-structures-table-container", "children"),
@@ -499,8 +518,24 @@ def update_sensor_structures_table(is_open, structures_data):
         size="sm"
     )
 
+# 라디오 버튼 선택 초기화
+@callback(
+    Output({"type": "structure-select", "index": ALL}, "value"),
+    Input("add-modal", "is_open"),
+    prevent_initial_call=True
+)
+def reset_radio_buttons(is_open):
+    """모달이 열릴 때 라디오 버튼 선택을 초기화합니다."""
+    if is_open:
+        # 모든 라디오 버튼을 선택 해제
+        return [False] * 10  # 최대 10개의 구조를 가정
+    return dash.no_update
+
 @callback(
     [Output("add-modal", "is_open", allow_duplicate=True),
+     Output("add-modal-alert", "is_open"),
+     Output("add-modal-alert", "children"),
+     Output("add-modal-alert", "color"),
      Output("toast", "is_open", allow_duplicate=True),
      Output("toast-message", "children", allow_duplicate=True),
      Output("projects-data-store", "data", allow_duplicate=True)],
@@ -515,21 +550,21 @@ def handle_add_modal(save_clicks, cancel_clicks, project_name, selected_structur
     """새 프로젝트 추가 모달을 처리합니다."""
     ctx = dash.callback_context
     if not ctx.triggered:
-        return False, False, "", dash.no_update
+        return False, False, "", "danger", False, "", dash.no_update
     
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
     if button_id == "add-cancel":
-        return False, False, "", dash.no_update
+        return False, False, "", "danger", False, "", dash.no_update
     
     if button_id == "add-save":
         # 프로젝트 이름 검증
         if not project_name or not project_name.strip():
-            return True, True, "프로젝트명을 입력해주세요.", dash.no_update
+            return True, True, "프로젝트명을 입력해주세요.", "danger", False, "", dash.no_update
         
         # 구조 선택 검증
         if not selected_structures or not any(selected_structures):
-            return True, True, "구조를 선택해주세요.", dash.no_update
+            return True, True, "구조를 선택해주세요.", "danger", False, "", dash.no_update
         
         try:
             # 선택된 구조 찾기
@@ -540,7 +575,7 @@ def handle_add_modal(save_clicks, cancel_clicks, project_name, selected_structur
                     break
             
             if not selected_structure:
-                return True, True, "구조를 선택해주세요.", dash.no_update
+                return True, True, "구조를 선택해주세요.", "danger", False, "", dash.no_update
             
             # 프로젝트 생성
             add_project_data(
@@ -561,8 +596,9 @@ def handle_add_modal(save_clicks, cancel_clicks, project_name, selected_structur
                 new_data = []
             
             structure_info = f"구조 ID: {selected_structure.get('structure_id', '')}, 구조명: {selected_structure.get('structure_name', '')}"
-            return False, True, f"프로젝트 '{project_name.strip()}'이(가) 성공적으로 생성되었습니다. ({structure_info})", new_data
+            success_message = f"프로젝트 '{project_name.strip()}'이(가) 성공적으로 생성되었습니다. ({structure_info})"
+            return False, False, "", "danger", True, success_message, new_data
         except Exception as e:
-            return True, True, f"프로젝트 생성 중 오류가 발생했습니다: {str(e)}", dash.no_update
+            return True, True, f"프로젝트 생성 중 오류가 발생했습니다: {str(e)}", "danger", False, "", dash.no_update
     
-    return False, False, "", dash.no_update 
+    return False, False, "", "danger", False, "", dash.no_update 
