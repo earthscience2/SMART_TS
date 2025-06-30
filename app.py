@@ -206,20 +206,19 @@ app.index_string = '''
         {%favicon%}
         {%css%}
         <style>
+            .admin-navbar .nav-link {
+                padding: 8px 15px !important;
+                margin: 0 5px;
+                border-radius: 5px;
+                transition: all 0.3s ease;
+            }
             .admin-navbar .nav-link.active {
                 background-color: #ffc107 !important;
                 color: #000 !important;
-                border-radius: 5px;
-                padding: 8px 15px !important;
-                margin: 0 5px;
-                transition: all 0.3s ease;
             }
             .admin-navbar .nav-link:hover {
                 background-color: #ffca2c !important;
                 color: #000 !important;
-                border-radius: 5px;
-                padding: 8px 15px !important;
-                margin: 0 5px;
             }
         </style>
     </head>
@@ -302,9 +301,9 @@ def _build_admin_navbar():
     
     children = [
         # 관리자 네비게이션 링크들
-        dbc.NavItem(dcc.Link("📊 프로젝트", href="/admin_projects", className="nav-link fw-bold", style={"marginRight": "20px"}, id="admin-nav-projects")),
-        dbc.NavItem(dcc.Link("📋 일반 로그", href="/admin_logs", className="nav-link fw-bold", style={"marginRight": "20px"}, id="admin-nav-logs")),
-        dbc.NavItem(dcc.Link("⚙️ 자동화 로그", href="/admin_automation", className="nav-link fw-bold", style={"marginRight": "20px"}, id="admin-nav-automation")),
+        dbc.NavItem(dcc.Link("📊 프로젝트", href="/admin_projects", className="nav-link fw-bold", id="admin-nav-projects")),
+        dbc.NavItem(dcc.Link("📋 일반 로그", href="/admin_logs", className="nav-link fw-bold", id="admin-nav-logs")),
+        dbc.NavItem(dcc.Link("⚙️ 자동화 로그", href="/admin_automation", className="nav-link fw-bold", id="admin-nav-automation")),
         # Logout 버튼
         dbc.NavItem(
             html.A(
@@ -312,7 +311,7 @@ def _build_admin_navbar():
                 href="/logout",
                 id="admin-nav-logout",
                 className="btn btn-danger btn-sm fw-bold mt-1 ms-auto",
-                style={"color": "white", "backgroundColor": "#dc3545", "border": "none"},
+                style={"color": "white", "backgroundColor": "#dc3545", "border": "none", "marginLeft": "200px"},
             ),
         ),
     ]
