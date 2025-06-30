@@ -77,7 +77,7 @@ def layout():
                     dbc.CardBody([
                         dbc.Row([
                             dbc.Col([
-                                dbc.FormGroup([
+                                html.Div([
                                     dbc.Label("자동 분석 주기"),
                                     dbc.Select(
                                         id="auto-analysis-interval",
@@ -89,10 +89,10 @@ def layout():
                                         ],
                                         value="6h"
                                     )
-                                ])
+                                ], className="mb-3")
                             ], width=6),
                             dbc.Col([
-                                dbc.FormGroup([
+                                html.Div([
                                     dbc.Label("자동 백업 주기"),
                                     dbc.Select(
                                         id="auto-backup-interval",
@@ -104,7 +104,7 @@ def layout():
                                         ],
                                         value="1d"
                                     )
-                                ])
+                                ], className="mb-3")
                             ], width=6),
                         ]),
                         dbc.Row([
