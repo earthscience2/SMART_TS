@@ -145,6 +145,25 @@ def layout():
     # 로컬 프로젝트 필터링 로직
     local_projects_df = filter_local_projects(grade, auth_list)
 
+    # 프로젝트 통계 정보 가져오기
+    try:
+        projects_with_stats = api_db.get_project_data_with_stats()
+        # 로컬 프로젝트와 통계 정보 병합
+        if not local_projects_df.empty and not projects_with_stats.empty:
+            local_projects_df = local_projects_df.merge(
+                projects_with_stats[['project_pk', 'concrete_count', 'sensor_count']], 
+                on='project_pk', 
+                how='left'
+            )
+            # NaN 값을 0으로 채우기
+            local_projects_df['concrete_count'] = local_projects_df['concrete_count'].fillna(0).astype(int)
+            local_projects_df['sensor_count'] = local_projects_df['sensor_count'].fillna(0).astype(int)
+    except Exception as e:
+        print(f"Error loading project statistics: {e}")
+        # 통계 정보 로드 실패 시 기본값 설정
+        local_projects_df['concrete_count'] = 0
+        local_projects_df['sensor_count'] = 0
+
     projects = []
 
     # 로컬 프로젝트 생성
@@ -238,6 +257,30 @@ def layout():
                             )
                         ], className="d-flex flex-wrap gap-1")
                     ], className="d-flex justify-content-between align-items-center mb-4"),
+                    
+                    # 프로젝트 통계 정보
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Card([
+                                dbc.CardBody([
+                                    dbc.Row([
+                                        dbc.Col([
+                                            html.Div([
+                                                html.H3(f"{row.get('concrete_count', 0)}", className="text-info mb-0 fw-bold"),
+                                                html.Small("콘크리트", className="text-muted")
+                                            ], className="text-center")
+                                        ], width=6),
+                                        dbc.Col([
+                                            html.Div([
+                                                html.H3(f"{row.get('sensor_count', 0)}", className="text-success mb-0 fw-bold"),
+                                                html.Small("센서", className="text-muted")
+                                            ], className="text-center")
+                                        ], width=6)
+                                    ])
+                                ])
+                            ], className="mb-3")
+                        ], width=12)
+                    ]),
                     
                     # 콘텐츠 그리드
                     dbc.Row([

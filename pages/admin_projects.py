@@ -3,7 +3,7 @@ from dash import html, dcc, register_page, callback, Input, Output, State, ALL
 import dash_bootstrap_components as dbc
 from flask import request as flask_request
 import pandas as pd
-from api_db import get_project_data, update_project_data, delete_project_data, add_project_data, get_all_sensor_structures
+from api_db import get_project_data_with_stats, update_project_data, delete_project_data, add_project_data, get_all_sensor_structures
 import json
 import dash
 
@@ -125,8 +125,8 @@ def layout(**kwargs):
 def load_projects_data(pathname):
     """프로젝트 데이터를 로드합니다."""
     try:
-        # get_project_data 함수를 사용하여 모든 프로젝트 조회
-        df = get_project_data()
+        # get_project_data_with_stats 함수를 사용하여 통계 정보 포함 프로젝트 조회
+        df = get_project_data_with_stats()
         
         if not df.empty:
             # 날짜 형식 변환
@@ -188,6 +188,8 @@ def update_projects_table(projects_data, current_page):
             html.Tr([
                 html.Th("프로젝트 ID"),
                 html.Th("프로젝트명"),
+                html.Th("콘크리트 수"),
+                html.Th("센서 수"),
                 html.Th("생성일"),
                 html.Th("수정일"),
                 html.Th("작업")
@@ -199,22 +201,46 @@ def update_projects_table(projects_data, current_page):
     table_rows = []
     for project in current_data:
         row = html.Tr([
-            html.Td(project.get('project_pk', '')),
-            html.Td(project.get('name', '')),
-            html.Td(project.get('created_at', '')),
-            html.Td(project.get('updated_at', '')),
+            html.Td(project.get("project_pk", "")),
+            html.Td(project.get("name", "")),
+            html.Td(
+                dbc.Badge(
+                    project.get("concrete_count", 0),
+                    color="info",
+                    className="fs-6"
+                )
+            ),
+            html.Td(
+                dbc.Badge(
+                    project.get("sensor_count", 0),
+                    color="success",
+                    className="fs-6"
+                )
+            ),
+            html.Td(project.get("created_at", "")),
+            html.Td(project.get("updated_at", "")),
             html.Td([
-                dbc.Button("수정", size="sm", color="primary", className="me-1", 
-                          id={"type": "edit-btn", "index": project.get('project_pk', '')}),
-                dbc.Button("삭제", size="sm", color="danger",
-                          id={"type": "delete-btn", "index": project.get('project_pk', '')})
+                dbc.Button(
+                    "수정",
+                    id={"type": "edit-btn", "index": project.get("project_pk", "")},
+                    size="sm",
+                    color="primary",
+                    className="me-1"
+                ),
+                dbc.Button(
+                    "삭제",
+                    id={"type": "delete-btn", "index": project.get("project_pk", "")},
+                    size="sm",
+                    color="danger"
+                )
             ])
         ])
         table_rows.append(row)
     
-    table_body = [html.Tbody(table_rows)]
+    # 테이블 생성
+    table = dbc.Table(table_header + [html.Tbody(table_rows)], striped=True, bordered=True, hover=True, responsive=True)
     
-    # 페이지네이션 컴포넌트
+    # 페이지네이션 생성
     if total_pages > 1:
         pagination = dbc.Pagination(
             id="project-pagination",
@@ -228,13 +254,7 @@ def update_projects_table(projects_data, current_page):
     else:
         pagination = ""
     
-    return dbc.Table(
-        table_header + table_body,
-        striped=True,
-        bordered=True,
-        hover=True,
-        responsive=True
-    ), pagination
+    return table, pagination
 
 # 수정 모달 관련 콜백
 @callback(
@@ -297,7 +317,7 @@ def handle_edit_modal(save_clicks, cancel_clicks, project_id, project_name, proj
             )
             
             # 데이터 다시 로드
-            df = get_project_data()
+            df = get_project_data_with_stats()
             if not df.empty:
                 df_copy = df.copy()
                 if 'created_at' in df_copy.columns:
@@ -374,7 +394,7 @@ def handle_delete_modal(confirm_clicks, cancel_clicks, project_info, projects_da
             delete_project_data(project_pk=project_id)
             
             # 데이터 다시 로드
-            df = get_project_data()
+            df = get_project_data_with_stats()
             if not df.empty:
                 df_copy = df.copy()
                 if 'created_at' in df_copy.columns:
@@ -520,7 +540,7 @@ def handle_add_modal(save_clicks, cancel_clicks, project_name, selected_structur
             )
             
             # 데이터 다시 로드
-            df = get_project_data()
+            df = get_project_data_with_stats()
             if not df.empty:
                 df_copy = df.copy()
                 if 'created_at' in df_copy.columns:

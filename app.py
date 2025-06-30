@@ -245,7 +245,7 @@ def _build_admin_navbar():
         """),
         dbc.Navbar(
             dbc.Container([
-                dbc.NavbarBrand(brand_component, href="/admin_dashboard"),
+                dbc.NavbarBrand(brand_component, href="/admin_dashboard", id="admin-brand"),
                 dbc.Nav(
                     children,
                     navbar=True,
@@ -428,6 +428,36 @@ def update_nav_links(pathname, search):
         )
     else:
         return "/", "/project", "/sensor", "/concrete", "/download"
+
+# 관리자 페이지에서 일반 페이지 접근 차단 콜백
+@app.callback(
+    Output("url", "pathname"),
+    Input("url", "pathname"),
+    prevent_initial_call=True
+)
+def prevent_admin_to_normal_pages(pathname):
+    """관리자 페이지에서 일반 페이지로의 접근을 차단하고 대시보드로 리다이렉트"""
+    # 현재 쿠키에서 관리자 여부 확인
+    admin_user = flask_request.cookies.get("admin_user")
+    
+    if admin_user:
+        # 관리자가 일반 페이지로 이동하려고 할 때
+        if pathname in ["/", "/project", "/sensor", "/concrete", "/download", "/tci_analysis"]:
+            return "/admin_dashboard"
+    
+    return dash.no_update
+
+# 관리자 브랜드 클릭 콜백
+@app.callback(
+    Output("url", "pathname"),
+    Input("admin-brand", "n_clicks"),
+    prevent_initial_call=True
+)
+def admin_brand_click(n_clicks):
+    """관리자 브랜드 클릭 시 대시보드로 이동"""
+    if n_clicks:
+        return "/admin_dashboard"
+    return dash.no_update
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=23022)
