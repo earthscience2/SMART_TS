@@ -203,20 +203,8 @@ def update_projects_table(projects_data, current_page):
         row = html.Tr([
             html.Td(project.get("project_pk", "")),
             html.Td(project.get("name", "")),
-            html.Td(
-                dbc.Badge(
-                    project.get("concrete_count", 0),
-                    color="info",
-                    className="fs-6"
-                )
-            ),
-            html.Td(
-                dbc.Badge(
-                    project.get("sensor_count", 0),
-                    color="success",
-                    className="fs-6"
-                )
-            ),
+            html.Td(project.get("concrete_count", 0)),
+            html.Td(project.get("sensor_count", 0)),
             html.Td(project.get("created_at", "")),
             html.Td(project.get("updated_at", "")),
             html.Td([

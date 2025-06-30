@@ -4,11 +4,56 @@ import os
 from flask import Flask, request, redirect, make_response
 from dotenv import load_dotenv
 from urllib.parse import quote_plus
+from datetime import datetime
+import logging
 
 # 사용자 인증 모듈
 from api_db import authenticate_user
 
 load_dotenv()
+
+# 로그인 로그 설정
+def setup_login_logger():
+    """로그인 로그를 위한 로거 설정"""
+    log_dir = "log"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    
+    logger = logging.getLogger('login_logger')
+    logger.setLevel(logging.INFO)
+    
+    # 기존 핸들러 제거 (중복 방지)
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+    
+    # 파일 핸들러 설정
+    file_handler = logging.FileHandler(os.path.join(log_dir, 'login.log'), encoding='utf-8')
+    file_handler.setLevel(logging.INFO)
+    
+    # 포맷터 설정
+    formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
+    file_handler.setFormatter(formatter)
+    
+    logger.addHandler(file_handler)
+    return logger
+
+def log_login_attempt(user_id, success, message, ip_address=None, user_agent=None):
+    """로그인 시도를 로그에 기록"""
+    logger = setup_login_logger()
+    
+    if ip_address is None:
+        ip_address = request.remote_addr if request else "Unknown"
+    
+    if user_agent is None:
+        user_agent = request.headers.get('User-Agent', "Unknown") if request else "Unknown"
+    
+    status = "SUCCESS" if success else "FAILED"
+    log_message = f"LOGIN_{status} | User: {user_id} | IP: {ip_address} | Message: {message} | User-Agent: {user_agent}"
+    
+    logger.info(log_message)
+
+# 로거 초기화
+login_logger = setup_login_logger()
 
 # 1) Flask 서버만 먼저 생성
 server = Flask(__name__)
@@ -61,17 +106,22 @@ def do_login():
 
     # 입력값 검증
     if not user_id or not user_pw:
+        log_login_attempt(user_id, False, "아이디와 비밀번호를 입력하세요")
         resp = make_response(redirect("/login?error=" + quote_plus("아이디와 비밀번호를 입력하세요")))
         resp.delete_cookie("login_user")
         return resp
 
     auth = authenticate_user(user_id, user_pw, its_num=its)
     if auth["result"] != "Success":
+        log_login_attempt(user_id, False, auth['msg'])
         resp = make_response(redirect(f"/login?error={quote_plus(auth['msg'])}"))
         # 실패한 로그인 시 기존 쿠키 삭제 (이전 세션 무효화)
         resp.delete_cookie("login_user")
         return resp
 
+    # 로그인 성공 로그
+    log_login_attempt(user_id, True, "로그인 성공")
+    
     # 간단하게 쿠키에 user_id 저장 (실 서비스라면 JWT 등 사용)
     resp = make_response(redirect("/"))
     resp.set_cookie("login_user", user_id, max_age=60 * 60 * 6, httponly=True)
@@ -89,12 +139,14 @@ def do_admin_login():
 
     # 입력값 검증
     if not user_id or not user_pw:
+        log_login_attempt(user_id, False, "관리자 로그인: 아이디와 비밀번호를 입력하세요")
         resp = make_response(redirect("/admin?error=" + quote_plus("아이디와 비밀번호를 입력하세요")))
         resp.delete_cookie("admin_user")
         return resp
 
     auth = authenticate_user(user_id, user_pw, its_num=its)
     if auth["result"] != "Success":
+        log_login_attempt(user_id, False, f"관리자 로그인: {auth['msg']}")
         resp = make_response(redirect(f"/admin?error={quote_plus(auth['msg'])}"))
         # 실패한 로그인 시 기존 쿠키 삭제 (이전 세션 무효화)
         resp.delete_cookie("admin_user")
@@ -102,10 +154,14 @@ def do_admin_login():
     
     # AD 권한 확인
     if auth["grade"] != "AD":
+        log_login_attempt(user_id, False, "관리자 로그인: AD 권한이 필요합니다")
         resp = make_response(redirect(f"/admin?error={quote_plus('관리자 권한이 필요합니다. AD 권한을 가진 사용자만 접근할 수 있습니다.')}"))
         resp.delete_cookie("admin_user")
         return resp
 
+    # 관리자 로그인 성공 로그
+    log_login_attempt(user_id, True, "관리자 로그인 성공")
+    
     # 관리자 로그인 성공: 쿠키 설정 후 관리자 대시보드로 리다이렉트
     resp = make_response(redirect("/admin_dashboard"))
     resp.set_cookie("admin_user", user_id, max_age=60 * 60 * 6, httponly=True)
@@ -114,6 +170,10 @@ def do_admin_login():
 @server.route("/logout")
 def logout():
     """쿠키 제거 후 홈으로 리다이렉트"""
+    # 로그아웃 로그 기록
+    user_id = request.cookies.get("login_user") or request.cookies.get("admin_user") or "Unknown"
+    log_login_attempt(user_id, True, "로그아웃")
+    
     resp = make_response(redirect("/login"))
     resp.delete_cookie("login_user")
     resp.delete_cookie("admin_user")  # 관리자 쿠키도 삭제
