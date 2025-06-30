@@ -443,11 +443,8 @@ def update_sensor_structures_table(is_open, structures_data):
                 html.Th("선택"),
                 html.Th("구조 ID"),
                 html.Th("구조명"),
-                html.Th("디바이스 ID"),
-                html.Th("채널"),
-                html.Th("디바이스 타입"),
-                html.Th("데이터 타입"),
-                html.Th("3축 여부")
+                html.Th("디바이스 수"),
+                html.Th("센서 수")
             ])
         ])
     ]
@@ -455,28 +452,18 @@ def update_sensor_structures_table(is_open, structures_data):
     # 테이블 바디
     table_rows = []
     for i, structure in enumerate(structures_data):
-        # 3축 여부 표시
-        is3axis = structure.get('is3axis', 'N')
-        if is3axis == 'Y':
-            axis_badge = dbc.Badge("3축", color="success")
-        else:
-            axis_badge = dbc.Badge("1축", color="secondary")
-        
         row = html.Tr([
             html.Td([
                 dbc.RadioButton(
                     id={"type": "structure-select", "index": i},
                     name="structure-selection",
-                    value=structure.get('structure_id', '') + '_' + structure.get('deviceid', '') + '_' + str(structure.get('channel', ''))
+                    value=structure.get('structure_id', '')
                 )
             ]),
             html.Td(structure.get('structure_id', '')),
             html.Td(structure.get('structure_name', '')),
-            html.Td(structure.get('deviceid', '')),
-            html.Td(structure.get('channel', '')),
-            html.Td(structure.get('device_type', '')),
-            html.Td(structure.get('data_type', '')),
-            html.Td(axis_badge)
+            html.Td(structure.get('device_count', 0)),
+            html.Td(structure.get('sensor_count', 0))
         ])
         table_rows.append(row)
     
