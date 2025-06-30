@@ -153,13 +153,34 @@ def layout(**kwargs):
         dcc.Location(id="admin-logs-url", refresh=False),
         dcc.Interval(id="log-refresh-interval", interval=10000, n_intervals=0),  # 10초마다 새로고침
         dbc.Container([
-            # 메인 콘텐츠
+            # 헤더
+            dbc.Row([
+                dbc.Col([
+                    html.H2("📋 일반 로그", className="mb-4 text-center"),
+                    html.Hr(),
+                ])
+            ]),
+            
+            # 로그 통계 카드
             dbc.Row([
                 dbc.Col([
                     dbc.Card([
                         dbc.CardHeader([
-                            html.H4("📋 일반 로그", className="mb-0 text-success"),
-                            html.Small("로그인, 센서, 프로젝트, 콘크리트 로그 확인", className="text-muted")
+                            html.H4("📊 로그 통계", className="mb-0")
+                        ]),
+                        dbc.CardBody([
+                            html.Div(id="admin-log-stats")
+                        ])
+                    ], className="mb-4")
+                ])
+            ]),
+            
+            # 필터 옵션
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader([
+                            html.H4("🔍 필터 옵션", className="mb-0")
                         ]),
                         dbc.CardBody([
                             # 로그 필터링 옵션
@@ -226,59 +247,32 @@ def layout(**kwargs):
                                     dbc.Button("최근 7일", id="btn-last-7days", color="outline-primary", size="sm", className="me-2"),
                                     dbc.Button("최근 30일", id="btn-last-30days", color="outline-primary", size="sm"),
                                 ], width=12)
-                            ], className="mb-4"),
-                            
-                            # 로그 테이블 컨테이너
-                            html.Div(id="logs-table-container"),
-                            
-                            # 로그 통계
-                            dbc.Row([
-                                dbc.Col([
-                                    dbc.Card([
-                                        dbc.CardBody([
-                                            html.H6("총 로그 수", className="text-primary"),
-                                            html.H4(id="total-logs-count", className="fw-bold text-primary")
-                                        ])
-                                    ])
-                                ], width=3),
-                                dbc.Col([
-                                    dbc.Card([
-                                        dbc.CardBody([
-                                            html.H6("프로젝트 로그", className="text-info"),
-                                            html.H4(id="project-logs-count", className="fw-bold text-info")
-                                        ])
-                                    ])
-                                ], width=3),
-                                dbc.Col([
-                                    dbc.Card([
-                                        dbc.CardBody([
-                                            html.H6("콘크리트 로그", className="text-warning"),
-                                            html.H4(id="concrete-logs-count", className="fw-bold text-warning")
-                                        ])
-                                    ])
-                                ], width=3),
-                                dbc.Col([
-                                    dbc.Card([
-                                        dbc.CardBody([
-                                            html.H6("센서 로그", className="text-success"),
-                                            html.H4(id="sensor-logs-count", className="fw-bold text-success")
-                                        ])
-                                    ])
-                                ], width=3),
-                            ], className="mt-4")
+                            ])
                         ])
-                    ], className="shadow")
+                    ], className="mb-4")
+                ])
+            ]),
+            
+            # 로그 테이블
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader([
+                            html.H4("📋 일반 로그", className="mb-0"),
+                            html.Small("(10초마다 자동 새로고침)", className="text-muted")
+                        ]),
+                        dbc.CardBody([
+                            html.Div(id="logs-table-container")
+                        ])
+                    ])
                 ])
             ])
         ], fluid=True)
     ])
 
 @callback(
-    [Output("logs-table-container", "children"),
-     Output("total-logs-count", "children"),
-     Output("project-logs-count", "children"),
-     Output("concrete-logs-count", "children"),
-     Output("sensor-logs-count", "children")],
+    [Output("admin-log-stats", "children"),
+     Output("logs-table-container", "children")],
     [Input("log-refresh-interval", "n_intervals"),
      Input("log-type-dropdown", "value"),
      Input("log-action-dropdown", "value"),
@@ -287,7 +281,7 @@ def layout(**kwargs):
      Input("log-date-filter", "end_date")]
 )
 def update_logs_table(n_intervals, log_type_filter, action_filter, limit, start_date, end_date):
-    """로그 테이블을 업데이트합니다."""
+    """로그 테이블과 통계를 업데이트합니다."""
     all_logs = get_all_logs()
     
     # 날짜 필터링 적용
@@ -312,9 +306,47 @@ def update_logs_table(n_intervals, log_type_filter, action_filter, limit, start_
     
     # 통계 계산 (날짜 필터링 후 전체 로그 기준)
     total_count = len(all_logs)
+    login_count = len([log for log in all_logs if log["log_type"] == "login"])
     project_count = len([log for log in all_logs if log["log_type"] == "project"])
     concrete_count = len([log for log in all_logs if log["log_type"] == "concrete"])
     sensor_count = len([log for log in all_logs if log["log_type"] == "sensor"])
+    
+    # 통계 카드 생성
+    stats_cards = []
+    
+    # 총 로그 수
+    stats_cards.append(
+        dbc.Col([
+            dbc.Card([
+                dbc.CardBody([
+                    html.H4(str(total_count), className="text-primary"),
+                    html.P("총 로그", className="text-muted mb-0")
+                ])
+            ], className="text-center")
+        ], width=2)
+    )
+    
+    # 로그 유형별 통계
+    log_stats = [
+        ("로그인", login_count, "success"),
+        ("프로젝트", project_count, "info"),
+        ("콘크리트", concrete_count, "warning"),
+        ("센서", sensor_count, "danger")
+    ]
+    
+    for log_type, count, color in log_stats:
+        stats_cards.append(
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.H5(str(count), className=f"text-{color}"),
+                        html.P(log_type, className="text-muted mb-0 small")
+                    ])
+                ], className="text-center")
+            ], width=2)
+        )
+    
+    stats_component = dbc.Row(stats_cards)
     
     # 테이블 생성
     if not filtered_logs:
@@ -348,13 +380,7 @@ def update_logs_table(n_intervals, log_type_filter, action_filter, limit, start_
             html.Tbody(table_rows)
         ], striped=True, bordered=True, hover=True, responsive=True)
     
-    return (
-        table_content,
-        str(total_count),
-        str(project_count),
-        str(concrete_count),
-        str(sensor_count)
-    )
+    return stats_component, table_content
 
 @callback(
     [Output("log-date-filter", "start_date"),
