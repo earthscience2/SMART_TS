@@ -32,7 +32,7 @@ def layout(error: str | None = None, **kwargs):
                             dbc.Button("관리자 로그인", type="submit", color="danger", className="w-100"),
                         ],
                     ),
-                    html.Div(id="error-alert"),
+                    html.Div(id="admin-error-alert"),
                     html.Hr(className="mt-4 mb-3"),
                     html.Div([
                         html.Small("일반 사용자는 ", className="text-muted"),
@@ -45,8 +45,9 @@ def layout(error: str | None = None, **kwargs):
     ])
 
 @callback(
-    Output("error-alert", "children"),
-    Input("admin-url", "search")
+    Output("admin-error-alert", "children"),
+    Input("admin-url", "search"),
+    allow_duplicate=True
 )
 def update_error_message(search):
     """URL 파라미터에서 error 메시지를 추출하여 Alert 표시"""

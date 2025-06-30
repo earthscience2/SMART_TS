@@ -134,7 +134,8 @@ def layout(**kwargs):
 
 @callback(
     [Output("admin-projects-url", "pathname")],
-    [Input("admin-projects-url", "pathname")]
+    [Input("admin-projects-url", "pathname")],
+    allow_duplicate=True
 )
 def check_admin_access(pathname):
     """관리자 권한 확인"""
