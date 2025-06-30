@@ -30,7 +30,7 @@ def layout(**kwargs):
                                             )
                                         ])
                                     ], className="mb-3")
-                                ], width=4),
+                                ], width=3),
                                 dbc.Col([
                                     dbc.Card([
                                         dbc.CardBody([
@@ -42,7 +42,19 @@ def layout(**kwargs):
                                             )
                                         ])
                                     ], className="mb-3")
-                                ], width=4),
+                                ], width=3),
+                                dbc.Col([
+                                    dbc.Card([
+                                        dbc.CardBody([
+                                            html.H5("⚙️ 자동화 관리", className="card-title text-warning"),
+                                            html.P("자동화 작업 설정 및 모니터링", className="card-text"),
+                                            dcc.Link(
+                                                dbc.Button("자동화 관리", color="warning", className="w-100"),
+                                                href="/admin_automation"
+                                            )
+                                        ])
+                                    ], className="mb-3")
+                                ], width=3),
                                 dbc.Col([
                                     dbc.Card([
                                         dbc.CardBody([
@@ -54,7 +66,7 @@ def layout(**kwargs):
                                             )
                                         ])
                                     ], className="mb-3")
-                                ], width=4),
+                                ], width=3),
                             ]),
                             
                             html.Hr(className="my-4"),

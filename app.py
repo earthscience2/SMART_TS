@@ -197,6 +197,68 @@ def _build_navbar():
         className="mb-4",
     )
 
+def _build_admin_navbar():
+    """관리자 페이지용 네비게이션 바"""
+    admin_user = flask_request.cookies.get("admin_user")
+    
+    children = [
+        # 관리자 네비게이션 링크들
+        dbc.NavItem(dcc.Link("📊 프로젝트", href="/admin_projects", className="nav-link fw-bold", id="admin-nav-projects")),
+        dbc.NavItem(dcc.Link("📋 로그", href="/admin_logs", className="nav-link fw-bold", id="admin-nav-logs")),
+        dbc.NavItem(dcc.Link("⚙️ 자동화", href="/admin_automation", className="nav-link fw-bold", id="admin-nav-automation")),
+        # Logout 버튼
+        dbc.NavItem(
+            html.A(
+                "Logout",
+                href="/logout",
+                id="admin-nav-logout",
+                className="btn btn-danger btn-sm fw-bold mt-1 ms-auto",
+                style={"color": "white", "backgroundColor": "#dc3545", "border": "none", "marginLeft": "50px"},
+            ),
+        ),
+    ]
+
+    # 브랜드 컴포넌트 설정
+    brand_component = html.Span([
+        html.Span("Concrete MONITORㅤ| ", className="fw-bold"),
+        html.Span(f"  🔧 {admin_user} (관리자)", className="ms-2 fw-bold text-warning")
+    ])
+
+    return html.Div([
+        # 커스텀 CSS 스타일
+        html.Style("""
+            .admin-navbar .nav-link.active {
+                background-color: #ffc107 !important;
+                color: #000 !important;
+                border-radius: 5px;
+                padding: 8px 15px !important;
+                margin: 0 5px;
+                transition: all 0.3s ease;
+            }
+            .admin-navbar .nav-link:hover {
+                background-color: #ffca2c !important;
+                color: #000 !important;
+                border-radius: 5px;
+                padding: 8px 15px !important;
+                margin: 0 5px;
+            }
+        """),
+        dbc.Navbar(
+            dbc.Container([
+                dbc.NavbarBrand(brand_component, href="/admin_dashboard"),
+                dbc.Nav(
+                    children,
+                    navbar=True,
+                    className="ms-1"
+                ),
+            ], fluid=True),
+            color="dark",
+            dark=True,
+            className="mb-4 admin-navbar",
+            style={"borderBottom": "2px solid #ffc107"}
+        )
+    ])
+
 def serve_layout():
     """Dash Serve layout function, evaluated per request.
 
@@ -204,16 +266,18 @@ def serve_layout():
     """
 
     # 관리자 페이지 접근 체크
-    if flask_request.path.startswith("/admin_dashboard") or flask_request.path.startswith("/admin_projects") or flask_request.path.startswith("/admin_logs") or flask_request.path.startswith("/admin_users"):
+    if flask_request.path.startswith("/admin_dashboard") or flask_request.path.startswith("/admin_projects") or flask_request.path.startswith("/admin_logs") or flask_request.path.startswith("/admin_users") or flask_request.path.startswith("/admin_automation"):
         if not flask_request.cookies.get("admin_user"):
             from pages import admin as admin_page
             error_param = flask_request.args.get("error")
             return admin_page.layout(error=error_param)
-        # 관리자 페이지는 별도 네비게이션 바를 사용하므로 기본 레이아웃 사용
+        # 관리자 페이지는 관리자용 네비게이션 바를 사용
+        admin_navbar = _build_admin_navbar()
         return dbc.Container(
             fluid=True,
             children=[
                 dcc.Location(id="url"),
+                admin_navbar,
                 dbc.Card(className="shadow-sm p-4", children=[page_container]),
             ],
         )
@@ -309,6 +373,28 @@ def update_nav_active(pathname, search):
         login_logout_classes[0], login_logout_classes[1],
         nav_texts[0], nav_texts[1], nav_texts[2], nav_texts[3], nav_texts[4]
     )
+
+# 관리자 네비게이션 바 active 클래스 동적 적용 콜백
+@app.callback(
+    [Output("admin-nav-projects", "className"),
+     Output("admin-nav-logs", "className"),
+     Output("admin-nav-automation", "className")],
+    [Input("url", "pathname")]
+)
+def update_admin_nav_active(pathname):
+    """관리자 네비게이션 바의 active 상태를 업데이트합니다."""
+    # 기본 클래스 설정
+    base_classes = ["nav-link fw-bold"] * 3
+    
+    # Active 클래스 추가
+    if pathname.startswith("/admin_projects"):
+        base_classes[0] += " active"
+    elif pathname.startswith("/admin_logs"):
+        base_classes[1] += " active"
+    elif pathname.startswith("/admin_automation"):
+        base_classes[2] += " active"
+    
+    return base_classes[0], base_classes[1], base_classes[2]
 
 # 네비게이션 링크 href 동적 업데이트
 @app.callback(
