@@ -206,17 +206,18 @@ app.index_string = '''
         {%favicon%}
         {%css%}
         <style>
-            .admin-navbar .nav-link {
+            .admin-navbar .nav-link, .user-navbar .nav-link {
                 padding: 8px 15px !important;
                 margin: 0 5px;
                 border-radius: 5px;
                 transition: all 0.3s ease;
+                font-weight: 600;
             }
-            .admin-navbar .nav-link.active {
+            .admin-navbar .nav-link.active, .user-navbar .nav-link.active {
                 background-color: #ffc107 !important;
                 color: #000 !important;
             }
-            .admin-navbar .nav-link:hover {
+            .admin-navbar .nav-link:hover, .user-navbar .nav-link:hover {
                 background-color: #ffca2c !important;
                 color: #000 !important;
             }
@@ -287,12 +288,13 @@ def _build_navbar():
             dbc.Nav(
                 children,
                 navbar=True,
-                className="ms-1"  # 브랜드 옆 여백을 줄여서 왼쪽으로 이동
+                className="me-3"  # 전체 네비게이션을 오른쪽에서 더 멀어지게 하여 왼쪽으로 이동
             ),
         ], fluid=True),
         color="dark",
         dark=True,
-        className="mb-4",
+        className="mb-4 user-navbar",
+        style={"borderBottom": "2px solid #ffc107"}
     )
 
 def _build_admin_navbar():
