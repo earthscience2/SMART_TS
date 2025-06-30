@@ -123,6 +123,7 @@ def logout():
 # 이제 Dash 앱 생성
 # ──────────────────────────────────────────────────────────────────────────────
 from dash import Dash, html, dcc, page_container, no_update
+from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
 from flask import request as flask_request
 
@@ -288,8 +289,6 @@ def update_navbar(pathname):
     return _build_navbar()
 
 # 네비게이션 바 active 클래스 동적 적용 콜백
-from dash.dependencies import Input, Output
-
 @app.callback(
     [Output("nav-home", "className"),
      Output("nav-project", "className"),
