@@ -10,34 +10,6 @@ def layout(**kwargs):
     return html.Div([
         dcc.Location(id="admin-users-url", refresh=False),
         dbc.Container([
-            # 관리자 전용 네비게이션 바
-            dbc.Navbar(
-                dbc.Container([
-                    dbc.Nav([
-                        dbc.NavItem(dcc.Link("📊 프로젝트 관리", href="/admin_projects", className="nav-link")),
-                        dbc.NavItem(dcc.Link("📋 로그 확인", href="/admin_logs", className="nav-link")),
-                        dbc.NavItem(dcc.Link("👥 사용자 관리", href="/admin_users", className="nav-link active")),
-                        dbc.NavItem(
-                            html.A(
-                                "🏠 일반 페이지",
-                                href="/",
-                                className="btn btn-outline-light btn-sm me-2"
-                            )
-                        ),
-                        dbc.NavItem(
-                            html.A(
-                                "🚪 로그아웃",
-                                href="/logout",
-                                className="btn btn-outline-light btn-sm"
-                            )
-                        ),
-                    ], navbar=True, className="ms-auto"),
-                ], fluid=True),
-                color="dark",
-                dark=True,
-                className="mb-4",
-            ),
-            
             # 메인 콘텐츠
             dbc.Row([
                 dbc.Col([
