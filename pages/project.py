@@ -432,6 +432,24 @@ layout = dbc.Container(
                                     "fontWeight": "600"
                                 }
                             ),
+                            dbc.Tab(
+                                label="⚠️ TCI 분석", 
+                                tab_id="tab-tci",
+                                tab_style={
+                                    "marginLeft": "2px",
+                                    "marginRight": "2px",
+                                    "border": "none",
+                                    "borderRadius": "6px 6px 0 0",
+                                    "backgroundColor": "#f8fafc"
+                                },
+                                active_tab_style={
+                                    "backgroundColor": "white",
+                                    "border": "1px solid #e2e8f0",
+                                    "borderBottom": "1px solid white",
+                                    "color": "#3182ce",
+                                    "fontWeight": "600"
+                                }
+                            ),
                         ], 
                         id="tabs-main", 
                         active_tab="tab-3d",
@@ -1936,7 +1954,127 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             ])
             
         ]), f"수치해석 결과 ({len(files)}개 파일)"
-    return html.Div(), current_file_title
+    elif active_tab == "tab-tci":
+        # TCI 분석 탭: 온도 균열 지수 분석 및 시각화
+        if not (selected_rows and tbl_data):
+            return html.Div("콘크리트를 선택하세요.")
+        
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+        concrete_pk = row["concrete_pk"]
+        
+        # TCI 관련 파일 경로 확인
+        tci_html_path = f"source/tci_heatmap_risk_only.html"
+        tci_csv_path = f"source/tci_node_summary_fixed.csv"
+        
+        # TCI 파일 존재 여부 확인
+        tci_files_exist = os.path.exists(tci_html_path) and os.path.exists(tci_csv_path)
+        
+        if not tci_files_exist:
+            return html.Div([
+                html.Div([
+                    html.I(className="fas fa-exclamation-triangle fa-2x", style={"color": "#f59e0b", "marginBottom": "16px"}),
+                    html.H5("TCI 분석 파일이 없습니다", style={
+                        "color": "#374151",
+                        "fontWeight": "500",
+                        "lineHeight": "1.6",
+                        "margin": "0"
+                    }),
+                    html.P("TCI 분석을 실행하려면 먼저 수치해석을 완료해야 합니다.", style={
+                        "color": "#6b7280",
+                        "fontSize": "14px",
+                        "marginTop": "8px"
+                    })
+                ], style={
+                    "textAlign": "center",
+                    "padding": "60px 40px",
+                    "backgroundColor": "#f8fafc",
+                    "borderRadius": "12px",
+                    "border": "1px solid #e2e8f0",
+                    "marginTop": "60px"
+                })
+            ])
+        
+        return html.Div([
+            # TCI 분석 개요 (노션 스타일)
+            html.Div([
+                html.Div([
+                    html.H6("📊 TCI (Temperature Cracking Index) 분석", style={
+                        "fontWeight": "600",
+                        "color": "#374151",
+                        "marginBottom": "12px",
+                        "fontSize": "16px"
+                    }),
+                    html.P("온도 균열 지수(TCI)는 콘크리트의 온도 응력과 인장 강도를 고려하여 균열 발생 위험도를 평가하는 지표입니다.", style={
+                        "color": "#6b7280",
+                        "fontSize": "14px",
+                        "lineHeight": "1.6",
+                        "margin": "0"
+                    }),
+                    html.Div([
+                        html.Span("🔴 높음", style={"color": "#dc2626", "fontWeight": "500", "marginRight": "16px"}),
+                        html.Span("🟡 보통", style={"color": "#d97706", "fontWeight": "500", "marginRight": "16px"}),
+                        html.Span("🟢 낮음", style={"color": "#059669", "fontWeight": "500"})
+                    ], style={"marginTop": "12px"})
+                ], style={
+                    "padding": "20px",
+                    "backgroundColor": "white",
+                    "borderRadius": "12px",
+                    "border": "1px solid #e5e7eb",
+                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
+                    "marginBottom": "20px"
+                })
+            ]),
+            
+            # TCI 히트맵 뷰어 (노션 스타일)
+            html.Div([
+                html.Div([
+                    html.H6("🌡️ TCI 히트맵", style={
+                        "fontWeight": "600",
+                        "color": "#374151",
+                        "marginBottom": "16px",
+                        "fontSize": "16px"
+                    }),
+                    html.Iframe(
+                        src=f"/assets/{tci_html_path}",
+                        style={
+                            "width": "100%",
+                            "height": "60vh",
+                            "border": "none",
+                            "borderRadius": "8px"
+                        }
+                    ),
+                ], style={
+                    "padding": "20px",
+                    "backgroundColor": "white",
+                    "borderRadius": "12px",
+                    "border": "1px solid #e5e7eb",
+                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
+                    "marginBottom": "20px"
+                })
+            ]),
+            
+            # TCI 노드별 요약 테이블 (노션 스타일)
+            html.Div([
+                html.Div([
+                    html.H6("📋 TCI 노드별 요약", style={
+                        "fontWeight": "600",
+                        "color": "#374151",
+                        "marginBottom": "16px",
+                        "fontSize": "16px"
+                    }),
+                    html.Div(id="tci-summary-table", style={
+                        "maxHeight": "400px",
+                        "overflowY": "auto"
+                    }),
+                ], style={
+                    "padding": "20px",
+                    "backgroundColor": "white",
+                    "borderRadius": "12px",
+                    "border": "1px solid #e5e7eb",
+                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
+                })
+            ]),
+        ])
 
 # 선택 파일 zip 다운로드 콜백
 @callback(
