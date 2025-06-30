@@ -515,7 +515,7 @@ def handle_add_modal(save_clicks, cancel_clicks, project_name, selected_structur
             
             # 프로젝트 생성
             add_project_data(
-                user_company_pk="UC000001",  # 기본값 사용
+                s_code=selected_structure.get('structure_id', ''),
                 name=project_name
             )
             
