@@ -312,7 +312,7 @@ def _build_admin_navbar():
                 href="/logout",
                 id="admin-nav-logout",
                 className="btn btn-danger btn-sm fw-bold mt-1 ms-auto",
-                style={"color": "white", "backgroundColor": "#dc3545", "border": "none", "marginLeft": "100px"},
+                style={"color": "white", "backgroundColor": "#dc3545", "border": "none", "marginLeft": "200px"},
             ),
         ),
     ]
@@ -329,7 +329,7 @@ def _build_admin_navbar():
             dbc.Nav(
                 children,
                 navbar=True,
-                className="ms-1"
+                className="me-3"  # 전체 네비게이션을 오른쪽에서 더 멀어지게 하여 왼쪽으로 이동
             ),
         ], fluid=True),
         color="dark",
