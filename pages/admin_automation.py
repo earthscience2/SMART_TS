@@ -58,6 +58,35 @@ def parse_automation_log_line(line):
     
     return None
 
+def parse_automation_timestamp(timestamp_str):
+    """자동화 로그 타임스탬프 문자열을 datetime 객체로 변환합니다."""
+    try:
+        # 2025-01-13 14:30:25 형식
+        return datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        try:
+            # 2025-01-13 14:30:25,123 형식 (밀리초 포함)
+            return datetime.strptime(timestamp_str.split(',')[0], "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            # 파싱 실패 시 현재 시간 반환
+            return datetime.now()
+
+def filter_automation_logs_by_date(logs, start_date, end_date):
+    """날짜 범위에 따라 자동화 로그를 필터링합니다."""
+    if not start_date or not end_date:
+        return logs
+    
+    filtered_logs = []
+    start_dt = datetime.combine(start_date, datetime.min.time())
+    end_dt = datetime.combine(end_date, datetime.max.time())
+    
+    for log in logs:
+        log_dt = parse_automation_timestamp(log["timestamp"])
+        if start_dt <= log_dt <= end_dt:
+            filtered_logs.append(log)
+    
+    return filtered_logs
+
 def read_automation_logs():
     """자동화 로그 파일들을 읽어서 통합된 로그 리스트 반환"""
     log_files = [
@@ -163,16 +192,16 @@ def layout():
                                         id="automation-module-filter",
                                         options=[
                                             {"label": "전체", "value": "all"},
-                                            {"label": "AUTO_RUN", "value": "AUTO_RUN"},
-                                            {"label": "AUTO_SENSOR", "value": "AUTO_SENSOR"},
-                                            {"label": "AUTO_INP", "value": "AUTO_INP"},
-                                            {"label": "AUTO_INP_TO_FRD", "value": "AUTO_INP_TO_FRD"},
-                                            {"label": "AUTO_FRD_TO_VTK", "value": "AUTO_FRD_TO_VTK"},
+                                            {"label": "통합실행", "value": "AUTO_RUN"},
+                                            {"label": "센서 데이터 수집 및 저장", "value": "AUTO_SENSOR"},
+                                            {"label": "INP 파일 생성", "value": "AUTO_INP"},
+                                            {"label": "INP → FRD 파일 변환", "value": "AUTO_INP_TO_FRD"},
+                                            {"label": "FRD → VTK 파일 변환", "value": "AUTO_FRD_TO_VTK"},
                                         ],
                                         value="all"
                                     )
                                 ], className="mb-3")
-                            ], width=4),
+                            ], width=3),
                             dbc.Col([
                                 html.Div([
                                     dbc.Label("로그 레벨"),
@@ -188,7 +217,7 @@ def layout():
                                         value="all"
                                     )
                                 ], className="mb-3")
-                            ], width=4),
+                            ], width=3),
                             dbc.Col([
                                 html.Div([
                                     dbc.Label("표시 개수"),
@@ -203,7 +232,26 @@ def layout():
                                         value=100
                                     )
                                 ], className="mb-3")
-                            ], width=4),
+                            ], width=3),
+                            dbc.Col([
+                                html.Div([
+                                    dbc.Label("날짜 범위"),
+                                    dcc.DatePickerRange(
+                                        id="automation-date-filter",
+                                        start_date=(datetime.now() - timedelta(days=7)).date(),
+                                        end_date=datetime.now().date(),
+                                        display_format="YYYY-MM-DD",
+                                        style={"width": "100%"}
+                                    )
+                                ], className="mb-3")
+                            ], width=3),
+                        ]),
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Button("전체 기간", id="auto-btn-all-dates", color="outline-secondary", size="sm", className="me-2"),
+                                dbc.Button("최근 7일", id="auto-btn-last-7days", color="outline-primary", size="sm", className="me-2"),
+                                dbc.Button("최근 30일", id="auto-btn-last-30days", color="outline-primary", size="sm"),
+                            ], width=12)
                         ])
                     ])
                 ], className="mb-4")
@@ -232,13 +280,22 @@ def layout():
     [Input("automation-logs-interval", "n_intervals"),
      Input("automation-module-filter", "value"),
      Input("automation-level-filter", "value"),
-     Input("automation-count-filter", "value")]
+     Input("automation-count-filter", "value"),
+     Input("automation-date-filter", "start_date"),
+     Input("automation-date-filter", "end_date")]
 )
-def update_automation_logs(n_intervals, module_filter, level_filter, count_filter):
+def update_automation_logs(n_intervals, module_filter, level_filter, count_filter, start_date, end_date):
     """자동화 로그를 읽어서 테이블로 표시"""
     
     # 로그 데이터 읽기
     logs = read_automation_logs()
+    
+    # 날짜 필터링 적용
+    if start_date and end_date:
+        from datetime import datetime as dt_import
+        start_dt = dt_import.strptime(start_date, "%Y-%m-%d").date()
+        end_dt = dt_import.strptime(end_date, "%Y-%m-%d").date()
+        logs = filter_automation_logs_by_date(logs, start_dt, end_dt)
     
     # 필터 적용
     filtered_logs = logs.copy()
@@ -254,7 +311,7 @@ def update_automation_logs(n_intervals, module_filter, level_filter, count_filte
         count_filter = int(count_filter)
         filtered_logs = filtered_logs[:count_filter]
     
-    # 통계 계산
+    # 통계 계산 (날짜 필터링 후 전체 로그 기준)
     total_logs = len(logs)
     module_stats = {}
     level_stats = {}
@@ -359,4 +416,40 @@ def update_automation_logs(n_intervals, module_filter, level_filter, count_filte
         
         table_component = [header] + rows
     
-    return stats_component, table_component 
+    return stats_component, table_component
+
+@callback(
+    [Output("automation-date-filter", "start_date"),
+     Output("automation-date-filter", "end_date")],
+    [Input("auto-btn-all-dates", "n_clicks"),
+     Input("auto-btn-last-7days", "n_clicks"),
+     Input("auto-btn-last-30days", "n_clicks")],
+    prevent_initial_call=True
+)
+def update_automation_date_filter(btn_all, btn_7days, btn_30days):
+    """자동화 로그 날짜 필터 버튼 클릭 시 날짜 범위를 업데이트합니다."""
+    from dash import ctx
+    
+    if not ctx.triggered:
+        return datetime.now().date(), datetime.now().date()
+    
+    button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+    
+    if button_id == "auto-btn-all-dates":
+        # 전체 기간 (과거 1년)
+        start_date = (datetime.now() - timedelta(days=365)).date()
+        end_date = datetime.now().date()
+    elif button_id == "auto-btn-last-7days":
+        # 최근 7일
+        start_date = (datetime.now() - timedelta(days=7)).date()
+        end_date = datetime.now().date()
+    elif button_id == "auto-btn-last-30days":
+        # 최근 30일
+        start_date = (datetime.now() - timedelta(days=30)).date()
+        end_date = datetime.now().date()
+    else:
+        # 기본값
+        start_date = (datetime.now() - timedelta(days=7)).date()
+        end_date = datetime.now().date()
+    
+    return start_date, end_date 

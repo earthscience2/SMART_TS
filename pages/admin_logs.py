@@ -118,6 +118,35 @@ def get_log_badge_color(log_type, action):
     else:
         return "secondary"
 
+def parse_log_timestamp(timestamp_str):
+    """로그 타임스탬프 문자열을 datetime 객체로 변환합니다."""
+    try:
+        # 2025-01-13 14:30:25 형식
+        return datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        try:
+            # 2025-01-13 14:30:25,123 형식 (밀리초 포함)
+            return datetime.strptime(timestamp_str.split(',')[0], "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            # 파싱 실패 시 현재 시간 반환
+            return datetime.now()
+
+def filter_logs_by_date(logs, start_date, end_date):
+    """날짜 범위에 따라 로그를 필터링합니다."""
+    if not start_date or not end_date:
+        return logs
+    
+    filtered_logs = []
+    start_dt = datetime.combine(start_date, datetime.min.time())
+    end_dt = datetime.combine(end_date, datetime.max.time())
+    
+    for log in logs:
+        log_dt = parse_log_timestamp(log["timestamp"])
+        if start_dt <= log_dt <= end_dt:
+            filtered_logs.append(log)
+    
+    return filtered_logs
+
 def layout(**kwargs):
     """Admin logs management layout."""
     return html.Div([
@@ -178,7 +207,25 @@ def layout(**kwargs):
                                         value=100,
                                         className="mb-3"
                                     )
+                                ], width=3),
+                                dbc.Col([
+                                    dbc.Label("날짜 범위", className="fw-bold"),
+                                    dcc.DatePickerRange(
+                                        id="log-date-filter",
+                                        start_date=(datetime.now() - timedelta(days=7)).date(),
+                                        end_date=datetime.now().date(),
+                                        display_format="YYYY-MM-DD",
+                                        style={"width": "100%"},
+                                        className="mb-3"
+                                    )
                                 ], width=3)
+                            ], className="mb-2"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Button("전체 기간", id="btn-all-dates", color="outline-secondary", size="sm", className="me-2"),
+                                    dbc.Button("최근 7일", id="btn-last-7days", color="outline-primary", size="sm", className="me-2"),
+                                    dbc.Button("최근 30일", id="btn-last-30days", color="outline-primary", size="sm"),
+                                ], width=12)
                             ], className="mb-4"),
                             
                             # 로그 테이블 컨테이너
@@ -235,11 +282,20 @@ def layout(**kwargs):
     [Input("log-refresh-interval", "n_intervals"),
      Input("log-type-dropdown", "value"),
      Input("log-action-dropdown", "value"),
-     Input("log-limit-dropdown", "value")]
+     Input("log-limit-dropdown", "value"),
+     Input("log-date-filter", "start_date"),
+     Input("log-date-filter", "end_date")]
 )
-def update_logs_table(n_intervals, log_type_filter, action_filter, limit):
+def update_logs_table(n_intervals, log_type_filter, action_filter, limit, start_date, end_date):
     """로그 테이블을 업데이트합니다."""
     all_logs = get_all_logs()
+    
+    # 날짜 필터링 적용
+    if start_date and end_date:
+        from datetime import datetime as dt_import
+        start_dt = dt_import.strptime(start_date, "%Y-%m-%d").date()
+        end_dt = dt_import.strptime(end_date, "%Y-%m-%d").date()
+        all_logs = filter_logs_by_date(all_logs, start_dt, end_dt)
     
     # 필터링 적용
     filtered_logs = all_logs
@@ -254,7 +310,7 @@ def update_logs_table(n_intervals, log_type_filter, action_filter, limit):
     if limit < len(filtered_logs):
         filtered_logs = filtered_logs[:limit]
     
-    # 통계 계산
+    # 통계 계산 (날짜 필터링 후 전체 로그 기준)
     total_count = len(all_logs)
     project_count = len([log for log in all_logs if log["log_type"] == "project"])
     concrete_count = len([log for log in all_logs if log["log_type"] == "concrete"])
@@ -299,6 +355,42 @@ def update_logs_table(n_intervals, log_type_filter, action_filter, limit):
         str(concrete_count),
         str(sensor_count)
     )
+
+@callback(
+    [Output("log-date-filter", "start_date"),
+     Output("log-date-filter", "end_date")],
+    [Input("btn-all-dates", "n_clicks"),
+     Input("btn-last-7days", "n_clicks"),
+     Input("btn-last-30days", "n_clicks")],
+    prevent_initial_call=True
+)
+def update_date_filter(btn_all, btn_7days, btn_30days):
+    """날짜 필터 버튼 클릭 시 날짜 범위를 업데이트합니다."""
+    from dash import ctx
+    
+    if not ctx.triggered:
+        return datetime.now().date(), datetime.now().date()
+    
+    button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+    
+    if button_id == "btn-all-dates":
+        # 전체 기간 (과거 1년)
+        start_date = (datetime.now() - timedelta(days=365)).date()
+        end_date = datetime.now().date()
+    elif button_id == "btn-last-7days":
+        # 최근 7일
+        start_date = (datetime.now() - timedelta(days=7)).date()
+        end_date = datetime.now().date()
+    elif button_id == "btn-last-30days":
+        # 최근 30일
+        start_date = (datetime.now() - timedelta(days=30)).date()
+        end_date = datetime.now().date()
+    else:
+        # 기본값
+        start_date = (datetime.now() - timedelta(days=7)).date()
+        end_date = datetime.now().date()
+    
+    return start_date, end_date
 
 @callback(
     [Output("admin-logs-url", "pathname")],
