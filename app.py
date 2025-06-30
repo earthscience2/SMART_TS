@@ -122,7 +122,7 @@ def logout():
 # ──────────────────────────────────────────────────────────────────────────────
 # 이제 Dash 앱 생성
 # ──────────────────────────────────────────────────────────────────────────────
-from dash import Dash, html, dcc, page_container
+from dash import Dash, html, dcc, page_container, no_update
 import dash_bootstrap_components as dbc
 from flask import request as flask_request
 
@@ -433,7 +433,8 @@ def update_nav_links(pathname, search):
 @app.callback(
     Output("url", "pathname"),
     Input("url", "pathname"),
-    prevent_initial_call=True
+    prevent_initial_call=True,
+    allow_duplicate=True
 )
 def prevent_admin_to_normal_pages(pathname):
     """관리자 페이지에서 일반 페이지로의 접근을 차단하고 대시보드로 리다이렉트"""
@@ -445,19 +446,20 @@ def prevent_admin_to_normal_pages(pathname):
         if pathname in ["/", "/project", "/sensor", "/concrete", "/download", "/tci_analysis"]:
             return "/admin_dashboard"
     
-    return dash.no_update
+    return no_update
 
 # 관리자 브랜드 클릭 콜백
 @app.callback(
     Output("url", "pathname"),
     Input("admin-brand", "n_clicks"),
-    prevent_initial_call=True
+    prevent_initial_call=True,
+    allow_duplicate=True
 )
 def admin_brand_click(n_clicks):
     """관리자 브랜드 클릭 시 대시보드로 이동"""
     if n_clicks:
         return "/admin_dashboard"
-    return dash.no_update
+    return no_update
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=23022)
