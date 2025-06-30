@@ -6,6 +6,54 @@ import json
 from pathlib import Path
 import configparser
 import bcrypt
+import logging
+import os
+
+# --------------------------------------------------
+# 로그 설정
+# --------------------------------------------------
+
+def setup_logger(log_name: str, log_file: str):
+    """로그를 위한 로거 설정"""
+    log_dir = "log"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    
+    logger = logging.getLogger(log_name)
+    logger.setLevel(logging.INFO)
+    
+    # 기존 핸들러 제거 (중복 방지)
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+    
+    # 파일 핸들러 설정
+    file_handler = logging.FileHandler(os.path.join(log_dir, log_file), encoding='utf-8')
+    file_handler.setLevel(logging.INFO)
+    
+    # 포맷터 설정
+    formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
+    file_handler.setFormatter(formatter)
+    
+    logger.addHandler(file_handler)
+    return logger
+
+def log_project_operation(operation: str, project_pk: str, details: str):
+    """프로젝트 관련 작업을 로그에 기록"""
+    logger = setup_logger('project_logger', 'project.log')
+    log_message = f"PROJECT_{operation.upper()} | Project: {project_pk} | Details: {details}"
+    logger.info(log_message)
+
+def log_concrete_operation(operation: str, concrete_pk: str, project_pk: str, details: str):
+    """콘크리트 관련 작업을 로그에 기록"""
+    logger = setup_logger('concrete_logger', 'concrete.log')
+    log_message = f"CONCRETE_{operation.upper()} | Concrete: {concrete_pk} | Project: {project_pk} | Details: {details}"
+    logger.info(log_message)
+
+def log_sensor_operation(operation: str, sensor_pk: str, concrete_pk: str, details: str):
+    """센서 관련 작업을 로그에 기록"""
+    logger = setup_logger('sensor_logger', 'sensor.log')
+    log_message = f"SENSOR_{operation.upper()} | Sensor: {sensor_pk} | Concrete: {concrete_pk} | Details: {details}"
+    logger.info(log_message)
 
 # --------------------------------------------------
 # SQLAlchemy Engine 생성
@@ -177,6 +225,9 @@ def add_project_data(s_code: str, name: str) -> None:
     with engine.connect() as conn:
         conn.execute(text(sql), params)
         conn.commit()
+        
+    # 로그 기록
+    log_project_operation("CREATE", new_pk, f"s_code: {s_code}, name: {name}")
 
 # 프로젝트 업데이트
 def update_project_data(project_pk: str, **kwargs) -> None:
@@ -199,6 +250,10 @@ def update_project_data(project_pk: str, **kwargs) -> None:
     with engine.connect() as conn:
         conn.execute(text(sql), params)
         conn.commit()
+        
+    # 로그 기록
+    update_details = ", ".join([f"{k}: {v}" for k, v in update_fields.items()])
+    log_project_operation("UPDATE", project_pk, f"Updated fields: {update_details}")
 
 # 프로젝트 삭제
 def delete_project_data(project_pk: str) -> None:
@@ -207,6 +262,9 @@ def delete_project_data(project_pk: str) -> None:
     with engine.connect() as conn:
         conn.execute(text(sql), params)
         conn.commit()
+        
+    # 로그 기록
+    log_project_operation("DELETE", project_pk, "Project deleted")
 
 
 # --------------------------------------------------
@@ -280,6 +338,9 @@ def add_concrete_data(project_pk: str, name: str, dims: dict,
     with engine.connect() as conn:
         conn.execute(text(sql), params)
         conn.commit()
+        
+    # 로그 기록
+    log_concrete_operation("CREATE", new_pk, project_pk, f"name: {name}, con_unit: {con_unit}, activate: {activate}")
 
 # 콘크리트 업데이트
 def update_concrete_data(concrete_pk: str, **kwargs) -> None:
@@ -306,6 +367,13 @@ def update_concrete_data(concrete_pk: str, **kwargs) -> None:
     with engine.connect() as conn:
         conn.execute(text(sql), params)
         conn.commit()
+        
+    # 로그 기록 - 프로젝트 PK를 찾기 위해 추가 조회
+    project_query = "SELECT project_pk FROM concrete WHERE concrete_pk = :concrete_pk"
+    project_df = pd.read_sql(text(project_query), con=engine, params={"concrete_pk": concrete_pk})
+    project_pk = project_df.iloc[0]['project_pk'] if not project_df.empty else "Unknown"
+    update_details = ", ".join([f"{k}: {v}" for k, v in update_fields.items()])
+    log_concrete_operation("UPDATE", concrete_pk, project_pk, f"Updated fields: {update_details}")
 
 # 콘크리트 삭제 (관련 센서도 함께 삭제)
 def delete_concrete_data(concrete_pk: str) -> dict:
@@ -315,6 +383,12 @@ def delete_concrete_data(concrete_pk: str) -> dict:
         dict: {"success": bool, "message": str, "deleted_sensors": int}
     """
     with engine.connect() as conn:
+        # 0) 삭제 전에 프로젝트 PK 조회
+        project_query = "SELECT project_pk FROM concrete WHERE concrete_pk = :concrete_pk"
+        result = conn.execute(text(project_query), {"concrete_pk": concrete_pk})
+        project_row = result.fetchone()
+        project_pk = project_row[0] if project_row else "Unknown"
+        
         # 1) 관련된 센서 개수 확인
         sensor_check_sql = "SELECT COUNT(*) as count FROM sensor WHERE concrete_pk = :concrete_pk"
         result = conn.execute(text(sensor_check_sql), {"concrete_pk": concrete_pk})
@@ -330,6 +404,9 @@ def delete_concrete_data(concrete_pk: str) -> dict:
         conn.execute(text(delete_concrete_sql), {"concrete_pk": concrete_pk})
         
         conn.commit()
+        
+        # 로그 기록
+        log_concrete_operation("DELETE", concrete_pk, project_pk, f"Concrete deleted with {sensor_count} related sensors")
         
         if sensor_count > 0:
             return {
@@ -416,6 +493,9 @@ def add_sensors_data(concrete_pk: str, device_id: str, channel: int,
     with engine.connect() as conn:
         conn.execute(text(sql), params)
         conn.commit()
+        
+    # 로그 기록
+    log_sensor_operation("CREATE", new_pk, concrete_pk, f"device_id: {device_id}, channel: {channel}, d_type: {d_type}")
 
 # 센서 업데이트
 def update_sensors_data(sensor_pk: str, **kwargs) -> None:
@@ -442,14 +522,29 @@ def update_sensors_data(sensor_pk: str, **kwargs) -> None:
     with engine.connect() as conn:
         conn.execute(text(sql), params)
         conn.commit()
+        
+    # 로그 기록 - 콘크리트 PK를 찾기 위해 추가 조회
+    concrete_query = "SELECT concrete_pk FROM sensor WHERE sensor_pk = :sensor_pk"
+    concrete_df = pd.read_sql(text(concrete_query), con=engine, params={"sensor_pk": sensor_pk})
+    concrete_pk = concrete_df.iloc[0]['concrete_pk'] if not concrete_df.empty else "Unknown"
+    update_details = ", ".join([f"{k}: {v}" for k, v in update_fields.items()])
+    log_sensor_operation("UPDATE", sensor_pk, concrete_pk, f"Updated fields: {update_details}")
 
 # 센서 삭제
 def delete_sensors_data(sensor_pk: str) -> None:
+    # 삭제 전에 콘크리트 PK 조회
+    concrete_query = "SELECT concrete_pk FROM sensor WHERE sensor_pk = :sensor_pk"
+    concrete_df = pd.read_sql(text(concrete_query), con=engine, params={"sensor_pk": sensor_pk})
+    concrete_pk = concrete_df.iloc[0]['concrete_pk'] if not concrete_df.empty else "Unknown"
+    
     sql = "DELETE FROM sensor WHERE sensor_pk = :sensor_pk"
     params = {"sensor_pk": sensor_pk}
     with engine.connect() as conn:
         conn.execute(text(sql), params)
         conn.commit()
+        
+    # 로그 기록
+    log_sensor_operation("DELETE", sensor_pk, concrete_pk, "Sensor deleted")
 
 # --------------------------------------------------
 # 센서 데이터 DB
@@ -759,728 +854,5 @@ def get_project_data_with_stats(project_pk: str = None,
     
     return df_merged
 
-# 프로젝트 조회
-def get_project_data(project_pk: str = None,
-                     user_company_pk: str = None) -> pd.DataFrame:
-    sql = "SELECT * FROM project"
-    conditions = []
-    params = {}
-
-    if project_pk:
-        conditions.append("project_pk = :project_pk")
-        params["project_pk"] = project_pk
-    if user_company_pk:
-        conditions.append("user_company_pk = :user_company_pk")
-        params["user_company_pk"] = user_company_pk
-    if conditions:
-        sql += " WHERE " + " AND ".join(conditions)
-
-    stmt = text(sql)
-    return pd.read_sql(stmt, con=engine, params=params)
-
-# 프로젝트 추가 
-def add_project_data(s_code: str, name: str) -> None:
-    # 1) 현재 가장 큰 project_pk 가져오기
-    max_pk_sql = "SELECT MAX(project_pk) as max_pk FROM project"
-    max_pk_df = pd.read_sql(text(max_pk_sql), con=engine)
-    max_pk = max_pk_df.iloc[0]['max_pk']
-    
-    # 2) 새로운 project_pk 생성 (P000001 형식)
-    if max_pk is None:
-        new_pk = 'P000001'
-    else:
-        num = int(max_pk[1:]) + 1
-        new_pk = f'P{num:06d}'
-    
-    # 3) INSERT 쿼리 실행
-    sql = """
-    INSERT INTO project 
-    (project_pk, s_code, name, created_at, updated_at) 
-    VALUES 
-    (:project_pk, :s_code, :name, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    """
-    params = {
-        "project_pk": new_pk,
-        "s_code": s_code,
-        "name": name
-    }
-    with engine.connect() as conn:
-        conn.execute(text(sql), params)
-        conn.commit()
-
-# 프로젝트 업데이트
-def update_project_data(project_pk: str, **kwargs) -> None:
-    # 업데이트할 필드와 값만 추출
-    update_fields = {k: v for k, v in kwargs.items() if v is not None}
-    if not update_fields:
-        return None  # 업데이트할 필드가 없으면 종료
-
-    # SQL 쿼리 동적 생성
-    set_clause = ", ".join([f"{k} = :{k}" for k in update_fields.keys()])
-    sql = f"""
-    UPDATE project 
-    SET {set_clause}, updated_at = CURRENT_TIMESTAMP 
-    WHERE project_pk = :project_pk
-    """
-    
-    # 파라미터 설정
-    params = {"project_pk": project_pk, **update_fields}
-
-    with engine.connect() as conn:
-        conn.execute(text(sql), params)
-        conn.commit()
-
-# 프로젝트 삭제
-def delete_project_data(project_pk: str) -> None:
-    sql = "DELETE FROM project WHERE project_pk = :project_pk"
-    params = {"project_pk": project_pk}
-    with engine.connect() as conn:
-        conn.execute(text(sql), params)
-        conn.commit()
-
-
-# --------------------------------------------------
-# 콘크리트 DB
-# --------------------------------------------------
-
-# 콘크리트 조회
-def get_concrete_data(concrete_pk: str = None,
-                      project_pk: str = None,
-                      activate: int = None) -> pd.DataFrame:
-    sql = "SELECT * FROM concrete"
-    conditions = []
-    params = {}
-
-    if concrete_pk:
-        conditions.append("concrete_pk = :concrete_pk")
-        params["concrete_pk"] = concrete_pk
-    if project_pk:
-        conditions.append("project_pk = :project_pk")
-        params["project_pk"] = project_pk
-    if activate is not None:
-        conditions.append("activate = :activate")
-        params["activate"] = activate
-    if conditions:
-        sql += " WHERE " + " AND ".join(conditions)
-
-    stmt = text(sql)
-    return pd.read_sql(stmt, con=engine, params=params)
-
-# 콘크리트 추가
-def add_concrete_data(project_pk: str, name: str, dims: dict, 
-                     con_unit: float, con_b: float, con_n: float,
-                     con_t: str, con_a: float, con_p: float, con_d: float,
-                     con_e: float, activate: int) -> None:
-    # 1) 현재 가장 큰 concrete_pk 가져오기
-    max_pk_sql = "SELECT MAX(concrete_pk) as max_pk FROM concrete"
-    max_pk_df = pd.read_sql(text(max_pk_sql), con=engine)
-    max_pk = max_pk_df.iloc[0]['max_pk']
-    
-    # 2) 새로운 concrete_pk 생성 (C000001 형식)
-    if max_pk is None:
-        new_pk = 'C000001'
-    else:
-        num = int(max_pk[1:]) + 1
-        new_pk = f'C{num:06d}'
-    
-    # 3) INSERT 쿼리 실행
-    sql = """
-    INSERT INTO concrete 
-    (concrete_pk, project_pk, name, dims, con_unit, con_b, con_n, con_t, con_a, con_p, con_d, con_e, activate, created_at, updated_at) 
-    VALUES 
-    (:concrete_pk, :project_pk, :name, :dims, :con_unit, :con_b, :con_n, :con_t, :con_a, :con_p, :con_d, :con_e, :activate, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    """
-    
-    params = {
-        "concrete_pk": new_pk,
-        "project_pk": project_pk,
-        "name": name,
-        "dims": json.dumps(dims),
-        "con_unit": con_unit,
-        "con_b": con_b,
-        "con_n": con_n,
-        "con_t": con_t,
-        "con_a": con_a,
-        "con_p": con_p,
-        "con_d": con_d,
-        "con_e": con_e,
-        "activate": activate
-    }
-    
-    with engine.connect() as conn:
-        conn.execute(text(sql), params)
-        conn.commit()
-
-# 콘크리트 업데이트
-def update_concrete_data(concrete_pk: str, **kwargs) -> None:
-    # 업데이트할 필드와 값만 추출
-    update_fields = {k: v for k, v in kwargs.items() if v is not None}
-    if not update_fields:
-        return None  # 업데이트할 필드가 없으면 종료
-
-    # dims가 있다면 JSON 문자열로 변환
-    if 'dims' in update_fields:
-        update_fields['dims'] = json.dumps(update_fields['dims'])
-
-    # SQL 쿼리 동적 생성
-    set_clause = ", ".join([f"{k} = :{k}" for k in update_fields.keys()])
-    sql = f"""
-    UPDATE concrete 
-    SET {set_clause}, updated_at = CURRENT_TIMESTAMP 
-    WHERE concrete_pk = :concrete_pk
-    """
-    
-    # 파라미터 설정
-    params = {"concrete_pk": concrete_pk, **update_fields}
-    
-    with engine.connect() as conn:
-        conn.execute(text(sql), params)
-        conn.commit()
-
-# 콘크리트 삭제 (관련 센서도 함께 삭제)
-def delete_concrete_data(concrete_pk: str) -> dict:
-    """
-    콘크리트 삭제 함수 - 관련 센서도 함께 삭제
-    Returns:
-        dict: {"success": bool, "message": str, "deleted_sensors": int}
-    """
-    with engine.connect() as conn:
-        # 1) 관련된 센서 개수 확인
-        sensor_check_sql = "SELECT COUNT(*) as count FROM sensor WHERE concrete_pk = :concrete_pk"
-        result = conn.execute(text(sensor_check_sql), {"concrete_pk": concrete_pk})
-        sensor_count = result.fetchone()[0]
-        
-        # 2) 관련 센서 먼저 삭제
-        if sensor_count > 0:
-            delete_sensors_sql = "DELETE FROM sensor WHERE concrete_pk = :concrete_pk"
-            conn.execute(text(delete_sensors_sql), {"concrete_pk": concrete_pk})
-        
-        # 3) 콘크리트 삭제
-        delete_concrete_sql = "DELETE FROM concrete WHERE concrete_pk = :concrete_pk"
-        conn.execute(text(delete_concrete_sql), {"concrete_pk": concrete_pk})
-        
-        conn.commit()
-        
-        if sensor_count > 0:
-            return {
-                "success": True,
-                "message": f"콘크리트와 관련 센서 {sensor_count}개가 삭제되었습니다.",
-                "deleted_sensors": sensor_count
-            }
-        else:
-            return {
-                "success": True,
-                "message": "콘크리트가 삭제되었습니다.",
-                "deleted_sensors": 0
-            }
-
-
-
-
-# --------------------------------------------------
-# 센서 DB
-
-# 센서 조회
-def get_sensors_data(sensor_pk: str = None,
-                     concrete_pk: str = None,
-                     device_id: str = None,
-                     channel: int = None,
-                     d_type: int = None) -> pd.DataFrame:
-    sql = "SELECT * FROM sensor"
-    conditions = []
-    params = {}
-
-    if sensor_pk:
-        conditions.append("sensor_pk = :sensor_pk")
-        params["sensor_pk"] = sensor_pk
-    if concrete_pk:
-        conditions.append("concrete_pk = :concrete_pk")
-        params["concrete_pk"] = concrete_pk
-    if device_id:
-        conditions.append("device_id = :device_id")
-        params["device_id"] = device_id
-    if channel is not None:
-        conditions.append("channel = :channel")
-        params["channel"] = channel
-    if d_type is not None:
-        conditions.append("d_type = :d_type")
-        params["d_type"] = d_type
-    if conditions:
-        sql += " WHERE " + " AND ".join(conditions)
-
-    stmt = text(sql)
-    return pd.read_sql(stmt, con=engine, params=params)
-
-# 센서 추가
-def add_sensors_data(concrete_pk: str, device_id: str, channel: int, 
-                   d_type: int, dims: dict) -> None:
-    # 1) 현재 가장 큰 sensor_pk 가져오기
-    max_pk_sql = "SELECT MAX(sensor_pk) as max_pk FROM sensor"
-    max_pk_df = pd.read_sql(text(max_pk_sql), con=engine)
-    max_pk = max_pk_df.iloc[0]['max_pk']
-    
-    # 2) 새로운 sensor_pk 생성 (S000001 형식)
-    if max_pk is None:
-        new_pk = 'S000001'
-    else:
-        num = int(max_pk[1:]) + 1
-        new_pk = f'S{num:06d}'
-    
-    # 3) INSERT 쿼리 실행
-    sql = """
-    INSERT INTO sensor 
-    (sensor_pk, concrete_pk, device_id, channel, d_type, dims, created_at, updated_at) 
-    VALUES 
-    (:sensor_pk, :concrete_pk, :device_id, :channel, :d_type, :dims, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    """
-    
-    params = {
-        "sensor_pk": new_pk,
-        "concrete_pk": concrete_pk,
-        "device_id": device_id,
-        "channel": channel,
-        "d_type": d_type,
-        "dims": json.dumps(dims)
-    }
-    
-    with engine.connect() as conn:
-        conn.execute(text(sql), params)
-        conn.commit()
-
-# 센서 업데이트
-def update_sensors_data(sensor_pk: str, **kwargs) -> None:
-    # 업데이트할 필드와 값만 추출
-    update_fields = {k: v for k, v in kwargs.items() if v is not None}
-    if not update_fields:
-        return None  # 업데이트할 필드가 없으면 종료
-
-    # dims가 있다면 JSON 문자열로 변환
-    if 'dims' in update_fields:
-        update_fields['dims'] = json.dumps(update_fields['dims'])
-
-    # SQL 쿼리 동적 생성
-    set_clause = ", ".join([f"{k} = :{k}" for k in update_fields.keys()])
-    sql = f"""
-    UPDATE sensor 
-    SET {set_clause}, updated_at = CURRENT_TIMESTAMP 
-    WHERE sensor_pk = :sensor_pk
-    """
-    
-    # 파라미터 설정
-    params = {"sensor_pk": sensor_pk, **update_fields}
-    
-    with engine.connect() as conn:
-        conn.execute(text(sql), params)
-        conn.commit()
-
-# 센서 삭제
-def delete_sensors_data(sensor_pk: str) -> None:
-    sql = "DELETE FROM sensor WHERE sensor_pk = :sensor_pk"
-    params = {"sensor_pk": sensor_pk}
-    with engine.connect() as conn:
-        conn.execute(text(sql), params)
-        conn.commit()
-
-# --------------------------------------------------
-# 센서 데이터 DB
-# --------------------------------------------------
-
-# 센서 데이터 조회
-def get_sensor_data(device_id: str = None,
-                   channel: str = None,
-                   start: str = None,
-                   end: str = None) -> pd.DataFrame:
-    # 1) 날짜 계산
-    if start:
-        start_dt = parse_ymdh(start)
-    else:
-        start_dt = datetime.now() - timedelta(days=30)
-    
-    if end:
-        end_dt = parse_ymdh(end)
-    else:
-        end_dt = datetime.now()
-
-    # 2) SQL 쿼리 생성
-    sql = "SELECT * FROM sensor_data"
-    conditions = []
-    params = {}
-
-    if device_id:
-        conditions.append("device_id = :device_id")
-        params["device_id"] = device_id
-    if channel:
-        conditions.append("channel = :channel")
-        params["channel"] = channel
-
-    # 날짜 조건 추가
-    conditions.append("time >= :start_dt")
-    conditions.append("time <= :end_dt")
-    params["start_dt"] = format_sql_datetime(start_dt)
-    params["end_dt"] = format_sql_datetime(end_dt)
-
-    if conditions:
-        sql += " WHERE " + " AND ".join(conditions)
-    sql += " ORDER BY time ASC"
-
-    stmt = text(sql)
-    return pd.read_sql(stmt, con=engine, params=params)
-
-# 특정 시간의 센서 데이터 조회
-def get_sensor_data_by_time(device_id: str = None,
-                          channel: str = None,
-                          time: str = None) -> pd.DataFrame:
-    # 1) 날짜 계산
-    if time:
-        time_dt = datetime.strptime(time, '%Y-%m-%d %H:%M:%S')
-    else:
-        time_dt = datetime.now()
-
-    # 2) SQL 쿼리 생성
-    sql = "SELECT * FROM sensor_data"
-    conditions = []
-    params = {}
-
-    if device_id:
-        conditions.append("device_id = :device_id")
-        params["device_id"] = device_id
-    if channel:
-        conditions.append("channel = :channel")
-        params["channel"] = channel
-
-    # 시간 조건 추가
-    conditions.append("time = :time_dt")
-    params["time_dt"] = format_sql_datetime(time_dt)
-
-    if conditions:
-        sql += " WHERE " + " AND ".join(conditions)
-
-    stmt = text(sql)
-    return pd.read_sql(stmt, con=engine, params=params)
-
-# --------------------------------------------------
-# 유틸리티 함수
-# --------------------------------------------------
-def parse_ymdh(ts: str) -> datetime:
-    return datetime.strptime(ts, '%Y%m%d%H')
-
-def format_sql_datetime(dt: datetime) -> str:
-    return dt.strftime('%Y-%m-%d %H:%M:%S')
-
-def get_latest_sensor_data_time(device_id: str, channel: str) -> dict:
-    """센서의 가장 최근 데이터 시간을 조회합니다.
-    
-    Args:
-        device_id: 디바이스 ID
-        channel: 채널 번호
-    
-    Returns:
-        dict: {'status': 'success'|'fail', 'time': datetime|None, 'msg': str}
-    """
-    try:
-        # 로컬 센서 데이터 DB에서 조회 (SQLite)
-        query = text("""
-            SELECT time 
-            FROM sensor_data 
-            WHERE device_id = :device_id AND channel = :channel 
-            ORDER BY time DESC 
-            LIMIT 1
-        """)
-        
-        df = pd.read_sql(query, engine, params={"device_id": device_id, "channel": channel})
-        
-        if df.empty:
-            return {"status": "fail", "time": None, "msg": "데이터 없음"}
-        
-        latest_time = pd.to_datetime(df.iloc[0]['time'])
-        return {"status": "success", "time": latest_time, "msg": ""}
-        
-    except Exception as e:
-        print(f"Error getting latest sensor data time for {device_id}/{channel}: {e}")
-        return {"status": "fail", "time": None, "msg": str(e)}
-
-
-def get_all_sensor_structures(its_num: int = 1) -> pd.DataFrame:
-    """P_000078 프로젝트에서 모든 센서 구조 리스트를 조회합니다.
-    
-    Args:
-        its_num: ITS 번호 (1 또는 2)
-    
-    Returns:
-        센서 구조 리스트 DataFrame (구조 단위로 그룹화)
-    """
-    try:
-        eng = _get_its_engine(its_num)
-        
-        # P_000078 프로젝트에서 모든 구조 리스트 조회 (구조 단위로 그룹화)
-        structure_query = text("""
-            SELECT DISTINCT st.stid AS structure_id, st.stname AS structure_name,
-                   COUNT(DISTINCT s.deviceid) AS device_count,
-                   COUNT(s.channel) AS sensor_count
-            FROM tb_structure st
-            JOIN tb_group g ON g.groupid = st.groupid 
-            JOIN tb_project p ON p.projectid = g.projectid 
-            JOIN tb_device d ON d.stid = st.stid
-            JOIN tb_sensor s ON s.deviceid = d.deviceid
-            WHERE p.projectid = 'P_000078'
-                AND d.manageyn = 'Y' AND s.manageyn = 'Y' 
-            GROUP BY st.stid, st.stname
-            ORDER BY st.stid
-        """)
-        
-        df_structures = pd.read_sql(structure_query, eng)
-        return df_structures
-        
-    except Exception as e:
-        print(f"Error getting all sensor structures: {e}")
-        return pd.DataFrame()
-
-
-def get_sensor_list_for_structure(s_code: str, its_num: int = 1) -> pd.DataFrame:
-    """P_000078 프로젝트에서 특정 구조ID의 센서 리스트를 조회합니다.
-    
-    Args:
-        s_code: 구조 ID (S_000xxx 형식)
-        its_num: ITS 번호 (1 또는 2)
-    
-    Returns:
-        센서 리스트 DataFrame
-    """
-    try:
-        eng = _get_its_engine(its_num)
-        
-        # P_000078 프로젝트에서 해당 구조의 센서 리스트 조회
-        sensor_query = text("""
-            SELECT s.deviceid, CAST(IFNULL(s.channel,1) AS CHAR) AS channel,
-                   d.devicetype AS device_type, tddt.data_type,
-                   IF(tdc.modelname IS NOT NULL,'Y','N') AS is3axis
-            FROM tb_sensor s 
-            JOIN tb_device d ON d.deviceid = s.deviceid 
-            JOIN tb_structure st ON st.stid = d.stid 
-            JOIN tb_group g ON g.groupid = st.groupid 
-            JOIN tb_project p ON p.projectid = g.projectid 
-            LEFT JOIN tb_device_data_type tddt ON d.devicetype = tddt.device_type 
-            LEFT JOIN tb_device_catalog tdc ON tdc.idx = d.modelidx 
-                AND tdc.modelname IN ('SSC-320HR(2.0g)','SSC-320HR(5.0g)','SSC-320(3.0g)') 
-            WHERE p.projectid = 'P_000078' AND st.stid = :s_code
-                AND d.manageyn = 'Y' AND s.manageyn = 'Y' 
-            ORDER BY s.deviceid, s.channel
-        """)
-        
-        df_sensors = pd.read_sql(sensor_query, eng, params={"s_code": s_code})
-        return df_sensors
-        
-    except Exception as e:
-        print(f"Error getting sensor list for {s_code}: {e}")
-        return pd.DataFrame()
-
-
-def get_accessible_projects(user_id: str, its_num: int = 1):
-    """사용자가 접근 가능한 프로젝트 목록을 반환합니다.
-    
-    Args:
-        user_id: 사용자 ID
-        its_num: ITS 번호 (1 또는 2)
-    
-    Returns:
-        dict: {
-            'result': 'Success' | 'Fail',
-            'projects': DataFrame 또는 None,
-            'msg': 오류 메시지
-        }
-    """
-    try:
-        eng = _get_its_engine(its_num)
-    except Exception as exc:
-        return {"result": "Fail", "projects": None, "msg": f"DB 연결 실패: {exc}"}
-
-    try:
-        # 사용자 정보 조회
-        user_query = text("SELECT userid, grade FROM tb_user WHERE userid = :uid LIMIT 1")
-        df_user = pd.read_sql(user_query, eng, params={"uid": user_id})
-        
-        if df_user.empty:
-            return {"result": "Fail", "projects": None, "msg": "존재하지 않는 사용자"}
-
-        grade = df_user.iloc[0]["grade"]
-        
-        # 관리자(AD)인 경우 모든 프로젝트 반환
-        if grade == "AD":
-            project_query = text("""
-                SELECT DISTINCT tp.projectid, tp.projectname, tp.regdate, tp.closedate
-                FROM tb_project tp
-                ORDER BY tp.projectid
-            """)
-            df_projects = pd.read_sql(project_query, eng)
-        else:
-            # 일반 사용자의 경우 권한이 있는 프로젝트만 반환
-            auth_query = text("SELECT id FROM tb_sensor_auth_mapping WHERE userid = :uid")
-            df_auth = pd.read_sql(auth_query, eng, params={"uid": user_id})
-            
-            if df_auth.empty:
-                return {"result": "Fail", "projects": None, "msg": "접근 권한이 없습니다"}
-            
-            auth_list = df_auth["id"].tolist()
-            
-            # 프로젝트 ID 추출 (권한 목록에서)
-            project_ids = [auth_id for auth_id in auth_list if auth_id.startswith('P_')]
-            
-            if not project_ids:
-                return {"result": "Fail", "projects": None, "msg": "접근 가능한 프로젝트가 없습니다"}
-            
-            # 권한이 있는 프로젝트만 조회
-            placeholders = ", ".join([f":p{i}" for i in range(len(project_ids))])
-            project_query = text(f"""
-                SELECT DISTINCT tp.projectid, tp.projectname, tp.regdate, tp.closedate
-                FROM tb_project tp
-                WHERE tp.projectid IN ({placeholders})
-                ORDER BY tp.projectid
-            """)
-            params = {f"p{i}": pid for i, pid in enumerate(project_ids)}
-            df_projects = pd.read_sql(project_query, eng, params=params)
-
-        return {"result": "Success", "projects": df_projects, "msg": ""}
-        
-    except Exception as exc:
-        return {"result": "Fail", "projects": None, "msg": f"오류 발생: {str(exc)}"}
-
-
-"""
-# 테스트
-if __name__ == "__main__":
-    # 1. 프로젝트 테스트
-    print("\n=== 프로젝트 테스트 ===")
-    # 프로젝트 추가
-    add_project_data(
-        user_company_pk="UC000001",
-        name="테스트 프로젝트"
-    )
-    # 프로젝트 조회
-    projects = get_project_data(activate=1)
-    print("\n활성화된 프로젝트 목록:")
-    print(projects)
-    
-    # 프로젝트 업데이트
-    if not projects.empty:
-        project_pk = projects.iloc[0]['project_pk']
-        update_project_data(
-            project_pk=project_pk,
-            name="수정된 프로젝트명"
-        )
-    
-    # 2. 콘크리트 테스트
-    print("\n=== 콘크리트 테스트 ===")
-    # 콘크리트 추가
-    add_concrete_data(
-        project_pk="P000001",
-        name="테스트 콘크리트",
-        dims={"nodes": [[0,0,0], [1,0,0], [1,1,0], [0,1,0]], "h": 0.5},
-        con_unit=0.1,
-        con_b=0.2,
-        con_n=1.0e-5,
-        con_t="",
-        con_a=0.0,
-        con_p=0.0,
-        con_d=0.0,
-        activate=1
-    )
-    
-    # 콘크리트 조회
-    concretes = get_concrete_data(project_pk="P000001", activate=1)
-    print("\n프로젝트의 콘크리트 목록:")
-    print(concretes)
-    
-    # 콘크리트 업데이트
-    if not concretes.empty:
-        concrete_pk = concretes.iloc[0]['concrete_pk']
-        update_concrete_data(
-            concrete_pk=concrete_pk,
-            name="수정된 콘크리트명",
-            con_unit=0.2
-        )
-    
-    # 3. 센서 테스트
-    print("\n=== 센서 테스트 ===")
-    # 센서 추가
-    add_sensor_data(
-        concrete_pk="C000001",
-        device_id="test_device",
-        channel=1,
-        d_type=2,
-        dims={"nodes": [0.5, 0.5, 0.0]}
-    )
-    
-    # 센서 조회
-    sensors = get_sensors_data(concrete_pk="C000001")
-    print("\n콘크리트의 센서 목록:")
-    print(sensors)
-    
-    # 센서 업데이트
-    if not sensors.empty:
-        sensor_pk = sensors.iloc[0]['sensor_pk']
-        update_sensor_data(
-            sensor_pk=sensor_pk,
-            channel=2,
-            dims={"nodes": [0.6, 0.6, 0.0]}
-        )
-    
-    # 4. 센서 데이터 테스트
-    print("\n=== 센서 데이터 테스트 ===")
-    # 센서 데이터 조회 (시간 범위)
-    sensor_data = get_sensor_data(
-        device_id="test_device",
-        channel=1,
-        start="2025061300",
-        end="2025061400"
-    )
-    print("\n센서 데이터 (시간 범위):")
-    print(sensor_data)
-    
-    # 센서 데이터 조회 (특정 시간)
-    sensor_data_time = get_sensor_data_by_time(
-        device_id="test_device",
-        channel=1,
-        time="2025-06-13 12:00:00"
-    )
-    print("\n센서 데이터 (특정 시간):")
-    print(sensor_data_time)
-    
-    # 5. 삭제 테스트 (실제 삭제는 주석 처리)
-    
-    print("\n=== 삭제 테스트 ===")
-    projects = get_project_data()
-    print(projects)
-
-    concretes = get_concrete_data()
-    print(concretes)
-
-    sensors = get_sensors_data()
-    print(sensors)
-    
-    # 프로젝트 삭제
-    delete_project_data("P000006")
-    
-    # 콘크리트 삭제
-    delete_concrete_data("C000004")
-    delete_concrete_data("C000005")
-    delete_concrete_data("C000006")
-    
-    # 센서 삭제
-    delete_sensor_data("S000006")
-    delete_sensor_data("S000007")
-    delete_sensor_data("S000008")
-    
-    update_project_data(
-        project_pk="P000001",
-        activate=1
-    )
-    update_project_data(
-        project_pk="P000002",
-        activate=1
-    )    
-    update_concrete_data(
-        concrete_pk="C000001",
-        activate=1
-    )     
-    """ 
+ 
     

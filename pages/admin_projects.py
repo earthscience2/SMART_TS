@@ -3,7 +3,8 @@ from dash import html, dcc, register_page, callback, Input, Output, State, ALL
 import dash_bootstrap_components as dbc
 from flask import request as flask_request
 import pandas as pd
-from api_db import get_project_data_with_stats, update_project_data, delete_project_data, add_project_data, get_all_sensor_structures
+from api_db import get_project_data_with_stats, get_all_sensor_structures
+from api_db_logger import add_project_data_with_log as add_project_data, update_project_data_with_log as update_project_data, delete_project_data_with_log as delete_project_data
 import json
 import dash
 
