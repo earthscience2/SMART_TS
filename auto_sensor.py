@@ -7,14 +7,31 @@ import logging
 from ITS_CLI import config, tcp_client
 
 # 0) 로거 설정
-LOG_PATH = 'log/auto_sensor.log'
-logging.basicConfig(
-    filename=LOG_PATH,
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-logger = logging.getLogger(__name__)
+def setup_auto_sensor_logger():
+    """auto_sensor 전용 로거 설정"""
+    log_dir = "log"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    
+    logger = logging.getLogger('auto_sensor_logger')
+    logger.setLevel(logging.INFO)
+    
+    # 기존 핸들러 제거 (중복 방지)
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+    
+    # 파일 핸들러 설정
+    file_handler = logging.FileHandler(os.path.join(log_dir, 'auto_sensor.log'), encoding='utf-8')
+    file_handler.setLevel(logging.INFO)
+    
+    # 포맷터 설정 (로그인 로그와 동일한 형식)
+    formatter = logging.Formatter('%(asctime)s | %(levelname)s | AUTO_SENSOR | %(message)s')
+    file_handler.setFormatter(formatter)
+    
+    logger.addHandler(file_handler)
+    return logger
+
+logger = setup_auto_sensor_logger()
 
 # 센서 데이터 조회 및 추출
 def export_sensor_data(deviceid, channel, sd_start=None):

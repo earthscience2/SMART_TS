@@ -10,6 +10,33 @@ import os
 import logging
 from ccx2paraview import Converter
 
+# 로거 설정
+def setup_auto_frd_to_vtk_logger():
+    """auto_frd_to_vtk 전용 로거 설정"""
+    log_dir = "log"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    
+    logger = logging.getLogger('auto_frd_to_vtk_logger')
+    logger.setLevel(logging.INFO)
+    
+    # 기존 핸들러 제거 (중복 방지)
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+    
+    # 파일 핸들러 설정
+    file_handler = logging.FileHandler(os.path.join(log_dir, 'auto_frd_to_vtk.log'), encoding='utf-8')
+    file_handler.setLevel(logging.INFO)
+    
+    # 포맷터 설정 (로그인 로그와 동일한 형식)
+    formatter = logging.Formatter('%(asctime)s | %(levelname)s | AUTO_FRD_TO_VTK | %(message)s')
+    file_handler.setFormatter(formatter)
+    
+    logger.addHandler(file_handler)
+    return logger
+
+logger = setup_auto_frd_to_vtk_logger()
+
 
 def fix_vtk_format(vtk_path):
     """ccx2paraview로 생성된 VTK 파일의 POINTS 형식을 수정"""
@@ -62,6 +89,8 @@ def fix_vtk_format(vtk_path):
 def convert_frd_to_vtk(frd_path, vtk_path):
     """ccx2paraview를 사용하여 FRD → VTK 변환 + 형식 수정"""
     try:
+        logger.info(f"FRD to VTK 변환 시작: {frd_path}")
+        
         # vtk 디렉토리 생성
         vtk_dir = os.path.dirname(vtk_path)
         os.makedirs(vtk_dir, exist_ok=True)
@@ -69,6 +98,7 @@ def convert_frd_to_vtk(frd_path, vtk_path):
         # ccx2paraview 변환기 생성 및 실행
         converter = Converter(frd_path, ['vtk'])
         converter.run()
+        logger.info(f"ccx2paraview 변환 완료: {frd_path}")
         
         # 생성된 vtk 파일을 원하는 위치로 이동
         # ccx2paraview는 입력 파일과 같은 디렉토리에 출력
@@ -77,20 +107,26 @@ def convert_frd_to_vtk(frd_path, vtk_path):
             # 목적지에 파일이 이미 있으면 생성된 임시 파일 삭제
             if os.path.exists(vtk_path):
                 os.remove(generated_vtk)
+                logger.info(f"이미 존재하는 파일 건너뛰기: {vtk_path}")
                 return True, "이미 존재하는 파일 (변환 건너뛰기)"
             else:
                 os.rename(generated_vtk, vtk_path)
+                logger.info(f"VTK 파일 이동 완료: {vtk_path}")
             
             # VTK 형식 수정
             fix_success, fix_message = fix_vtk_format(vtk_path)
             if fix_success:
+                logger.info(f"VTK 변환 완료: {vtk_path} - {fix_message}")
                 return True, f"변환 성공 ({fix_message})"
             else:
+                logger.warning(f"VTK 형식 수정 실패: {vtk_path} - {fix_message}")
                 return True, f"변환 성공 (형식 수정 실패: {fix_message})"
         else:
+            logger.error(f"VTK 파일이 생성되지 않음: {frd_path}")
             return False, "VTK 파일이 생성되지 않았습니다"
             
     except Exception as e:
+        logger.error(f"FRD to VTK 변환 오류: {frd_path} - {str(e)}")
         return False, f"변환 오류: {str(e)}"
 
 
@@ -142,14 +178,19 @@ def validate_vtk_file(vtk_path):
 
 def convert_all_frd_to_vtk(frd_root_dir="frd", vtk_root_dir="assets/vtk"):
     """frd 폴더의 모든 .frd 파일을 assets/vtk에 동일한 경로로 변환"""
+    logger.info(f"전체 FRD to VTK 변환 시작: {frd_root_dir} → {vtk_root_dir}")
+    
     if not os.path.exists(frd_root_dir):
+        logger.error(f"frd 폴더가 없습니다: {frd_root_dir}")
         print(f"❌ frd 폴더가 없습니다: {frd_root_dir}")
         return
     
     # assets/vtk 폴더 생성
     os.makedirs(vtk_root_dir, exist_ok=True)
     
+    total_files = 0
     converted_count = 0
+    skipped_count = 0
     error_count = 0
     validation_errors = []
     
@@ -167,14 +208,16 @@ def convert_all_frd_to_vtk(frd_root_dir="frd", vtk_root_dir="assets/vtk"):
         # 현재 폴더의 .frd 파일들 처리
         for file in files:
             if file.lower().endswith('.frd'):
+                total_files += 1
                 frd_path = os.path.join(root, file)
                 vtk_filename = file[:-4] + '.vtk'  # .frd → .vtk
                 vtk_path = os.path.join(vtk_dir, vtk_filename)
                 
                 # 이미 VTK 파일이 존재하면 건너뛰기
                 if os.path.exists(vtk_path):
+                    logger.info(f"건너뛰기 (이미 존재): {vtk_path}")
                     print(f"⏭️ 건너뛰기 (이미 존재): {vtk_path}")
-                    converted_count += 1  # 이미 변환된 것으로 계산
+                    skipped_count += 1
                     continue
                 
                 try:
@@ -190,17 +233,23 @@ def convert_all_frd_to_vtk(frd_root_dir="frd", vtk_root_dir="assets/vtk"):
                         else:
                             error_count += 1
                             validation_errors.append(f"{vtk_path}: {validation_msg}")
+                            logger.error(f"VTK 검증 실패: {vtk_path} - {validation_msg}")
                             print(f"❌ 검증 실패: {validation_msg}")
                     else:
                         error_count += 1
+                        logger.error(f"VTK 변환 실패: {frd_path} - {message}")
                         print(f"❌ 변환 실패: {message}")
                         
                 except Exception as e:
                     error_count += 1
+                    logger.error(f"VTK 처리 오류: {frd_path} - {e}")
                     print(f"❌ 처리 오류: {frd_path} - {e}")
     
+    logger.info(f"전체 FRD to VTK 변환 완료 - 총: {total_files}, 변환: {converted_count}, 건너뜀: {skipped_count}, 오류: {error_count}")
     print(f"\n🎉 변환 완료!")
-    print(f"✅ 성공: {converted_count}개")
+    print(f"📊 총 파일: {total_files}개")
+    print(f"✅ 변환 성공: {converted_count}개")
+    print(f"⏭️ 건너뜀: {skipped_count}개")
     print(f"❌ 실패: {error_count}개")
     
     if validation_errors:
