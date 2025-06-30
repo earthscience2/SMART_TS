@@ -155,12 +155,7 @@ def layout():
             n_intervals=0
         ),
         
-        dbc.Row([
-            dbc.Col([
-                html.H2("⚙️ 자동화 로그", className="mb-4 text-center"),
-                html.Hr(),
-            ])
-        ]),
+
         
         # 로그 통계 카드
         dbc.Row([

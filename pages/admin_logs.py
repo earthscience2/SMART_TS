@@ -153,13 +153,7 @@ def layout(**kwargs):
         dcc.Location(id="admin-logs-url", refresh=False),
         dcc.Interval(id="log-refresh-interval", interval=10000, n_intervals=0),  # 10초마다 새로고침
         dbc.Container([
-            # 헤더
-            dbc.Row([
-                dbc.Col([
-                    html.H2("📋 일반 로그", className="mb-4 text-center"),
-                    html.Hr(),
-                ])
-            ]),
+
             
             # 로그 통계 카드
             dbc.Row([
