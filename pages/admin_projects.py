@@ -301,12 +301,20 @@ def handle_edit_modal(save_clicks, cancel_clicks, project_id, project_name, proj
     if button_id == "edit-cancel":
         return False, False, "", dash.no_update
     
-    if button_id == "edit-save" and project_id and project_name:
+    if button_id == "edit-save":
+        # 프로젝트 이름 검증
+        if not project_name or not project_name.strip():
+            return True, True, "프로젝트명을 입력해주세요.", dash.no_update
+        
+        # 프로젝트 ID 검증
+        if not project_id:
+            return True, True, "프로젝트 ID가 없습니다.", dash.no_update
+        
         try:
             # 프로젝트 업데이트
             update_project_data(
                 project_pk=project_id,
-                name=project_name
+                name=project_name.strip()
             )
             
             # 데이터 다시 로드
@@ -323,7 +331,7 @@ def handle_edit_modal(save_clicks, cancel_clicks, project_id, project_name, proj
             
             return False, True, "프로젝트가 성공적으로 수정되었습니다.", new_data
         except Exception as e:
-            return False, True, f"프로젝트 수정 중 오류가 발생했습니다: {str(e)}", dash.no_update
+            return True, True, f"프로젝트 수정 중 오류가 발생했습니다: {str(e)}", dash.no_update
     
     return False, False, "", dash.no_update
 
@@ -514,7 +522,15 @@ def handle_add_modal(save_clicks, cancel_clicks, project_name, selected_structur
     if button_id == "add-cancel":
         return False, False, "", dash.no_update
     
-    if button_id == "add-save" and project_name and selected_structures:
+    if button_id == "add-save":
+        # 프로젝트 이름 검증
+        if not project_name or not project_name.strip():
+            return True, True, "프로젝트명을 입력해주세요.", dash.no_update
+        
+        # 구조 선택 검증
+        if not selected_structures or not any(selected_structures):
+            return True, True, "구조를 선택해주세요.", dash.no_update
+        
         try:
             # 선택된 구조 찾기
             selected_structure = None
@@ -524,12 +540,12 @@ def handle_add_modal(save_clicks, cancel_clicks, project_name, selected_structur
                     break
             
             if not selected_structure:
-                return False, True, "구조를 선택해주세요.", dash.no_update
+                return True, True, "구조를 선택해주세요.", dash.no_update
             
             # 프로젝트 생성
             add_project_data(
                 s_code=selected_structure.get('structure_id', ''),
-                name=project_name
+                name=project_name.strip()
             )
             
             # 데이터 다시 로드
@@ -545,8 +561,8 @@ def handle_add_modal(save_clicks, cancel_clicks, project_name, selected_structur
                 new_data = []
             
             structure_info = f"구조 ID: {selected_structure.get('structure_id', '')}, 구조명: {selected_structure.get('structure_name', '')}"
-            return False, True, f"프로젝트 '{project_name}'이(가) 성공적으로 생성되었습니다. ({structure_info})", new_data
+            return False, True, f"프로젝트 '{project_name.strip()}'이(가) 성공적으로 생성되었습니다. ({structure_info})", new_data
         except Exception as e:
-            return False, True, f"프로젝트 생성 중 오류가 발생했습니다: {str(e)}", dash.no_update
+            return True, True, f"프로젝트 생성 중 오류가 발생했습니다: {str(e)}", dash.no_update
     
     return False, False, "", dash.no_update 
