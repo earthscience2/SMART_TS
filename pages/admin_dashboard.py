@@ -34,10 +34,10 @@ def layout(**kwargs):
                                 dbc.Col([
                                     dbc.Card([
                                         dbc.CardBody([
-                                            html.H5("📋 로그 확인", className="card-title text-success"),
-                                            html.P("시스템 로그 및 사용자 활동 로그 확인", className="card-text"),
+                                            html.H5("📋 일반 로그", className="card-title text-success"),
+                                            html.P("로그인, 센서, 프로젝트, 콘크리트 로그 확인", className="card-text"),
                                             dcc.Link(
-                                                dbc.Button("로그 확인", color="success", className="w-100"),
+                                                dbc.Button("일반 로그", color="success", className="w-100"),
                                                 href="/admin_logs"
                                             )
                                         ])
