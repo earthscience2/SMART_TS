@@ -3,7 +3,7 @@ from dash import html, dcc, register_page, callback, Input, Output, State, ALL
 import dash_bootstrap_components as dbc
 from flask import request as flask_request
 import pandas as pd
-from api_db import get_project_data, update_project_data, delete_project_data
+from api_db import get_project_data, update_project_data, delete_project_data, add_project_data, get_all_sensor_structures
 import json
 import dash
 
@@ -15,6 +15,7 @@ def layout(**kwargs):
         dcc.Location(id="admin-projects-url", refresh=False),
         dcc.Store(id="projects-data-store"),
         dcc.Store(id="current-page", data=1),
+        dcc.Store(id="sensor-structures-store"),
         dbc.Container([
             # 메인 콘텐츠
             dbc.Row([
@@ -31,7 +32,7 @@ def layout(**kwargs):
                                     dbc.Button([
                                         html.Span("➕", className="me-2"),
                                         "새 프로젝트 추가"
-                                    ], color="success", className="mb-3")
+                                    ], color="success", className="mb-3", id="add-project-btn")
                                 ], width=12)
                             ]),
                             
@@ -49,6 +50,31 @@ def layout(**kwargs):
                 ])
             ])
         ], fluid=True),
+        
+        # 새 프로젝트 추가 모달
+        dbc.Modal([
+            dbc.ModalHeader(dbc.ModalTitle("새 프로젝트 추가")),
+            dbc.ModalBody([
+                dbc.Form([
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Label("프로젝트명", className="fw-bold"),
+                            dbc.Input(id="new-project-name", type="text", placeholder="프로젝트명을 입력하세요", className="mb-3")
+                        ], width=12)
+                    ]),
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Label("센서 구조 목록", className="fw-bold"),
+                            html.Div(id="sensor-structures-table-container", className="mt-2")
+                        ], width=12)
+                    ])
+                ])
+            ]),
+            dbc.ModalFooter([
+                dbc.Button("취소", id="add-cancel", className="ms-auto"),
+                dbc.Button("생성", id="add-save", color="primary")
+            ])
+        ], id="add-modal", is_open=False, size="lg"),
         
         # 수정 모달
         dbc.Modal([
@@ -115,6 +141,24 @@ def load_projects_data(pathname):
             return []
     except Exception as e:
         print(f"Error loading projects: {e}")
+        return []
+
+@callback(
+    Output("sensor-structures-store", "data"),
+    Input("admin-projects-url", "pathname")
+)
+def load_sensor_structures_data(pathname):
+    """센서 구조 데이터를 로드합니다."""
+    try:
+        # get_all_sensor_structures 함수를 사용하여 모든 센서 구조 조회
+        df = get_all_sensor_structures(its_num=1)
+        
+        if not df.empty:
+            return df.to_dict('records')
+        else:
+            return []
+    except Exception as e:
+        print(f"Error loading sensor structures: {e}")
         return []
 
 @callback(
@@ -366,4 +410,143 @@ def check_admin_access(pathname):
     """관리자 권한 확인"""
     if not flask_request.cookies.get("admin_user"):
         return ["/admin"]
-    return [pathname] 
+    return [pathname]
+
+# 새 프로젝트 추가 모달 관련 콜백
+@callback(
+    [Output("add-modal", "is_open"),
+     Output("new-project-name", "value")],
+    [Input("add-project-btn", "n_clicks")],
+    prevent_initial_call=True
+)
+def open_add_modal(n_clicks):
+    """새 프로젝트 추가 모달을 엽니다."""
+    if not n_clicks:
+        return False, ""
+    
+    return True, ""
+
+@callback(
+    Output("sensor-structures-table-container", "children"),
+    [Input("add-modal", "is_open"),
+     Input("sensor-structures-store", "data")]
+)
+def update_sensor_structures_table(is_open, structures_data):
+    """센서 구조 테이블을 업데이트합니다."""
+    if not is_open or not structures_data:
+        return ""
+    
+    # 테이블 헤더
+    table_header = [
+        html.Thead([
+            html.Tr([
+                html.Th("선택"),
+                html.Th("구조 ID"),
+                html.Th("구조명"),
+                html.Th("디바이스 ID"),
+                html.Th("채널"),
+                html.Th("디바이스 타입"),
+                html.Th("데이터 타입"),
+                html.Th("3축 여부")
+            ])
+        ])
+    ]
+    
+    # 테이블 바디
+    table_rows = []
+    for i, structure in enumerate(structures_data):
+        # 3축 여부 표시
+        is3axis = structure.get('is3axis', 'N')
+        if is3axis == 'Y':
+            axis_badge = dbc.Badge("3축", color="success")
+        else:
+            axis_badge = dbc.Badge("1축", color="secondary")
+        
+        row = html.Tr([
+            html.Td([
+                dbc.RadioButton(
+                    id={"type": "structure-select", "index": i},
+                    name="structure-selection",
+                    value=structure.get('structure_id', '') + '_' + structure.get('deviceid', '') + '_' + str(structure.get('channel', ''))
+                )
+            ]),
+            html.Td(structure.get('structure_id', '')),
+            html.Td(structure.get('structure_name', '')),
+            html.Td(structure.get('deviceid', '')),
+            html.Td(structure.get('channel', '')),
+            html.Td(structure.get('device_type', '')),
+            html.Td(structure.get('data_type', '')),
+            html.Td(axis_badge)
+        ])
+        table_rows.append(row)
+    
+    table_body = [html.Tbody(table_rows)]
+    
+    return dbc.Table(
+        table_header + table_body,
+        striped=True,
+        bordered=True,
+        hover=True,
+        responsive=True,
+        size="sm"
+    )
+
+@callback(
+    [Output("add-modal", "is_open", allow_duplicate=True),
+     Output("toast", "is_open"),
+     Output("toast-message", "children"),
+     Output("projects-data-store", "data", allow_duplicate=True)],
+    [Input("add-save", "n_clicks"),
+     Input("add-cancel", "n_clicks")],
+    [State("new-project-name", "value"),
+     State({"type": "structure-select", "index": ALL}, "value"),
+     State("sensor-structures-store", "data")],
+    prevent_initial_call=True
+)
+def handle_add_modal(save_clicks, cancel_clicks, project_name, selected_structures, structures_data):
+    """새 프로젝트 추가 모달을 처리합니다."""
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        return False, False, "", dash.no_update
+    
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    if button_id == "add-cancel":
+        return False, False, "", dash.no_update
+    
+    if button_id == "add-save" and project_name and selected_structures:
+        try:
+            # 선택된 구조 찾기
+            selected_structure = None
+            for i, value in enumerate(selected_structures):
+                if value:
+                    selected_structure = structures_data[i]
+                    break
+            
+            if not selected_structure:
+                return False, True, "구조를 선택해주세요.", dash.no_update
+            
+            # 프로젝트 생성
+            add_project_data(
+                user_company_pk="UC000001",  # 기본값 사용
+                name=project_name
+            )
+            
+            # 데이터 다시 로드
+            df = get_project_data()
+            if not df.empty:
+                df_copy = df.copy()
+                if 'created_at' in df_copy.columns:
+                    df_copy['created_at'] = df_copy['created_at'].astype(str).str[:10]
+                if 'updated_at' in df_copy.columns:
+                    df_copy['updated_at'] = df_copy['updated_at'].astype(str).str[:10]
+                new_data = df_copy.to_dict('records')
+            else:
+                new_data = []
+            
+            structure_info = f"구조 ID: {selected_structure.get('structure_id', '')}, 구조명: {selected_structure.get('structure_name', '')}"
+            return False, True, f"프로젝트 '{project_name}'이(가) 성공적으로 생성되었습니다. ({structure_info})", new_data
+        except Exception as e:
+            return False, True, f"프로젝트 생성 중 오류가 발생했습니다: {str(e)}", dash.no_update
+    
+    return False, False, "", dash.no_update 

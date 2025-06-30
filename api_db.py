@@ -149,7 +149,7 @@ def get_project_data(project_pk: str = None,
     return pd.read_sql(stmt, con=engine, params=params)
 
 # 프로젝트 추가 
-def add_project_data(user_company_pk: str, name: str) -> None:
+def add_project_data(s_code: str, name: str) -> None:
     # 1) 현재 가장 큰 project_pk 가져오기
     max_pk_sql = "SELECT MAX(project_pk) as max_pk FROM project"
     max_pk_df = pd.read_sql(text(max_pk_sql), con=engine)
@@ -165,13 +165,13 @@ def add_project_data(user_company_pk: str, name: str) -> None:
     # 3) INSERT 쿼리 실행
     sql = """
     INSERT INTO project 
-    (project_pk, user_company_pk, name, created_at, updated_at) 
+    (project_pk, s_code, name, created_at, updated_at) 
     VALUES 
-    (:project_pk, :user_company_pk, :name, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    (:project_pk, :s_code, :name, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     """
     params = {
         "project_pk": new_pk,
-        "user_company_pk": user_company_pk,
+        "s_code": s_code,
         "name": name
     }
     with engine.connect() as conn:
@@ -568,6 +568,45 @@ def get_latest_sensor_data_time(device_id: str, channel: str) -> dict:
     except Exception as e:
         print(f"Error getting latest sensor data time for {device_id}/{channel}: {e}")
         return {"status": "fail", "time": None, "msg": str(e)}
+
+
+def get_all_sensor_structures(its_num: int = 1) -> pd.DataFrame:
+    """P_000078 프로젝트에서 모든 센서 구조 리스트를 조회합니다.
+    
+    Args:
+        its_num: ITS 번호 (1 또는 2)
+    
+    Returns:
+        센서 리스트 DataFrame
+    """
+    try:
+        eng = _get_its_engine(its_num)
+        
+        # P_000078 프로젝트에서 모든 센서 리스트 조회
+        sensor_query = text("""
+            SELECT s.deviceid, CAST(IFNULL(s.channel,1) AS CHAR) AS channel,
+                   d.devicetype AS device_type, tddt.data_type,
+                   IF(tdc.modelname IS NOT NULL,'Y','N') AS is3axis,
+                   st.stid AS structure_id, st.stname AS structure_name
+            FROM tb_sensor s 
+            JOIN tb_device d ON d.deviceid = s.deviceid 
+            JOIN tb_structure st ON st.stid = d.stid 
+            JOIN tb_group g ON g.groupid = st.groupid 
+            JOIN tb_project p ON p.projectid = g.projectid 
+            LEFT JOIN tb_device_data_type tddt ON d.devicetype = tddt.device_type 
+            LEFT JOIN tb_device_catalog tdc ON tdc.idx = d.modelidx 
+                AND tdc.modelname IN ('SSC-320HR(2.0g)','SSC-320HR(5.0g)','SSC-320(3.0g)') 
+            WHERE p.projectid = 'P_000078'
+                AND d.manageyn = 'Y' AND s.manageyn = 'Y' 
+            ORDER BY st.stid, s.deviceid, s.channel
+        """)
+        
+        df_sensors = pd.read_sql(sensor_query, eng)
+        return df_sensors
+        
+    except Exception as e:
+        print(f"Error getting all sensor structures: {e}")
+        return pd.DataFrame()
 
 
 def get_sensor_list_for_structure(s_code: str, its_num: int = 1) -> pd.DataFrame:
