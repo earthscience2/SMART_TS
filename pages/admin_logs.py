@@ -178,10 +178,6 @@ def layout(**kwargs):
                                         value=100,
                                         className="mb-3"
                                     )
-                                ], width=3),
-                                dbc.Col([
-                                    dbc.Label("", className="fw-bold"),
-                                    dbc.Button("🔄 새로고침", id="refresh-logs-btn", color="primary", className="w-100")
                                 ], width=3)
                             ], className="mb-4"),
                             
@@ -237,12 +233,11 @@ def layout(**kwargs):
      Output("concrete-logs-count", "children"),
      Output("sensor-logs-count", "children")],
     [Input("log-refresh-interval", "n_intervals"),
-     Input("refresh-logs-btn", "n_clicks"),
      Input("log-type-dropdown", "value"),
      Input("log-action-dropdown", "value"),
      Input("log-limit-dropdown", "value")]
 )
-def update_logs_table(n_intervals, refresh_clicks, log_type_filter, action_filter, limit):
+def update_logs_table(n_intervals, log_type_filter, action_filter, limit):
     """로그 테이블을 업데이트합니다."""
     all_logs = get_all_logs()
     
