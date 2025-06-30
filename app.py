@@ -136,6 +136,44 @@ app = Dash(
 )
 app.title = "Concrete Dashboard"
 
+# 커스텀 CSS 스타일 추가
+app.index_string = '''
+<!DOCTYPE html>
+<html>
+    <head>
+        {%metas%}
+        <title>{%title%}</title>
+        {%favicon%}
+        {%css%}
+        <style>
+            .admin-navbar .nav-link.active {
+                background-color: #ffc107 !important;
+                color: #000 !important;
+                border-radius: 5px;
+                padding: 8px 15px !important;
+                margin: 0 5px;
+                transition: all 0.3s ease;
+            }
+            .admin-navbar .nav-link:hover {
+                background-color: #ffca2c !important;
+                color: #000 !important;
+                border-radius: 5px;
+                padding: 8px 15px !important;
+                margin: 0 5px;
+            }
+        </style>
+    </head>
+    <body>
+        {%app_entry%}
+        <footer>
+            {%config%}
+            {%scripts%}
+            {%renderer%}
+        </footer>
+    </body>
+</html>
+'''
+
 def _build_navbar():
     """쿠키(login_user) 존재 여부에 따라 Login/Logout 버튼 토글"""
     user_id = flask_request.cookies.get("login_user")
@@ -225,40 +263,20 @@ def _build_admin_navbar():
         html.Span(f"  🔧 {admin_user} (관리자)", className="ms-2 fw-bold text-warning")
     ])
 
-    return html.Div([
-        # 커스텀 CSS 스타일
-        html.Style("""
-            .admin-navbar .nav-link.active {
-                background-color: #ffc107 !important;
-                color: #000 !important;
-                border-radius: 5px;
-                padding: 8px 15px !important;
-                margin: 0 5px;
-                transition: all 0.3s ease;
-            }
-            .admin-navbar .nav-link:hover {
-                background-color: #ffca2c !important;
-                color: #000 !important;
-                border-radius: 5px;
-                padding: 8px 15px !important;
-                margin: 0 5px;
-            }
-        """),
-        dbc.Navbar(
-            dbc.Container([
-                dbc.NavbarBrand(brand_component, href="/admin_dashboard", id="admin-brand"),
-                dbc.Nav(
-                    children,
-                    navbar=True,
-                    className="ms-1"
-                ),
-            ], fluid=True),
-            color="dark",
-            dark=True,
-            className="mb-4 admin-navbar",
-            style={"borderBottom": "2px solid #ffc107"}
-        )
-    ])
+    return dbc.Navbar(
+        dbc.Container([
+            dbc.NavbarBrand(brand_component, href="/admin_dashboard", id="admin-brand"),
+            dbc.Nav(
+                children,
+                navbar=True,
+                className="ms-1"
+            ),
+        ], fluid=True),
+        color="dark",
+        dark=True,
+        className="mb-4 admin-navbar",
+        style={"borderBottom": "2px solid #ffc107"}
+    )
 
 # 정적 레이아웃 설정
 app.layout = dbc.Container(
