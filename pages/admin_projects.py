@@ -493,8 +493,8 @@ def update_sensor_structures_table(is_open, structures_data):
 
 @callback(
     [Output("add-modal", "is_open", allow_duplicate=True),
-     Output("toast", "is_open"),
-     Output("toast-message", "children"),
+     Output("toast", "is_open", allow_duplicate=True),
+     Output("toast-message", "children", allow_duplicate=True),
      Output("projects-data-store", "data", allow_duplicate=True)],
     [Input("add-save", "n_clicks"),
      Input("add-cancel", "n_clicks")],
