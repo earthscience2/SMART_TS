@@ -189,6 +189,8 @@ def update_projects_table(projects_data, current_page):
             html.Tr([
                 html.Th("프로젝트 ID"),
                 html.Th("프로젝트명"),
+                html.Th("구조 ID"),
+                html.Th("구조명"),
                 html.Th("콘크리트 수"),
                 html.Th("센서 수"),
                 html.Th("생성일"),
@@ -204,6 +206,8 @@ def update_projects_table(projects_data, current_page):
         row = html.Tr([
             html.Td(project.get("project_pk", "")),
             html.Td(project.get("name", "")),
+            html.Td(project.get("s_code", "")),
+            html.Td(project.get("structure_name", "구조명 없음")),
             html.Td(project.get("concrete_count", 0)),
             html.Td(project.get("sensor_count", 0)),
             html.Td(project.get("created_at", "")),

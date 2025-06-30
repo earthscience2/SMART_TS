@@ -831,7 +831,7 @@ def get_project_statistics() -> pd.DataFrame:
 # 프로젝트 조회 (통계 정보 포함)
 def get_project_data_with_stats(project_pk: str = None,
                                user_company_pk: str = None) -> pd.DataFrame:
-    """프로젝트 데이터와 함께 콘크리트 수, 센서 수 통계를 포함하여 조회합니다."""
+    """프로젝트 데이터와 함께 콘크리트 수, 센서 수 통계, 구조명을 포함하여 조회합니다."""
     # 기본 프로젝트 데이터 조회
     df_projects = get_project_data(project_pk, user_company_pk)
     
@@ -851,6 +851,37 @@ def get_project_data_with_stats(project_pk: str = None,
     # NaN 값을 0으로 채우기
     df_merged['concrete_count'] = df_merged['concrete_count'].fillna(0).astype(int)
     df_merged['sensor_count'] = df_merged['sensor_count'].fillna(0).astype(int)
+    
+    # 구조명 정보 추가
+    try:
+        # ITS1 데이터베이스에서 구조 정보 조회
+        eng = _get_its_engine(1)
+        structure_query = text("""
+            SELECT DISTINCT st.stid AS structure_id, st.stname AS structure_name
+            FROM tb_structure st
+            JOIN tb_group g ON g.groupid = st.groupid 
+            JOIN tb_project p ON p.projectid = g.projectid 
+            WHERE p.projectid = 'P_000078'
+            ORDER BY st.stid
+        """)
+        df_structures = pd.read_sql(structure_query, eng)
+        
+        # s_code와 구조명 매핑
+        if not df_structures.empty:
+            df_merged = df_merged.merge(
+                df_structures.rename(columns={'structure_id': 's_code', 'structure_name': 'structure_name'}),
+                on='s_code',
+                how='left'
+            )
+        else:
+            df_merged['structure_name'] = "구조명 없음"
+            
+    except Exception as e:
+        print(f"Error getting structure names: {e}")
+        df_merged['structure_name'] = "구조명 조회 실패"
+    
+    # structure_name이 없는 경우 기본값 설정
+    df_merged['structure_name'] = df_merged['structure_name'].fillna("구조명 없음")
     
     return df_merged
 
