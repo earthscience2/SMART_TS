@@ -23,13 +23,20 @@ server = Flask(__name__)
 #  인증 체크: 로그인 안 했으면 /login 으로 리다이렉트
 # ──────────────────────────────────────────────────
 
-_PUBLIC_PREFIXES = ("/login", "/do_login", "/assets", "/_dash", "/favicon", "/logout")
+_PUBLIC_PREFIXES = ("/login", "/do_login", "/admin", "/do_admin_login", "/assets", "/_dash", "/favicon", "/logout")
 
 
 @server.before_request
 def require_login():
     """모든 요청에 대해 로그인 여부 확인. 공용 경로 제외."""
     path = request.path
+    
+    # 관리자 페이지 접근 체크
+    if path.startswith("/admin_dashboard") or path.startswith("/admin_projects") or path.startswith("/admin_logs") or path.startswith("/admin_users"):
+        if not request.cookies.get("admin_user"):
+            return redirect("/admin")
+        return  # 관리자 권한 확인됨
+    
     if path.startswith(_PUBLIC_PREFIXES):
         return  # allow
 
@@ -70,11 +77,46 @@ def do_login():
     resp.set_cookie("login_user", user_id, max_age=60 * 60 * 6, httponly=True)
     return resp
 
+@server.route("/do_admin_login", methods=["GET", "POST"])
+def do_admin_login():
+    """관리자 로그인 폼 제출 처리."""
+    if request.method == "GET":
+        return redirect("/admin")
+
+    user_id = request.form.get("user_id", "").strip()
+    user_pw = request.form.get("user_pw", "")
+    its = int(request.form.get("its", "1"))  # hidden 필드로 받아오거나 기본 1
+
+    # 입력값 검증
+    if not user_id or not user_pw:
+        resp = make_response(redirect("/admin?error=" + quote_plus("아이디와 비밀번호를 입력하세요")))
+        resp.delete_cookie("admin_user")
+        return resp
+
+    auth = authenticate_user(user_id, user_pw, its_num=its)
+    if auth["result"] != "Success":
+        resp = make_response(redirect(f"/admin?error={quote_plus(auth['msg'])}"))
+        # 실패한 로그인 시 기존 쿠키 삭제 (이전 세션 무효화)
+        resp.delete_cookie("admin_user")
+        return resp
+    
+    # AD 권한 확인
+    if auth["grade"] != "AD":
+        resp = make_response(redirect(f"/admin?error={quote_plus('관리자 권한이 필요합니다. AD 권한을 가진 사용자만 접근할 수 있습니다.')}"))
+        resp.delete_cookie("admin_user")
+        return resp
+
+    # 관리자 로그인 성공: 쿠키 설정 후 관리자 대시보드로 리다이렉트
+    resp = make_response(redirect("/admin_dashboard"))
+    resp.set_cookie("admin_user", user_id, max_age=60 * 60 * 6, httponly=True)
+    return resp
+
 @server.route("/logout")
 def logout():
     """쿠키 제거 후 홈으로 리다이렉트"""
     resp = make_response(redirect("/login"))
     resp.delete_cookie("login_user")
+    resp.delete_cookie("admin_user")  # 관리자 쿠키도 삭제
     return resp
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -96,6 +138,7 @@ app.title = "Concrete Dashboard"
 def _build_navbar():
     """쿠키(login_user) 존재 여부에 따라 Login/Logout 버튼 토글"""
     user_id = flask_request.cookies.get("login_user")
+    admin_user = flask_request.cookies.get("admin_user")
 
     children = [
         # 네비게이션 링크들 (숨김처리하되 주소는 유지)
@@ -118,7 +161,7 @@ def _build_navbar():
     ]
 
     # 가시성 제어
-    if user_id:
+    if user_id or admin_user:
         # hide login link
         children[-2].style = {"display": "none"}
     else:
@@ -126,10 +169,19 @@ def _build_navbar():
         children[-1].style = {"display": "none"}
         children[-2].className += " ms-auto"
 
-    brand_component = html.Span([
-        html.Span("Concrete MONITORㅤ| ", className="fw-bold"),
-        html.Span(f"  {user_id}", className="ms-2 fw-bold text-warning") if user_id else None
-    ])
+    # 브랜드 컴포넌트 설정
+    if admin_user:
+        brand_component = html.Span([
+            html.Span("Concrete MONITORㅤ| ", className="fw-bold"),
+            html.Span(f"  🔧 {admin_user} (관리자)", className="ms-2 fw-bold text-warning")
+        ])
+    elif user_id:
+        brand_component = html.Span([
+            html.Span("Concrete MONITORㅤ| ", className="fw-bold"),
+            html.Span(f"  {user_id}", className="ms-2 fw-bold text-warning")
+        ])
+    else:
+        brand_component = html.Span("Concrete MONITOR", className="fw-bold")
 
     return dbc.Navbar(
         dbc.Container([
@@ -150,6 +202,21 @@ def serve_layout():
 
     쿠키(login_user)가 없으면 로그인 페이지 레이아웃을 직접 반환해 SPA 내부 이동까지 차단한다.
     """
+
+    # 관리자 페이지 접근 체크
+    if flask_request.path.startswith("/admin_dashboard") or flask_request.path.startswith("/admin_projects") or flask_request.path.startswith("/admin_logs") or flask_request.path.startswith("/admin_users"):
+        if not flask_request.cookies.get("admin_user"):
+            from pages import admin as admin_page
+            error_param = flask_request.args.get("error")
+            return admin_page.layout(error=error_param)
+        # 관리자 페이지는 별도 네비게이션 바를 사용하므로 기본 레이아웃 사용
+        return dbc.Container(
+            fluid=True,
+            children=[
+                dcc.Location(id="url"),
+                dbc.Card(className="shadow-sm p-4", children=[page_container]),
+            ],
+        )
 
     if not flask_request.cookies.get("login_user"):
         from pages import login as login_page  # 지역 임포트로 순환참조 방지
