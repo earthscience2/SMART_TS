@@ -13,44 +13,95 @@ dash.register_page(__name__, path="/admin_automation")
 
 def parse_automation_log_line(line):
     """자동화 로그 라인을 파싱하여 구조화된 데이터로 변환"""
-    # 로그 형식: 2025-01-13 14:30:25 | INFO | AUTO_RUN | 자동화 사이클 1 시작
-    pattern = r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| (\w+) \| (AUTO_\w+) \| (.+)$'
-    match = re.match(pattern, line.strip())
+    line = line.strip()
     
-    if match:
-        timestamp, level, module, message = match.groups()
+    # 새로운 형식 1: 2025-01-13 14:30:25 | INFO | AUTO_RUN | 메시지
+    pattern1 = r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| (\w+) \| (AUTO_\w+) \| (.+)$'
+    match1 = re.match(pattern1, line)
+    
+    if match1:
+        timestamp, level, module, message = match1.groups()
         return {
             'timestamp': timestamp,
             'level': level,
             'module': module,
             'message': message
         }
+    
+    # 새로운 형식 2 (쉼표 포함): 2025-06-30 22:15:10,036 | INFO | AUTO_RUN | 메시지
+    pattern2 = r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}),\d+ \| (\w+) \| (AUTO_\w+) \| (.+)$'
+    match2 = re.match(pattern2, line)
+    
+    if match2:
+        timestamp, level, module, message = match2.groups()
+        return {
+            'timestamp': timestamp,
+            'level': level,
+            'module': module,
+            'message': message
+        }
+    
+    # 기존 형식: 2025-06-21 22:02:06 [INFO] 메시지
+    pattern3 = r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[(\w+)\] (.+)$'
+    match3 = re.match(pattern3, line)
+    
+    if match3:
+        timestamp, level, message = match3.groups()
+        # 파일명에서 모듈명 추정
+        module = "AUTO_UNKNOWN"
+        return {
+            'timestamp': timestamp,
+            'level': level,
+            'module': module,
+            'message': message
+        }
+    
     return None
 
 def read_automation_logs():
     """자동화 로그 파일들을 읽어서 통합된 로그 리스트 반환"""
     log_files = [
-        'auto_run.log',
-        'auto_inp.log', 
-        'auto_sensor.log',
-        'auto_inp_to_frd.log',
-        'auto_frd_to_vtk.log'
+        ('auto_run.log', 'AUTO_RUN'),
+        ('auto_inp.log', 'AUTO_INP'), 
+        ('auto_sensor.log', 'AUTO_SENSOR'),
+        ('auto_inp_to_frd.log', 'AUTO_INP_TO_FRD'),
+        ('auto_frd_to_vtk.log', 'AUTO_FRD_TO_VTK')
     ]
     
     all_logs = []
+    debug_info = []
     
-    for log_file in log_files:
+    for log_file, module_name in log_files:
         log_path = os.path.join('log', log_file)
         if os.path.exists(log_path):
             try:
                 with open(log_path, 'r', encoding='utf-8') as f:
                     lines = f.readlines()
-                    for line in lines:
+                    debug_info.append(f"{log_file}: {len(lines)}줄")
+                    
+                    for line_num, line in enumerate(lines, 1):
                         parsed = parse_automation_log_line(line)
                         if parsed:
+                            # 모듈명이 AUTO_UNKNOWN인 경우 파일명 기반으로 설정
+                            if parsed['module'] == 'AUTO_UNKNOWN':
+                                parsed['module'] = module_name
                             all_logs.append(parsed)
+                        elif line.strip():  # 빈 줄이 아닌 경우에만 디버그
+                            debug_info.append(f"{log_file}:{line_num} 파싱 실패: {line.strip()[:50]}")
             except Exception as e:
-                print(f"로그 파일 읽기 오류 ({log_file}): {e}")
+                debug_info.append(f"로그 파일 읽기 오류 ({log_file}): {e}")
+        else:
+            debug_info.append(f"{log_file}: 파일 없음")
+    
+    # 디버깅 정보를 로그에 추가 (개발 중에만)
+    if not all_logs:
+        for info in debug_info[:10]:  # 처음 10개만 표시
+            all_logs.append({
+                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'level': 'DEBUG',
+                'module': 'DEBUG',
+                'message': info
+            })
     
     # 시간순으로 정렬 (최신순)
     all_logs.sort(key=lambda x: x['timestamp'], reverse=True)
@@ -125,6 +176,7 @@ def layout():
                                             {"label": "INFO", "value": "INFO"},
                                             {"label": "WARNING", "value": "WARNING"},
                                             {"label": "ERROR", "value": "ERROR"},
+                                            {"label": "DEBUG", "value": "DEBUG"},
                                         ],
                                         value="all"
                                     )
@@ -249,7 +301,8 @@ def update_automation_logs(n_intervals, module_filter, level_filter, count_filte
     level_colors = {
         "INFO": "primary",
         "WARNING": "warning", 
-        "ERROR": "danger"
+        "ERROR": "danger",
+        "DEBUG": "secondary"
     }
     
     # 모듈별 색상 매핑
