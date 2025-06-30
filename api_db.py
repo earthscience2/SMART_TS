@@ -885,5 +885,39 @@ def get_project_data_with_stats(project_pk: str = None,
     
     return df_merged
 
+def get_user_data(its_num: int = 1) -> pd.DataFrame:
+    """ITS 데이터베이스에서 사용자 정보를 조회합니다.
+    
+    Args:
+        its_num: ITS 번호 (기본값: 1)
+    
+    Returns:
+        사용자 정보 DataFrame
+    """
+    try:
+        eng = _get_its_engine(its_num)
+        query = text("""
+            SELECT 
+                userid as user_id,
+                grade as authority,
+                authstartdate as authority_start_date,
+                authenddate as authority_end_date
+            FROM tb_user 
+            ORDER BY userid
+        """)
+        df = pd.read_sql(query, eng)
+        
+        # 날짜 컬럼을 문자열로 변환
+        for col in ['authority_start_date', 'authority_end_date']:
+            if col in df.columns:
+                df[col] = df[col].astype(str)
+                df[col] = df[col].replace('NaT', None)
+                df[col] = df[col].replace('nan', None)
+        
+        return df
+    except Exception as e:
+        print(f"사용자 데이터 조회 오류: {e}")
+        return pd.DataFrame()
+
  
     
