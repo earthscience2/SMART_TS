@@ -521,14 +521,15 @@ def update_sensor_structures_table(is_open, structures_data):
 # 라디오 버튼 선택 초기화
 @callback(
     Output({"type": "structure-select", "index": ALL}, "value"),
-    Input("add-modal", "is_open"),
+    [Input("add-modal", "is_open")],
+    [State("sensor-structures-store", "data")],
     prevent_initial_call=True
 )
-def reset_radio_buttons(is_open):
+def reset_radio_buttons(is_open, structures_data):
     """모달이 열릴 때 라디오 버튼 선택을 초기화합니다."""
-    if is_open:
-        # 모든 라디오 버튼을 선택 해제
-        return [False] * 10  # 최대 10개의 구조를 가정
+    if is_open and structures_data:
+        # 실제 구조체 개수에 맞춰서 모든 라디오 버튼을 선택 해제
+        return [False] * len(structures_data)
     return dash.no_update
 
 @callback(
