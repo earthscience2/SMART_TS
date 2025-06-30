@@ -291,12 +291,16 @@ app.layout = dbc.Container(
 # 통합된 URL 리다이렉트 콜백
 @app.callback(
     Output("url", "pathname"),
-    [Input("url", "pathname")],
-    prevent_initial_call=True,
-    allow_duplicate=True
+    [Input("url", "pathname"),
+     Input("admin-brand", "n_clicks")],
+    prevent_initial_call=True
 )
-def handle_url_redirects(pathname):
+def handle_url_redirects(pathname, admin_brand_clicks):
     """모든 URL 리다이렉트 로직을 처리합니다."""
+    
+    # 관리자 브랜드 클릭 처리
+    if admin_brand_clicks:
+        return "/admin_dashboard"
     
     # 관리자 페이지에서 일반 페이지 접근 차단
     admin_user = flask_request.cookies.get("admin_user")
@@ -314,19 +318,6 @@ def handle_url_redirects(pathname):
         if not flask_request.cookies.get("login_user"):
             return "/login"
     
-    return no_update
-
-# 관리자 브랜드 클릭 콜백 (별도로 분리)
-@app.callback(
-    Output("url", "pathname"),
-    Input("admin-brand", "n_clicks"),
-    prevent_initial_call=True,
-    allow_duplicate=True
-)
-def admin_brand_click(n_clicks):
-    """관리자 브랜드 클릭 시 대시보드로 이동"""
-    if n_clicks:
-        return "/admin_dashboard"
     return no_update
 
 # 네비게이션 바 동적 생성 콜백
