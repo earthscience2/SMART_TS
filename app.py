@@ -312,7 +312,7 @@ def _build_admin_navbar():
                 href="/logout",
                 id="admin-nav-logout",
                 className="btn btn-danger btn-sm fw-bold mt-1 ms-auto",
-                style={"color": "white", "backgroundColor": "#dc3545", "border": "none", "marginLeft": "200px"},
+                style={"color": "white", "backgroundColor": "#dc3545", "border": "none"},
             ),
         ),
     ]
