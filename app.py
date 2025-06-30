@@ -292,7 +292,8 @@ app.layout = dbc.Container(
 @app.callback(
     Output("url", "pathname"),
     [Input("url", "pathname")],
-    prevent_initial_call=True
+    prevent_initial_call=True,
+    allow_duplicate=True
 )
 def handle_url_redirects(pathname):
     """모든 URL 리다이렉트 로직을 처리합니다."""
