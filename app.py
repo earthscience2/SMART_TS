@@ -122,7 +122,7 @@ def logout():
 # ──────────────────────────────────────────────────────────────────────────────
 # 이제 Dash 앱 생성
 # ──────────────────────────────────────────────────────────────────────────────
-from dash import Dash, html, dcc, page_container, no_update
+from dash import Dash, html, dcc, page_container, no_update, callback_context
 from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
 from flask import request as flask_request
@@ -270,6 +270,40 @@ app.layout = dbc.Container(
     ],
 )
 
+# 통합된 URL 리다이렉트 콜백
+@app.callback(
+    Output("url", "pathname"),
+    [Input("url", "pathname"),
+     Input("admin-brand", "n_clicks")],
+    prevent_initial_call=True
+)
+def handle_url_redirects(pathname, admin_brand_clicks):
+    """모든 URL 리다이렉트 로직을 처리합니다."""
+    ctx = callback_context
+    
+    # 관리자 브랜드 클릭 처리
+    if ctx.triggered and ctx.triggered[0]['prop_id'] == 'admin-brand.n_clicks':
+        if admin_brand_clicks:
+            return "/admin_dashboard"
+    
+    # 관리자 페이지에서 일반 페이지 접근 차단
+    admin_user = flask_request.cookies.get("admin_user")
+    if admin_user and pathname in ["/", "/project", "/sensor", "/concrete", "/download", "/tci_analysis"]:
+        return "/admin_dashboard"
+    
+    # 로그인 페이지 리다이렉트
+    # 관리자 페이지 접근 체크
+    if pathname.startswith("/admin_dashboard") or pathname.startswith("/admin_projects") or pathname.startswith("/admin_logs") or pathname.startswith("/admin_users") or pathname.startswith("/admin_automation"):
+        if not flask_request.cookies.get("admin_user"):
+            return "/admin"
+    
+    # 일반 페이지 접근 체크
+    if not pathname.startswith(("/login", "/admin", "/do_login", "/do_admin_login", "/assets", "/_dash", "/favicon", "/logout")):
+        if not flask_request.cookies.get("login_user"):
+            return "/login"
+    
+    return no_update
+
 # 네비게이션 바 동적 생성 콜백
 @app.callback(
     Output("navbar-container", "children"),
@@ -415,59 +449,6 @@ def update_nav_links(pathname, search):
         )
     else:
         return "/", "/project", "/sensor", "/concrete", "/download"
-
-# 관리자 페이지에서 일반 페이지 접근 차단 콜백
-@app.callback(
-    Output("url", "pathname"),
-    Input("url", "pathname"),
-    prevent_initial_call=True,
-    allow_duplicate=True
-)
-def prevent_admin_to_normal_pages(pathname):
-    """관리자 페이지에서 일반 페이지로의 접근을 차단하고 대시보드로 리다이렉트"""
-    # 현재 쿠키에서 관리자 여부 확인
-    admin_user = flask_request.cookies.get("admin_user")
-    
-    if admin_user:
-        # 관리자가 일반 페이지로 이동하려고 할 때
-        if pathname in ["/", "/project", "/sensor", "/concrete", "/download", "/tci_analysis"]:
-            return "/admin_dashboard"
-    
-    return no_update
-
-# 관리자 브랜드 클릭 콜백
-@app.callback(
-    Output("url", "pathname"),
-    Input("admin-brand", "n_clicks"),
-    prevent_initial_call=True,
-    allow_duplicate=True
-)
-def admin_brand_click(n_clicks):
-    """관리자 브랜드 클릭 시 대시보드로 이동"""
-    if n_clicks:
-        return "/admin_dashboard"
-    return no_update
-
-# 로그인 페이지 리다이렉트 콜백
-@app.callback(
-    Output("url", "pathname"),
-    Input("url", "pathname"),
-    prevent_initial_call=True,
-    allow_duplicate=True
-)
-def redirect_to_login(pathname):
-    """로그인이 필요한 페이지에 접근할 때 로그인 페이지로 리다이렉트"""
-    # 관리자 페이지 접근 체크
-    if pathname.startswith("/admin_dashboard") or pathname.startswith("/admin_projects") or pathname.startswith("/admin_logs") or pathname.startswith("/admin_users") or pathname.startswith("/admin_automation"):
-        if not flask_request.cookies.get("admin_user"):
-            return "/admin"
-    
-    # 일반 페이지 접근 체크
-    if not pathname.startswith(("/login", "/admin", "/do_login", "/do_admin_login", "/assets", "/_dash", "/favicon", "/logout")):
-        if not flask_request.cookies.get("login_user"):
-            return "/login"
-    
-    return no_update
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=23022)
