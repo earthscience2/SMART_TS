@@ -259,45 +259,33 @@ def _build_admin_navbar():
         )
     ])
 
-def serve_layout():
-    """Dash Serve layout function, evaluated per request.
+# 정적 레이아웃 설정
+app.layout = dbc.Container(
+    fluid=True,
+    children=[
+        dcc.Location(id="url"),
+        html.Div(id="navbar-container"),
+        dbc.Card(className="shadow-sm p-4", children=[page_container]),
+    ],
+)
 
-    쿠키(login_user)가 없으면 로그인 페이지 레이아웃을 직접 반환해 SPA 내부 이동까지 차단한다.
-    """
-
+# 네비게이션 바 동적 생성 콜백
+@app.callback(
+    Output("navbar-container", "children"),
+    Input("url", "pathname")
+)
+def update_navbar(pathname):
+    """URL에 따라 적절한 네비게이션 바를 반환합니다."""
     # 관리자 페이지 접근 체크
-    if flask_request.path.startswith("/admin_dashboard") or flask_request.path.startswith("/admin_projects") or flask_request.path.startswith("/admin_logs") or flask_request.path.startswith("/admin_users") or flask_request.path.startswith("/admin_automation"):
+    if pathname.startswith("/admin_dashboard") or pathname.startswith("/admin_projects") or pathname.startswith("/admin_logs") or pathname.startswith("/admin_users") or pathname.startswith("/admin_automation"):
         if not flask_request.cookies.get("admin_user"):
-            from pages import admin as admin_page
-            error_param = flask_request.args.get("error")
-            return admin_page.layout(error=error_param)
-        # 관리자 페이지는 관리자용 네비게이션 바를 사용
-        admin_navbar = _build_admin_navbar()
-        return dbc.Container(
-            fluid=True,
-            children=[
-                dcc.Location(id="url"),
-                admin_navbar,
-                dbc.Card(className="shadow-sm p-4", children=[page_container]),
-            ],
-        )
-
+            return html.Div()  # 빈 div 반환
+        return _build_admin_navbar()
+    
     if not flask_request.cookies.get("login_user"):
-        from pages import login as login_page  # 지역 임포트로 순환참조 방지
-        error_param = flask_request.args.get("error")
-        return login_page.layout(error=error_param)
-
-    navbar = _build_navbar()
-    return dbc.Container(
-        fluid=True,
-        children=[
-            dcc.Location(id="url"),
-            navbar,
-            dbc.Card(className="shadow-sm p-4", children=[page_container]),
-        ],
-    )
-
-app.layout = serve_layout
+        return html.Div()  # 빈 div 반환
+    
+    return _build_navbar()
 
 # 네비게이션 바 active 클래스 동적 적용 콜백
 from dash.dependencies import Input, Output
@@ -459,6 +447,27 @@ def admin_brand_click(n_clicks):
     """관리자 브랜드 클릭 시 대시보드로 이동"""
     if n_clicks:
         return "/admin_dashboard"
+    return no_update
+
+# 로그인 페이지 리다이렉트 콜백
+@app.callback(
+    Output("url", "pathname"),
+    Input("url", "pathname"),
+    prevent_initial_call=True,
+    allow_duplicate=True
+)
+def redirect_to_login(pathname):
+    """로그인이 필요한 페이지에 접근할 때 로그인 페이지로 리다이렉트"""
+    # 관리자 페이지 접근 체크
+    if pathname.startswith("/admin_dashboard") or pathname.startswith("/admin_projects") or pathname.startswith("/admin_logs") or pathname.startswith("/admin_users") or pathname.startswith("/admin_automation"):
+        if not flask_request.cookies.get("admin_user"):
+            return "/admin"
+    
+    # 일반 페이지 접근 체크
+    if not pathname.startswith(("/login", "/admin", "/do_login", "/do_admin_login", "/assets", "/_dash", "/favicon", "/logout")):
+        if not flask_request.cookies.get("login_user"):
+            return "/login"
+    
     return no_update
 
 if __name__ == "__main__":
