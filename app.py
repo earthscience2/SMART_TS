@@ -240,21 +240,22 @@ def _build_navbar():
     admin_user = flask_request.cookies.get("admin_user")
 
     children = [
-        # 네비게이션 링크들 (숨김처리하되 주소는 유지)
+        # 네비게이션 링크들 (로그아웃 버튼 바로 왼쪽에 배치)
         dbc.NavItem(dcc.Link("", href="/", className="nav-link d-none", id="nav-home")),
         dbc.NavItem(dcc.Link("", href="/project", className="nav-link d-none", id="nav-project")),
         dbc.NavItem(dcc.Link("", href="/sensor", className="nav-link d-none", id="nav-sensor")),
         dbc.NavItem(dcc.Link("", href="/concrete", className="nav-link d-none", id="nav-concrete")),
         dbc.NavItem(dcc.Link("", href="/download", className="nav-link d-none", id="nav-download")),
-        # Login / Logout (보기/숨김 및 정렬)
+        # Login 버튼 (숨김 처리용)
         dbc.NavItem(dcc.Link("Login", href="/login", className="nav-link", id="nav-login")),
+        # Logout 버튼 (오른쪽 끝에 배치)
         dbc.NavItem(
             html.A(
                 "Logout",
                 href="/logout",
                 id="nav-logout",
                 className="btn btn-danger btn-sm fw-bold mt-1 ms-auto",
-                style={"color": "white", "backgroundColor": "#dc3545", "border": "none", "borderRadius": "4px", "marginLeft": "200px"},
+                style={"color": "white", "backgroundColor": "#dc3545", "border": "none", "borderRadius": "4px"},
             ),
         ),
     ]
