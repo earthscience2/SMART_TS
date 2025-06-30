@@ -726,7 +726,7 @@ def get_project_statistics() -> pd.DataFrame:
         COUNT(DISTINCT s.sensor_pk) as sensor_count
     FROM project p
     LEFT JOIN concrete c ON p.project_pk = c.project_pk
-    LEFT JOIN sensors s ON c.concrete_pk = s.concrete_pk
+    LEFT JOIN sensor s ON c.concrete_pk = s.concrete_pk
     GROUP BY p.project_pk, p.name
     ORDER BY p.project_pk
     """
