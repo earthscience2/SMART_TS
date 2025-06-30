@@ -131,8 +131,7 @@ def get_project_structure_list(its_num: int, allow_list: list[str] | None, grade
 
 # 프로젝트 조회
 def get_project_data(project_pk: str = None,
-                     user_company_pk: str = None,
-                     activate: int = None) -> pd.DataFrame:
+                     user_company_pk: str = None) -> pd.DataFrame:
     sql = "SELECT * FROM project"
     conditions = []
     params = {}
@@ -143,9 +142,6 @@ def get_project_data(project_pk: str = None,
     if user_company_pk:
         conditions.append("user_company_pk = :user_company_pk")
         params["user_company_pk"] = user_company_pk
-    if activate is not None:
-        conditions.append("activate = :activate")
-        params["activate"] = activate
     if conditions:
         sql += " WHERE " + " AND ".join(conditions)
 
@@ -153,7 +149,7 @@ def get_project_data(project_pk: str = None,
     return pd.read_sql(stmt, con=engine, params=params)
 
 # 프로젝트 추가 
-def add_project_data(user_company_pk: str, name: str, activate: int = 0) -> None:
+def add_project_data(user_company_pk: str, name: str) -> None:
     # 1) 현재 가장 큰 project_pk 가져오기
     max_pk_sql = "SELECT MAX(project_pk) as max_pk FROM project"
     max_pk_df = pd.read_sql(text(max_pk_sql), con=engine)
@@ -169,15 +165,14 @@ def add_project_data(user_company_pk: str, name: str, activate: int = 0) -> None
     # 3) INSERT 쿼리 실행
     sql = """
     INSERT INTO project 
-    (project_pk, user_company_pk, name, activate, created_at, updated_at) 
+    (project_pk, user_company_pk, name, created_at, updated_at) 
     VALUES 
-    (:project_pk, :user_company_pk, :name, :activate, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    (:project_pk, :user_company_pk, :name, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     """
     params = {
         "project_pk": new_pk,
         "user_company_pk": user_company_pk,
-        "name": name,
-        "activate": activate
+        "name": name
     }
     with engine.connect() as conn:
         conn.execute(text(sql), params)
@@ -692,8 +687,7 @@ if __name__ == "__main__":
     # 프로젝트 추가
     add_project_data(
         user_company_pk="UC000001",
-        name="테스트 프로젝트",
-        activate=1
+        name="테스트 프로젝트"
     )
     # 프로젝트 조회
     projects = get_project_data(activate=1)

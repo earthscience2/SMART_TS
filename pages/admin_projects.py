@@ -64,19 +64,6 @@ def layout(**kwargs):
                             dbc.Label("프로젝트명", className="fw-bold"),
                             dbc.Input(id="edit-project-name", type="text", placeholder="프로젝트명을 입력하세요", className="mb-3")
                         ], width=6)
-                    ]),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Label("상태", className="fw-bold"),
-                            dcc.Dropdown(
-                                id="edit-project-status",
-                                options=[
-                                    {"label": "활성", "value": 1},
-                                    {"label": "비활성", "value": 0}
-                                ],
-                                className="mb-3"
-                            )
-                        ], width=6)
                     ])
                 ])
             ]),
@@ -159,7 +146,6 @@ def update_projects_table(projects_data, current_page):
                 html.Th("프로젝트명"),
                 html.Th("생성일"),
                 html.Th("수정일"),
-                html.Th("상태"),
                 html.Th("작업")
             ])
         ])
@@ -168,19 +154,11 @@ def update_projects_table(projects_data, current_page):
     # 테이블 바디
     table_rows = []
     for project in current_data:
-        # 상태 표시
-        activate = project.get('activate', 0)
-        if activate == 1:
-            status_badge = dbc.Badge("활성", color="success")
-        else:
-            status_badge = dbc.Badge("비활성", color="secondary")
-        
         row = html.Tr([
             html.Td(project.get('project_pk', '')),
             html.Td(project.get('name', '')),
             html.Td(project.get('created_at', '')),
             html.Td(project.get('updated_at', '')),
-            html.Td(status_badge),
             html.Td([
                 dbc.Button("수정", size="sm", color="primary", className="me-1", 
                           id={"type": "edit-btn", "index": project.get('project_pk', '')}),
@@ -218,8 +196,7 @@ def update_projects_table(projects_data, current_page):
 @callback(
     [Output("edit-modal", "is_open"),
      Output("edit-project-id", "value"),
-     Output("edit-project-name", "value"),
-     Output("edit-project-status", "value")],
+     Output("edit-project-name", "value")],
     [Input({"type": "edit-btn", "index": ALL}, "n_clicks")],
     [State("projects-data-store", "data")],
     prevent_initial_call=True
@@ -228,11 +205,11 @@ def open_edit_modal(n_clicks, projects_data):
     """수정 모달을 엽니다."""
     ctx = dash.callback_context
     if not ctx.triggered:
-        return False, "", "", None
+        return False, "", ""
     
     # n_clicks가 None이거나 모든 값이 None이면 초기 로드이므로 모달을 열지 않음
     if not n_clicks or all(click is None for click in n_clicks):
-        return False, "", "", None
+        return False, "", ""
     
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
     project_id = json.loads(button_id)['index']
@@ -240,9 +217,9 @@ def open_edit_modal(n_clicks, projects_data):
     # 프로젝트 데이터 찾기
     project = next((p for p in projects_data if p.get('project_pk') == project_id), None)
     if project:
-        return True, project.get('project_pk', ''), project.get('name', ''), project.get('activate', 0)
+        return True, project.get('project_pk', ''), project.get('name', '')
     
-    return False, "", "", None
+    return False, "", ""
 
 @callback(
     [Output("edit-modal", "is_open", allow_duplicate=True),
@@ -253,11 +230,10 @@ def open_edit_modal(n_clicks, projects_data):
      Input("edit-cancel", "n_clicks")],
     [State("edit-project-id", "value"),
      State("edit-project-name", "value"),
-     State("edit-project-status", "value"),
      State("projects-data-store", "data")],
     prevent_initial_call=True
 )
-def handle_edit_modal(save_clicks, cancel_clicks, project_id, project_name, project_status, projects_data):
+def handle_edit_modal(save_clicks, cancel_clicks, project_id, project_name, projects_data):
     """수정 모달을 처리합니다."""
     ctx = dash.callback_context
     if not ctx.triggered:
@@ -273,8 +249,7 @@ def handle_edit_modal(save_clicks, cancel_clicks, project_id, project_name, proj
             # 프로젝트 업데이트
             update_project_data(
                 project_pk=project_id,
-                name=project_name,
-                activate=project_status
+                name=project_name
             )
             
             # 데이터 다시 로드
