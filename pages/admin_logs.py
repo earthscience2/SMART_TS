@@ -13,11 +13,6 @@ def layout(**kwargs):
             # 관리자 전용 네비게이션 바
             dbc.Navbar(
                 dbc.Container([
-                    dbc.NavbarBrand([
-                        html.Span("🔧 관리자 대시보드", className="fw-bold text-warning"),
-                        html.Span(" | ", className="mx-2"),
-                        html.Span("Concrete MONITOR", className="fw-bold")
-                    ], href="/admin_dashboard"),
                     dbc.Nav([
                         dbc.NavItem(dcc.Link("📊 프로젝트 관리", href="/admin_projects", className="nav-link")),
                         dbc.NavItem(dcc.Link("📋 로그 확인", href="/admin_logs", className="nav-link active")),
