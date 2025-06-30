@@ -4,6 +4,7 @@ import pandas as pd
 import threading
 import time
 import logging
+import os
 from ITS_CLI import config, tcp_client
 
 # 0) 로거 설정

@@ -83,10 +83,6 @@ def inp_to_frd(concrete_pk, inp_path):
     except Exception as e:
         logger.error(f"{concrete_pk}/{base} INP to FRD 변환 오류: {e}")
 
-import subprocess
-import shutil
-import os
-
 def convert_all_inp_to_frd():
     """
     inp/ 하위 모든 .inp 파일을 찾아서:
