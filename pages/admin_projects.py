@@ -476,60 +476,40 @@ def update_sensor_structures_table(is_open, structures_data):
     if not is_open or not structures_data:
         return ""
     
-    # 테이블 헤더
-    table_header = [
-        html.Thead([
-            html.Tr([
-                html.Th("선택"),
-                html.Th("구조 ID"),
-                html.Th("구조명"),
-                html.Th("디바이스 수"),
-                html.Th("센서 수")
-            ])
-        ])
-    ]
-    
-    # 테이블 바디
-    table_rows = []
+    # RadioItems 옵션 생성
+    options = []
     for i, structure in enumerate(structures_data):
-        row = html.Tr([
-            html.Td([
-                dbc.RadioButton(
-                    id={"type": "structure-select", "index": i},
-                    name="structure-selection",
-                    value=structure.get('structure_id', '')
-                )
-            ]),
-            html.Td(structure.get('structure_id', '')),
-            html.Td(structure.get('structure_name', '')),
-            html.Td(structure.get('device_count', 0)),
-            html.Td(structure.get('sensor_count', 0))
+        label = html.Div([
+            html.Strong(f"{structure.get('structure_id', '')} - {structure.get('structure_name', '')}"),
+            html.Br(),
+            html.Small(f"디바이스: {structure.get('device_count', 0)}개, 센서: {structure.get('sensor_count', 0)}개", 
+                      className="text-muted")
         ])
-        table_rows.append(row)
+        options.append({
+            "label": label,
+            "value": i  # 인덱스를 값으로 사용
+        })
     
-    table_body = [html.Tbody(table_rows)]
-    
-    return dbc.Table(
-        table_header + table_body,
-        striped=True,
-        bordered=True,
-        hover=True,
-        responsive=True,
-        size="sm"
-    )
+    return html.Div([
+        html.H6("구조를 선택하세요:", className="mb-3"),
+        dbc.RadioItems(
+            id="structure-selection",
+            options=options,
+            value=None,
+            className="mb-3"
+        )
+    ])
 
 # 라디오 버튼 선택 초기화
 @callback(
-    Output({"type": "structure-select", "index": ALL}, "value"),
-    [Input("add-modal", "is_open")],
-    [State("sensor-structures-store", "data")],
+    Output("structure-selection", "value"),
+    Input("add-modal", "is_open"),
     prevent_initial_call=True
 )
-def reset_radio_buttons(is_open, structures_data):
-    """모달이 열릴 때 라디오 버튼 선택을 초기화합니다."""
-    if is_open and structures_data:
-        # 실제 구조체 개수에 맞춰서 모든 라디오 버튼을 선택 해제
-        return [False] * len(structures_data)
+def reset_radio_selection(is_open):
+    """모달이 열릴 때 라디오 선택을 초기화합니다."""
+    if is_open:
+        return None
     return dash.no_update
 
 @callback(
@@ -543,11 +523,11 @@ def reset_radio_buttons(is_open, structures_data):
     [Input("add-save", "n_clicks"),
      Input("add-cancel", "n_clicks")],
     [State("new-project-name", "value"),
-     State({"type": "structure-select", "index": ALL}, "value"),
+     State("structure-selection", "value"),
      State("sensor-structures-store", "data")],
     prevent_initial_call=True
 )
-def handle_add_modal(save_clicks, cancel_clicks, project_name, selected_structures, structures_data):
+def handle_add_modal(save_clicks, cancel_clicks, project_name, selected_structure_index, structures_data):
     """새 프로젝트 추가 모달을 처리합니다."""
     ctx = dash.callback_context
     if not ctx.triggered:
@@ -564,19 +544,15 @@ def handle_add_modal(save_clicks, cancel_clicks, project_name, selected_structur
             return True, True, "프로젝트명을 입력해주세요.", "danger", False, "", dash.no_update
         
         # 구조 선택 검증
-        if not selected_structures or not any(selected_structures):
+        if selected_structure_index is None:
             return True, True, "구조를 선택해주세요.", "danger", False, "", dash.no_update
         
         try:
-            # 선택된 구조 찾기
-            selected_structure = None
-            for i, value in enumerate(selected_structures):
-                if value:
-                    selected_structure = structures_data[i]
-                    break
+            # 선택된 구조 가져오기
+            if selected_structure_index >= len(structures_data):
+                return True, True, "잘못된 구조가 선택되었습니다.", "danger", False, "", dash.no_update
             
-            if not selected_structure:
-                return True, True, "구조를 선택해주세요.", "danger", False, "", dash.no_update
+            selected_structure = structures_data[selected_structure_index]
             
             # 프로젝트 생성
             add_project_data(
