@@ -230,6 +230,10 @@ def open_edit_modal(n_clicks, projects_data):
     if not ctx.triggered:
         return False, "", "", None
     
+    # n_clicks가 None이거나 모든 값이 None이면 초기 로드이므로 모달을 열지 않음
+    if not n_clicks or all(click is None for click in n_clicks):
+        return False, "", "", None
+    
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
     project_id = json.loads(button_id)['index']
     
@@ -303,6 +307,10 @@ def open_delete_modal(n_clicks, projects_data):
     """삭제 모달을 엽니다."""
     ctx = dash.callback_context
     if not ctx.triggered:
+        return False, ""
+    
+    # n_clicks가 None이거나 모든 값이 None이면 초기 로드이므로 모달을 열지 않음
+    if not n_clicks or all(click is None for click in n_clicks):
         return False, ""
     
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
