@@ -257,6 +257,18 @@ layout = html.Div([
                         # 기본 정보 섹션
                         html.Div([
                             html.H6("📝 기본 정보", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                            # 기존 콘크리트에서 불러오기
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("기존 콘크리트에서 복사", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                    dcc.Dropdown(
+                                        id="add-copy-dropdown",
+                                        placeholder="복사할 콘크리트를 선택하세요",
+                                        clearable=True,
+                                        style={"fontSize": "0.85rem"}
+                                    )
+                                ], width=12),
+                            ], className="mb-2"),
                             dbc.Row([
                                 dbc.Col([
                                     dbc.Label("콘크리트 이름", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
@@ -891,6 +903,7 @@ def control_add_button(project_pk):
 # ───────────────────── ④ 추가 모달 토글
 @callback(
     Output("modal-add", "is_open"),
+    Output("add-copy-dropdown", "value"),
     Input("btn-add", "n_clicks"),
     Input("add-close", "n_clicks"),
     Input("add-save", "n_clicks"),
@@ -900,10 +913,112 @@ def control_add_button(project_pk):
 def toggle_add(b1, b2, b3, is_open):
     trig = ctx.triggered_id
     if trig == "btn-add":
-        return True
+        return True, None  # 모달 열 때 드롭다운 초기화
     if trig in ("add-close", "add-save"):
-        return False
-    return is_open
+        return False, None  # 모달 닫을 때 드롭다운 초기화
+    return is_open, dash.no_update
+
+# ───────────────────── ④-1 추가 모달 열릴 때 기존 콘크리트 목록 로드
+@callback(
+    Output("add-copy-dropdown", "options"),
+    Input("modal-add", "is_open"),
+    State("selected-project-store", "data"),
+    prevent_initial_call=True
+)
+def load_concrete_options_for_copy(is_open, project_pk):
+    if not is_open or not project_pk:
+        return []
+    
+    try:
+        df_all = api_db.get_concrete_data()
+        df = df_all[df_all["project_pk"] == project_pk]
+        
+        if df.empty:
+            return []
+        
+        options = []
+        for _, row in df.iterrows():
+            options.append({
+                "label": row["name"],
+                "value": row["concrete_pk"]
+            })
+        
+        return options
+    except Exception:
+        return []
+
+# ───────────────────── ④-2 기존 콘크리트 선택 시 값들 복사
+@callback(
+    Output("add-name", "value", allow_duplicate=True),
+    Output("add-nodes", "value", allow_duplicate=True),
+    Output("add-h", "value", allow_duplicate=True),
+    Output("add-unit", "value", allow_duplicate=True),
+    Output("add-b", "value", allow_duplicate=True),
+    Output("add-n", "value", allow_duplicate=True),
+    Output("add-t-date", "value", allow_duplicate=True),
+    Output("add-t-time", "value", allow_duplicate=True),
+    Output("add-a", "value", allow_duplicate=True),
+    Output("add-p", "value", allow_duplicate=True),
+    Output("add-d", "value", allow_duplicate=True),
+    Output("add-e", "value", allow_duplicate=True),
+    Output("add-preview", "figure", allow_duplicate=True),
+    Input("add-copy-dropdown", "value"),
+    prevent_initial_call=True
+)
+def copy_concrete_values(selected_concrete_pk):
+    if not selected_concrete_pk:
+        raise PreventUpdate
+    
+    try:
+        # 선택된 콘크리트 데이터 조회
+        df = api_db.get_concrete_data(selected_concrete_pk)
+        
+        if df is None or (isinstance(df, pd.DataFrame) and df.empty):
+            raise PreventUpdate
+        
+        # DataFrame이면 첫 행을 꺼내 dict로, 아니면 이미 dict라고 가정
+        if isinstance(df, pd.DataFrame):
+            row = df.iloc[0].to_dict()
+        else:
+            row = df
+        
+        # dims 필드가 문자열이면 파싱
+        dims_field = row.get("dims", {})
+        if isinstance(dims_field, str):
+            try:
+                dims = ast.literal_eval(dims_field)
+            except Exception:
+                dims = {}
+        else:
+            dims = dims_field or {}
+        
+        # 각 값 추출 (이름은 복사하지 않고 빈 값으로)
+        name = ""  # 이름은 복사하지 않음
+        nodes = str(dims.get("nodes", []))
+        h_value = dims.get("h", 0)
+        
+        # 콘크리트 속성들
+        con_unit = row.get("con_unit", "")
+        con_b = row.get("con_b", "")
+        con_n = row.get("con_n", "")
+        con_a = row.get("con_a", "")
+        con_p = row.get("con_p", "")
+        con_d = row.get("con_d", "")
+        con_e = row.get("con_e", "")
+        
+        # 타설 시간 포맷팅 (현재 시간으로 설정)
+        from datetime import datetime
+        dt = datetime.now()
+        con_t_date = dt.strftime('%Y-%m-%d')
+        con_t_time = dt.strftime('%H:%M')
+        
+        # 3D 미리보기 생성
+        fig = make_fig(dims.get("nodes", []), dims.get("h", 0)) if dims.get("nodes") else go.Figure()
+        
+        return name, nodes, h_value, con_unit, con_b, con_n, con_t_date, con_t_time, con_a, con_p, con_d, con_e, fig
+        
+    except Exception:
+        raise PreventUpdate
 
 # ───────────────────── ⑤ 추가 미리보기
 @callback(

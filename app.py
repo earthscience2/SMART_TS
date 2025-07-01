@@ -454,7 +454,7 @@ def update_nav_active(pathname, search):
     # 네비게이션 링크 텍스트 및 아이콘 설정
     if project_pk and not is_home:
         nav_texts = [
-            [html.Span("🏠", className="me-2"), "홈"],
+            [html.Span("🏠", className="me-2"), "대쉬보드"],
             [html.Span("📊", className="me-2"), "분석"],
             [html.Span("📡", className="me-2"), "센서"],
             [html.Span("🧱", className="me-2"), "콘크리트"],
