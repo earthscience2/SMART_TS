@@ -1776,86 +1776,155 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     html.H6("📍 측정 위치 설정", style={
                         "fontWeight": "600",
                         "color": "#374151",
-                        "marginBottom": "16px",
+                        "marginBottom": "12px",
                         "fontSize": "14px"
                     }),
                     dbc.Row([
                         dbc.Col([
-                            html.Div([
-                                dbc.InputGroup([
-                                    dbc.InputGroupText("X", style={"fontWeight": "500"}),
+                            dbc.Card([
+                                dbc.CardBody([
+                                    html.Div([
+                                        html.I(className="fas fa-arrows-alt-h", style={
+                                            "color": "#ef4444", 
+                                            "fontSize": "14px", 
+                                            "marginRight": "6px"
+                                        }),
+                                        html.Span("X축", style={
+                                            "fontWeight": "600",
+                                            "color": "#ef4444",
+                                            "fontSize": "13px"
+                                        })
+                                    ], style={"marginBottom": "4px"}),
                                     dbc.Input(
                                         id="temp-x-input", 
                                         type="number", 
                                         step=0.1, 
                                         value=round(x_mid,1), 
                                         min=round(x_min,2), 
-                                        max=round(x_max,2), 
-                                        style={"width": "100px"}
-                                    ),
-                                ], className="me-3", style={"width": "auto"}),
-                                dbc.InputGroup([
-                                    dbc.InputGroupText("Y", style={"fontWeight": "500"}),
+                                        max=round(x_max,2),
+                                        placeholder="X 좌표",
+                                        style={"width": "100%"}
+                                    )
+                                ], style={"padding": "8px"})
+                            ], style={
+                                "border": "1px solid #fecaca",
+                                "backgroundColor": "#fef2f2"
+                            })
+                        ], md=4),
+                        dbc.Col([
+                            dbc.Card([
+                                dbc.CardBody([
+                                    html.Div([
+                                        html.I(className="fas fa-arrows-alt-v", style={
+                                            "color": "#3b82f6", 
+                                            "fontSize": "14px", 
+                                            "marginRight": "6px"
+                                        }),
+                                        html.Span("Y축", style={
+                                            "fontWeight": "600",
+                                            "color": "#3b82f6",
+                                            "fontSize": "13px"
+                                        })
+                                    ], style={"marginBottom": "4px"}),
                                     dbc.Input(
                                         id="temp-y-input", 
                                         type="number", 
                                         step=0.1, 
                                         value=round(y_mid,1), 
                                         min=round(y_min,2), 
-                                        max=round(y_max,2), 
-                                        style={"width": "100px"}
-                                    ),
-                                ], className="me-3", style={"width": "auto"}),
-                                dbc.InputGroup([
-                                    dbc.InputGroupText("Z", style={"fontWeight": "500"}),
+                                        max=round(y_max,2),
+                                        placeholder="Y 좌표",
+                                        style={"width": "100%"}
+                                    )
+                                ], style={"padding": "8px"})
+                            ], style={
+                                "border": "1px solid #bfdbfe",
+                                "backgroundColor": "#eff6ff"
+                            })
+                        ], md=4),
+                        dbc.Col([
+                            dbc.Card([
+                                dbc.CardBody([
+                                    html.Div([
+                                        html.I(className="fas fa-arrows-alt", style={
+                                            "color": "#22c55e", 
+                                            "fontSize": "14px", 
+                                            "marginRight": "6px"
+                                        }),
+                                        html.Span("Z축", style={
+                                            "fontWeight": "600",
+                                            "color": "#22c55e",
+                                            "fontSize": "13px"
+                                        })
+                                    ], style={"marginBottom": "4px"}),
                                     dbc.Input(
                                         id="temp-z-input", 
                                         type="number", 
                                         step=0.1, 
                                         value=round(z_mid,1), 
                                         min=round(z_min,2), 
-                                        max=round(z_max,2), 
-                                        style={"width": "100px"}
-                                    ),
-                                ], style={"width": "auto"}),
-                            ], style={"display": "flex", "alignItems": "center", "flexWrap": "wrap", "gap": "12px"}),
-                        ], md=8),
-                        dbc.Col([
-                            html.Div([
-                                dbc.Button(
-                                    [html.I(className="fas fa-camera me-1"), "이미지 저장"],
-                                    id="btn-save-temp-image",
-                                    color="primary",
-                                    size="lg",
-                                    style={
-                                        "borderRadius": "8px",
-                                        "fontWeight": "600",
-                                        "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                        "fontSize": "15px",
-                                        "width": "120px",
-                                        "height": "48px",
-                                        "marginRight": "16px"
-                                    }
-                                ),
-                                dbc.Button(
-                                    [html.I(className="fas fa-file-csv me-1"), "데이터 저장"],
-                                    id="btn-save-temp-data",
-                                    color="success",
-                                    size="lg",
-                                    style={
-                                        "borderRadius": "8px",
-                                        "fontWeight": "600",
-                                        "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                        "fontSize": "15px",
-                                        "width": "120px",
-                                        "height": "48px"
-                                    }
-                                ),
-                            ], style={"display": "flex", "justifyContent": "center", "alignItems": "center", "height": "100%"})
+                                        max=round(z_max,2),
+                                        placeholder="Z 좌표",
+                                        style={"width": "100%"}
+                                    )
+                                ], style={"padding": "8px"})
+                            ], style={
+                                "border": "1px solid #bbf7d0",
+                                "backgroundColor": "#f0fdf4"
+                            })
                         ], md=4),
                     ], className="g-3"),
                 ], style={
-                    "padding": "16px 20px",
+                    "padding": "12px 16px",
+                    "backgroundColor": "#f9fafb",
+                    "borderRadius": "8px",
+                    "border": "1px solid #e5e7eb",
+                    "marginBottom": "20px"
+                })
+            ]),
+            
+            # 저장 버튼들 (별도 섹션)
+            html.Div([
+                html.Div([
+                    html.H6("💾 저장 옵션", style={
+                        "fontWeight": "600",
+                        "color": "#374151",
+                        "marginBottom": "12px",
+                        "fontSize": "14px"
+                    }),
+                    html.Div([
+                        dbc.Button(
+                            [html.I(className="fas fa-camera me-1"), "이미지 저장"],
+                            id="btn-save-temp-image",
+                            color="primary",
+                            size="lg",
+                            style={
+                                "borderRadius": "8px",
+                                "fontWeight": "600",
+                                "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                "fontSize": "15px",
+                                "width": "120px",
+                                "height": "48px",
+                                "marginRight": "16px"
+                            }
+                        ),
+                        dbc.Button(
+                            [html.I(className="fas fa-file-csv me-1"), "데이터 저장"],
+                            id="btn-save-temp-data",
+                            color="success",
+                            size="lg",
+                            style={
+                                "borderRadius": "8px",
+                                "fontWeight": "600",
+                                "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                "fontSize": "15px",
+                                "width": "120px",
+                                "height": "48px"
+                            }
+                        ),
+                    ], style={"display": "flex", "justifyContent": "center", "alignItems": "center"})
+                ], style={
+                    "padding": "12px 16px",
                     "backgroundColor": "#f9fafb",
                     "borderRadius": "8px",
                     "border": "1px solid #e5e7eb",
@@ -3735,7 +3804,7 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
 )
 def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
     """3D 뷰어의 현재 이미지를 PNG 파일로 저장"""
-    if not n_clicks or not figure:
+    if not n_clicks or not fig_3d:
         raise PreventUpdate
     
     try:
@@ -4146,6 +4215,7 @@ def save_section_inp(n_clicks, selected_rows, tbl_data, time_value):
     Output("btn-save-temp-image", "disabled"),
     Input("btn-save-temp-image", "n_clicks"),
     State("temp-viewer-3d", "figure"),
+    State("temp-time-graph", "figure"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     State("temp-x-input", "value"),
@@ -4153,7 +4223,7 @@ def save_section_inp(n_clicks, selected_rows, tbl_data, time_value):
     State("temp-z-input", "value"),
     prevent_initial_call=True,
 )
-def save_temp_image(n_clicks, figure, selected_rows, tbl_data, x, y, z):
+def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z):
     """온도 변화 탭의 콘크리트 구조 뷰를 이미지로 저장"""
     if not n_clicks or not figure:
         raise PreventUpdate
@@ -4176,10 +4246,44 @@ def save_temp_image(n_clicks, figure, selected_rows, tbl_data, x, y, z):
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"온도분석_{timestamp}.png"
         
-        # 이미지 저장
+        # 2개의 그래프를 하나로 합치기
         try:
+            import plotly.graph_objects as go
+            from plotly.subplots import make_subplots
+            
+            # 서브플롯 생성 (1x2 그리드)
+            fig_combined = make_subplots(
+                rows=1, cols=2,
+                subplot_titles=('콘크리트 구조', '온도 변화 추이'),
+                specs=[[{"type": "scene"}, {"type": "xy"}]]
+            )
+            
+            # 3D 뷰 추가
+            if fig_3d and fig_3d.get('data'):
+                for trace in fig_3d['data']:
+                    fig_combined.add_trace(trace, row=1, col=1)
+            
+            # 온도 변화 그래프 추가
+            if fig_time and fig_time.get('data'):
+                for trace in fig_time['data']:
+                    fig_combined.add_trace(trace, row=1, col=2)
+            
+            # 레이아웃 업데이트
+            fig_combined.update_layout(
+                height=600,
+                width=1400,
+                showlegend=False,
+                title_text="온도 변화 분석 결과",
+                title_x=0.5
+            )
+            
+            # 온도 변화 그래프의 축 레이블 설정
+            fig_combined.update_xaxes(title_text="시간", row=1, col=2)
+            fig_combined.update_yaxes(title_text="온도(°C)", row=1, col=2)
+            
+            # 이미지 저장
             import plotly.io as pio
-            img_bytes = pio.to_image(figure, format="png", width=1200, height=800, scale=2, engine="kaleido")
+            img_bytes = pio.to_image(fig_combined, format="png", width=1400, height=600, scale=2, engine="kaleido")
             default_btn = [html.I(className="fas fa-camera me-1"), "이미지 저장"]
             return dcc.send_bytes(img_bytes, filename=filename), default_btn, False
             
@@ -4192,7 +4296,7 @@ def save_temp_image(n_clicks, figure, selected_rows, tbl_data, x, y, z):
         # 대안: HTML 파일로 저장
         try:
             import json
-            fig_json = json.dumps(figure, cls=plotly.utils.PlotlyJSONEncoder)
+            fig_json = json.dumps(fig_combined, cls=plotly.utils.PlotlyJSONEncoder)
             
             html_template = f"""
             <!DOCTYPE html>
