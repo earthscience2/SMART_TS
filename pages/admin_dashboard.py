@@ -476,8 +476,6 @@ def layout(**kwargs):
                             html.H4("🔧 관리자 대시보드", className="mb-0 text-primary")
                         ]),
                         dbc.CardBody([
-                            html.P("관리자 대시보드가 정상적으로 로드되었습니다.", className="text-center"),
-                            html.Hr(),
                             dbc.Row([
                                 dbc.Col([
                                     dbc.Card([
@@ -513,9 +511,22 @@ def layout(**kwargs):
                                                 href="/admin_automation"
                                             )
                                         ])
-                                    ], className="mb-3")
-                                ], width=4)
-                            ])
+                                                                         ], className="mb-3")
+                                 ], width=4)
+                             ]),
+                             
+                             html.Hr(className="my-4"),
+                             
+                             # 시스템 현황 차트
+                             html.H5("📈 시스템 현황 (최근 7일)", className="text-dark mb-3"),
+                             html.Div(id="system-stats-charts"),
+                             
+                             # 자동 업데이트용 interval
+                             dcc.Interval(
+                                 id='stats-interval',
+                                 interval=60*1000,  # 1분마다 업데이트
+                                 n_intervals=0
+                             )
                         ])
                     ], className="shadow")
                 ])
@@ -523,4 +534,155 @@ def layout(**kwargs):
         ], fluid=True)
     ])
 
-# 복잡한 콜백들은 임시로 제거하여 페이지 로딩 문제를 해결합니다 
+def create_simple_chart(dates, data, title, color="#007bff", unit="개"):
+    """간단한 차트 생성"""
+    try:
+        if not data or not dates or len(data) == 0:
+            return html.Div([
+                html.P("데이터가 없습니다", className="text-muted text-center my-4")
+            ])
+        
+        # 안전한 날짜 변환
+        display_dates = []
+        for date in dates:
+            try:
+                display_dates.append(datetime.strptime(str(date), '%Y-%m-%d').strftime('%m/%d'))
+            except:
+                display_dates.append(str(date)[-5:])
+        
+        import plotly.graph_objs as go
+        
+        fig = go.Figure()
+        
+        # 데이터 안전성 확인
+        safe_data = [int(x) if x is not None else 0 for x in data]
+        
+        fig.add_trace(go.Scatter(
+            x=display_dates,
+            y=safe_data,
+            mode='lines+markers',
+            line=dict(color=color, width=3),
+            marker=dict(size=6, color=color),
+            name=title
+        ))
+        
+        fig.update_layout(
+            title=dict(text=f"<b>{title}</b>", font=dict(size=14)),
+            height=200,
+            margin=dict(l=40, r=20, t=40, b=40),
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            showlegend=False,
+            xaxis=dict(showgrid=False, title=""),
+            yaxis=dict(showgrid=True, gridcolor='rgba(0,0,0,0.1)', title="")
+        )
+        
+        # 최근 값 표시
+        if safe_data:
+            last_value = safe_data[-1]
+            fig.add_annotation(
+                x=display_dates[-1],
+                y=last_value,
+                text=f"<b>{last_value:,}{unit}</b>",
+                showarrow=True,
+                arrowhead=2,
+                arrowcolor=color,
+                font=dict(size=11, color=color),
+                bgcolor="white",
+                bordercolor=color,
+                borderwidth=1
+            )
+        
+        return dcc.Graph(figure=fig, config={'displayModeBar': False})
+    
+    except Exception as e:
+        print(f"차트 생성 오류: {e}")
+        return html.Div([
+            html.P("차트 생성 중 오류가 발생했습니다", className="text-muted text-center my-4")
+        ])
+
+@callback(
+    Output("system-stats-charts", "children"),
+    [Input("admin-dashboard-url", "pathname"),
+     Input("stats-interval", "n_intervals")]
+)
+def update_system_stats(pathname, n_intervals):
+    """시스템 통계 차트 업데이트"""
+    try:
+        stats = get_system_stats()
+        
+        # 안전한 데이터 추출
+        dates = stats.get('dates', [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(6, -1, -1)])
+        login_daily = stats.get('login_daily', [0] * 7)
+        project_cumulative = stats.get('project_cumulative', [0] * 7)
+        concrete_cumulative = stats.get('concrete_cumulative', [0] * 7)
+        sensor_data_cumulative = stats.get('sensor_data_cumulative', [0] * 7)
+        
+        # 4개의 차트를 2x2 그리드로 배치
+        return dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        create_simple_chart(
+                            dates, 
+                            login_daily, 
+                            "일별 로그인 횟수", 
+                            "#007bff",
+                            "회"
+                        )
+                    ], className="p-2")
+                ], className="shadow-sm border-0")
+            ], width=6, className="mb-3"),
+            
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        create_simple_chart(
+                            dates, 
+                            project_cumulative, 
+                            "누적 프로젝트 수", 
+                            "#28a745",
+                            "개"
+                        )
+                    ], className="p-2")
+                ], className="shadow-sm border-0")
+            ], width=6, className="mb-3"),
+            
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        create_simple_chart(
+                            dates, 
+                            concrete_cumulative, 
+                            "누적 콘크리트 수", 
+                            "#ffc107",
+                            "개"
+                        )
+                    ], className="p-2")
+                ], className="shadow-sm border-0")
+            ], width=6, className="mb-3"),
+            
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        create_simple_chart(
+                            dates, 
+                            sensor_data_cumulative, 
+                            "누적 센서 데이터 수", 
+                            "#17a2b8",
+                            "건"
+                        )
+                    ], className="p-2")
+                ], className="shadow-sm border-0")
+            ], width=6, className="mb-3")
+        ])
+        
+    except Exception as e:
+        print(f"시스템 통계 업데이트 오류: {e}")
+        return html.Div([
+            html.Div([
+                html.I(className="fas fa-exclamation-triangle fa-2x text-warning mb-2"),
+                html.P("데이터 로딩 중 오류가 발생했습니다", className="text-muted"),
+                html.Small("잠시 후 다시 시도해주세요.", className="text-muted")
+            ], className="text-center py-4")
+        ]) 
