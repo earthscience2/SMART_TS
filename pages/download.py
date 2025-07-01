@@ -224,9 +224,9 @@ layout = html.Div([
                             clearable=False,
                             style={"fontSize": "0.8rem"}
                         )
-                    ], md=6),
+                    ], md=4),
                     dbc.Col([
-                        html.Label("날짜 범위 (자동 조회)", className="form-label mb-1", style={"fontSize": "0.8rem", "fontWeight": "600", "color": "#6c757d"}),
+                        html.Label("날짜 범위", className="form-label mb-1", style={"fontSize": "0.8rem", "fontWeight": "600", "color": "#6c757d"}),
                         html.Div([
                             dcc.DatePickerRange(
                                 id="date-range-picker",
@@ -242,12 +242,31 @@ layout = html.Div([
                             "fontSize": "0.75rem",
                             "lineHeight": "1.2"
                         })
-                    ], md=6),
+                    ], md=5),
+                    dbc.Col([
+                        html.Label("조회", className="form-label mb-1", style={"fontSize": "0.8rem", "fontWeight": "600", "color": "#6c757d"}),
+                        html.Div([
+                            dbc.Button("🔍 조회", 
+                                     id="btn-search-files", 
+                                     color="primary", 
+                                     size="sm",
+                                     className="w-100",
+                                     style={"fontSize": "0.8rem", "fontWeight": "600"},
+                                     n_clicks=0)
+                        ])
+                    ], md=3),
                 ], className="g-2")
             ], className="py-2")
         ], className="mb-3", style={"border": "1px solid #e9ecef"}),
                         
-                        html.Div(id="dl-tab-content"),
+                        html.Div(id="dl-tab-content", children=[
+                            html.Div([
+                                html.Div([
+                                    html.I(className="fas fa-search me-2", style={"color": "#6b7280", "fontSize": "1.2rem"}),
+                                    html.Span("콘크리트를 선택하고 🔍 조회 버튼을 클릭하세요", style={"color": "#6b7280", "fontSize": "0.9rem"})
+                                ], className="d-flex align-items-center justify-content-center p-4", style={"backgroundColor": "#f9fafb", "borderRadius": "8px", "border": "1px dashed #d1d5db"})
+                            ])
+                        ]),
                     ], className="p-3")
                 ], className="bg-white rounded shadow-sm border"),
             ], md=9),
@@ -336,17 +355,27 @@ def update_date_range(filter_value):
     else:  # "all"
         return datetime(2020, 1, 1).date(), today
 
-# ───────────────────── ④ 파일 데이터 저장 ────────────────────
+# ───────────────────── ④ 조회 버튼 활성화/비활성화 ────────────────────
+@dash.callback(
+    Output("btn-search-files", "disabled"),
+    Input("dl-tbl-concrete", "selected_rows"),
+    prevent_initial_call=False,
+)
+def update_search_button_state(sel_rows):
+    return not sel_rows  # 콘크리트가 선택되지 않으면 비활성화
+
+# ───────────────────── ⑤ 파일 데이터 저장 (조회 버튼 클릭 시) ────────────────────
 @dash.callback(
     Output("file-data-store", "data"),
-    Input("dl-tabs", "active_tab"),
-    Input("dl-tbl-concrete", "selected_rows"),
+    Input("btn-search-files", "n_clicks"),
+    State("dl-tabs", "active_tab"),
+    State("dl-tbl-concrete", "selected_rows"),
     State("dl-tbl-concrete", "data"),
     State("selected-project-store", "data"),
     prevent_initial_call=True,
 )
-def update_file_data(active_tab, sel_rows, tbl_data, project_pk):
-    if not sel_rows or not project_pk:
+def update_file_data(n_clicks, active_tab, sel_rows, tbl_data, project_pk):
+    if not n_clicks or not sel_rows or not project_pk:
         return {}
     
     concrete_pk = tbl_data[sel_rows[0]]["concrete_pk"]
@@ -371,20 +400,29 @@ def update_file_data(active_tab, sel_rows, tbl_data, project_pk):
         "project_pk": project_pk
     }
 
-# ───────────────────── ⑤ 콘크리트 선택 → 탭 콘텐츠 업데이트 ────────────────────
+# ───────────────────── ⑥ 조회 버튼 → 탭 콘텐츠 업데이트 ────────────────────
 @dash.callback(
     Output("dl-tab-content", "children"),
-    Input("file-data-store", "data"),
-    Input("date-range-picker", "start_date"),
-    Input("date-range-picker", "end_date"),
+    Input("btn-search-files", "n_clicks"),
+    State("file-data-store", "data"),
+    State("date-range-picker", "start_date"),
+    State("date-range-picker", "end_date"),
     prevent_initial_call=True,
 )
-def dl_switch_tab(file_data, start_date, end_date):
+def dl_switch_tab(n_clicks, file_data, start_date, end_date):
+    if not n_clicks:
+        return html.Div([
+            html.Div([
+                html.I(className="fas fa-search me-2", style={"color": "#6b7280", "fontSize": "1.2rem"}),
+                html.Span("콘크리트를 선택하고 🔍 조회 버튼을 클릭하세요", style={"color": "#6b7280", "fontSize": "0.9rem"})
+            ], className="d-flex align-items-center justify-content-center p-4", style={"backgroundColor": "#f9fafb", "borderRadius": "8px", "border": "1px dashed #d1d5db"})
+        ])
+    
     if not file_data or not file_data.get("grouped_files"):
         return html.Div([
             html.Div([
                 html.I(className="fas fa-info-circle me-2", style={"color": "#6b7280", "fontSize": "1.2rem"}),
-                html.Span("콘크리트를 선택하면 파일 목록이 표시됩니다", style={"color": "#6b7280", "fontSize": "0.9rem"})
+                html.Span("콘크리트를 선택하고 🔍 조회 버튼을 클릭하세요", style={"color": "#6b7280", "fontSize": "0.9rem"})
             ], className="d-flex align-items-center justify-content-center p-4", style={"backgroundColor": "#f9fafb", "borderRadius": "8px", "border": "1px dashed #d1d5db"})
         ])
     
@@ -588,7 +626,7 @@ def dl_switch_tab(file_data, start_date, end_date):
     
     return html.Div(content)
 
-# ───────────────────── ⑥ 파일 다운로드 콜백 (새로운 구조) ────────────────────
+# ───────────────────── ⑦ 파일 다운로드 콜백 (새로운 구조) ────────────────────
 @dash.callback(
     Output("dl-inp-download", "data"),
     Input("btn-dl-inp", "n_clicks"),
@@ -620,7 +658,7 @@ def dl_download_vtk(n_clicks, file_data, tab_content):
     return _download_selected_files(n_clicks, file_data, "vtk")
 
 # ───────────────────── 새로운 다운로드 로직 ────────────────────
-# ───────────────────── 모든 파일 선택/해제 콜백 ────────────────────
+# ───────────────────── ⑧ 모든 파일 선택/해제 콜백 ────────────────────
 @dash.callback(
     Output({"type": "all-files-table", "index": dash.MATCH}, "selected_rows"),
     Input({"type": "select-all-btn", "index": dash.MATCH}, "n_clicks"),
