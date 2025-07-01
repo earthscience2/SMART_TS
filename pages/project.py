@@ -3507,8 +3507,8 @@ def update_section_time_info(current_file_title, active_tab):
             ], style={
                 "display": "flex",
                 "alignItems": "center",
-                "marginBottom": "3px" if material_info else "0",
-                "marginTop": "8px"
+                "marginBottom": "1px" if material_info else "0",
+                "marginTop": "12px"
             }),
             
             # 물성치 정보 섹션 (있는 경우만, 인라인 형태)
@@ -3533,7 +3533,7 @@ def update_section_time_info(current_file_title, active_tab):
                 "alignItems": "flex-start",
                 "gap": "6px",
                 "flexWrap": "wrap",
-                "marginBottom": "8px"
+                "marginBottom": "12px"
             }) if material_info else html.Div()
             
         ], style={
