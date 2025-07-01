@@ -3497,12 +3497,12 @@ def update_section_time_info(current_file_title, active_tab):
         html.Div([
             # 시간 정보 섹션
             html.Div([
-                html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "12px"}),
+                html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "14px"}),
                 html.Span(time_info, style={
                     "fontWeight": "600",
                     "color": "#1f2937",
-                    "fontSize": "11px",
-                    "marginLeft": "6px"
+                    "fontSize": "14px",
+                    "marginLeft": "8px"
                 })
             ], style={
                 "display": "flex",
@@ -3513,25 +3513,25 @@ def update_section_time_info(current_file_title, active_tab):
             
             # 물성치 정보 섹션 (있는 경우만, 인라인 형태)
             html.Div([
-                html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "12px"}),
+                html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "14px"}),
                 *[html.Div([
                     html.Span(f"{prop.split(':')[0]}:", style={
                         "color": "#6b7280",
-                        "fontSize": "10px",
-                        "marginRight": "3px"
+                        "fontSize": "12px",
+                        "marginRight": "4px"
                     }),
                     html.Span(prop.split(":", 1)[1].strip(), style={
                         "color": "#111827",
-                        "fontSize": "10px",
+                        "fontSize": "12px",
                         "fontWeight": "500",
-                        "marginRight": "8px"
+                        "marginRight": "12px"
                     })
                 ], style={"display": "inline"})
                 for prop in material_info.split(", ")]
             ], style={
                 "display": "flex",
                 "alignItems": "flex-start",
-                "gap": "6px",
+                "gap": "8px",
                 "flexWrap": "wrap",
                 "marginBottom": "12px"
             }) if material_info else html.Div()
@@ -3785,12 +3785,12 @@ def update_viewer3d_time_info(current_file_title, active_tab):
         html.Div([
             # 시간 정보 섹션
             html.Div([
-                html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "12px"}),
+                html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "14px"}),
                 html.Span(time_info, style={
                     "fontWeight": "600",
                     "color": "#1f2937",
-                    "fontSize": "11px",
-                    "marginLeft": "6px"
+                    "fontSize": "14px",
+                    "marginLeft": "8px"
                 })
             ], style={
                 "display": "flex",
@@ -3801,31 +3801,31 @@ def update_viewer3d_time_info(current_file_title, active_tab):
             
             # 물성치 정보 섹션 (있는 경우만, 인라인 형태)
             html.Div([
-                html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "12px"}),
+                html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "14px"}),
                 *[html.Div([
                     html.Span(f"{prop.split(':')[0]}:", style={
                         "color": "#6b7280",
-                        "fontSize": "10px",
-                        "marginRight": "3px"
+                        "fontSize": "12px",
+                        "marginRight": "4px"
                     }),
                     html.Span(prop.split(":", 1)[1].strip(), style={
                         "color": "#111827",
-                        "fontSize": "10px",
+                        "fontSize": "12px",
                         "fontWeight": "500",
-                        "marginRight": "8px"
+                        "marginRight": "12px"
                     })
                 ], style={"display": "inline"})
                 for prop in material_info.split(", ")]
             ], style={
                 "display": "flex",
                 "alignItems": "flex-start",
-                "gap": "6px",
+                "gap": "8px",
                 "flexWrap": "wrap",
                 "marginBottom": "12px"
             }) if material_info else html.Div()
             
         ], style={
-            "padding": "4px 12px",
+            "padding": "8px 12px",
             "backgroundColor": "#f8fafc",
             "borderRadius": "8px",
             "border": "1px solid #e2e8f0",
