@@ -1,4 +1,4 @@
-from dash import html, dcc, register_page
+from dash import html, dcc, register_page, dash_table
 import dash_bootstrap_components as dbc
 from flask import request
 import pandas as pd
@@ -182,84 +182,41 @@ def layout():
             # P_000078 프로젝트에서 해당 구조의 ITS 센서 리스트 조회
             its_sensors_df = api_db.get_sensor_list_for_structure(s_code)
 
-            # 콘크리트 리스트 생성 (최대 5개까지만 표시)
-            concrete_list = []
-            concrete_total_count = len(project_concretes)
-            concrete_display_count = min(5, concrete_total_count)
+            # 콘크리트 리스트 생성 (DataTable용 데이터)
+            concrete_data = []
             
             if not project_concretes.empty:
-                for idx, (_, concrete) in enumerate(project_concretes.iterrows()):
-                    if idx >= 5:  # 5개까지만 표시
-                        break
-                        
+                for _, concrete in project_concretes.iterrows():
                     concrete_pk = concrete["concrete_pk"]
                     concrete_sensors = df_sensors[df_sensors["concrete_pk"] == concrete_pk]
                     sensor_count = len(concrete_sensors)
                     
                     analysis_status = "분석중" if concrete["activate"] == 0 else "미분석"
-                    status_color = "success" if concrete["activate"] == 0 else "secondary"
                     
-                    concrete_list.append(
-                        html.Tr([
-                            html.Td(concrete["name"], className="py-2 text-center"),
-                            html.Td(format_date(concrete["created_at"]), className="py-2 text-center"),
-                            html.Td(calculate_elapsed_time(concrete["created_at"]), className="py-2 text-center"),
-                            html.Td(f"{sensor_count}개", className="py-2 text-center"),
-                            html.Td(dbc.Badge(analysis_status, color=status_color, className="px-2"), className="py-2 text-center")
-                        ])
-                    )
-                
-                # 5개 이상이면 "더 보기" 행 추가
-                if concrete_total_count > 5:
-                    concrete_list.append(
-                        html.Tr([
-                            html.Td([
-                                dcc.Link(
-                                    f"+ {concrete_total_count - 5}개 더 보기",
-                                    href=f"/concrete?page={proj_pk}",
-                                    className="text-primary text-decoration-none small fw-bold"
-                                )
-                            ], colSpan=5, className="py-2 text-center")
-                        ])
-                    )
+                    concrete_data.append({
+                        "name": concrete["name"],
+                        "created_at": format_date(concrete["created_at"]),
+                        "elapsed_time": calculate_elapsed_time(concrete["created_at"]),
+                        "sensor_count": f"{sensor_count}개",
+                        "status": analysis_status
+                    })
 
-            # ITS 센서 리스트 생성 (최대 5개까지만 표시)
-            sensor_list = []
-            sensor_total_count = len(its_sensors_df)
-            sensor_display_count = min(5, sensor_total_count)
+            # ITS 센서 리스트 생성 (DataTable용 데이터)
+            sensor_data = []
             
             if not its_sensors_df.empty:
-                for idx, (_, sensor) in enumerate(its_sensors_df.iterrows()):
-                    if idx >= 5:  # 5개까지만 표시
-                        break
-                        
+                for _, sensor in its_sensors_df.iterrows():
                     device_id = sensor["deviceid"]
                     channel = sensor["channel"]
                     
                     # 실제 센서 데이터 수집 상태 확인
                     status_text, badge_color = check_sensor_data_status(device_id, channel)
                     
-                    sensor_list.append(
-                        html.Tr([
-                            html.Td(device_id, className="py-2 text-center"),
-                            html.Td(f"Ch.{channel}", className="py-2 text-center"),
-                            html.Td(dbc.Badge(status_text, color=badge_color, className="px-2"), className="py-2 text-center")
-                        ])
-                    )
-                
-                # 5개 이상이면 "더 보기" 행 추가
-                if sensor_total_count > 5:
-                    sensor_list.append(
-                        html.Tr([
-                            html.Td([
-                                dcc.Link(
-                                    f"+ {sensor_total_count - 5}개 더 보기",
-                                    href=f"/sensor?page={proj_pk}",
-                                    className="text-primary text-decoration-none small fw-bold"
-                                )
-                            ], colSpan=3, className="py-2 text-center")
-                        ])
-                    )
+                    sensor_data.append({
+                        "device_id": device_id,
+                        "channel": f"Ch.{channel}",
+                        "status": status_text
+                    })
 
             # 프로젝트 카드 생성
             projects.append(
@@ -305,20 +262,66 @@ def layout():
                             html.Div([
                                 html.H6("🧱 콘크리트", className="mb-3 text-secondary fw-bold"),
                                 html.Div([
-                                    dbc.Table([
-                                        html.Thead([
-                                            html.Tr([
-                                                html.Th("이름", className="border-0 text-muted small text-center", style={"width": "30%"}),
-                                                html.Th("생성일", className="border-0 text-muted small text-center", style={"width": "20%"}),
-                                                html.Th("경과시간", className="border-0 text-muted small text-center", style={"width": "20%"}),
-                                                html.Th("센서", className="border-0 text-muted small text-center", style={"width": "15%"}),
-                                                html.Th("분석", className="border-0 text-muted small text-center", style={"width": "15%"})
-                                            ])
-                                        ]),
-                                        html.Tbody(concrete_list)
-                                    ], className="table-sm", hover=True, borderless=True) if concrete_list else 
-                                    html.P("콘크리트가 없습니다", className="text-muted small")
-                                ], style={"height": "250px", "overflowY": "auto"})
+                                    dash_table.DataTable(
+                                        data=concrete_data,
+                                        columns=[
+                                            {"name": "이름", "id": "name", "type": "text"},
+                                            {"name": "생성일", "id": "created_at", "type": "text"},
+                                            {"name": "경과시간", "id": "elapsed_time", "type": "text"},
+                                            {"name": "센서", "id": "sensor_count", "type": "text"},
+                                            {"name": "분석", "id": "status", "type": "text"},
+                                        ],
+                                        page_size=5,
+                                        style_table={"height": "250px", "overflowY": "auto"},
+                                        style_cell={
+                                            "textAlign": "center",
+                                            "fontSize": "0.8rem",
+                                            "padding": "8px 4px",
+                                            "border": "none",
+                                            "borderBottom": "1px solid #f1f1f0",
+                                        },
+                                        style_header={
+                                            "backgroundColor": "#fafafa", 
+                                            "fontWeight": 600,
+                                            "color": "#37352f",
+                                            "border": "none",
+                                            "borderBottom": "1px solid #e9e9e7",
+                                            "fontSize": "0.75rem",
+                                        },
+                                        style_data={
+                                            "backgroundColor": "white",
+                                            "border": "none",
+                                            "color": "#37352f"
+                                        },
+                                        style_data_conditional=[
+                                            {
+                                                'if': {'row_index': 'odd'},
+                                                'backgroundColor': '#fbfbfa'
+                                            },
+                                            {
+                                                'if': {
+                                                    'filter_query': '{status} = 분석중',
+                                                    'column_id': 'status'
+                                                },
+                                                'backgroundColor': '#dcfce7',
+                                                'color': '#166534',
+                                                'fontWeight': '600',
+                                                'borderRadius': '4px'
+                                            },
+                                            {
+                                                'if': {
+                                                    'filter_query': '{status} = 미분석',
+                                                    'column_id': 'status'
+                                                },
+                                                'backgroundColor': '#f3f4f6',
+                                                'color': '#6b7280',
+                                                'fontWeight': '600',
+                                                'borderRadius': '4px'
+                                            }
+                                        ]
+                                    ) if concrete_data else 
+                                    html.P("콘크리트가 없습니다", className="text-muted small text-center", style={"paddingTop": "100px"})
+                                ], style={"height": "250px"})
                             ], className="bg-light p-3 rounded")
                         ], md=8),
                         
@@ -327,18 +330,84 @@ def layout():
                             html.Div([
                                 html.H6("📡 ITS 센서", className="mb-3 text-secondary fw-bold"),
                                 html.Div([
-                                    dbc.Table([
-                                        html.Thead([
-                                            html.Tr([
-                                                html.Th("Device ID", className="border-0 text-muted small text-center", style={"width": "40%"}),
-                                                html.Th("채널", className="border-0 text-muted small text-center", style={"width": "30%"}),
-                                                html.Th("데이터", className="border-0 text-muted small text-center", style={"width": "30%"})
-                                            ])
-                                        ]),
-                                        html.Tbody(sensor_list)
-                                    ], className="table-sm", hover=True, borderless=True) if sensor_list else 
-                                    html.P("센서가 없습니다", className="text-muted small")
-                                ], style={"height": "250px", "overflowY": "auto"})
+                                    dash_table.DataTable(
+                                        data=sensor_data,
+                                        columns=[
+                                            {"name": "Device ID", "id": "device_id", "type": "text"},
+                                            {"name": "채널", "id": "channel", "type": "text"},
+                                            {"name": "데이터", "id": "status", "type": "text"},
+                                        ],
+                                        page_size=5,
+                                        style_table={"height": "250px", "overflowY": "auto"},
+                                        style_cell={
+                                            "textAlign": "center",
+                                            "fontSize": "0.8rem",
+                                            "padding": "8px 4px",
+                                            "border": "none",
+                                            "borderBottom": "1px solid #f1f1f0",
+                                        },
+                                        style_header={
+                                            "backgroundColor": "#fafafa", 
+                                            "fontWeight": 600,
+                                            "color": "#37352f",
+                                            "border": "none",
+                                            "borderBottom": "1px solid #e9e9e7",
+                                            "fontSize": "0.75rem",
+                                        },
+                                        style_data={
+                                            "backgroundColor": "white",
+                                            "border": "none",
+                                            "color": "#37352f"
+                                        },
+                                        style_data_conditional=[
+                                            {
+                                                'if': {'row_index': 'odd'},
+                                                'backgroundColor': '#fbfbfa'
+                                            },
+                                            {
+                                                'if': {
+                                                    'filter_query': '{status} = 수집중',
+                                                    'column_id': 'status'
+                                                },
+                                                'backgroundColor': '#dcfce7',
+                                                'color': '#166534',
+                                                'fontWeight': '600',
+                                                'borderRadius': '4px'
+                                            },
+                                            {
+                                                'if': {
+                                                    'filter_query': '{status} = 수집불가',
+                                                    'column_id': 'status'
+                                                },
+                                                'backgroundColor': '#fecaca',
+                                                'color': '#991b1b',
+                                                'fontWeight': '600',
+                                                'borderRadius': '4px'
+                                            },
+                                            {
+                                                'if': {
+                                                    'filter_query': '{status} = 데이터없음',
+                                                    'column_id': 'status'
+                                                },
+                                                'backgroundColor': '#f3f4f6',
+                                                'color': '#6b7280',
+                                                'fontWeight': '600',
+                                                'borderRadius': '4px'
+                                            },
+                                            {
+                                                'if': {
+                                                    'filter_query': '{status} = 오류',
+                                                    'column_id': 'status'
+                                                },
+                                                'backgroundColor': '#fef3c7',
+                                                'color': '#92400e',
+                                                'fontWeight': '600',
+                                                'borderRadius': '4px'
+                                            }
+                                        ]
+                                    ) if sensor_data else 
+                                    html.P("센서가 없습니다", className="text-muted small text-center", style={"paddingTop": "100px"})
+                                ], style={"height": "250px"})
                             ], className="bg-light p-3 rounded")
                         ], md=4)
                     ])
