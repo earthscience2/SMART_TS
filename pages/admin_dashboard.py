@@ -1,7 +1,7 @@
 from dash import html, dcc, register_page, callback, Input, Output
 import dash_bootstrap_components as dbc
 from flask import request as flask_request
-from api_db import get_project_data_with_stats, get_user_data
+from api_db import get_project_data_with_stats
 
 register_page(__name__, path="/admin_dashboard", title="관리자 대시보드")
 
@@ -12,16 +12,11 @@ def get_system_stats():
         projects_df = get_project_data_with_stats()
         active_projects = len(projects_df) if not projects_df.empty else 0
         
-        # 사용자 데이터 조회 
-        users_df = get_user_data()
-        total_users = len(users_df) if not users_df.empty else 0
-        
         # 센서 수는 프로젝트 데이터에서 집계
         total_sensors = projects_df['sensor_count'].sum() if not projects_df.empty else 0
         
         return {
             'active_projects': active_projects,
-            'total_users': total_users,
             'active_sensors': total_sensors,
             'system_status': '정상'
         }
@@ -29,7 +24,6 @@ def get_system_stats():
         print(f"시스템 통계 조회 오류: {e}")
         return {
             'active_projects': 0,
-            'total_users': 0,
             'active_sensors': 0,
             'system_status': '오류'
         }
@@ -94,14 +88,6 @@ def layout(**kwargs):
                                         "warning"
                                     )
                                 ], width=3),
-                                dbc.Col([
-                                    create_feature_card(
-                                        "👥 사용자 관리",
-                                        "사용자 계정 및 권한 관리",
-                                        "/admin_users",
-                                        "info"
-                                    )
-                                ], width=3),
                             ]),
                             
                             html.Hr(className="my-4"),
@@ -133,16 +119,13 @@ def update_system_status(pathname):
     cards = dbc.Row([
         dbc.Col([
             create_status_card("활성 프로젝트", stats['active_projects'], "primary")
-        ], width=3),
-        dbc.Col([
-            create_status_card("등록된 사용자", stats['total_users'], "success")
-        ], width=3),
+        ], width=4),
         dbc.Col([
             create_status_card("활성 센서", stats['active_sensors'], "info")
-        ], width=3),
+        ], width=4),
         dbc.Col([
             create_status_card("시스템 상태", stats['system_status'], status_color)
-        ], width=3),
+        ], width=4),
     ])
     
     return cards

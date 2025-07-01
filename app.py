@@ -77,7 +77,7 @@ def require_login():
     path = request.path
     
     # 관리자 페이지 접근 체크
-    if path.startswith("/admin_dashboard") or path.startswith("/admin_projects") or path.startswith("/admin_logs") or path.startswith("/admin_users"):
+    if path.startswith("/admin_dashboard") or path.startswith("/admin_projects") or path.startswith("/admin_logs"):
         if not request.cookies.get("admin_user"):
             return redirect("/admin")
         return  # 관리자 권한 확인됨
@@ -366,7 +366,7 @@ def handle_url_redirects(pathname):
     
     # 로그인 페이지 리다이렉트
     # 관리자 페이지 접근 체크
-    if pathname.startswith("/admin_dashboard") or pathname.startswith("/admin_projects") or pathname.startswith("/admin_logs") or pathname.startswith("/admin_users") or pathname.startswith("/admin_automation"):
+    if pathname.startswith("/admin_dashboard") or pathname.startswith("/admin_projects") or pathname.startswith("/admin_logs") or pathname.startswith("/admin_automation"):
         if not flask_request.cookies.get("admin_user"):
             return "/admin"
     
@@ -385,7 +385,7 @@ def handle_url_redirects(pathname):
 def update_navbar(pathname):
     """URL에 따라 적절한 네비게이션 바를 반환합니다."""
     # 관리자 페이지 접근 체크
-    if pathname.startswith("/admin_dashboard") or pathname.startswith("/admin_projects") or pathname.startswith("/admin_logs") or pathname.startswith("/admin_users") or pathname.startswith("/admin_automation"):
+    if pathname.startswith("/admin_dashboard") or pathname.startswith("/admin_projects") or pathname.startswith("/admin_logs") or pathname.startswith("/admin_automation"):
         if not flask_request.cookies.get("admin_user"):
             return html.Div()  # 빈 div 반환
         return _build_admin_navbar()
