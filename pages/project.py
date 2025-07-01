@@ -3821,7 +3821,7 @@ def update_viewer3d_time_info(current_file_title, active_tab):
             }) if material_info else html.Div()
             
         ], style={
-            "padding": "8px 12px",
+            "padding": "4px 12px",
             "backgroundColor": "#f8fafc",
             "borderRadius": "8px",
             "border": "1px solid #e2e8f0",
