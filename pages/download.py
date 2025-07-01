@@ -244,14 +244,13 @@ layout = html.Div([
                         })
                     ], md=5),
                     dbc.Col([
-                        html.Label("조회", className="form-label mb-1", style={"fontSize": "0.8rem", "fontWeight": "600", "color": "#6c757d"}),
                         html.Div([
                             dbc.Button("🔍 조회", 
                                      id="btn-search-files", 
                                      color="primary", 
                                      size="sm",
                                      className="w-100",
-                                     style={"fontSize": "0.8rem", "fontWeight": "600"},
+                                     style={"fontSize": "0.8rem", "fontWeight": "600", "marginTop": "1.5rem"},
                                      n_clicks=0)
                         ])
                     ], md=3),
