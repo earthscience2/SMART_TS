@@ -4214,7 +4214,7 @@ def save_section_inp(n_clicks, selected_rows, tbl_data, time_value):
 )
 def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z):
     """온도 변화 탭의 콘크리트 구조 뷰를 이미지로 저장"""
-    if not n_clicks or not figure:
+    if not n_clicks or not fig_3d:
         raise PreventUpdate
     
     try:
