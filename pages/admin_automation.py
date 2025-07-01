@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import os
 import re
 
-dash.register_page(__name__, path="/admin_automation")
+dash.register_page(__name__, path="/admin_automation", title="자동화 로그")
 
 # 상수 정의
 MODULE_COLORS = {

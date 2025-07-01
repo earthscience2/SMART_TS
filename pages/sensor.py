@@ -36,7 +36,7 @@ from dash.exceptions import PreventUpdate
 
 import api_db
 
-register_page(__name__, path="/sensor")
+register_page(__name__, path="/sensor", title="센서 관리")
 
 # ────────────────────────────── 3-D 헬퍼 ────────────────────────────
 def make_concrete_fig(nodes: list[list[float]], h: float) -> go.Figure:

@@ -724,13 +724,4 @@ def update_dashboard_charts(pathname, n_intervals):
         ])
         return error_message, error_message
 
-@callback(
-    [Output("admin-dashboard-url", "pathname")],
-    [Input("admin-dashboard-url", "pathname")],
-    allow_duplicate=True
-)
-def check_admin_access(pathname):
-    """관리자 권한 확인"""
-    if not flask_request.cookies.get("admin_user"):
-        return ["/admin"]
-    return [pathname] 
+# 권한 확인은 app.py의 통합 콜백에서 처리하므로 이 콜백을 제거합니다 

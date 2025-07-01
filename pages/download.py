@@ -18,7 +18,7 @@ from dash.exceptions import PreventUpdate
 
 import api_db
 
-register_page(__name__, path="/download")
+register_page(__name__, path="/download", title="파일 다운로드")
 
 # 프로젝트 메타데이터 (URL 파라미터 파싱에 사용)
 projects_df = api_db.get_project_data()

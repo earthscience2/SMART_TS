@@ -37,7 +37,7 @@ import dash_vtk
 
 import api_db
 
-register_page(__name__, path="/project")
+register_page(__name__, path="/project", title="프로젝트 관리")
 
 
 

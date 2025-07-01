@@ -17,7 +17,7 @@ import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
 import api_db
 
-register_page(__name__, path="/tci-analysis")
+register_page(__name__, path="/tci-analysis", title="TCI 분석")
 
 # 레이아웃
 layout = dbc.Container(
