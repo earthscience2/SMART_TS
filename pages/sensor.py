@@ -185,6 +185,9 @@ layout = html.Div([
                             ], className="d-flex justify-content-between align-items-center mb-2"),
                             html.Small("💡 센서를 클릭하여 선택할 수 있습니다", className="text-muted mb-2 d-block", style={"fontSize": "0.75rem"}),
                             
+                            # 분석중 콘크리트 경고 메시지
+                            html.Div(id="sensor-warning-message", className="mb-2"),
+                            
                             # 센서 테이블
                             html.Div([
                                 dash_table.DataTable(
@@ -444,6 +447,7 @@ def init_dropdown(selected_value):
     Output("btn-sensor-edit", "disabled"),
     Output("btn-sensor-del", "disabled"),
     Output("btn-sensor-add", "disabled"),
+    Output("sensor-warning-message", "children"),
     Input("ddl-concrete", "value"),
     Input("toggle-lines", "value"),            
     Input("tbl-sensor", "data_timestamp"),     
@@ -452,7 +456,7 @@ def init_dropdown(selected_value):
 )
 def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
     if not selected_conc:
-        return go.Figure(), [], [], [], True, True, True
+        return go.Figure(), [], [], [], True, True, True, ""
 
     # ────────────────────────────────────────────────────────
     # 1) 콘크리트 정보 로드
@@ -463,7 +467,7 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
         conc_nodes, conc_h = dims["nodes"], dims["h"]
 
     except Exception:
-        return go.Figure(), [], [], [], True, True, True
+        return go.Figure(), [], [], [], True, True, True, ""
 
     # 2) 기본 메쉬 생성
     fig = make_concrete_fig(conc_nodes, conc_h)
