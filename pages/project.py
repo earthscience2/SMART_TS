@@ -2947,7 +2947,9 @@ def update_temp_tab(store_data, x, y, z, selected_rows, tbl_data):
     # 그래프 생성
     fig_temp = go.Figure()
     if temp_times and temp_values:
-        # 그래프는 시간 순서대로 그리되, X축 라벨은 날짜 단위로만 표시
+        # x축 값: 시간별 실제 datetime 객체
+        x_values = temp_times
+        # x축 라벨: 날짜가 바뀌는 첫 번째만 날짜, 나머지는 빈 문자열
         x_labels = []
         prev_date = None
         for dt in temp_times:
@@ -2956,14 +2958,20 @@ def update_temp_tab(store_data, x, y, z, selected_rows, tbl_data):
                 x_labels.append(current_date)
                 prev_date = current_date
             else:
-                x_labels.append("")  # 같은 날짜 내에서는 빈 라벨
-        
-        fig_temp.add_trace(go.Scatter(x=x_labels, y=temp_values, mode='lines+markers', name='온도'))
-        
+                x_labels.append("")
+        fig_temp.add_trace(go.Scatter(x=x_values, y=temp_values, mode='lines+markers', name='온도'))
+        title = "시간에 따른 온도 정보"
+        if range_filter and range_filter != "all":
+            title += f" (최근 {range_filter}일)"
         fig_temp.update_layout(
-            title="시간에 따른 온도 정보",
+            title=title,
             xaxis_title="날짜",
-            yaxis_title="온도(°C)"
+            yaxis_title="온도(°C)",
+            xaxis=dict(
+                tickmode='array',
+                tickvals=x_values,
+                ticktext=x_labels
+            )
         )
     return fig_3d, fig_temp
 
@@ -3079,7 +3087,9 @@ def update_temp_range_filter(range_filter, fig_3d, selected_rows, tbl_data):
     # 그래프 생성
     fig_temp = go.Figure()
     if temp_times and temp_values:
-        # 그래프는 시간 순서대로 그리되, X축 라벨은 날짜 단위로만 표시
+        # x축 값: 시간별 실제 datetime 객체
+        x_values = temp_times
+        # x축 라벨: 날짜가 바뀌는 첫 번째만 날짜, 나머지는 빈 문자열
         x_labels = []
         prev_date = None
         for dt in temp_times:
@@ -3088,18 +3098,20 @@ def update_temp_range_filter(range_filter, fig_3d, selected_rows, tbl_data):
                 x_labels.append(current_date)
                 prev_date = current_date
             else:
-                x_labels.append("")  # 같은 날짜 내에서는 빈 라벨
-        
-        fig_temp.add_trace(go.Scatter(x=x_labels, y=temp_values, mode='lines+markers', name='온도'))
-        
+                x_labels.append("")
+        fig_temp.add_trace(go.Scatter(x=x_values, y=temp_values, mode='lines+markers', name='온도'))
         title = "시간에 따른 온도 정보"
         if range_filter and range_filter != "all":
             title += f" (최근 {range_filter}일)"
-        
         fig_temp.update_layout(
             title=title,
             xaxis_title="날짜",
-            yaxis_title="온도(°C)"
+            yaxis_title="온도(°C)",
+            xaxis=dict(
+                tickmode='array',
+                tickvals=x_values,
+                ticktext=x_labels
+            )
         )
     
     return fig_temp
