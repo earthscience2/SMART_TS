@@ -318,7 +318,7 @@ def layout():
                                         html.Tbody(concrete_list)
                                     ], className="table-sm", hover=True, borderless=True) if concrete_list else 
                                     html.P("콘크리트가 없습니다", className="text-muted small")
-                                ], style={"height": "300px", "overflowY": "auto"})
+                                ], style={"height": "250px", "overflowY": "auto"})
                             ], className="bg-light p-3 rounded")
                         ], md=8),
                         
@@ -338,7 +338,7 @@ def layout():
                                         html.Tbody(sensor_list)
                                     ], className="table-sm", hover=True, borderless=True) if sensor_list else 
                                     html.P("센서가 없습니다", className="text-muted small")
-                                ], style={"height": "300px", "overflowY": "auto"})
+                                ], style={"height": "250px", "overflowY": "auto"})
                             ], className="bg-light p-3 rounded")
                         ], md=4)
                     ])
