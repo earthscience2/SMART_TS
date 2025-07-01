@@ -49,141 +49,159 @@ def get_system_stats():
             
             login_data.append(log_count)
         
-        # 2. 프로젝트 수 (누적) - 메인 DB 우선, 로그 파일 보완
-        project_cumulative = []
-        for date in dates:
-            db_count = 0
-            log_count = 0
-            
-            # 메인 DB에서 프로젝트 수 조회 (project 테이블)
-            try:
-                # 메인 DB engine 사용
-                from api_db import engine as main_engine
-                project_query = text("""
-                    SELECT COUNT(*) as count FROM project 
-                    WHERE DATE(s_code) <= :date OR s_code IS NULL
-                """)
-                result = pd.read_sql(project_query, main_engine, params={"date": date})
-                db_count = result.iloc[0]['count'] if not result.empty and 'count' in result.columns else 0
-            except Exception as e:
-                # 메인 DB 실패시 전체 프로젝트 카운트
-                try:
-                    from api_db import engine as main_engine
-                    total_query = text("SELECT COUNT(*) as count FROM project")
-                    result = pd.read_sql(total_query, main_engine)
-                    db_count = result.iloc[0]['count'] if not result.empty and 'count' in result.columns else 0
-                except Exception as e2:
-                    print(f"프로젝트 DB 조회 오류: {e2}")
-            
-            # 로그 파일에서 검증 (해당 날짜까지의 프로젝트 추가 이벤트)
-            try:
-                project_log_file = os.path.join("log", "project.log")
-                if os.path.exists(project_log_file):
-                    with open(project_log_file, 'r', encoding='utf-8') as f:
-                        content = f.readlines()
-                        for line in content:
-                            # 해당 날짜 이전 또는 당일의 프로젝트 추가 이벤트 카운트
-                            line_date = line[:10] if len(line) >= 10 else ""
-                            if line_date <= date and ('PROJECT_ADD' in line or '프로젝트 추가' in line):
-                                log_count += 1
-            except Exception as e:
-                print(f"프로젝트 로그 파일 읽기 오류: {e}")
-            
-            # DB 우선, 로그로 보완
-            final_count = int(max(db_count, log_count) if db_count is not None else log_count)
-            project_cumulative.append(final_count)
+        # 2. 프로젝트 수 (일별) - 현재 수에서 로그 분석하여 역산
+        project_daily = []
         
-        # 3. 콘크리트 수 (누적) - 메인 DB 우선, 로그 파일 보완
-        concrete_cumulative = []
-        for date in dates:
-            db_count = 0
-            log_count = 0
-            
-            # 메인 DB에서 콘크리트 수 조회 (concrete 테이블)
-            try:
-                from api_db import engine as main_engine
-                concrete_query = text("SELECT COUNT(*) as count FROM concrete WHERE activate = 1")
-                result = pd.read_sql(concrete_query, main_engine)
-                db_count = result.iloc[0]['count'] if not result.empty and 'count' in result.columns else 0
-            except Exception as e:
-                print(f"콘크리트 DB 조회 오류: {e}")
-            
-            # 로그 파일에서 검증 (해당 날짜까지의 콘크리트 추가 이벤트)
-            try:
-                concrete_log_file = os.path.join("log", "concrete.log")
-                if os.path.exists(concrete_log_file):
-                    with open(concrete_log_file, 'r', encoding='utf-8') as f:
-                        content = f.readlines()
-                        for line in content:
-                            # 해당 날짜 이전 또는 당일의 콘크리트 추가 이벤트 카운트
-                            line_date = line[:10] if len(line) >= 10 else ""
-                            if line_date <= date and ('CONCRETE_ADD' in line or '콘크리트 추가' in line):
-                                log_count += 1
-            except Exception as e:
-                print(f"콘크리트 로그 파일 읽기 오류: {e}")
-            
-            # DB 우선, 로그로 보완
-            final_count = int(max(db_count, log_count) if db_count is not None else log_count)
-            concrete_cumulative.append(final_count)
+        # 현재 총 프로젝트 수 조회
+        current_project_count = 0
+        try:
+            from api_db import engine as main_engine
+            current_query = text("SELECT COUNT(*) as count FROM project")
+            result = pd.read_sql(current_query, main_engine)
+            current_project_count = result.iloc[0]['count'] if not result.empty else 0
+        except Exception as e:
+            print(f"현재 프로젝트 수 조회 오류: {e}")
         
-        # 4. 센서 데이터 수 (누적) - 메인 DB 우선, 로그 파일 보완
-        sensor_data_cumulative = []
-        for date in dates:
-            db_count = 0
-            log_count = 0
-            
-            # 메인 DB에서 센서 데이터 수 조회 (sensor_data 테이블)
-            try:
-                from api_db import engine as main_engine
-                sensor_query = text("""
-                    SELECT COUNT(*) as count FROM sensor_data 
-                    WHERE DATE(time) <= :date
-                """)
-                result = pd.read_sql(sensor_query, main_engine, params={"date": date})
-                db_count = result.iloc[0]['count'] if not result.empty and 'count' in result.columns else 0
-            except Exception as e:
-                # 날짜 필터 실패시 전체 카운트
-                try:
-                    from api_db import engine as main_engine
-                    total_query = text("SELECT COUNT(*) as count FROM sensor_data")
-                    result = pd.read_sql(total_query, main_engine)
-                    db_count = result.iloc[0]['count'] if not result.empty and 'count' in result.columns else 0
-                except Exception as e2:
-                    print(f"센서 데이터 DB 조회 오류: {e2}")
-            
-            # 로그 파일에서 검증 (해당 날짜까지의 센서 데이터 수집 이벤트)
-            try:
-                sensor_log_file = os.path.join("log", "sensor.log")
-                if os.path.exists(sensor_log_file):
-                    with open(sensor_log_file, 'r', encoding='utf-8') as f:
-                        content = f.readlines()
-                        for line in content:
-                            # 해당 날짜 이전 또는 당일의 센서 데이터 수집 이벤트 카운트
-                            line_date = line[:10] if len(line) >= 10 else ""
-                            if line_date <= date and ('SENSOR_DATA' in line or '센서 데이터' in line or '데이터 수집' in line):
-                                log_count += 1
+        # 오늘부터 역순으로 계산
+        today = datetime.now().strftime('%Y-%m-%d')
+        project_count_tracker = current_project_count
+        
+        for i, date in enumerate(reversed(dates)):  # 최신 날짜부터 역순
+            if date == today:
+                # 오늘은 현재 수 그대로
+                daily_count = project_count_tracker
+            else:
+                # 해당 날짜 이후의 변화량 계산
+                next_dates = dates[len(dates) - i:]  # 해당 날짜 이후의 모든 날짜
                 
-                # 추가로 날짜별 센서 로그 파일들 확인
-                date_str = str(date).replace('-', '')  # YYYYMMDD 형식
-                sensor_log_pattern = f"sensor_{date_str}_*.log"
-                import glob
-                sensor_files = glob.glob(os.path.join("log", sensor_log_pattern))
-                for file_path in sensor_files:
-                    try:
-                        with open(file_path, 'r', encoding='utf-8') as f:
-                            content = f.read()
-                            # 센서 데이터 수집 관련 로그 카운트
-                            matches = re.findall(r'데이터 수집|sensor.*data|SENSOR_DATA', content, re.IGNORECASE)
-                            log_count += len(matches) if matches else 0
-                    except Exception as e:
-                        continue
-                        
-            except Exception as e:
-                print(f"센서 로그 파일 읽기 오류: {e}")
+                # 로그에서 해당 날짜 이후의 추가/삭제 이벤트 계산
+                added_after = 0
+                deleted_after = 0
+                
+                try:
+                    project_log_file = os.path.join("log", "project.log")
+                    if os.path.exists(project_log_file):
+                        with open(project_log_file, 'r', encoding='utf-8') as f:
+                            content = f.readlines()
+                            for line in content:
+                                line_date = line[:10] if len(line) >= 10 else ""
+                                if line_date > date:  # 해당 날짜 이후
+                                    if 'PROJECT_ADD' in line or '프로젝트 추가' in line:
+                                        added_after += 1
+                                    elif 'PROJECT_DELETE' in line or '프로젝트 삭제' in line:
+                                        deleted_after += 1
+                except Exception as e:
+                    print(f"프로젝트 로그 분석 오류: {e}")
+                
+                # 현재 수에서 이후 변화량을 빼서 해당 날짜의 수 계산
+                daily_count = current_project_count - added_after + deleted_after
+                project_count_tracker = daily_count
             
-            # DB 우선, 로그로 보완
-            final_count = int(max(db_count, log_count) if db_count is not None else log_count)
-            sensor_data_cumulative.append(final_count)
+            # 결과를 원래 순서대로 저장하기 위해 인덱스 계산
+            original_index = len(dates) - 1 - i
+            if len(project_daily) <= original_index:
+                project_daily.extend([0] * (original_index + 1 - len(project_daily)))
+            project_daily[original_index] = max(0, daily_count)  # 음수 방지
+        
+        # 3. 콘크리트 수 (일별) - 현재 수에서 로그 분석하여 역산
+        concrete_daily = []
+        
+        # 현재 총 콘크리트 수 조회
+        current_concrete_count = 0
+        try:
+            from api_db import engine as main_engine
+            current_query = text("SELECT COUNT(*) as count FROM concrete WHERE activate = 1")
+            result = pd.read_sql(current_query, main_engine)
+            current_concrete_count = result.iloc[0]['count'] if not result.empty else 0
+        except Exception as e:
+            print(f"현재 콘크리트 수 조회 오류: {e}")
+        
+        # 오늘부터 역순으로 계산
+        concrete_count_tracker = current_concrete_count
+        
+        for i, date in enumerate(reversed(dates)):  # 최신 날짜부터 역순
+            if date == today:
+                # 오늘은 현재 수 그대로
+                daily_count = concrete_count_tracker
+            else:
+                # 로그에서 해당 날짜 이후의 추가/삭제 이벤트 계산
+                added_after = 0
+                deleted_after = 0
+                
+                try:
+                    concrete_log_file = os.path.join("log", "concrete.log")
+                    if os.path.exists(concrete_log_file):
+                        with open(concrete_log_file, 'r', encoding='utf-8') as f:
+                            content = f.readlines()
+                            for line in content:
+                                line_date = line[:10] if len(line) >= 10 else ""
+                                if line_date > date:  # 해당 날짜 이후
+                                    if 'CONCRETE_ADD' in line or '콘크리트 추가' in line:
+                                        added_after += 1
+                                    elif 'CONCRETE_DELETE' in line or '콘크리트 삭제' in line:
+                                        deleted_after += 1
+                except Exception as e:
+                    print(f"콘크리트 로그 분석 오류: {e}")
+                
+                # 현재 수에서 이후 변화량을 빼서 해당 날짜의 수 계산
+                daily_count = current_concrete_count - added_after + deleted_after
+                concrete_count_tracker = daily_count
+            
+            # 결과를 원래 순서대로 저장
+            original_index = len(dates) - 1 - i
+            if len(concrete_daily) <= original_index:
+                concrete_daily.extend([0] * (original_index + 1 - len(concrete_daily)))
+            concrete_daily[original_index] = max(0, daily_count)  # 음수 방지
+        
+        # 4. 센서 수 (일별) - 현재 수에서 로그 분석하여 역산
+        sensor_daily = []
+        
+        # 현재 총 센서 수 조회 (sensor 테이블)
+        current_sensor_count = 0
+        try:
+            from api_db import engine as main_engine
+            current_query = text("SELECT COUNT(*) as count FROM sensor")
+            result = pd.read_sql(current_query, main_engine)
+            current_sensor_count = result.iloc[0]['count'] if not result.empty else 0
+        except Exception as e:
+            print(f"현재 센서 수 조회 오류: {e}")
+        
+        # 오늘부터 역순으로 계산
+        sensor_count_tracker = current_sensor_count
+        
+        for i, date in enumerate(reversed(dates)):  # 최신 날짜부터 역순
+            if date == today:
+                # 오늘은 현재 수 그대로
+                daily_count = sensor_count_tracker
+            else:
+                # 로그에서 해당 날짜 이후의 추가/삭제 이벤트 계산
+                added_after = 0
+                deleted_after = 0
+                
+                try:
+                    sensor_log_file = os.path.join("log", "sensor.log")
+                    if os.path.exists(sensor_log_file):
+                        with open(sensor_log_file, 'r', encoding='utf-8') as f:
+                            content = f.readlines()
+                            for line in content:
+                                line_date = line[:10] if len(line) >= 10 else ""
+                                if line_date > date:  # 해당 날짜 이후
+                                    if 'SENSOR_ADD' in line or '센서 추가' in line:
+                                        added_after += 1
+                                    elif 'SENSOR_DELETE' in line or '센서 삭제' in line:
+                                        deleted_after += 1
+                except Exception as e:
+                    print(f"센서 로그 분석 오류: {e}")
+                
+                # 현재 수에서 이후 변화량을 빼서 해당 날짜의 수 계산
+                daily_count = current_sensor_count - added_after + deleted_after
+                sensor_count_tracker = daily_count
+            
+            # 결과를 원래 순서대로 저장
+            original_index = len(dates) - 1 - i
+            if len(sensor_daily) <= original_index:
+                sensor_daily.extend([0] * (original_index + 1 - len(sensor_daily)))
+            sensor_daily[original_index] = max(0, daily_count)  # 음수 방지
         
         # === 데이터 분석 데이터 (로그 파일 기반) ===
         
@@ -300,9 +318,9 @@ def get_system_stats():
             'status_color': status_color,
             # 시스템 현황 데이터
             'login_daily': login_data,
-            'project_cumulative': project_cumulative,
-            'concrete_cumulative': concrete_cumulative,
-            'sensor_data_cumulative': sensor_data_cumulative,
+            'project_daily': project_daily,
+            'concrete_daily': concrete_daily,
+            'sensor_daily': sensor_daily,
             # 데이터 분석 데이터
             'sensor_data_daily': sensor_data_daily,
             'inp_conversion_daily': inp_conversion_daily,
@@ -322,9 +340,9 @@ def get_system_stats():
             'system_status': '오류',
             'status_color': 'danger',
             'login_daily': [0] * 7,
-            'project_cumulative': [0] * 7,
-            'concrete_cumulative': [0] * 7,
-            'sensor_data_cumulative': [0] * 7,
+            'project_daily': [0] * 7,
+            'concrete_daily': [0] * 7,
+            'sensor_daily': [0] * 7,
             'sensor_data_daily': [0] * 7,
             'inp_conversion_daily': [0] * 7,
             'inp_to_frd_daily': [0] * 7,
@@ -718,9 +736,9 @@ def update_system_stats(pathname, n_intervals):
         # 안전한 데이터 추출
         dates = stats.get('dates', [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(6, -1, -1)])
         login_daily = stats.get('login_daily', [0] * 7)
-        project_cumulative = stats.get('project_cumulative', [0] * 7)
-        concrete_cumulative = stats.get('concrete_cumulative', [0] * 7)
-        sensor_data_cumulative = stats.get('sensor_data_cumulative', [0] * 7)
+        project_daily = stats.get('project_daily', [0] * 7)
+        concrete_daily = stats.get('concrete_daily', [0] * 7)
+        sensor_daily = stats.get('sensor_daily', [0] * 7)
         
         # 4개의 차트를 2x2 그리드로 배치
         return dbc.Row([
@@ -743,8 +761,8 @@ def update_system_stats(pathname, n_intervals):
                     dbc.CardBody([
                         create_simple_chart(
                             dates, 
-                            project_cumulative, 
-                            "누적 프로젝트 수", 
+                            project_daily, 
+                            "일별 프로젝트 수", 
                             "#28a745",
                             "개"
                         )
@@ -757,8 +775,8 @@ def update_system_stats(pathname, n_intervals):
                     dbc.CardBody([
                         create_simple_chart(
                             dates, 
-                            concrete_cumulative, 
-                            "누적 콘크리트 수", 
+                            concrete_daily, 
+                            "일별 콘크리트 수", 
                             "#ffc107",
                             "개"
                         )
@@ -771,10 +789,10 @@ def update_system_stats(pathname, n_intervals):
                     dbc.CardBody([
                         create_simple_chart(
                             dates, 
-                            sensor_data_cumulative, 
-                            "누적 센서 데이터 수", 
+                            sensor_daily, 
+                            "일별 센서 수", 
                             "#17a2b8",
-                            "건"
+                            "개"
                         )
                     ], className="p-2")
                 ], className="shadow-sm border-0")
