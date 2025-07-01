@@ -1349,15 +1349,15 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     html.Div(
                         id="viewer-3d-time-info", 
                         style={
-                            "minHeight": "130px !important",
-                            "height": "130px",
+                            "minHeight": "65px !important",
+                            "height": "65px",
                             "display": "flex",
                             "flexDirection": "column",
                             "justifyContent": "center"
                         }
                     )
                 ], md=8, style={
-                    "height": "130px"
+                    "height": "65px"
                 }),
                 
                 # 오른쪽: 저장 버튼들
@@ -1366,8 +1366,8 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         html.H6("💾 저장 옵션", style={
                             "fontWeight": "600",
                             "color": "#374151",
-                            "marginBottom": "12px",
-                            "fontSize": "14px",
+                            "marginBottom": "8px",
+                            "fontSize": "13px",
                             "textAlign": "center"
                         }),
                         html.Div([
@@ -1400,19 +1400,19 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                             ),
                         ], style={"display": "flex", "justifyContent": "center"})
                     ], style={
-                        "padding": "16px 20px",
+                        "padding": "8px 16px",
                         "backgroundColor": "#f9fafb",
                         "borderRadius": "8px",
                         "border": "1px solid #e5e7eb",
-                        "height": "130px",
+                        "height": "65px",
                         "display": "flex",
                         "flexDirection": "column",
                         "justifyContent": "center"
                     })
                 ], md=4, style={
-                    "height": "130px"
+                    "height": "65px"
                 }),
-            ], className="mb-3 align-items-stretch h-100", style={"minHeight": "120px"}),
+            ], className="mb-3 align-items-stretch h-100", style={"minHeight": "65px"}),
             
             # 3D 뷰어 (노션 스타일)
             html.Div([
@@ -3503,45 +3503,45 @@ def update_section_time_info(current_file_title, active_tab):
         html.Div([
             # 시간 정보 섹션
             html.Div([
-                html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "14px"}),
+                html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "12px"}),
                 html.Span(time_info, style={
                     "fontWeight": "600",
                     "color": "#1f2937",
-                    "fontSize": "14px",
-                    "marginLeft": "8px"
+                    "fontSize": "11px",
+                    "marginLeft": "6px"
                 })
             ], style={
                 "display": "flex",
                 "alignItems": "center",
-                "marginBottom": "10px" if material_info else "0"
+                "marginBottom": "3px" if material_info else "0"
             }),
             
             # 물성치 정보 섹션 (있는 경우만, 인라인 형태)
             html.Div([
-                html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "14px"}),
+                html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "12px"}),
                 *[html.Div([
                     html.Span(f"{prop.split(':')[0]}:", style={
                         "color": "#6b7280",
-                        "fontSize": "12px",
-                        "marginRight": "4px"
+                        "fontSize": "10px",
+                        "marginRight": "3px"
                     }),
                     html.Span(prop.split(":", 1)[1].strip(), style={
                         "color": "#111827",
-                        "fontSize": "12px",
+                        "fontSize": "10px",
                         "fontWeight": "500",
-                        "marginRight": "12px"
+                        "marginRight": "8px"
                     })
                 ], style={"display": "inline"})
                 for prop in material_info.split(", ")]
             ], style={
                 "display": "flex",
                 "alignItems": "flex-start",
-                "gap": "8px",
+                "gap": "6px",
                 "flexWrap": "wrap"
             }) if material_info else html.Div()
             
         ], style={
-            "padding": "12px 16px",
+            "padding": "8px 12px",
             "backgroundColor": "#f8fafc",
             "borderRadius": "8px",
             "border": "1px solid #e2e8f0",
@@ -3827,18 +3827,18 @@ def update_viewer3d_time_info(current_file_title, active_tab):
             }) if material_info else html.Div()
             
         ], style={
-            "padding": "12px 16px",
+            "padding": "8px 12px",
             "backgroundColor": "#f8fafc",
             "borderRadius": "8px",
             "border": "1px solid #e2e8f0",
             "boxShadow": "0 1px 3px rgba(0,0,0,0.05)",
-            "height": "130px",
+            "height": "65px",
             "display": "flex",
             "flexDirection": "column",
             "justifyContent": "center"
         })
     ], style={
-        "height": "130px",
+        "height": "65px",
         "display": "flex",
         "flexDirection": "column"
     })
