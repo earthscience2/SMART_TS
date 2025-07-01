@@ -1353,7 +1353,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                             "height": "65px",
                             "display": "flex",
                             "flexDirection": "column",
-                            "justifyContent": "center"
+                            "justifyContent": "flex-start"
                         }
                     )
                 ], md=8, style={
