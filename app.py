@@ -304,6 +304,7 @@ def _build_admin_navbar():
     
     children = [
         # 관리자 네비게이션 링크들
+        dbc.NavItem(dcc.Link("📈 대시보드", href="/admin_dashboard", className="nav-link fw-bold", id="admin-nav-dashboard")),
         dbc.NavItem(dcc.Link("📊 프로젝트", href="/admin_projects", className="nav-link fw-bold", id="admin-nav-projects")),
         dbc.NavItem(dcc.Link("📋 일반 로그", href="/admin_logs", className="nav-link fw-bold", id="admin-nav-logs")),
         dbc.NavItem(dcc.Link("⚙️ 자동화 로그", href="/admin_automation", className="nav-link fw-bold", id="admin-nav-automation")),
@@ -470,7 +471,8 @@ def update_nav_active(pathname, search):
 
 # 관리자 네비게이션 바 active 클래스 동적 적용 콜백
 @app.callback(
-    [Output("admin-nav-projects", "className"),
+    [Output("admin-nav-dashboard", "className"),
+     Output("admin-nav-projects", "className"),
      Output("admin-nav-logs", "className"),
      Output("admin-nav-automation", "className")],
     [Input("url", "pathname")]
@@ -478,17 +480,19 @@ def update_nav_active(pathname, search):
 def update_admin_nav_active(pathname):
     """관리자 네비게이션 바의 active 상태를 업데이트합니다."""
     # 기본 클래스 설정
-    base_classes = ["nav-link fw-bold"] * 3
+    base_classes = ["nav-link fw-bold"] * 4
     
     # Active 클래스 추가
-    if pathname.startswith("/admin_projects"):
+    if pathname.startswith("/admin_dashboard"):
         base_classes[0] += " active"
-    elif pathname.startswith("/admin_logs"):
+    elif pathname.startswith("/admin_projects"):
         base_classes[1] += " active"
-    elif pathname.startswith("/admin_automation"):
+    elif pathname.startswith("/admin_logs"):
         base_classes[2] += " active"
+    elif pathname.startswith("/admin_automation"):
+        base_classes[3] += " active"
     
-    return base_classes[0], base_classes[1], base_classes[2]
+    return base_classes[0], base_classes[1], base_classes[2], base_classes[3]
 
 # 네비게이션 링크 href 동적 업데이트
 @app.callback(

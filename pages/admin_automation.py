@@ -243,10 +243,10 @@ def layout():
                                         options=[
                                             {"label": "전체", "value": "all"},
                                             {"label": "통합실행", "value": "AUTO_RUN"},
-                                            {"label": "센서 데이터 수집 및 저장", "value": "AUTO_SENSOR"},
+                                            {"label": "센서 데이터 수집", "value": "AUTO_SENSOR"},
                                             {"label": "INP 파일 생성", "value": "AUTO_INP"},
-                                            {"label": "INP → FRD 파일 변환", "value": "AUTO_INP_TO_FRD"},
-                                            {"label": "FRD → VTK 파일 변환", "value": "AUTO_FRD_TO_VTK"},
+                                            {"label": "FRD 파일 생성", "value": "AUTO_INP_TO_FRD"},
+                                            {"label": "VTK 파일 생성", "value": "AUTO_FRD_TO_VTK"},
                                         ],
                                         value="all"
                                     )
