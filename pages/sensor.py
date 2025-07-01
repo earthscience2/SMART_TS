@@ -575,16 +575,24 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
         {"name": "위치 (x,y,z)",   "id": "position"},
     ]
 
+    # 경고 메시지 생성
+    warning_message = ""
+    if activate == 0:
+        warning_message = dbc.Alert([
+            html.I(className="fas fa-exclamation-triangle me-2"),
+            "분석중인 콘크리트에 속한 센서는 수정할 수 없습니다."
+        ], color="danger", className="py-2 mb-0", style={"fontSize": "0.75rem"})
+    
     # activate가 0이면 모든 버튼 비활성화
     if activate == 0:
-        return fig, table_data, columns, selected_indices, True, True, True
+        return fig, table_data, columns, selected_indices, True, True, True, warning_message
     
     # activate가 1이면 센서 선택 여부에 따라 버튼 활성화/비활성화
     edit_disabled = not bool(selected_indices)
     del_disabled = not bool(selected_indices)
     add_disabled = False  # 추가 버튼은 항상 활성화 (activate=1일 때)
 
-    return fig, table_data, columns, selected_indices, edit_disabled, del_disabled, add_disabled
+    return fig, table_data, columns, selected_indices, edit_disabled, del_disabled, add_disabled, warning_message
 
 
 # ───────────────────── ③ 센서 선택 콜백 ─────────────────────
