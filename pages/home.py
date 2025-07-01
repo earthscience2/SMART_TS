@@ -182,10 +182,16 @@ def layout():
             # P_000078 프로젝트에서 해당 구조의 ITS 센서 리스트 조회
             its_sensors_df = api_db.get_sensor_list_for_structure(s_code)
 
-            # 콘크리트 리스트 생성
+            # 콘크리트 리스트 생성 (최대 5개까지만 표시)
             concrete_list = []
+            concrete_total_count = len(project_concretes)
+            concrete_display_count = min(5, concrete_total_count)
+            
             if not project_concretes.empty:
-                for _, concrete in project_concretes.iterrows():
+                for idx, (_, concrete) in enumerate(project_concretes.iterrows()):
+                    if idx >= 5:  # 5개까지만 표시
+                        break
+                        
                     concrete_pk = concrete["concrete_pk"]
                     concrete_sensors = df_sensors[df_sensors["concrete_pk"] == concrete_pk]
                     sensor_count = len(concrete_sensors)
@@ -202,11 +208,31 @@ def layout():
                             html.Td(dbc.Badge(analysis_status, color=status_color, className="px-2"), className="py-2 text-center")
                         ])
                     )
+                
+                # 5개 이상이면 "더 보기" 행 추가
+                if concrete_total_count > 5:
+                    concrete_list.append(
+                        html.Tr([
+                            html.Td([
+                                dcc.Link(
+                                    f"+ {concrete_total_count - 5}개 더 보기",
+                                    href=f"/concrete?page={proj_pk}",
+                                    className="text-primary text-decoration-none small fw-bold"
+                                )
+                            ], colSpan=5, className="py-2 text-center")
+                        ])
+                    )
 
-            # ITS 센서 리스트 생성
+            # ITS 센서 리스트 생성 (최대 5개까지만 표시)
             sensor_list = []
+            sensor_total_count = len(its_sensors_df)
+            sensor_display_count = min(5, sensor_total_count)
+            
             if not its_sensors_df.empty:
-                for _, sensor in its_sensors_df.iterrows():
+                for idx, (_, sensor) in enumerate(its_sensors_df.iterrows()):
+                    if idx >= 5:  # 5개까지만 표시
+                        break
+                        
                     device_id = sensor["deviceid"]
                     channel = sensor["channel"]
                     
@@ -218,6 +244,20 @@ def layout():
                             html.Td(device_id, className="py-2 text-center"),
                             html.Td(f"Ch.{channel}", className="py-2 text-center"),
                             html.Td(dbc.Badge(status_text, color=badge_color, className="px-2"), className="py-2 text-center")
+                        ])
+                    )
+                
+                # 5개 이상이면 "더 보기" 행 추가
+                if sensor_total_count > 5:
+                    sensor_list.append(
+                        html.Tr([
+                            html.Td([
+                                dcc.Link(
+                                    f"+ {sensor_total_count - 5}개 더 보기",
+                                    href=f"/sensor?page={proj_pk}",
+                                    className="text-primary text-decoration-none small fw-bold"
+                                )
+                            ], colSpan=3, className="py-2 text-center")
                         ])
                     )
 
@@ -278,7 +318,7 @@ def layout():
                                         html.Tbody(concrete_list)
                                     ], className="table-sm", hover=True, borderless=True) if concrete_list else 
                                     html.P("콘크리트가 없습니다", className="text-muted small")
-                                ], style={"maxHeight": "300px", "overflowY": "auto"})
+                                ], style={"height": "300px", "overflowY": "auto"})
                             ], className="bg-light p-3 rounded")
                         ], md=8),
                         
@@ -298,7 +338,7 @@ def layout():
                                         html.Tbody(sensor_list)
                                     ], className="table-sm", hover=True, borderless=True) if sensor_list else 
                                     html.P("센서가 없습니다", className="text-muted small")
-                                ], style={"maxHeight": "300px", "overflowY": "auto"})
+                                ], style={"height": "300px", "overflowY": "auto"})
                             ], className="bg-light p-3 rounded")
                         ], md=4)
                     ])

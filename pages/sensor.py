@@ -189,7 +189,7 @@ layout = html.Div([
                             html.Div([
                                 dash_table.DataTable(
                                     id="tbl-sensor",
-                                    page_size=10,
+                                    page_size=5,
                                     row_selectable="single",
                                     style_table={"overflowY": "auto", "height": "45vh"},
                                     style_cell={

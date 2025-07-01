@@ -108,7 +108,7 @@ layout = html.Div([
                         html.Div([
                             dash_table.DataTable(
                                 id="tbl",
-                                page_size=8,
+                                page_size=5,
                                 row_selectable="single",
                                 sort_action="native",
                                 sort_mode="multi",
