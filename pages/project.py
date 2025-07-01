@@ -1547,96 +1547,96 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     html.H6("📍 단면 위치 설정", style={
                         "fontWeight": "600",
                         "color": "#374151",
-                        "marginBottom": "16px",
+                        "marginBottom": "12px",
                         "fontSize": "14px"
                     }),
                     dbc.Row([
                         dbc.Col([
-                            dbc.Card([
-                                dbc.CardBody([
-                                    html.Div([
-                                        html.I(className="fas fa-arrows-alt-h", style={
-                                            "color": "#ef4444", 
-                                            "fontSize": "16px", 
-                                            "marginRight": "8px"
-                                        }),
-                                        html.Span("X축", style={
-                                            "fontWeight": "600",
-                                            "color": "#ef4444",
-                                            "fontSize": "14px"
-                                        })
-                                    ], style={"marginBottom": "8px"}),
-                                    dbc.Input(
-                                        id="section-x-input", 
-                                        type="number", 
-                                        step=0.1, 
-                                        value=None,
-                                        placeholder="X 좌표",
-                                        style={"width": "100%"}
-                                    )
-                                ])
-                            ], style={
-                                "border": "1px solid #fecaca",
-                                "backgroundColor": "#fef2f2"
-                            })
+                                                            dbc.Card([
+                                    dbc.CardBody([
+                                        html.Div([
+                                            html.I(className="fas fa-arrows-alt-h", style={
+                                                "color": "#ef4444", 
+                                                "fontSize": "14px", 
+                                                "marginRight": "6px"
+                                            }),
+                                            html.Span("X축", style={
+                                                "fontWeight": "600",
+                                                "color": "#ef4444",
+                                                "fontSize": "13px"
+                                            })
+                                        ], style={"marginBottom": "4px"}),
+                                        dbc.Input(
+                                            id="section-x-input", 
+                                            type="number", 
+                                            step=0.1, 
+                                            value=None,
+                                            placeholder="X 좌표",
+                                            style={"width": "100%"}
+                                        )
+                                    ], style={"padding": "8px"})
+                                ], style={
+                                    "border": "1px solid #fecaca",
+                                    "backgroundColor": "#fef2f2"
+                                })
                         ], md=4),
                         dbc.Col([
-                            dbc.Card([
-                                dbc.CardBody([
-                                    html.Div([
-                                        html.I(className="fas fa-arrows-alt-v", style={
-                                            "color": "#3b82f6", 
-                                            "fontSize": "16px", 
-                                            "marginRight": "8px"
-                                        }),
-                                        html.Span("Y축", style={
-                                            "fontWeight": "600",
-                                            "color": "#3b82f6",
-                                            "fontSize": "14px"
-                                        })
-                                    ], style={"marginBottom": "8px"}),
-                                    dbc.Input(
-                                        id="section-y-input", 
-                                        type="number", 
-                                        step=0.1, 
-                                        value=None,
-                                        placeholder="Y 좌표",
-                                        style={"width": "100%"}
-                                    )
-                                ])
-                            ], style={
-                                "border": "1px solid #bfdbfe",
-                                "backgroundColor": "#eff6ff"
-                            })
+                                                            dbc.Card([
+                                    dbc.CardBody([
+                                        html.Div([
+                                            html.I(className="fas fa-arrows-alt-v", style={
+                                                "color": "#3b82f6", 
+                                                "fontSize": "14px", 
+                                                "marginRight": "6px"
+                                            }),
+                                            html.Span("Y축", style={
+                                                "fontWeight": "600",
+                                                "color": "#3b82f6",
+                                                "fontSize": "13px"
+                                            })
+                                        ], style={"marginBottom": "4px"}),
+                                        dbc.Input(
+                                            id="section-y-input", 
+                                            type="number", 
+                                            step=0.1, 
+                                            value=None,
+                                            placeholder="Y 좌표",
+                                            style={"width": "100%"}
+                                        )
+                                    ], style={"padding": "8px"})
+                                ], style={
+                                    "border": "1px solid #bfdbfe",
+                                    "backgroundColor": "#eff6ff"
+                                })
                         ], md=4),
                         dbc.Col([
-                            dbc.Card([
-                                dbc.CardBody([
-                                    html.Div([
-                                        html.I(className="fas fa-arrows-alt", style={
-                                            "color": "#22c55e", 
-                                            "fontSize": "16px", 
-                                            "marginRight": "8px"
-                                        }),
-                                        html.Span("Z축", style={
-                                            "fontWeight": "600",
-                                            "color": "#22c55e",
-                                            "fontSize": "14px"
-                                        })
-                                    ], style={"marginBottom": "8px"}),
-                                    dbc.Input(
-                                        id="section-z-input", 
-                                        type="number", 
-                                        step=0.1, 
-                                        value=None,
-                                        placeholder="Z 좌표",
-                                        style={"width": "100%"}
-                                    )
-                                ])
-                            ], style={
-                                "border": "1px solid #bbf7d0",
-                                "backgroundColor": "#f0fdf4"
-                            })
+                                                            dbc.Card([
+                                    dbc.CardBody([
+                                        html.Div([
+                                            html.I(className="fas fa-arrows-alt", style={
+                                                "color": "#22c55e", 
+                                                "fontSize": "14px", 
+                                                "marginRight": "6px"
+                                            }),
+                                            html.Span("Z축", style={
+                                                "fontWeight": "600",
+                                                "color": "#22c55e",
+                                                "fontSize": "13px"
+                                            })
+                                        ], style={"marginBottom": "4px"}),
+                                        dbc.Input(
+                                            id="section-z-input", 
+                                            type="number", 
+                                            step=0.1, 
+                                            value=None,
+                                            placeholder="Z 좌표",
+                                            style={"width": "100%"}
+                                        )
+                                    ], style={"padding": "8px"})
+                                ], style={
+                                    "border": "1px solid #bbf7d0",
+                                    "backgroundColor": "#f0fdf4"
+                                })
                         ], md=4),
                     ], className="g-3"),
                 ], style={
