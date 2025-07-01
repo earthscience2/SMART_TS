@@ -1306,7 +1306,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                             "marginBottom": "12px",
                             "fontSize": "14px"
                         }),
-                        dbc.ButtonGroup([
+                        html.Div([
                             dbc.Button(
                                 [html.I(className="fas fa-camera me-1"), "이미지"],
                                 id="btn-save-3d-image",
@@ -1316,7 +1316,9 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                                     "borderRadius": "6px",
                                     "fontWeight": "500",
                                     "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                    "fontSize": "12px"
+                                    "fontSize": "12px",
+                                    "width": "70px",
+                                    "marginRight": "8px"
                                 }
                             ),
                             dbc.Button(
@@ -1328,16 +1330,20 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                                     "borderRadius": "6px",
                                     "fontWeight": "500",
                                     "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                    "fontSize": "12px"
+                                    "fontSize": "12px",
+                                    "width": "70px"
                                 }
                             ),
-                        ], className="w-100")
+                        ], style={"display": "flex", "justifyContent": "center"})
                     ], style={
                         "padding": "16px 20px",
                         "backgroundColor": "#f9fafb",
                         "borderRadius": "8px",
                         "border": "1px solid #e5e7eb",
-                        "height": "100%"
+                        "height": "100%",
+                        "display": "flex",
+                        "flexDirection": "column",
+                        "justifyContent": "center"
                     })
                 ], md=4),
             ], className="mb-3"),
