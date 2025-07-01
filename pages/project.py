@@ -45,10 +45,40 @@ register_page(__name__, path="/project", title="프로젝트 관리")
 # INP 파일 내 물성치(탄성계수, 포아송비, 밀도, 열팽창계수)를 보다 견고하게 추출하기 위한 헬퍼
 # 밀도 값이 0 으로 표시되던 문제를 단위 자동 변환(tonne/mm³, g/cm³ → kg/m³) 로 해결
 
+def format_scientific_notation(value):
+    """과학적 표기법을 ×10ⁿ 형식으로 변환합니다.
+    
+    예: 1.0e-05 → 1.0×10⁻⁵
+    """
+    if value == 0:
+        return "0"
+    
+    # 과학적 표기법으로 변환
+    exp_str = f"{value:.1e}"
+    
+    # e 표기법을 × 표기법으로 변환
+    if 'e' in exp_str:
+        mantissa, exponent = exp_str.split('e')
+        exp_num = int(exponent)
+        
+        # 상첨자 숫자 변환
+        superscript_map = {
+            '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', 
+            '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', 
+            '-': '⁻'
+        }
+        
+        # 지수를 상첨자로 변환
+        exp_super = ''.join(superscript_map.get(c, c) for c in str(exp_num))
+        
+        return f"{mantissa}×10{exp_super}"
+    
+    return exp_str
+
 def parse_material_info_from_inp(lines):
     """INP 파일 라인 리스트에서 물성치 정보를 추출하여 문자열로 반환합니다.
 
-    반환 형식 예시: "탄성계수: 30000MPa, 포아송비: 0.200, 밀도: 2500kg/m³, 열팽창: 1.0e-05/°C"
+    반환 형식 예시: "탄성계수: 30000MPa, 포아송비: 0.200, 밀도: 2500kg/m³, 열팽창: 1.0×10⁻⁵/°C"
     해당 값이 없으면 항목을 건너뛴다. 아무 항목도 없으면 "물성치 정보 없음" 반환.
     """
     elastic_modulus = None  # MPa
@@ -113,7 +143,7 @@ def parse_material_info_from_inp(lines):
     if density is not None:
         parts.append(f"밀도: {density:.0f}kg/m³")
     if expansion is not None:
-        parts.append(f"열팽창: {expansion:.1e}/°C")
+        parts.append(f"열팽창: {format_scientific_notation(expansion)}/°C")
 
     return ", ".join(parts) if parts else "물성치 정보 없음"
 
