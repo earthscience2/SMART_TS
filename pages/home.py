@@ -318,6 +318,12 @@ def layout():
                                                 'fontWeight': '600',
                                                 'borderRadius': '4px'
                                             }
+                                        ],
+                                        css=[
+                                            {
+                                                'selector': '.dash-table-container *',
+                                                'rule': 'text-align: center !important;'
+                                            }
                                         ]
                                     ) if concrete_data else 
                                     html.P("콘크리트가 없습니다", className="text-muted small text-center", style={"paddingTop": "100px"})
@@ -403,6 +409,12 @@ def layout():
                                                 'color': '#92400e',
                                                 'fontWeight': '600',
                                                 'borderRadius': '4px'
+                                            }
+                                        ],
+                                        css=[
+                                            {
+                                                'selector': '.dash-table-container *',
+                                                'rule': 'text-align: center !important;'
                                             }
                                         ]
                                     ) if sensor_data else 
