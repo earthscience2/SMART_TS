@@ -258,30 +258,6 @@ def layout():
                         ], className="d-flex flex-wrap gap-1")
                     ], className="d-flex justify-content-between align-items-center mb-4"),
                     
-                    # 프로젝트 통계 정보
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Card([
-                                dbc.CardBody([
-                                    dbc.Row([
-                                        dbc.Col([
-                                            html.Div([
-                                                html.H3(f"{row.get('concrete_count', 0)}", className="text-info mb-0 fw-bold"),
-                                                html.Small("콘크리트", className="text-muted")
-                                            ], className="text-center")
-                                        ], width=6),
-                                        dbc.Col([
-                                            html.Div([
-                                                html.H3(f"{row.get('sensor_count', 0)}", className="text-success mb-0 fw-bold"),
-                                                html.Small("센서", className="text-muted")
-                                            ], className="text-center")
-                                        ], width=6)
-                                    ])
-                                ])
-                            ], className="mb-3")
-                        ], width=12)
-                    ]),
-                    
                     # 콘텐츠 그리드
                     dbc.Row([
                         # 콘크리트 섹션
