@@ -3532,7 +3532,8 @@ def update_section_time_info(current_file_title, active_tab):
                 "display": "flex",
                 "alignItems": "flex-start",
                 "gap": "6px",
-                "flexWrap": "wrap"
+                "flexWrap": "wrap",
+                "marginBottom": "8px"
             }) if material_info else html.Div()
             
         ], style={
