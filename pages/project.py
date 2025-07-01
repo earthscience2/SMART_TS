@@ -182,6 +182,8 @@ layout = dbc.Container(
         dcc.Download(id="download-current-inp"),
         dcc.Download(id="download-section-image"),
         dcc.Download(id="download-section-inp"),
+        dcc.Download(id="download-temp-image"),
+        dcc.Download(id="download-temp-data"),
         
         # 키보드 이벤트 처리 스크립트
         html.Div([
@@ -1768,7 +1770,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         return html.Div([
             dcc.Store(id="temp-coord-store", data=store_data),
             
-            # 위치 설정 섹션 (노션 스타일)
+            # 위치 설정 + 저장 버튼 섹션 (노션 스타일)
             html.Div([
                 html.Div([
                     html.H6("📍 측정 위치 설정", style={
@@ -1777,44 +1779,81 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         "marginBottom": "16px",
                         "fontSize": "14px"
                     }),
-                    html.Div([
-                        dbc.InputGroup([
-                            dbc.InputGroupText("X", style={"fontWeight": "500"}),
-                            dbc.Input(
-                                id="temp-x-input", 
-                                type="number", 
-                                step=0.1, 
-                                value=round(x_mid,1), 
-                                min=round(x_min,2), 
-                                max=round(x_max,2), 
-                                style={"width": "100px"}
-                            ),
-                        ], className="me-3", style={"width": "auto"}),
-                        dbc.InputGroup([
-                            dbc.InputGroupText("Y", style={"fontWeight": "500"}),
-                            dbc.Input(
-                                id="temp-y-input", 
-                                type="number", 
-                                step=0.1, 
-                                value=round(y_mid,1), 
-                                min=round(y_min,2), 
-                                max=round(y_max,2), 
-                                style={"width": "100px"}
-                            ),
-                        ], className="me-3", style={"width": "auto"}),
-                        dbc.InputGroup([
-                            dbc.InputGroupText("Z", style={"fontWeight": "500"}),
-                            dbc.Input(
-                                id="temp-z-input", 
-                                type="number", 
-                                step=0.1, 
-                                value=round(z_mid,1), 
-                                min=round(z_min,2), 
-                                max=round(z_max,2), 
-                                style={"width": "100px"}
-                            ),
-                        ], style={"width": "auto"}),
-                    ], style={"display": "flex", "alignItems": "center", "flexWrap": "wrap", "gap": "12px"}),
+                    dbc.Row([
+                        dbc.Col([
+                            html.Div([
+                                dbc.InputGroup([
+                                    dbc.InputGroupText("X", style={"fontWeight": "500"}),
+                                    dbc.Input(
+                                        id="temp-x-input", 
+                                        type="number", 
+                                        step=0.1, 
+                                        value=round(x_mid,1), 
+                                        min=round(x_min,2), 
+                                        max=round(x_max,2), 
+                                        style={"width": "100px"}
+                                    ),
+                                ], className="me-3", style={"width": "auto"}),
+                                dbc.InputGroup([
+                                    dbc.InputGroupText("Y", style={"fontWeight": "500"}),
+                                    dbc.Input(
+                                        id="temp-y-input", 
+                                        type="number", 
+                                        step=0.1, 
+                                        value=round(y_mid,1), 
+                                        min=round(y_min,2), 
+                                        max=round(y_max,2), 
+                                        style={"width": "100px"}
+                                    ),
+                                ], className="me-3", style={"width": "auto"}),
+                                dbc.InputGroup([
+                                    dbc.InputGroupText("Z", style={"fontWeight": "500"}),
+                                    dbc.Input(
+                                        id="temp-z-input", 
+                                        type="number", 
+                                        step=0.1, 
+                                        value=round(z_mid,1), 
+                                        min=round(z_min,2), 
+                                        max=round(z_max,2), 
+                                        style={"width": "100px"}
+                                    ),
+                                ], style={"width": "auto"}),
+                            ], style={"display": "flex", "alignItems": "center", "flexWrap": "wrap", "gap": "12px"}),
+                        ], md=8),
+                        dbc.Col([
+                            html.Div([
+                                dbc.Button(
+                                    [html.I(className="fas fa-camera me-1"), "이미지 저장"],
+                                    id="btn-save-temp-image",
+                                    color="primary",
+                                    size="lg",
+                                    style={
+                                        "borderRadius": "8px",
+                                        "fontWeight": "600",
+                                        "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                        "fontSize": "15px",
+                                        "width": "120px",
+                                        "height": "48px",
+                                        "marginRight": "16px"
+                                    }
+                                ),
+                                dbc.Button(
+                                    [html.I(className="fas fa-file-csv me-1"), "데이터 저장"],
+                                    id="btn-save-temp-data",
+                                    color="success",
+                                    size="lg",
+                                    style={
+                                        "borderRadius": "8px",
+                                        "fontWeight": "600",
+                                        "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                        "fontSize": "15px",
+                                        "width": "120px",
+                                        "height": "48px"
+                                    }
+                                ),
+                            ], style={"display": "flex", "justifyContent": "center", "alignItems": "center", "height": "100%"})
+                        ], md=4),
+                    ], className="g-3"),
                 ], style={
                     "padding": "16px 20px",
                     "backgroundColor": "#f9fafb",
@@ -4098,6 +4137,215 @@ def save_section_inp(n_clicks, selected_rows, tbl_data, time_value):
         
     except Exception as e:
         print(f"단면도 INP 파일 저장 오류: {e}")
+        raise PreventUpdate
+
+# ───────────────────── 온도 변화 이미지 저장 콜백 ─────────────────────
+@callback(
+    Output("download-temp-image", "data"),
+    Output("btn-save-temp-image", "children"),
+    Output("btn-save-temp-image", "disabled"),
+    Input("btn-save-temp-image", "n_clicks"),
+    State("temp-viewer-3d", "figure"),
+    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    State("temp-x-input", "value"),
+    State("temp-y-input", "value"),
+    State("temp-z-input", "value"),
+    prevent_initial_call=True,
+)
+def save_temp_image(n_clicks, figure, selected_rows, tbl_data, x, y, z):
+    """온도 변화 탭의 콘크리트 구조 뷰를 이미지로 저장"""
+    if not n_clicks or not figure:
+        raise PreventUpdate
+    
+    try:
+        # 파일명 생성 (위치 정보 포함)
+        if selected_rows and tbl_data:
+            row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+            concrete_pk = row["concrete_pk"]
+            concrete_name = row.get("name", concrete_pk)
+            
+            # 위치 정보를 파일명에 포함
+            x_pos = round(x, 1) if x is not None else 0.0
+            y_pos = round(y, 1) if y is not None else 0.0
+            z_pos = round(z, 1) if z is not None else 0.0
+            
+            filename = f"온도분석_{concrete_name}_위치({x_pos}_{y_pos}_{z_pos}).png"
+        else:
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"온도분석_{timestamp}.png"
+        
+        # 이미지 저장
+        try:
+            import plotly.io as pio
+            img_bytes = pio.to_image(figure, format="png", width=1200, height=800, scale=2, engine="kaleido")
+            default_btn = [html.I(className="fas fa-camera me-1"), "이미지 저장"]
+            return dcc.send_bytes(img_bytes, filename=filename), default_btn, False
+            
+        except ImportError:
+            print("kaleido가 설치되지 않음. 대안 방법 시도 중...")
+            
+        except Exception as pio_error:
+            print(f"plotly.io 저장 실패: {pio_error}")
+        
+        # 대안: HTML 파일로 저장
+        try:
+            import json
+            fig_json = json.dumps(figure, cls=plotly.utils.PlotlyJSONEncoder)
+            
+            html_template = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+            </head>
+            <body>
+                <div id="plotly-div" style="width:1200px;height:800px;"></div>
+                <script>
+                    var figureData = {fig_json};
+                    Plotly.newPlot('plotly-div', figureData.data, figureData.layout, {{displayModeBar: false}});
+                </script>
+            </body>
+            </html>
+            """
+            
+            html_filename = filename.replace('.png', '.html')
+            default_btn = [html.I(className="fas fa-camera me-1"), "이미지 저장"]
+            return dict(content=html_template, filename=html_filename), default_btn, False
+            
+        except Exception as html_error:
+            print(f"HTML 저장도 실패: {html_error}")
+            error_btn = [html.I(className="fas fa-times me-1"), "실패"]
+            return dash.no_update, error_btn, False
+        
+    except Exception as e:
+        print(f"온도 변화 이미지 저장 전체 오류: {e}")
+        error_btn = [html.I(className="fas fa-times me-1"), "오류"]
+        return dash.no_update, error_btn, False
+
+# ───────────────────── 온도 변화 데이터 저장 콜백 ─────────────────────
+@callback(
+    Output("download-temp-data", "data"),
+    Input("btn-save-temp-data", "n_clicks"),
+    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    State("temp-x-input", "value"),
+    State("temp-y-input", "value"),
+    State("temp-z-input", "value"),
+    prevent_initial_call=True,
+)
+def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
+    """온도 변화 데이터를 CSV 형태로 저장"""
+    if not n_clicks or not selected_rows or not tbl_data:
+        raise PreventUpdate
+    
+    try:
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+        concrete_pk = row["concrete_pk"]
+        concrete_name = row.get("name", concrete_pk)
+        
+        # 위치 정보
+        x_pos = round(x, 1) if x is not None else 0.0
+        y_pos = round(y, 1) if y is not None else 0.0
+        z_pos = round(z, 1) if z is not None else 0.0
+        
+        # INP 파일들에서 온도 데이터 수집
+        inp_dir = f"inp/{concrete_pk}"
+        inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+        
+        if not inp_files:
+            raise PreventUpdate
+        
+        # 온도 데이터 수집
+        temp_data = []
+        from datetime import datetime as dt_import
+        
+        for f in inp_files:
+            # 시간 파싱
+            try:
+                time_str = os.path.basename(f).split(".")[0]
+                dt = dt_import.strptime(time_str, "%Y%m%d%H")
+                formatted_time = dt.strftime("%Y-%m-%d %H:%M:%S")
+            except:
+                continue
+            
+            # inp 파일 파싱 (노드, 온도)
+            with open(f, 'r') as file:
+                lines = file.readlines()
+            
+            nodes = {}
+            node_section = False
+            for line in lines:
+                if line.startswith('*NODE'):
+                    node_section = True
+                    continue
+                elif line.startswith('*'):
+                    node_section = False
+                    continue
+                if node_section and ',' in line:
+                    parts = line.strip().split(',')
+                    if len(parts) >= 4:
+                        node_id = int(parts[0])
+                        nx = float(parts[1])
+                        ny = float(parts[2])
+                        nz = float(parts[3])
+                        nodes[node_id] = {'x': nx, 'y': ny, 'z': nz}
+            
+            temperatures = {}
+            temp_section = False
+            for line in lines:
+                if line.startswith('*TEMPERATURE'):
+                    temp_section = True
+                    continue
+                elif line.startswith('*'):
+                    temp_section = False
+                    continue
+                if temp_section and ',' in line:
+                    parts = line.strip().split(',')
+                    if len(parts) >= 2:
+                        node_id = int(parts[0])
+                        temp = float(parts[1])
+                        temperatures[node_id] = temp
+            
+            # 입력 위치와 가장 가까운 노드 찾기
+            if nodes:
+                coords = np.array([[v['x'], v['y'], v['z']] for v in nodes.values()])
+                node_ids = list(nodes.keys())
+                dists = np.linalg.norm(coords - np.array([x_pos, y_pos, z_pos]), axis=1)
+                min_idx = np.argmin(dists)
+                closest_id = node_ids[min_idx]
+                temp_val = temperatures.get(closest_id, None)
+                
+                if temp_val is not None:
+                    temp_data.append({
+                        '시간': formatted_time,
+                        '온도(°C)': round(temp_val, 2),
+                        '측정위치_X(m)': x_pos,
+                        '측정위치_Y(m)': y_pos,
+                        '측정위치_Z(m)': z_pos,
+                        '콘크리트명': concrete_name
+                    })
+        
+        if not temp_data:
+            raise PreventUpdate
+        
+        # CSV 데이터 생성
+        import io
+        import pandas as pd
+        
+        df = pd.DataFrame(temp_data)
+        csv_buffer = io.StringIO()
+        df.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
+        csv_buffer.seek(0)
+        
+        # 파일명 생성 (위치 정보 포함)
+        filename = f"온도데이터_{concrete_name}_위치({x_pos}_{y_pos}_{z_pos}).csv"
+        
+        return dict(content=csv_buffer.getvalue(), filename=filename)
+        
+    except Exception as e:
+        print(f"온도 변화 데이터 저장 오류: {e}")
         raise PreventUpdate
 
 
