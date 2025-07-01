@@ -1539,7 +1539,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 ], md=4, style={
                     "height": "65px"
                 }),
-            ], className="mb-3 align-items-stretch h-100", style={"minHeight": "65px"}),
+            ], className="mb-4 align-items-stretch h-100", style={"minHeight": "65px"}),
             
             # 단면 위치 설정 섹션 (노션 스타일)
             html.Div([
