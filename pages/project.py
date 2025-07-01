@@ -4516,6 +4516,7 @@ def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z
 )
 def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
     """온도 변화 데이터를 CSV 형태로 저장"""
+    import pandas as pd
     if not n_clicks or not selected_rows or not tbl_data:
         raise PreventUpdate
     
