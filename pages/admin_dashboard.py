@@ -30,13 +30,12 @@ def get_system_stats():
         
         # === 시스템 현황 데이터 ===
         
-        # 1. 최근 7일간 로그인 횟수 (일별) - 로그 파일 우선, DB 보조
+        # 1. 최근 7일간 로그인 횟수 (일별) - 로그 파일 기반
         login_data = []
         for date in dates:
             log_count = 0
-            db_count = 0
             
-            # 먼저 로그 파일에서 로그인 데이터 수집
+            # 로그 파일에서 로그인 데이터 수집
             try:
                 login_log_file = os.path.join("log", "login.log")
                 if os.path.exists(login_log_file):
@@ -48,37 +47,33 @@ def get_system_stats():
             except Exception as e:
                 print(f"로그인 로그 파일 읽기 오류: {e}")
             
-            # DB에서도 로그인 데이터 수집 (보조)
-            try:
-                login_query = text("""
-                    SELECT COUNT(*) as count FROM tb_user_log 
-                    WHERE DATE(created_at) = :date AND action = 'LOGIN_SUCCESS'
-                """)
-                result = pd.read_sql(login_query, eng, params={"date": date})
-                db_count = result.iloc[0]['count'] if not result.empty and 'count' in result.columns else 0
-            except Exception as e:
-                print(f"로그인 DB 조회 오류: {e}")
-            
-            # 로그 파일 데이터를 우선시하되, 없으면 DB 데이터 사용
-            final_count = log_count if log_count > 0 else int(db_count if db_count is not None else 0)
-            login_data.append(final_count)
+            login_data.append(log_count)
         
-        # 2. 프로젝트 수 (누적) - DB 기반, 로그 파일 검증
+        # 2. 프로젝트 수 (누적) - 메인 DB 우선, 로그 파일 보완
         project_cumulative = []
         for date in dates:
             db_count = 0
-            log_validation = 0
+            log_count = 0
             
-            # DB에서 프로젝트 수 조회
+            # 메인 DB에서 프로젝트 수 조회 (project 테이블)
             try:
+                # 메인 DB engine 사용
+                from api_db import engine as main_engine
                 project_query = text("""
-                    SELECT COUNT(*) as count FROM tb_project 
-                    WHERE DATE(created_at) <= :date
+                    SELECT COUNT(*) as count FROM project 
+                    WHERE DATE(s_code) <= :date OR s_code IS NULL
                 """)
-                result = pd.read_sql(project_query, eng, params={"date": date})
+                result = pd.read_sql(project_query, main_engine, params={"date": date})
                 db_count = result.iloc[0]['count'] if not result.empty and 'count' in result.columns else 0
             except Exception as e:
-                print(f"프로젝트 DB 조회 오류: {e}")
+                # 메인 DB 실패시 전체 프로젝트 카운트
+                try:
+                    from api_db import engine as main_engine
+                    total_query = text("SELECT COUNT(*) as count FROM project")
+                    result = pd.read_sql(total_query, main_engine)
+                    db_count = result.iloc[0]['count'] if not result.empty and 'count' in result.columns else 0
+                except Exception as e2:
+                    print(f"프로젝트 DB 조회 오류: {e2}")
             
             # 로그 파일에서 검증 (해당 날짜까지의 프로젝트 추가 이벤트)
             try:
@@ -90,27 +85,25 @@ def get_system_stats():
                             # 해당 날짜 이전 또는 당일의 프로젝트 추가 이벤트 카운트
                             line_date = line[:10] if len(line) >= 10 else ""
                             if line_date <= date and ('PROJECT_ADD' in line or '프로젝트 추가' in line):
-                                log_validation += 1
+                                log_count += 1
             except Exception as e:
                 print(f"프로젝트 로그 파일 읽기 오류: {e}")
             
-            # DB 데이터를 우선시하되, 로그에서 큰 차이가 나면 로그 데이터 참고
-            final_count = int(max(db_count, log_validation) if db_count is not None else log_validation)
+            # DB 우선, 로그로 보완
+            final_count = int(max(db_count, log_count) if db_count is not None else log_count)
             project_cumulative.append(final_count)
         
-        # 3. 콘크리트 수 (누적) - DB 기반, 로그 파일 검증
+        # 3. 콘크리트 수 (누적) - 메인 DB 우선, 로그 파일 보완
         concrete_cumulative = []
         for date in dates:
             db_count = 0
-            log_validation = 0
+            log_count = 0
             
-            # DB에서 콘크리트 수 조회
+            # 메인 DB에서 콘크리트 수 조회 (concrete 테이블)
             try:
-                concrete_query = text("""
-                    SELECT COUNT(*) as count FROM tb_concrete 
-                    WHERE DATE(created_at) <= :date
-                """)
-                result = pd.read_sql(concrete_query, eng, params={"date": date})
+                from api_db import engine as main_engine
+                concrete_query = text("SELECT COUNT(*) as count FROM concrete WHERE activate = 1")
+                result = pd.read_sql(concrete_query, main_engine)
                 db_count = result.iloc[0]['count'] if not result.empty and 'count' in result.columns else 0
             except Exception as e:
                 print(f"콘크리트 DB 조회 오류: {e}")
@@ -125,30 +118,38 @@ def get_system_stats():
                             # 해당 날짜 이전 또는 당일의 콘크리트 추가 이벤트 카운트
                             line_date = line[:10] if len(line) >= 10 else ""
                             if line_date <= date and ('CONCRETE_ADD' in line or '콘크리트 추가' in line):
-                                log_validation += 1
+                                log_count += 1
             except Exception as e:
                 print(f"콘크리트 로그 파일 읽기 오류: {e}")
             
-            # DB 데이터를 우선시하되, 로그에서 큰 차이가 나면 로그 데이터 참고
-            final_count = int(max(db_count, log_validation) if db_count is not None else log_validation)
+            # DB 우선, 로그로 보완
+            final_count = int(max(db_count, log_count) if db_count is not None else log_count)
             concrete_cumulative.append(final_count)
         
-        # 4. 센서 데이터 수 (누적) - DB 기반, 로그 파일 검증
+        # 4. 센서 데이터 수 (누적) - 메인 DB 우선, 로그 파일 보완
         sensor_data_cumulative = []
         for date in dates:
             db_count = 0
-            log_validation = 0
+            log_count = 0
             
-            # DB에서 센서 데이터 수 조회
+            # 메인 DB에서 센서 데이터 수 조회 (sensor_data 테이블)
             try:
+                from api_db import engine as main_engine
                 sensor_query = text("""
-                    SELECT COUNT(*) as count FROM tb_sensor_data 
-                    WHERE DATE(created_at) <= :date
+                    SELECT COUNT(*) as count FROM sensor_data 
+                    WHERE DATE(time) <= :date
                 """)
-                result = pd.read_sql(sensor_query, eng, params={"date": date})
+                result = pd.read_sql(sensor_query, main_engine, params={"date": date})
                 db_count = result.iloc[0]['count'] if not result.empty and 'count' in result.columns else 0
             except Exception as e:
-                print(f"센서 데이터 DB 조회 오류: {e}")
+                # 날짜 필터 실패시 전체 카운트
+                try:
+                    from api_db import engine as main_engine
+                    total_query = text("SELECT COUNT(*) as count FROM sensor_data")
+                    result = pd.read_sql(total_query, main_engine)
+                    db_count = result.iloc[0]['count'] if not result.empty and 'count' in result.columns else 0
+                except Exception as e2:
+                    print(f"센서 데이터 DB 조회 오류: {e2}")
             
             # 로그 파일에서 검증 (해당 날짜까지의 센서 데이터 수집 이벤트)
             try:
@@ -160,7 +161,7 @@ def get_system_stats():
                             # 해당 날짜 이전 또는 당일의 센서 데이터 수집 이벤트 카운트
                             line_date = line[:10] if len(line) >= 10 else ""
                             if line_date <= date and ('SENSOR_DATA' in line or '센서 데이터' in line or '데이터 수집' in line):
-                                log_validation += 1
+                                log_count += 1
                 
                 # 추가로 날짜별 센서 로그 파일들 확인
                 date_str = str(date).replace('-', '')  # YYYYMMDD 형식
@@ -173,15 +174,15 @@ def get_system_stats():
                             content = f.read()
                             # 센서 데이터 수집 관련 로그 카운트
                             matches = re.findall(r'데이터 수집|sensor.*data|SENSOR_DATA', content, re.IGNORECASE)
-                            log_validation += len(matches) if matches else 0
+                            log_count += len(matches) if matches else 0
                     except Exception as e:
                         continue
                         
             except Exception as e:
                 print(f"센서 로그 파일 읽기 오류: {e}")
             
-            # DB 데이터를 우선시하되, 로그에서 큰 차이가 나면 로그 데이터 참고
-            final_count = int(max(db_count, log_validation) if db_count is not None else log_validation)
+            # DB 우선, 로그로 보완
+            final_count = int(max(db_count, log_count) if db_count is not None else log_count)
             sensor_data_cumulative.append(final_count)
         
         # === 데이터 분석 데이터 (로그 파일 기반) ===
@@ -242,22 +243,31 @@ def get_system_stats():
         
         # 오늘 데이터
         today = datetime.now().strftime('%Y-%m-%d')
-        today_data_query = text("""
-            SELECT COUNT(*) as count 
-            FROM tb_sensor_data 
-            WHERE DATE(created_at) = :today
-        """)
-        today_data_result = pd.read_sql(today_data_query, eng, params={"today": today})
-        today_data_count = today_data_result.iloc[0]['count'] if not today_data_result.empty else 0
+        today_data_count = 0
+        active_sensors_count = 0
         
-        # 활성 센서 상태 조회
-        active_sensor_query = text("""
-            SELECT DISTINCT deviceid, channel
-            FROM tb_sensor_data 
-            WHERE created_at >= DATE_SUB(NOW(), INTERVAL 2 HOUR)
-        """)
-        active_sensors_result = pd.read_sql(active_sensor_query, eng)
-        active_sensors_count = len(active_sensors_result) if not active_sensors_result.empty else 0
+        try:
+            from api_db import engine as main_engine
+            today_data_query = text("""
+                SELECT COUNT(*) as count 
+                FROM sensor_data 
+                WHERE DATE(time) = :today
+            """)
+            today_data_result = pd.read_sql(today_data_query, main_engine, params={"today": today})
+            today_data_count = today_data_result.iloc[0]['count'] if not today_data_result.empty else 0
+            
+            # 활성 센서 상태 조회 (최근 2시간 내 데이터)
+            active_sensor_query = text("""
+                SELECT DISTINCT device_id, channel
+                FROM sensor_data 
+                WHERE time >= DATE_SUB(NOW(), INTERVAL 2 HOUR)
+            """)
+            active_sensors_result = pd.read_sql(active_sensor_query, main_engine)
+            active_sensors_count = len(active_sensors_result) if not active_sensors_result.empty else 0
+        except Exception as e:
+            print(f"오늘 데이터 조회 오류: {e}")
+            today_data_count = 0
+            active_sensors_count = 0
         
         # 시스템 건강 상태 계산
         health_score = 100
