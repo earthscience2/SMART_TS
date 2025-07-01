@@ -5,7 +5,6 @@ from api_db import get_project_data_with_stats
 import pandas as pd
 from datetime import datetime, timedelta
 import plotly.graph_objs as go
-import plotly.express as px
 
 register_page(__name__, path="/admin_dashboard", title="관리자 대시보드")
 
@@ -34,42 +33,62 @@ def get_system_stats():
         # 1. 최근 7일간 로그인 횟수 (일별)
         login_data = []
         for date in dates:
-            login_query = text("""
-                SELECT COUNT(*) as count FROM tb_user_log 
-                WHERE DATE(created_at) = :date AND action = 'LOGIN_SUCCESS'
-            """)
-            result = pd.read_sql(login_query, eng, params={"date": date})
-            login_data.append(result.iloc[0]['count'] if not result.empty else 0)
+            try:
+                login_query = text("""
+                    SELECT COUNT(*) as count FROM tb_user_log 
+                    WHERE DATE(created_at) = :date AND action = 'LOGIN_SUCCESS'
+                """)
+                result = pd.read_sql(login_query, eng, params={"date": date})
+                count = result.iloc[0]['count'] if not result.empty and 'count' in result.columns else 0
+                login_data.append(int(count) if count is not None else 0)
+            except Exception as e:
+                print(f"로그인 데이터 조회 오류: {e}")
+                login_data.append(0)
         
         # 2. 프로젝트 수 (누적)
         project_cumulative = []
         for date in dates:
-            project_query = text("""
-                SELECT COUNT(*) as count FROM tb_project 
-                WHERE DATE(created_at) <= :date
-            """)
-            result = pd.read_sql(project_query, eng, params={"date": date})
-            project_cumulative.append(result.iloc[0]['count'] if not result.empty else 0)
+            try:
+                project_query = text("""
+                    SELECT COUNT(*) as count FROM tb_project 
+                    WHERE DATE(created_at) <= :date
+                """)
+                result = pd.read_sql(project_query, eng, params={"date": date})
+                count = result.iloc[0]['count'] if not result.empty and 'count' in result.columns else 0
+                project_cumulative.append(int(count) if count is not None else 0)
+            except Exception as e:
+                print(f"프로젝트 데이터 조회 오류: {e}")
+                project_cumulative.append(0)
         
         # 3. 콘크리트 수 (누적)
         concrete_cumulative = []
         for date in dates:
-            concrete_query = text("""
-                SELECT COUNT(*) as count FROM tb_concrete 
-                WHERE DATE(created_at) <= :date
-            """)
-            result = pd.read_sql(concrete_query, eng, params={"date": date})
-            concrete_cumulative.append(result.iloc[0]['count'] if not result.empty else 0)
+            try:
+                concrete_query = text("""
+                    SELECT COUNT(*) as count FROM tb_concrete 
+                    WHERE DATE(created_at) <= :date
+                """)
+                result = pd.read_sql(concrete_query, eng, params={"date": date})
+                count = result.iloc[0]['count'] if not result.empty and 'count' in result.columns else 0
+                concrete_cumulative.append(int(count) if count is not None else 0)
+            except Exception as e:
+                print(f"콘크리트 데이터 조회 오류: {e}")
+                concrete_cumulative.append(0)
         
         # 4. 센서 데이터 수 (누적)
         sensor_data_cumulative = []
         for date in dates:
-            sensor_query = text("""
-                SELECT COUNT(*) as count FROM tb_sensor_data 
-                WHERE DATE(created_at) <= :date
-            """)
-            result = pd.read_sql(sensor_query, eng, params={"date": date})
-            sensor_data_cumulative.append(result.iloc[0]['count'] if not result.empty else 0)
+            try:
+                sensor_query = text("""
+                    SELECT COUNT(*) as count FROM tb_sensor_data 
+                    WHERE DATE(created_at) <= :date
+                """)
+                result = pd.read_sql(sensor_query, eng, params={"date": date})
+                count = result.iloc[0]['count'] if not result.empty and 'count' in result.columns else 0
+                sensor_data_cumulative.append(int(count) if count is not None else 0)
+            except Exception as e:
+                print(f"센서 데이터 조회 오류: {e}")
+                sensor_data_cumulative.append(0)
         
         # === 데이터 분석 데이터 (로그 파일 기반) ===
         
@@ -80,36 +99,52 @@ def get_system_stats():
         inp_to_frd_daily = [0] * 7
         frd_to_vtk_daily = [0] * 7
         
-        if os.path.exists(log_dir):
-            for i, date in enumerate(dates):
-                date_str = date.replace('-', '')  # YYYYMMDD 형식
-                
-                # 센서 데이터 수집 로그
-                sensor_log_pattern = f"sensor_{date_str}_*.log"
-                sensor_files = []
-                if os.path.exists(log_dir):
-                    import glob
-                    sensor_files = glob.glob(os.path.join(log_dir, sensor_log_pattern))
-                
-                for file_path in sensor_files:
+        try:
+            if os.path.exists(log_dir):
+                import glob
+                for i, date in enumerate(dates):
+                    if i >= 7:  # 안전 체크
+                        break
+                    
                     try:
-                        with open(file_path, 'r', encoding='utf-8') as f:
-                            content = f.read()
-                            sensor_data_daily[i] += len(re.findall(r'데이터 수집', content))
-                    except:
-                        pass
-                
-                # 자동화 로그에서 변환 작업 횟수 추출
-                auto_log_file = os.path.join(log_dir, f"automation_{date_str}.log")
-                if os.path.exists(auto_log_file):
-                    try:
-                        with open(auto_log_file, 'r', encoding='utf-8') as f:
-                            content = f.read()
-                            inp_conversion_daily[i] = len(re.findall(r'inp.*변환.*완료', content, re.IGNORECASE))
-                            inp_to_frd_daily[i] = len(re.findall(r'inp.*frd.*변환.*완료', content, re.IGNORECASE))
-                            frd_to_vtk_daily[i] = len(re.findall(r'frd.*vtk.*변환.*완료', content, re.IGNORECASE))
-                    except:
-                        pass
+                        date_str = str(date).replace('-', '')  # YYYYMMDD 형식
+                        
+                        # 센서 데이터 수집 로그
+                        sensor_log_pattern = f"sensor_{date_str}_*.log"
+                        sensor_files = glob.glob(os.path.join(log_dir, sensor_log_pattern))
+                        
+                        for file_path in sensor_files:
+                            try:
+                                with open(file_path, 'r', encoding='utf-8') as f:
+                                    content = f.read()
+                                    matches = re.findall(r'데이터 수집', content)
+                                    sensor_data_daily[i] += len(matches) if matches else 0
+                            except Exception as e:
+                                print(f"센서 로그 파일 읽기 오류 ({file_path}): {e}")
+                                continue
+                        
+                        # 자동화 로그에서 변환 작업 횟수 추출
+                        auto_log_file = os.path.join(log_dir, f"automation_{date_str}.log")
+                        if os.path.exists(auto_log_file):
+                            try:
+                                with open(auto_log_file, 'r', encoding='utf-8') as f:
+                                    content = f.read()
+                                    inp_matches = re.findall(r'inp.*변환.*완료', content, re.IGNORECASE)
+                                    inp_frd_matches = re.findall(r'inp.*frd.*변환.*완료', content, re.IGNORECASE)
+                                    frd_vtk_matches = re.findall(r'frd.*vtk.*변환.*완료', content, re.IGNORECASE)
+                                    
+                                    inp_conversion_daily[i] = len(inp_matches) if inp_matches else 0
+                                    inp_to_frd_daily[i] = len(inp_frd_matches) if inp_frd_matches else 0
+                                    frd_to_vtk_daily[i] = len(frd_vtk_matches) if frd_vtk_matches else 0
+                            except Exception as e:
+                                print(f"자동화 로그 파일 읽기 오류 ({auto_log_file}): {e}")
+                                continue
+                    except Exception as e:
+                        print(f"날짜 {date} 로그 처리 오류: {e}")
+                        continue
+        except Exception as e:
+            print(f"로그 디렉토리 처리 오류: {e}")
+            # 기본값은 이미 설정됨
         
         # 오늘 데이터
         today = datetime.now().strftime('%Y-%m-%d')
@@ -248,134 +283,185 @@ def create_enhanced_status_card(title, value, subtitle, icon, color, progress=No
 
 def create_mini_chart(dates, data, title, color, chart_type='line', unit='개'):
     """미니 차트 생성 (시스템 현황용)"""
-    if not data or all(x == 0 for x in data):
-        return html.Div([
-            html.P("데이터가 없습니다", className="text-muted text-center my-4")
-        ])
-    
-    # 날짜를 MM-DD 형식으로 변환
-    display_dates = [datetime.strptime(date, '%Y-%m-%d').strftime('%m-%d') for date in dates]
-    
-    fig = go.Figure()
-    
-    if chart_type == 'line':
-        fig.add_trace(go.Scatter(
-            x=display_dates,
-            y=data,
-            mode='lines+markers',
-            line=dict(color=color, width=3),
-            marker=dict(size=6, color=color),
-            fill='tonexty',
-            fillcolor=f'rgba{tuple(list(px.colors.hex_to_rgb(color)) + [0.1])}',
-            name=title
-        ))
-    else:  # bar chart
-        fig.add_trace(go.Bar(
-            x=display_dates,
-            y=data,
-            marker_color=color,
-            name=title
-        ))
-    
-    fig.update_layout(
-        title=dict(
-            text=f"<b>{title}</b>",
-            font=dict(size=14, color='#2c3e50')
-        ),
-        height=180,
-        margin=dict(l=30, r=20, t=40, b=30),
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(size=10, family="Arial, sans-serif"),
-        showlegend=False,
-        xaxis=dict(
-            showgrid=False,
-            tickfont=dict(size=9),
-            title=""
-        ),
-        yaxis=dict(
-            showgrid=True,
-            gridcolor='rgba(0,0,0,0.05)',
-            tickfont=dict(size=9),
-            title=""
+    try:
+        if not data or not dates or len(data) == 0 or len(dates) == 0:
+            return html.Div([
+                html.P("데이터가 없습니다", className="text-muted text-center my-4")
+            ])
+        
+        # 안전한 날짜 변환
+        display_dates = []
+        for date in dates:
+            try:
+                display_dates.append(datetime.strptime(str(date), '%Y-%m-%d').strftime('%m-%d'))
+            except:
+                display_dates.append(str(date)[-5:])  # 마지막 5자리 (MM-DD)
+        
+        # 색상을 안전하게 처리
+        def hex_to_rgba(hex_color, alpha=0.1):
+            hex_color = hex_color.lstrip('#')
+            if len(hex_color) == 6:
+                r = int(hex_color[0:2], 16)
+                g = int(hex_color[2:4], 16)
+                b = int(hex_color[4:6], 16)
+                return f'rgba({r},{g},{b},{alpha})'
+            return 'rgba(0,0,0,0.1)'
+        
+        fig = go.Figure()
+        
+        if chart_type == 'line':
+            fig.add_trace(go.Scatter(
+                x=display_dates,
+                y=data,
+                mode='lines+markers',
+                line=dict(color=color, width=3),
+                marker=dict(size=6, color=color),
+                fill='tonexty',
+                fillcolor=hex_to_rgba(color, 0.1),
+                name=title
+            ))
+        else:  # bar chart
+            fig.add_trace(go.Bar(
+                x=display_dates,
+                y=data,
+                marker_color=color,
+                name=title
+            ))
+        
+        fig.update_layout(
+            title=dict(
+                text=f"<b>{title}</b>",
+                font=dict(size=14, color='#2c3e50')
+            ),
+            height=180,
+            margin=dict(l=30, r=20, t=40, b=30),
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(size=10, family="Arial, sans-serif"),
+            showlegend=False,
+            xaxis=dict(
+                showgrid=False,
+                tickfont=dict(size=9),
+                title=""
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(0,0,0,0.05)',
+                tickfont=dict(size=9),
+                title=""
+            )
         )
-    )
+        
+        # 마지막 값 표시 (안전하게)
+        if data and len(data) > 0 and len(display_dates) > 0:
+            last_value = data[-1] if data[-1] is not None else 0
+            fig.add_annotation(
+                x=display_dates[-1],
+                y=last_value,
+                text=f"<b>{last_value:,}{unit}</b>",
+                showarrow=True,
+                arrowhead=2,
+                arrowsize=1,
+                arrowwidth=2,
+                arrowcolor=color,
+                font=dict(size=10, color=color, family="Arial, sans-serif"),
+                bgcolor="white",
+                bordercolor=color,
+                borderwidth=1
+            )
+        
+        return dcc.Graph(figure=fig, config={'displayModeBar': False})
     
-    # 마지막 값 표시
-    last_value = data[-1] if data else 0
-    fig.add_annotation(
-        x=display_dates[-1],
-        y=last_value,
-        text=f"<b>{last_value:,}{unit}</b>",
-        showarrow=True,
-        arrowhead=2,
-        arrowsize=1,
-        arrowwidth=2,
-        arrowcolor=color,
-        font=dict(size=10, color=color, family="Arial, sans-serif"),
-        bgcolor="white",
-        bordercolor=color,
-        borderwidth=1
-    )
-    
-    return dcc.Graph(figure=fig, config={'displayModeBar': False})
+    except Exception as e:
+        print(f"차트 생성 오류: {e}")
+        return html.Div([
+            html.P("차트 생성 중 오류가 발생했습니다", className="text-muted text-center my-4")
+        ])
 
 def create_analysis_chart(dates, data, title, color, unit='회'):
     """분석 차트 생성 (데이터 분석용)"""
-    if not data or all(x == 0 for x in data):
+    try:
+        if not data or not dates or len(data) == 0 or len(dates) == 0:
+            return html.Div([
+                html.Div([
+                    html.I(className="fas fa-chart-line fa-3x text-muted mb-3"),
+                    html.P("데이터가 없습니다", className="text-muted")
+                ], className="text-center py-4")
+            ])
+        
+        # 안전한 날짜 변환
+        display_dates = []
+        for date in dates:
+            try:
+                display_dates.append(datetime.strptime(str(date), '%Y-%m-%d').strftime('%m-%d'))
+            except:
+                display_dates.append(str(date)[-5:])  # 마지막 5자리 (MM-DD)
+        
+        # 색상을 안전하게 처리
+        def hex_to_rgba(hex_color, alpha=0.3):
+            hex_color = hex_color.lstrip('#')
+            if len(hex_color) == 6:
+                r = int(hex_color[0:2], 16)
+                g = int(hex_color[2:4], 16)
+                b = int(hex_color[4:6], 16)
+                return f'rgba({r},{g},{b},{alpha})'
+            return 'rgba(0,0,0,0.3)'
+        
+        fig = go.Figure()
+        
+        # 안전한 데이터 변환
+        safe_data = [int(x) if x is not None else 0 for x in data]
+        
+        # 그라데이션 효과를 위한 바 차트
+        fig.add_trace(go.Bar(
+            x=display_dates,
+            y=safe_data,
+            marker=dict(
+                color=safe_data,
+                colorscale=[[0, hex_to_rgba(color, 0.3)], [1, color]],
+                line=dict(color=color, width=1)
+            ),
+            name=title,
+            text=[f'{val}{unit}' if val > 0 else '' for val in safe_data],
+            textposition='outside',
+            textfont=dict(size=10, color=color)
+        ))
+        
+        fig.update_layout(
+            title=dict(
+                text=f"<b>{title}</b>",
+                font=dict(size=14, color='#2c3e50'),
+                x=0.5
+            ),
+            height=200,
+            margin=dict(l=30, r=20, t=50, b=30),
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(size=10, family="Arial, sans-serif"),
+            showlegend=False,
+            xaxis=dict(
+                showgrid=False,
+                tickfont=dict(size=9),
+                title=""
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(0,0,0,0.08)',
+                tickfont=dict(size=9),
+                title=""
+            )
+        )
+        
+        return dcc.Graph(figure=fig, config={'displayModeBar': False})
+    
+    except Exception as e:
+        print(f"분석 차트 생성 오류: {e}")
         return html.Div([
             html.Div([
-                html.I(className="fas fa-chart-line fa-3x text-muted mb-3"),
-                html.P("데이터가 없습니다", className="text-muted")
+                html.I(className="fas fa-exclamation-triangle fa-3x text-warning mb-3"),
+                html.P("차트 생성 중 오류가 발생했습니다", className="text-muted")
             ], className="text-center py-4")
         ])
-    
-    display_dates = [datetime.strptime(date, '%Y-%m-%d').strftime('%m-%d') for date in dates]
-    
-    fig = go.Figure()
-    
-    # 그라데이션 효과를 위한 바 차트
-    fig.add_trace(go.Bar(
-        x=display_dates,
-        y=data,
-        marker=dict(
-            color=data,
-            colorscale=[[0, f'rgba{tuple(list(px.colors.hex_to_rgb(color)) + [0.3])}'],
-                       [1, color]],
-            line=dict(color=color, width=1)
-        ),
-        name=title,
-        text=[f'{val}{unit}' if val > 0 else '' for val in data],
-        textposition='outside',
-        textfont=dict(size=10, color=color)
-    ))
-    
-    fig.update_layout(
-        title=dict(
-            text=f"<b>{title}</b>",
-            font=dict(size=14, color='#2c3e50'),
-            x=0.5
-        ),
-        height=200,
-        margin=dict(l=30, r=20, t=50, b=30),
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(size=10, family="Arial, sans-serif"),
-        showlegend=False,
-        xaxis=dict(
-            showgrid=False,
-            tickfont=dict(size=9),
-            title=""
-        ),
-        yaxis=dict(
-            showgrid=True,
-            gridcolor='rgba(0,0,0,0.08)',
-            tickfont=dict(size=9),
-            title=""
-        )
-    )
-    
-    return dcc.Graph(figure=fig, config={'displayModeBar': False})
 
 def layout(**kwargs):
     """Admin dashboard layout."""
@@ -477,142 +563,166 @@ def layout(**kwargs):
 )
 def update_dashboard_charts(pathname, n_intervals):
     """대시보드 차트 업데이트"""
-    stats = get_system_stats()
+    try:
+        stats = get_system_stats()
+        
+        # 안전한 데이터 추출
+        dates = stats.get('dates', [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(6, -1, -1)])
+        login_daily = stats.get('login_daily', [0] * 7)
+        project_cumulative = stats.get('project_cumulative', [0] * 7)
+        concrete_cumulative = stats.get('concrete_cumulative', [0] * 7)
+        sensor_data_cumulative = stats.get('sensor_data_cumulative', [0] * 7)
+        sensor_data_daily = stats.get('sensor_data_daily', [0] * 7)
+        inp_conversion_daily = stats.get('inp_conversion_daily', [0] * 7)
+        inp_to_frd_daily = stats.get('inp_to_frd_daily', [0] * 7)
+        frd_to_vtk_daily = stats.get('frd_to_vtk_daily', [0] * 7)
+        
+        # === 시스템 현황 차트 ===
+        overview_charts = dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        create_mini_chart(
+                            dates, 
+                            login_daily, 
+                            "일별 로그인 횟수", 
+                            "#007bff", 
+                            "bar", 
+                            "회"
+                        )
+                    ], className="p-2")
+                ], className="h-100 shadow-sm border-0 hover-card")
+            ], width=3),
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        create_mini_chart(
+                            dates, 
+                            project_cumulative, 
+                            "누적 프로젝트 수", 
+                            "#28a745", 
+                            "line", 
+                            "개"
+                        )
+                    ], className="p-2")
+                ], className="h-100 shadow-sm border-0 hover-card")
+            ], width=3),
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        create_mini_chart(
+                            dates, 
+                            concrete_cumulative, 
+                            "누적 콘크리트 수", 
+                            "#ffc107", 
+                            "line", 
+                            "개"
+                        )
+                    ], className="p-2")
+                ], className="h-100 shadow-sm border-0 hover-card")
+            ], width=3),
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        create_mini_chart(
+                            dates, 
+                            sensor_data_cumulative, 
+                            "누적 센서 데이터 수", 
+                            "#17a2b8", 
+                            "line", 
+                            "건"
+                        )
+                    ], className="p-2")
+                ], className="h-100 shadow-sm border-0 hover-card")
+            ], width=3)
+        ], className="g-3")
+        
+        # === 데이터 분석 차트 ===
+        analysis_charts = dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H6("📊 센서 데이터 수집", className="mb-0 text-primary")
+                    ]),
+                    dbc.CardBody([
+                        create_analysis_chart(
+                            dates, 
+                            sensor_data_daily, 
+                            "일별 센서 데이터 수집", 
+                            "#007bff"
+                        )
+                    ], className="p-2")
+                ], className="h-100 shadow-sm border-0 hover-card")
+            ], width=6),
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H6("🔄 INP 파일 변환", className="mb-0 text-success")
+                    ]),
+                    dbc.CardBody([
+                        create_analysis_chart(
+                            dates, 
+                            inp_conversion_daily, 
+                            "일별 INP 변환 작업", 
+                            "#28a745"
+                        )
+                    ], className="p-2")
+                ], className="h-100 shadow-sm border-0 hover-card")
+            ], width=6)
+        ], className="g-3 mb-3")
+        
+        analysis_charts_2 = dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H6("🔄 INP → FRD 변환", className="mb-0 text-warning")
+                    ]),
+                    dbc.CardBody([
+                        create_analysis_chart(
+                            dates, 
+                            inp_to_frd_daily, 
+                            "일별 INP to FRD 변환", 
+                            "#ffc107"
+                        )
+                    ], className="p-2")
+                ], className="h-100 shadow-sm border-0 hover-card")
+            ], width=6),
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H6("🔄 FRD → VTK 변환", className="mb-0 text-info")
+                    ]),
+                    dbc.CardBody([
+                        create_analysis_chart(
+                            dates, 
+                            frd_to_vtk_daily, 
+                            "일별 FRD to VTK 변환", 
+                            "#17a2b8"
+                        )
+                    ], className="p-2")
+                ], className="h-100 shadow-sm border-0 hover-card")
+            ], width=6)
+        ], className="g-3")
+        
+        # 분석 차트들을 하나의 div로 결합
+        analysis_section = html.Div([
+            analysis_charts,
+            analysis_charts_2
+        ])
+        
+        return overview_charts, analysis_section
     
-    # === 시스템 현황 차트 ===
-    overview_charts = dbc.Row([
-        dbc.Col([
-            dbc.Card([
-                dbc.CardBody([
-                    create_mini_chart(
-                        stats['dates'], 
-                        stats['login_daily'], 
-                        "일별 로그인 횟수", 
-                        "#007bff", 
-                        "bar", 
-                        "회"
-                    )
-                ], className="p-2")
-            ], className="h-100 shadow-sm border-0 hover-card")
-        ], width=3),
-        dbc.Col([
-            dbc.Card([
-                dbc.CardBody([
-                    create_mini_chart(
-                        stats['dates'], 
-                        stats['project_cumulative'], 
-                        "누적 프로젝트 수", 
-                        "#28a745", 
-                        "line", 
-                        "개"
-                    )
-                ], className="p-2")
-            ], className="h-100 shadow-sm border-0 hover-card")
-        ], width=3),
-        dbc.Col([
-            dbc.Card([
-                dbc.CardBody([
-                    create_mini_chart(
-                        stats['dates'], 
-                        stats['concrete_cumulative'], 
-                        "누적 콘크리트 수", 
-                        "#ffc107", 
-                        "line", 
-                        "개"
-                    )
-                ], className="p-2")
-            ], className="h-100 shadow-sm border-0 hover-card")
-        ], width=3),
-        dbc.Col([
-            dbc.Card([
-                dbc.CardBody([
-                    create_mini_chart(
-                        stats['dates'], 
-                        stats['sensor_data_cumulative'], 
-                        "누적 센서 데이터 수", 
-                        "#17a2b8", 
-                        "line", 
-                        "건"
-                    )
-                ], className="p-2")
-            ], className="h-100 shadow-sm border-0 hover-card")
-        ], width=3)
-    ], className="g-3")
-    
-    # === 데이터 분석 차트 ===
-    analysis_charts = dbc.Row([
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader([
-                    html.H6("📊 센서 데이터 수집", className="mb-0 text-primary")
-                ]),
-                dbc.CardBody([
-                    create_analysis_chart(
-                        stats['dates'], 
-                        stats['sensor_data_daily'], 
-                        "일별 센서 데이터 수집", 
-                        "#007bff"
-                    )
-                ], className="p-2")
-            ], className="h-100 shadow-sm border-0 hover-card")
-        ], width=6),
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader([
-                    html.H6("🔄 INP 파일 변환", className="mb-0 text-success")
-                ]),
-                dbc.CardBody([
-                    create_analysis_chart(
-                        stats['dates'], 
-                        stats['inp_conversion_daily'], 
-                        "일별 INP 변환 작업", 
-                        "#28a745"
-                    )
-                ], className="p-2")
-            ], className="h-100 shadow-sm border-0 hover-card")
-        ], width=6)
-    ], className="g-3 mb-3")
-    
-    analysis_charts_2 = dbc.Row([
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader([
-                    html.H6("🔄 INP → FRD 변환", className="mb-0 text-warning")
-                ]),
-                dbc.CardBody([
-                    create_analysis_chart(
-                        stats['dates'], 
-                        stats['inp_to_frd_daily'], 
-                        "일별 INP to FRD 변환", 
-                        "#ffc107"
-                    )
-                ], className="p-2")
-            ], className="h-100 shadow-sm border-0 hover-card")
-        ], width=6),
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader([
-                    html.H6("🔄 FRD → VTK 변환", className="mb-0 text-info")
-                ]),
-                dbc.CardBody([
-                    create_analysis_chart(
-                        stats['dates'], 
-                        stats['frd_to_vtk_daily'], 
-                        "일별 FRD to VTK 변환", 
-                        "#17a2b8"
-                    )
-                ], className="p-2")
-            ], className="h-100 shadow-sm border-0 hover-card")
-        ], width=6)
-    ], className="g-3")
-    
-    # 분석 차트들을 하나의 div로 결합
-    analysis_section = html.Div([
-        analysis_charts,
-        analysis_charts_2
-    ])
-    
-    return overview_charts, analysis_section
+    except Exception as e:
+        print(f"대시보드 차트 업데이트 오류: {e}")
+        # 에러 발생 시 기본 메시지 반환
+        error_message = html.Div([
+            html.Div([
+                html.I(className="fas fa-exclamation-triangle fa-3x text-warning mb-3"),
+                html.H5("데이터 로딩 중 오류가 발생했습니다", className="text-muted"),
+                html.P("잠시 후 다시 시도해주세요.", className="text-muted")
+            ], className="text-center py-5")
+        ])
+        return error_message, error_message
 
 @callback(
     [Output("admin-dashboard-url", "pathname")],
