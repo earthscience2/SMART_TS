@@ -2960,11 +2960,8 @@ def update_temp_tab(store_data, x, y, z, selected_rows, tbl_data):
             else:
                 x_labels.append("")
         fig_temp.add_trace(go.Scatter(x=x_values, y=temp_values, mode='lines+markers', name='온도'))
-        title = "시간에 따른 온도 정보"
-        if range_filter and range_filter != "all":
-            title += f" (최근 {range_filter}일)"
         fig_temp.update_layout(
-            title=title,
+            title="시간에 따른 온도 정보",
             xaxis_title="날짜",
             yaxis_title="온도(°C)",
             xaxis=dict(
@@ -3100,11 +3097,8 @@ def update_temp_range_filter(range_filter, fig_3d, selected_rows, tbl_data):
             else:
                 x_labels.append("")
         fig_temp.add_trace(go.Scatter(x=x_values, y=temp_values, mode='lines+markers', name='온도'))
-        title = "시간에 따른 온도 정보"
-        if range_filter and range_filter != "all":
-            title += f" (최근 {range_filter}일)"
         fig_temp.update_layout(
-            title=title,
+            title="시간에 따른 온도 정보",
             xaxis_title="날짜",
             yaxis_title="온도(°C)",
             xaxis=dict(
