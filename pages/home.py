@@ -271,7 +271,6 @@ def layout():
                                             {"name": "센서", "id": "sensor_count", "type": "text"},
                                             {"name": "분석", "id": "status", "type": "text"},
                                         ],
-                                        page_size=5,
                                         style_table={"height": "250px", "overflowY": "auto"},
                                         style_cell={
                                             "textAlign": "center",
@@ -318,8 +317,7 @@ def layout():
                                                 'fontWeight': '600',
                                                 'borderRadius': '4px'
                                             }
-                                        ],
-                                        page_action="native"
+                                        ]
                                     ) if concrete_data else 
                                     html.P("콘크리트가 없습니다", className="text-muted small text-center", style={"paddingTop": "100px"})
                                 ], style={"height": "250px"})
@@ -338,7 +336,6 @@ def layout():
                                             {"name": "채널", "id": "channel", "type": "text"},
                                             {"name": "데이터", "id": "status", "type": "text"},
                                         ],
-                                        page_size=5,
                                         style_table={"height": "250px", "overflowY": "auto"},
                                         style_cell={
                                             "textAlign": "center",
@@ -405,8 +402,7 @@ def layout():
                                                 'fontWeight': '600',
                                                 'borderRadius': '4px'
                                             }
-                                        ],
-                                        page_action="native"
+                                        ]
                                     ) if sensor_data else 
                                     html.P("센서가 없습니다", className="text-muted small text-center", style={"paddingTop": "100px"})
                                 ], style={"height": "250px"})
@@ -441,27 +437,6 @@ def layout():
 
     # 메인 레이아웃
     return html.Div([
-        # 전역 CSS 스타일
-        html.Style("""
-            .dash-table-container [id*="-page-"] {
-                text-align: center !important;
-                display: flex !important;
-                justify-content: center !important;
-                align-items: center !important;
-                margin-top: 10px !important;
-            }
-            .dash-table-container [id*="-page-"] > * {
-                margin: 0 3px !important;
-            }
-            .dash-table-container .previous-next-container,
-            .dash-table-container .previous-page-container,
-            .dash-table-container .next-page-container {
-                text-align: center !important;
-                display: flex !important;
-                justify-content: center !important;
-                align-items: center !important;
-            }
-        """),
         dbc.Container([
             # 헤더
             html.Div([
