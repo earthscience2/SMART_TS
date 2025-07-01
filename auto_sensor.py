@@ -52,7 +52,6 @@ def export_sensor_data(deviceid, channel, sd_start=None):
     if res.get('result') != 'Success':
         logger.error(f"ITS 로그인 실패: {res.get('msg')}")
         return
-    logger.info("ITS 로그인 성공")
 
     result = ITS_CLIENT.message_getdata(
         'query_device_channel_data',
@@ -66,14 +65,12 @@ def export_sensor_data(deviceid, channel, sd_start=None):
 
     df = pd.DataFrame(result)
     if df.empty:
-        logger.info(f"{deviceid}/{channel} 신규 데이터 없음.")
         return
 
     df['time'] = pd.to_datetime(df['time'])
     # temperature 필터
     df = df[(df['temperature'] > -20) & (df['temperature'] < 80)]
     if df.empty:
-        logger.info(f"{deviceid}/{channel} 필터 후 데이터 없음.")
         return
 
     df['hour'] = df['time'].dt.floor('h')
@@ -85,7 +82,6 @@ def export_sensor_data(deviceid, channel, sd_start=None):
         .rename(columns={'hour': 'time'})
     )
 
-    logger.info(f"{deviceid}/{channel} 데이터 {len(agg)}개 집계 완료")
     return agg
 
 # 센서 데이터 자동 저장 및 업데이트
@@ -118,7 +114,6 @@ def auto_sensor_data():
         unique_sensors = len(df_sensors)
         
         if total_sensors != unique_sensors:
-            logger.info(f"센서 중복 제거: 전체 {total_sensors}개 → 유니크 {unique_sensors}개")
             print(f"📊 센서 중복 제거: 전체 {total_sensors}개 → 유니크 {unique_sensors}개")
         
         records = df_sensors.to_dict(orient='records')
@@ -154,8 +149,6 @@ def auto_sensor_data():
                 # 진행도 표시
                 progress = (idx / total_count) * 100
                 print(f"[{idx:3d}/{total_count}] ({progress:5.1f}%) 처리 중: {device_id}/{channel}", end=" ")
-                
-                logger.info(f"{device_id}/{channel} 기준 start_date={sd_start}")
 
                 agg = export_sensor_data(device_id, channel, sd_start)
                 if agg is None or agg.empty:
