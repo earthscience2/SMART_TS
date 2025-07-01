@@ -1917,7 +1917,38 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                                 "height": "48px"
                             }
                         ),
-                    ], style={"display": "flex", "justifyContent": "center", "alignItems": "center", "height": "100%"})
+                    ], style={"display": "flex", "justifyContent": "center", "alignItems": "center", "marginBottom": "16px"}),
+                    
+                    # 온도 범위 필터
+                    html.Div([
+                        html.H6("📊 온도 범위 필터", style={
+                            "fontWeight": "600",
+                            "color": "#374151",
+                            "marginBottom": "8px",
+                            "fontSize": "13px"
+                        }),
+                        dcc.Dropdown(
+                            id="temp-range-filter",
+                            options=[
+                                {"label": "전체", "value": "all"},
+                                {"label": "28일", "value": "28"},
+                                {"label": "21일", "value": "21"},
+                                {"label": "14일", "value": "14"},
+                                {"label": "7일", "value": "7"}
+                            ],
+                            value="all",
+                            clearable=False,
+                            style={
+                                "fontSize": "12px",
+                                "borderRadius": "6px"
+                            }
+                        )
+                    ], style={
+                        "padding": "8px 12px",
+                        "backgroundColor": "#f8fafc",
+                        "borderRadius": "6px",
+                        "border": "1px solid #e2e8f0"
+                    })
                 ], md=4),
             ], className="mb-4 align-items-stretch", style={"minHeight": "120px"}),
             
@@ -2778,11 +2809,12 @@ def update_section_views(time_idx,
     Input("temp-x-input", "value"),
     Input("temp-y-input", "value"),
     Input("temp-z-input", "value"),
+    Input("temp-range-filter", "value"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=False,
 )
-def update_temp_tab(store_data, x, y, z, selected_rows, tbl_data):
+def update_temp_tab(store_data, x, y, z, range_filter, selected_rows, tbl_data):
     import plotly.graph_objects as go
     import numpy as np
     import glob, os
@@ -2911,14 +2943,42 @@ def update_temp_tab(store_data, x, y, z, selected_rows, tbl_data):
             if temp_val is not None:
                 temp_times.append(dt)
                 temp_values.append(temp_val)
+    # 온도 범위 필터링 적용
+    if range_filter and range_filter != "all" and temp_times:
+        try:
+            from datetime import timedelta
+            # 현재 시간을 기준으로 필터링
+            latest_time = max(temp_times)
+            days_back = int(range_filter)
+            cutoff_time = latest_time - timedelta(days=days_back)
+            
+            # 필터링된 데이터만 선택
+            filtered_times = []
+            filtered_values = []
+            for i, dt in enumerate(temp_times):
+                if dt >= cutoff_time:
+                    filtered_times.append(dt)
+                    filtered_values.append(temp_values[i])
+            
+            temp_times = filtered_times
+            temp_values = filtered_values
+        except Exception as e:
+            print(f"온도 범위 필터링 오류: {e}")
+    
     # 그래프 생성
     fig_temp = go.Figure()
     if temp_times and temp_values:
         # 모든 시간 정보를 'M/D H시' 형식으로 표시
         x_labels = [dt.strftime('%-m/%-d %H시') for dt in temp_times]
         fig_temp.add_trace(go.Scatter(x=x_labels, y=temp_values, mode='lines+markers', name='온도'))
+        
+        # 필터 정보를 제목에 표시
+        title = "시간에 따른 온도 정보"
+        if range_filter and range_filter != "all":
+            title += f" (최근 {range_filter}일)"
+        
         fig_temp.update_layout(
-            title="시간에 따른 온도 정보",
+            title=title,
             xaxis_title="시간",
             yaxis_title="온도(°C)"
         )
