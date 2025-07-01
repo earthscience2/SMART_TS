@@ -203,7 +203,7 @@ def get_system_stats():
                 sensor_daily.extend([0] * (original_index + 1 - len(sensor_daily)))
             sensor_daily[original_index] = max(0, daily_count)  # 음수 방지
         
-        # === 자동화 현황 데이터 (로그 파일 기반) ===
+        # === 자동화 현황 데이터 (실제 로그 파일 기반) ===
         
         # 자동화 현황 데이터 초기화
         sensor_data_daily = [0] * 7
@@ -211,109 +211,103 @@ def get_system_stats():
         inp_to_frd_daily = [0] * 7
         frd_to_vtk_daily = [0] * 7
         
-        def parse_log_line(line):
-            """로그 라인을 파싱 (admin_logs.py 방식)"""
+        def parse_automation_log_line(line):
+            """자동화 로그 라인을 파싱 (실제 형식: 날짜/시간 | 레벨 | 카테고리 | 메시지)"""
             line = line.strip()
             if not line:
                 return None
             
-            # 로그 형식: 날짜/시간 | 레벨 | 작업_유형 | ID | Details
             parts = line.split(' | ')
-            if len(parts) >= 3:
+            if len(parts) >= 4:
                 timestamp = parts[0]
                 level = parts[1]
-                action = parts[2] if len(parts) > 2 else ""
-                target_id = parts[3] if len(parts) > 3 else ""
-                details = parts[4] if len(parts) > 4 else ""
+                category = parts[2] 
+                message = parts[3]
                 
                 return {
                     "timestamp": timestamp,
                     "level": level,
-                    "action": action,
-                    "target_id": target_id,
-                    "details": details
+                    "category": category,
+                    "message": message
                 }
             return None
         
         try:
             log_dir = "log"
             if os.path.exists(log_dir):
+                # 실제 자동화 로그 파일들 정의
+                automation_log_files = {
+                    "sensor": "auto_sensor.log",      # 센서 데이터 수집
+                    "inp": "auto_inp.log",            # INP 파일 생성  
+                    "inp_to_frd": "auto_inp_to_frd.log",  # INP → FRD 변환
+                    "frd_to_vtk": "auto_frd_to_vtk.log"   # FRD → VTK 변환
+                }
+                
                 for i, date in enumerate(dates):
                     if i >= 7:  # 안전 체크
                         break
                     
                     try:
-                        # 1. 센서 데이터 수집 횟수 - sensor.log에서 해당 날짜의 센서 관련 작업
-                        sensor_log_file = os.path.join(log_dir, "sensor.log")
+                        # 1. 센서 데이터 수집 횟수 - auto_sensor.log
+                        sensor_log_file = os.path.join(log_dir, automation_log_files["sensor"])
                         if os.path.exists(sensor_log_file):
                             try:
                                 with open(sensor_log_file, 'r', encoding='utf-8') as f:
                                     for line in f:
-                                        log_data = parse_log_line(line)
+                                        log_data = parse_automation_log_line(line)
                                         if log_data and date in log_data["timestamp"]:
-                                            # 센서 데이터 수집 관련 액션들
-                                            if any(keyword in log_data["action"] for keyword in ["SENSOR_DATA", "DATA_COLLECT", "수집"]) or \
-                                               any(keyword in log_data["details"] for keyword in ["데이터 수집", "sensor data", "data collection"]):
-                                                sensor_data_daily[i] += 1
+                                            if log_data["category"] == "AUTO_SENSOR":
+                                                # 센서 데이터 처리 완료 메시지 카운트
+                                                if any(keyword in log_data["message"] for keyword in ["데이터 처리 완료", "데이터 수집", "처리 완료"]):
+                                                    sensor_data_daily[i] += 1
                             except Exception as e:
-                                print(f"센서 로그 읽기 오류: {e}")
+                                print(f"센서 자동화 로그 읽기 오류: {e}")
                         
-                        # 2. 자동화 로그에서 파일 생성 횟수 추출
-                        date_str = str(date).replace('-', '')  # YYYYMMDD 형식
-                        
-                        # automation.log 또는 automation_날짜.log 형태 확인
-                        auto_log_files = [
-                            os.path.join(log_dir, f"automation_{date_str}.log"),
-                            os.path.join(log_dir, "automation.log")
-                        ]
-                        
-                        for auto_log_file in auto_log_files:
-                            if os.path.exists(auto_log_file):
-                                try:
-                                    with open(auto_log_file, 'r', encoding='utf-8') as f:
-                                        for line in f:
-                                            log_data = parse_log_line(line)
-                                            if log_data and date in log_data["timestamp"]:
-                                                action = log_data["action"].upper()
-                                                details = log_data["details"].upper()
-                                                
-                                                # INP 파일 생성
-                                                if any(keyword in action for keyword in ["INP_CREATE", "INP_GENERATE"]) or \
-                                                   any(keyword in details for keyword in ["INP", ".INP", "inp 생성", "inp 파일"]):
-                                                    inp_conversion_daily[i] += 1
-                                                
-                                                # FRD 파일 생성 (INP → FRD 변환)
-                                                if any(keyword in action for keyword in ["FRD_CREATE", "INP_TO_FRD"]) or \
-                                                   any(keyword in details for keyword in ["FRD", ".FRD", "frd 생성", "inp to frd", "inp→frd"]):
-                                                    inp_to_frd_daily[i] += 1
-                                                
-                                                # VTK 파일 생성 (FRD → VTK 변환)
-                                                if any(keyword in action for keyword in ["VTK_CREATE", "FRD_TO_VTK"]) or \
-                                                   any(keyword in details for keyword in ["VTK", ".VTK", "vtk 생성", "frd to vtk", "frd→vtk"]):
-                                                    frd_to_vtk_daily[i] += 1
-                                except Exception as e:
-                                    print(f"자동화 로그 읽기 오류 ({auto_log_file}): {e}")
-                                break  # 첫 번째로 찾은 파일만 사용
-                        
-                        # 3. 추가로 프로젝트 로그에서도 자동화 관련 작업 확인
-                        project_log_file = os.path.join(log_dir, "project.log")
-                        if os.path.exists(project_log_file):
+                        # 2. INP 파일 생성 횟수 - auto_inp.log
+                        inp_log_file = os.path.join(log_dir, automation_log_files["inp"])
+                        if os.path.exists(inp_log_file):
                             try:
-                                with open(project_log_file, 'r', encoding='utf-8') as f:
+                                with open(inp_log_file, 'r', encoding='utf-8') as f:
                                     for line in f:
-                                        log_data = parse_log_line(line)
+                                        log_data = parse_automation_log_line(line)
                                         if log_data and date in log_data["timestamp"]:
-                                            details = log_data["details"].upper()
-                                            
-                                            # 프로젝트 로그에서 파일 생성 관련 작업들
-                                            if "INP" in details and ("생성" in details or "CREATE" in details):
-                                                inp_conversion_daily[i] += 1
-                                            if "FRD" in details and ("생성" in details or "CREATE" in details):
-                                                inp_to_frd_daily[i] += 1
-                                            if "VTK" in details and ("생성" in details or "CREATE" in details):
-                                                frd_to_vtk_daily[i] += 1
+                                            if log_data["category"] == "AUTO_INP":
+                                                # INP 파일 생성 완료 메시지 카운트
+                                                if any(keyword in log_data["message"] for keyword in ["INP 파일 생성 완료", "처리 완료", ".inp"]):
+                                                    inp_conversion_daily[i] += 1
                             except Exception as e:
-                                print(f"프로젝트 로그 읽기 오류: {e}")
+                                print(f"INP 자동화 로그 읽기 오류: {e}")
+                        
+                        # 3. FRD 파일 생성 횟수 - auto_inp_to_frd.log  
+                        inp_to_frd_log_file = os.path.join(log_dir, automation_log_files["inp_to_frd"])
+                        if os.path.exists(inp_to_frd_log_file):
+                            try:
+                                with open(inp_to_frd_log_file, 'r', encoding='utf-8') as f:
+                                    for line in f:
+                                        log_data = parse_automation_log_line(line)
+                                        if log_data and date in log_data["timestamp"]:
+                                            if log_data["category"] == "AUTO_INP_TO_FRD":
+                                                # CCX 실행 완료 메시지 카운트 (FRD 파일 생성 의미)
+                                                if any(keyword in log_data["message"] for keyword in ["CCX 실행 완료", "실행 완료", "완료"]):
+                                                    inp_to_frd_daily[i] += 1
+                            except Exception as e:
+                                print(f"INP_TO_FRD 자동화 로그 읽기 오류: {e}")
+                        
+                        # 4. VTK 파일 생성 횟수 - auto_frd_to_vtk.log
+                        frd_to_vtk_log_file = os.path.join(log_dir, automation_log_files["frd_to_vtk"])
+                        if os.path.exists(frd_to_vtk_log_file):
+                            try:
+                                with open(frd_to_vtk_log_file, 'r', encoding='utf-8') as f:
+                                    for line in f:
+                                        log_data = parse_automation_log_line(line)
+                                        if log_data and date in log_data["timestamp"]:
+                                            if log_data["category"] == "AUTO_FRD_TO_VTK":
+                                                # VTK 변환 성공 메시지 카운트 (실패는 제외)
+                                                if any(keyword in log_data["message"] for keyword in ["변환 완료", "생성 완료", "완료"]) and \
+                                                   not any(keyword in log_data["message"] for keyword in ["실패", "오류", "ERROR"]):
+                                                    frd_to_vtk_daily[i] += 1
+                            except Exception as e:
+                                print(f"FRD_TO_VTK 자동화 로그 읽기 오류: {e}")
                                 
                     except Exception as e:
                         print(f"날짜 {date} 자동화 로그 처리 오류: {e}")
