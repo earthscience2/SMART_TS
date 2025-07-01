@@ -246,8 +246,7 @@ layout = html.Div([
                     ], md=5),
                     dbc.Col([
                         html.Div([
-                            dbc.Button("🔍 조회", 
-                                     id="btn-search-files", 
+                            dbc.Button(id="btn-search-files", 
                                      color="primary", 
                                      size="sm",
                                      className="w-100",
@@ -360,14 +359,33 @@ def update_date_range(filter_value):
     else:  # "all"
         return datetime(2020, 1, 1).date(), today
 
-# ───────────────────── ④ 조회 버튼 활성화/비활성화 ────────────────────
+# ───────────────────── ④ 조회 버튼 상태 관리 ────────────────────
 @dash.callback(
     Output("btn-search-files", "disabled"),
+    Output("btn-search-files", "children"),
+    Output("loading-state", "data"),
     Input("dl-tbl-concrete", "selected_rows"),
+    Input("btn-search-files", "n_clicks"),
+    Input("file-data-store", "data"),
     prevent_initial_call=False,
 )
-def update_search_button_state(sel_rows):
-    return not sel_rows  # 콘크리트가 선택되지 않으면 비활성화
+def update_search_button_state(sel_rows, n_clicks, file_data):
+    ctx = dash.callback_context
+    
+    # 콘크리트가 선택되지 않은 경우
+    if not sel_rows:
+        return True, "🔍 조회", False
+    
+    # 버튼이 클릭된 경우 (로딩 시작)
+    if ctx.triggered and ctx.triggered[0]['prop_id'] == 'btn-search-files.n_clicks' and n_clicks:
+        return True, [html.I(className="fas fa-spinner fa-spin me-2"), "조회 중..."], True
+    
+    # 파일 데이터가 로드된 경우 (로딩 완료)
+    if ctx.triggered and ctx.triggered[0]['prop_id'] == 'file-data-store.data':
+        return False, "🔍 조회", False
+    
+    # 기본 상태
+    return False, "🔍 조회", False
 
 # ───────────────────── ⑤ 파일 데이터 저장 (조회 버튼 클릭 시) ────────────────────
 @dash.callback(
@@ -417,8 +435,8 @@ def dl_switch_tab(file_data, start_date, end_date):
     if not file_data or not file_data.get("grouped_files"):
         return html.Div([
             html.Div([
-                html.I(className="fas fa-info-circle me-2", style={"color": "#6b7280", "fontSize": "1.2rem"}),
-                html.Span("콘크리트를 선택하고 🔍 조회 버튼을 클릭하세요", style={"color": "#6b7280", "fontSize": "0.9rem"})
+                html.I(className="fas fa-folder-open me-2", style={"color": "#6b7280", "fontSize": "1.2rem"}),
+                html.Span("조회된 파일이 없습니다", style={"color": "#6b7280", "fontSize": "0.9rem"})
             ], className="d-flex align-items-center justify-content-center p-4", style={"backgroundColor": "#f9fafb", "borderRadius": "8px", "border": "1px dashed #d1d5db"})
         ])
     
@@ -517,21 +535,13 @@ def dl_switch_tab(file_data, start_date, end_date):
     for date_key in sorted_dates:
         files = filtered_groups[date_key]
         for f in files:
-            # 날짜 표시 준비
+            # 날짜 표시 준비 (정확한 날짜로 표기)
             if date_key == "기타":
                 date_display = "기타"
                 date_badge = "🗂️"
             else:
-                date_obj = datetime.strptime(date_key, "%Y-%m-%d")
-                if date_obj.date() == datetime.now().date():
-                    date_display = "오늘"
-                    date_badge = "📅"
-                elif date_obj.date() == datetime.now().date() - timedelta(days=1):
-                    date_display = "어제"
-                    date_badge = "📅"
-                else:
-                    date_display = date_key
-                    date_badge = "📅"
+                date_display = date_key  # 항상 정확한 날짜 표기 (YYYY-MM-DD)
+                date_badge = "📅"
             
             all_files_data.append({
                 "filename": f["filename"],
@@ -599,7 +609,7 @@ def dl_switch_tab(file_data, start_date, end_date):
                         },
                         {
                             'if': {'column_id': 'filename'},
-                            'textAlign': 'left',
+                            'textAlign': 'center',
                             'fontWeight': '500'
                         },
                         {
