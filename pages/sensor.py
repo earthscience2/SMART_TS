@@ -318,13 +318,14 @@ layout = html.Div([
                             html.H6("📝 센서 정보", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("Device ID", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
-                                    dbc.Input(id="add-sensor-device-id", placeholder="Device ID (예: DEVICE001)", className="form-control", style={"fontSize": "0.85rem"}),
-                                ], width=6),
-                                dbc.Col([
-                                    dbc.Label("채널", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
-                                    dbc.Input(id="add-sensor-channel", type="number", placeholder="채널 번호", className="form-control", style={"fontSize": "0.85rem"}),
-                                ], width=6)
+                                    dbc.Label("등록된 센서 선택", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                    dcc.Dropdown(
+                                        id="add-sensor-dropdown",
+                                        placeholder="센서를 선택하세요",
+                                        clearable=False,
+                                        style={"fontSize": "0.85rem"}
+                                    ),
+                                ], width=12)
                             ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
@@ -368,13 +369,9 @@ layout = html.Div([
                             html.H6("📝 센서 정보", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("Device ID", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
-                                    html.Div(id="edit-sensor-device-id", className="form-control bg-light", style={"fontSize": "0.85rem"})
-                                ], width=6),
-                                dbc.Col([
-                                    dbc.Label("채널", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
-                                    html.Div(id="edit-sensor-channel", className="form-control bg-light", style={"fontSize": "0.85rem"})
-                                ], width=6)
+                                    dbc.Label("센서 정보", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                    html.Div(id="edit-sensor-info", className="form-control bg-light", style={"fontSize": "0.85rem", "fontWeight": "600"})
+                                ], width=12)
                             ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
@@ -762,6 +759,72 @@ def toggle_add_modal(b_add, b_close, b_save, is_open):
     return is_open
 
 
+# ───────────────────── ⑤-1 센서 드롭다운 옵션 채우기 ─────────────────────
+@callback(
+    Output("add-sensor-dropdown", "options"),
+    Output("add-sensor-dropdown", "value"),
+    Input("ddl-concrete", "value"),
+    Input("modal-sensor-add", "is_open"),
+    Input("tbl-sensor", "data_timestamp"),  # 센서 추가/삭제 시 드롭다운 업데이트
+    prevent_initial_call=True,
+)
+def update_sensor_dropdown(selected_conc, modal_open, data_timestamp):
+    """
+    콘크리트 선택 시 해당 프로젝트의 구조 ID에 소속된 센서 목록으로 드롭다운 업데이트
+    """
+    if not selected_conc or not modal_open:
+        return [], None
+    
+    try:
+        # 1) 선택된 콘크리트에서 프로젝트 정보 가져오기
+        conc_data = api_db.get_concrete_data()
+        conc_row = conc_data[conc_data["concrete_pk"] == selected_conc]
+        if conc_row.empty:
+            return [], None
+        
+        project_pk = conc_row.iloc[0]["project_pk"]
+        
+        # 2) 프로젝트에서 구조 ID 가져오기
+        project_data = api_db.get_project_data()
+        project_row = project_data[project_data["project_pk"] == project_pk]
+        if project_row.empty:
+            return [], None
+        
+        s_code = project_row.iloc[0]["s_code"]
+        
+        # 3) 구조 ID에 소속된 ITS 센서 목록 가져오기
+        its_sensors_df = api_db.get_sensor_list_for_structure(s_code)
+        
+        if its_sensors_df.empty:
+            return [], None
+        
+        # 4) 이미 사용된 센서 제외 (현재 콘크리트에 이미 추가된 센서들)
+        df_sensor = api_db.get_sensors_data()
+        used_sensors = df_sensor[df_sensor["concrete_pk"] == selected_conc]
+        
+        options = []
+        for _, sensor in its_sensors_df.iterrows():
+            device_id = sensor["deviceid"]
+            channel = sensor["channel"]
+            
+            # 이미 사용된 센서인지 확인
+            is_used = not used_sensors[
+                (used_sensors["device_id"] == device_id) & 
+                (used_sensors["channel"] == channel)
+            ].empty
+            
+            if not is_used:  # 사용되지 않은 센서만 옵션에 추가
+                label = f"{device_id} - Ch.{channel}"
+                value = f"{device_id}|{channel}"  # device_id와 channel을 | 로 구분
+                options.append({"label": label, "value": value})
+        
+        return options, None
+        
+    except Exception as e:
+        print(f"Error updating sensor dropdown: {e}")
+        return [], None
+
+
 # ───────────────────── ⑥ 추가 미리보기 콜백 ─────────────────────
 @callback(
     Output("add-sensor-preview", "figure"),
@@ -769,26 +832,30 @@ def toggle_add_modal(b_add, b_close, b_save, is_open):
     Output("add-sensor-alert",   "is_open"),
     Input("add-sensor-build", "n_clicks"),
     State("ddl-concrete",     "value"),
-    State("add-sensor-device-id", "value"),
-    State("add-sensor-channel", "value"),
+    State("add-sensor-dropdown", "value"),
     State("add-sensor-coords","value"),
     State("toggle-lines",     "value"),   # ← 메인 뷰 보조선 토글 상태
     prevent_initial_call=True,
 )
-def add_sensor_preview(_, conc_pk, device_id, channel, coords_txt, show_lines):
+def add_sensor_preview(_, conc_pk, sensor_selection, coords_txt, show_lines):
     """
     센서 추가 모달에서:
     1) 콘크리트 + 기존 센서(파란 점) + 보조선(show_lines=True인 경우)
     2) 새로 추가할 센서를 파란 점(크기 6)으로 미리보기
     3) 이미 존재하는 디바이스 ID와 채널 조합이 입력되면 Alert 반환
     """
-    # 콘크리트, 디바이스 ID, 채널, 좌표 입력 검사
+    # 콘크리트, 센서 선택, 좌표 입력 검사
     if not conc_pk:
         return dash.no_update, "콘크리트를 먼저 선택하세요", True
-    if not device_id:
-        return dash.no_update, "Device ID를 입력하세요", True
-    if not channel:
-        return dash.no_update, "채널 번호를 입력하세요", True
+    if not sensor_selection:
+        return dash.no_update, "센서를 선택하세요", True
+
+    # 선택된 센서에서 device_id와 channel 파싱
+    try:
+        device_id, channel = sensor_selection.split("|")
+        channel = int(channel)
+    except Exception:
+        return dash.no_update, "센서 선택 오류", True
 
     # (추가) 동일 콘크리트 내 기존 센서 디바이스 ID와 채널 조합 확인
     df_sensor_full = api_db.get_sensors_data()
@@ -903,14 +970,14 @@ def add_sensor_preview(_, conc_pk, device_id, channel, coords_txt, show_lines):
     Output("add-sensor-alert", "children", allow_duplicate=True),
     Output("add-sensor-alert", "color",    allow_duplicate=True),
     Output("add-sensor-alert", "is_open",  allow_duplicate=True),
+    Output("add-sensor-dropdown", "value", allow_duplicate=True),
     Input("add-sensor-save", "n_clicks"),
     State("ddl-concrete",     "value"),
-    State("add-sensor-device-id", "value"),
-    State("add-sensor-channel", "value"),
+    State("add-sensor-dropdown", "value"),
     State("add-sensor-coords","value"),
     prevent_initial_call=True,
 )
-def add_sensor_save(_, conc_pk, device_id, channel, coords_txt):
+def add_sensor_save(_, conc_pk, sensor_selection, coords_txt):
     """
     센서 추가 시:
     1) 콘크리트를 선택했는지, 디바이스 ID와 채널, 좌표를 입력했는지 확인
@@ -918,18 +985,25 @@ def add_sensor_save(_, conc_pk, device_id, channel, coords_txt):
     3) 좌표 형식이 정상일 경우 api_sensor.add_sensor 호출
     4) 성공하면 data_timestamp를 갱신 → 메인 뷰 테이블 재로딩
     """
-    if not (conc_pk and device_id and channel):
-        return dash.no_update, "콘크리트, 디바이스 ID, 채널을 모두 입력하세요", "danger", True
+    if not (conc_pk and sensor_selection):
+        return dash.no_update, "콘크리트와 센서를 선택하세요", "danger", True, dash.no_update
+
+    # 선택된 센서에서 device_id와 channel 파싱
+    try:
+        device_id, channel = sensor_selection.split("|")
+        channel = int(channel)
+    except Exception:
+        return dash.no_update, "센서 선택 오류", "danger", True, dash.no_update
 
     # (추가) 동일 콘크리트 내 기존 센서 디바이스 ID와 채널 조합 확인
     df_sensor_full = api_db.get_sensors_data()
     df_same = df_sensor_full[df_sensor_full["concrete_pk"] == conc_pk]
     existing_sensors = df_same[(df_same["device_id"] == device_id) & (df_same["channel"] == channel)]
     if not existing_sensors.empty:
-        return dash.no_update, f"이미 존재하는 디바이스 ID와 채널 조합: {device_id} (채널: {channel})", "danger", True
+        return dash.no_update, f"이미 존재하는 디바이스 ID와 채널 조합: {device_id} (채널: {channel})", "danger", True, dash.no_update
 
     if not coords_txt:
-        return dash.no_update, "좌표를 입력하세요 (예: [1,1,0])", "danger", True
+        return dash.no_update, "좌표를 입력하세요 (예: [1,1,0])", "danger", True, dash.no_update
 
     # 좌표 파싱
     try:
@@ -938,16 +1012,16 @@ def add_sensor_save(_, conc_pk, device_id, channel, coords_txt):
             raise ValueError
         xyz = [float(x) for x in xyz]
     except Exception:
-        return dash.no_update, "좌표 형식이 잘못되었습니다 (예: [1,1,0])", "danger", True
+        return dash.no_update, "좌표 형식이 잘못되었습니다 (예: [1,1,0])", "danger", True, dash.no_update
 
     # 실제 추가
     try:
         api_db.add_sensors_data(concrete_pk=conc_pk, device_id=device_id, channel=channel, d_type=1, dims={"nodes": xyz})
     except Exception as e:
-        return dash.no_update, f"추가 실패: {e}", "danger", True
+        return dash.no_update, f"추가 실패: {e}", "danger", True, dash.no_update
 
     # data_timestamp를 업데이트해서 테이블 갱신 트리거
-    return pd.Timestamp.utcnow().value, "추가 완료", "success", True
+    return pd.Timestamp.utcnow().value, "추가 완료", "success", True, None
 
 
 # ───────────────────── ⑧ 삭제 컨펌 토글 콜백 ───────────────────
@@ -1014,8 +1088,7 @@ def toggle_edit_modal(b_open, b_close, b_save, sel, tbl_data, conc_pk):
     Output("edit-sensor-preview", "figure"),
     Output("edit-sensor-alert", "children"),
     Output("edit-sensor-alert", "is_open"),
-    Output("edit-sensor-device-id", "children"),
-    Output("edit-sensor-channel", "children"),
+    Output("edit-sensor-info", "children"),
     Input("modal-sensor-edit", "is_open"),
     State("edit-sensor-concrete-id", "data"),
     State("edit-sensor-id-store", "data"),
@@ -1032,7 +1105,7 @@ def fill_edit_sensor(opened, conc_pk, sensor_pk):
         dims = ast.literal_eval(sensor_row["dims"])
         coords_txt = f"[{dims['nodes'][0]}, {dims['nodes'][1]}, {dims['nodes'][2]}]"
     except Exception:
-        return dash.no_update, go.Figure(), "센서 정보를 불러올 수 없음", True, "", ""
+        return dash.no_update, go.Figure(), "센서 정보를 불러올 수 없음", True, ""
 
     # 2) 콘크리트 정보 로드
     try:
@@ -1041,7 +1114,7 @@ def fill_edit_sensor(opened, conc_pk, sensor_pk):
         conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
         fig_conc = make_concrete_fig(conc_nodes, conc_h)
     except Exception:
-        return dash.no_update, go.Figure(), "콘크리트 정보를 불러올 수 없음", True, device_id, channel
+        return dash.no_update, go.Figure(), "콘크리트 정보를 불러올 수 없음", True, f"{device_id} - Ch.{channel}"
 
     # 3) 현재 콘크리트에 속한 모든 센서 정보를 가져와서 그리기 (파란 점, 크기 4)
     df_sensor_full = api_db.get_sensors_data()
@@ -1139,7 +1212,7 @@ def fill_edit_sensor(opened, conc_pk, sensor_pk):
             hoverinfo="skip",
         ))
 
-    return coords_txt, fig_conc, "", False, device_id, channel
+    return coords_txt, fig_conc, "", False, f"{device_id} - Ch.{channel}"
 
 
 # ───────────────────── ⑪ 수정 미리보기 콜백 ────────────────────
