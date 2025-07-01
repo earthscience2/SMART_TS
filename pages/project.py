@@ -3617,7 +3617,12 @@ def update_section_time_info(current_file_title, active_tab):
             "borderRadius": "8px",
             "border": "1px solid #e2e8f0",
             "boxShadow": "0 1px 3px rgba(0,0,0,0.05)",
-            "marginBottom": "16px"
+            "marginBottom": "16px",
+            "height": "65px",
+            "display": "flex",
+            "flexDirection": "column",
+            "justifyContent": "center",
+            "alignItems": "center"
         })
     ])
 
