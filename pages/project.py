@@ -1770,167 +1770,170 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         return html.Div([
             dcc.Store(id="temp-coord-store", data=store_data),
             
-            # 위치 설정 + 저장 버튼 섹션 (노션 스타일)
-            html.Div([
-                html.Div([
-                    html.H6("📍 측정 위치 설정", style={
-                        "fontWeight": "600",
-                        "color": "#374151",
-                        "marginBottom": "12px",
-                        "fontSize": "14px"
-                    }),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Card([
-                                dbc.CardBody([
-                                    html.Div([
-                                        html.I(className="fas fa-arrows-alt-h", style={
-                                            "color": "#ef4444", 
-                                            "fontSize": "14px", 
-                                            "marginRight": "6px"
-                                        }),
-                                        html.Span("X축", style={
-                                            "fontWeight": "600",
-                                            "color": "#ef4444",
-                                            "fontSize": "13px"
-                                        })
-                                    ], style={"marginBottom": "4px"}),
-                                    dbc.Input(
-                                        id="temp-x-input", 
-                                        type="number", 
-                                        step=0.1, 
-                                        value=round(x_mid,1), 
-                                        min=round(x_min,2), 
-                                        max=round(x_max,2),
-                                        placeholder="X 좌표",
-                                        style={"width": "100%"}
-                                    )
-                                ], style={"padding": "8px"})
-                            ], style={
-                                "border": "1px solid #fecaca",
-                                "backgroundColor": "#fef2f2"
-                            })
-                        ], md=4),
-                        dbc.Col([
-                            dbc.Card([
-                                dbc.CardBody([
-                                    html.Div([
-                                        html.I(className="fas fa-arrows-alt-v", style={
-                                            "color": "#3b82f6", 
-                                            "fontSize": "14px", 
-                                            "marginRight": "6px"
-                                        }),
-                                        html.Span("Y축", style={
-                                            "fontWeight": "600",
-                                            "color": "#3b82f6",
-                                            "fontSize": "13px"
-                                        })
-                                    ], style={"marginBottom": "4px"}),
-                                    dbc.Input(
-                                        id="temp-y-input", 
-                                        type="number", 
-                                        step=0.1, 
-                                        value=round(y_mid,1), 
-                                        min=round(y_min,2), 
-                                        max=round(y_max,2),
-                                        placeholder="Y 좌표",
-                                        style={"width": "100%"}
-                                    )
-                                ], style={"padding": "8px"})
-                            ], style={
-                                "border": "1px solid #bfdbfe",
-                                "backgroundColor": "#eff6ff"
-                            })
-                        ], md=4),
-                        dbc.Col([
-                            dbc.Card([
-                                dbc.CardBody([
-                                    html.Div([
-                                        html.I(className="fas fa-arrows-alt", style={
-                                            "color": "#22c55e", 
-                                            "fontSize": "14px", 
-                                            "marginRight": "6px"
-                                        }),
-                                        html.Span("Z축", style={
-                                            "fontWeight": "600",
-                                            "color": "#22c55e",
-                                            "fontSize": "13px"
-                                        })
-                                    ], style={"marginBottom": "4px"}),
-                                    dbc.Input(
-                                        id="temp-z-input", 
-                                        type="number", 
-                                        step=0.1, 
-                                        value=round(z_mid,1), 
-                                        min=round(z_min,2), 
-                                        max=round(z_max,2),
-                                        placeholder="Z 좌표",
-                                        style={"width": "100%"}
-                                    )
-                                ], style={"padding": "8px"})
-                            ], style={
-                                "border": "1px solid #bbf7d0",
-                                "backgroundColor": "#f0fdf4"
-                            })
-                        ], md=4),
-                    ], className="g-3"),
-                ], style={
-                    "padding": "12px 16px",
-                    "backgroundColor": "#f9fafb",
-                    "borderRadius": "8px",
-                    "border": "1px solid #e5e7eb",
-                    "marginBottom": "20px"
-                })
-            ]),
-            
-            # 저장 버튼들 (별도 섹션)
-            html.Div([
-                html.Div([
-                    html.H6("💾 저장 옵션", style={
-                        "fontWeight": "600",
-                        "color": "#374151",
-                        "marginBottom": "12px",
-                        "fontSize": "14px"
-                    }),
+            # 위치 설정 + 저장 버튼 섹션 (한 줄 배치)
+            dbc.Row([
+                # 왼쪽: 측정 위치 설정
+                dbc.Col([
                     html.Div([
-                        dbc.Button(
-                            [html.I(className="fas fa-camera me-1"), "이미지 저장"],
-                            id="btn-save-temp-image",
-                            color="primary",
-                            size="lg",
-                            style={
-                                "borderRadius": "8px",
-                                "fontWeight": "600",
-                                "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                "fontSize": "15px",
-                                "width": "120px",
-                                "height": "48px",
-                                "marginRight": "16px"
-                            }
-                        ),
-                        dbc.Button(
-                            [html.I(className="fas fa-file-csv me-1"), "데이터 저장"],
-                            id="btn-save-temp-data",
-                            color="success",
-                            size="lg",
-                            style={
-                                "borderRadius": "8px",
-                                "fontWeight": "600",
-                                "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                "fontSize": "15px",
-                                "width": "120px",
-                                "height": "48px"
-                            }
-                        ),
-                    ], style={"display": "flex", "justifyContent": "center", "alignItems": "center"})
-                ], style={
-                    "padding": "12px 16px",
-                    "backgroundColor": "#f9fafb",
-                    "borderRadius": "8px",
-                    "border": "1px solid #e5e7eb",
-                    "marginBottom": "20px"
-                })
-            ]),
+                        html.H6("📍 측정 위치 설정", style={
+                            "fontWeight": "600",
+                            "color": "#374151",
+                            "marginBottom": "12px",
+                            "fontSize": "14px"
+                        }),
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardBody([
+                                        html.Div([
+                                            html.I(className="fas fa-arrows-alt-h", style={
+                                                "color": "#ef4444", 
+                                                "fontSize": "14px", 
+                                                "marginRight": "6px"
+                                            }),
+                                            html.Span("X축", style={
+                                                "fontWeight": "600",
+                                                "color": "#ef4444",
+                                                "fontSize": "13px"
+                                            })
+                                        ], style={"marginBottom": "4px"}),
+                                        dbc.Input(
+                                            id="temp-x-input", 
+                                            type="number", 
+                                            step=0.1, 
+                                            value=round(x_mid,1), 
+                                            min=round(x_min,2), 
+                                            max=round(x_max,2),
+                                            placeholder="X 좌표",
+                                            style={"width": "100%"}
+                                        )
+                                    ], style={"padding": "8px"})
+                                ], style={
+                                    "border": "1px solid #fecaca",
+                                    "backgroundColor": "#fef2f2"
+                                })
+                            ], md=4),
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardBody([
+                                        html.Div([
+                                            html.I(className="fas fa-arrows-alt-v", style={
+                                                "color": "#3b82f6", 
+                                                "fontSize": "14px", 
+                                                "marginRight": "6px"
+                                            }),
+                                            html.Span("Y축", style={
+                                                "fontWeight": "600",
+                                                "color": "#3b82f6",
+                                                "fontSize": "13px"
+                                            })
+                                        ], style={"marginBottom": "4px"}),
+                                        dbc.Input(
+                                            id="temp-y-input", 
+                                            type="number", 
+                                            step=0.1, 
+                                            value=round(y_mid,1), 
+                                            min=round(y_min,2), 
+                                            max=round(y_max,2),
+                                            placeholder="Y 좌표",
+                                            style={"width": "100%"}
+                                        )
+                                    ], style={"padding": "8px"})
+                                ], style={
+                                    "border": "1px solid #bfdbfe",
+                                    "backgroundColor": "#eff6ff"
+                                })
+                            ], md=4),
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardBody([
+                                        html.Div([
+                                            html.I(className="fas fa-arrows-alt", style={
+                                                "color": "#22c55e", 
+                                                "fontSize": "14px", 
+                                                "marginRight": "6px"
+                                            }),
+                                            html.Span("Z축", style={
+                                                "fontWeight": "600",
+                                                "color": "#22c55e",
+                                                "fontSize": "13px"
+                                            })
+                                        ], style={"marginBottom": "4px"}),
+                                        dbc.Input(
+                                            id="temp-z-input", 
+                                            type="number", 
+                                            step=0.1, 
+                                            value=round(z_mid,1), 
+                                            min=round(z_min,2), 
+                                            max=round(z_max,2),
+                                            placeholder="Z 좌표",
+                                            style={"width": "100%"}
+                                        )
+                                    ], style={"padding": "8px"})
+                                ], style={
+                                    "border": "1px solid #bbf7d0",
+                                    "backgroundColor": "#f0fdf4"
+                                })
+                            ], md=4),
+                        ], className="g-3"),
+                    ], style={
+                        "padding": "12px 16px",
+                        "backgroundColor": "#f9fafb",
+                        "borderRadius": "8px",
+                        "border": "1px solid #e5e7eb",
+                        "height": "100%"
+                    })
+                ], md=8),
+                
+                # 오른쪽: 저장 버튼들
+                dbc.Col([
+                    html.Div([
+                        html.H6("💾 저장 옵션", style={
+                            "fontWeight": "600",
+                            "color": "#374151",
+                            "marginBottom": "12px",
+                            "fontSize": "14px"
+                        }),
+                        html.Div([
+                            dbc.Button(
+                                [html.I(className="fas fa-camera me-1"), "이미지 저장"],
+                                id="btn-save-temp-image",
+                                color="primary",
+                                size="lg",
+                                style={
+                                    "borderRadius": "8px",
+                                    "fontWeight": "600",
+                                    "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                    "fontSize": "15px",
+                                    "width": "120px",
+                                    "height": "48px",
+                                    "marginRight": "16px"
+                                }
+                            ),
+                            dbc.Button(
+                                [html.I(className="fas fa-file-csv me-1"), "데이터 저장"],
+                                id="btn-save-temp-data",
+                                color="success",
+                                size="lg",
+                                style={
+                                    "borderRadius": "8px",
+                                    "fontWeight": "600",
+                                    "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                    "fontSize": "15px",
+                                    "width": "120px",
+                                    "height": "48px"
+                                }
+                            ),
+                        ], style={"display": "flex", "justifyContent": "center", "alignItems": "center"})
+                    ], style={
+                        "padding": "12px 16px",
+                        "backgroundColor": "#f9fafb",
+                        "borderRadius": "8px",
+                        "border": "1px solid #e5e7eb",
+                        "height": "100%"
+                    })
+                ], md=4),
+            ], className="mb-4 align-items-stretch", style={"minHeight": "120px"}),
             
             # 분석 결과 (좌우 배치, 노션 스타일)
             dbc.Row([
