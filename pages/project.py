@@ -268,6 +268,58 @@ layout = dbc.Container(
                             }
                         });
                     }
+                    
+                    // 두 박스 높이 맞추기 함수
+                    if (!window.boxHeightHandler) {
+                        window.boxHeightHandler = true;
+                        
+                        function matchBoxHeights() {
+                            const timeInfoBox = document.getElementById('viewer-3d-time-info');
+                            const saveOptionsBox = timeInfoBox ? timeInfoBox.parentElement.nextElementSibling.querySelector('div[style*="backgroundColor"]') : null;
+                            
+                            if (timeInfoBox && saveOptionsBox) {
+                                // 높이 초기화
+                                timeInfoBox.style.minHeight = '';
+                                saveOptionsBox.style.minHeight = '';
+                                
+                                // 실제 높이 측정
+                                const timeInfoHeight = timeInfoBox.offsetHeight;
+                                const saveOptionsHeight = saveOptionsBox.offsetHeight;
+                                
+                                // 더 높은 높이로 맞춤
+                                const maxHeight = Math.max(timeInfoHeight, saveOptionsHeight);
+                                timeInfoBox.style.minHeight = maxHeight + 'px';
+                                saveOptionsBox.style.minHeight = maxHeight + 'px';
+                            }
+                        }
+                        
+                        // 페이지 로드 후 높이 맞춤
+                        setTimeout(matchBoxHeights, 100);
+                        
+                        // 콘텐츠 변경 감지를 위한 MutationObserver
+                        const observer = new MutationObserver(function(mutations) {
+                            mutations.forEach(function(mutation) {
+                                if (mutation.type === 'childList' || mutation.type === 'characterData') {
+                                    setTimeout(matchBoxHeights, 50);
+                                }
+                            });
+                        });
+                        
+                        // 감시 시작
+                        const targetNode = document.getElementById('viewer-3d-time-info');
+                        if (targetNode) {
+                            observer.observe(targetNode, {
+                                childList: true,
+                                subtree: true,
+                                characterData: true
+                            });
+                        }
+                        
+                        // 윈도우 리사이즈 시에도 높이 재조정
+                        window.addEventListener('resize', function() {
+                            setTimeout(matchBoxHeights, 100);
+                        });
+                    }
                 });
             """)
         ], style={"display": "none"}),
@@ -1294,7 +1346,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             dbc.Row([
                 # 왼쪽: 현재 시간/물성치 정보
                 dbc.Col([
-                    html.Div(id="viewer-3d-time-info")
+                    html.Div(id="viewer-3d-time-info", style={"minHeight": "120px"})
                 ], md=8),
                 
                 # 오른쪽: 저장 버튼들
@@ -1304,7 +1356,8 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                             "fontWeight": "600",
                             "color": "#374151",
                             "marginBottom": "12px",
-                            "fontSize": "14px"
+                            "fontSize": "14px",
+                            "textAlign": "center"
                         }),
                         html.Div([
                             dbc.Button(
@@ -1340,13 +1393,13 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         "backgroundColor": "#f9fafb",
                         "borderRadius": "8px",
                         "border": "1px solid #e5e7eb",
-                        "height": "100%",
+                        "minHeight": "120px",
                         "display": "flex",
                         "flexDirection": "column",
                         "justifyContent": "center"
                     })
                 ], md=4),
-            ], className="mb-3"),
+            ], className="mb-3", style={"alignItems": "stretch"}),
             
             # 3D 뷰어 (노션 스타일)
             html.Div([
@@ -3543,6 +3596,8 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
 # ───────────────────── 3D 이미지 저장 콜백 ─────────────────────
 @callback(
     Output("download-3d-image", "data"),
+    Output("btn-save-3d-image", "children"),
+    Output("btn-save-3d-image", "disabled"),
     Input("btn-save-3d-image", "n_clicks"),
     State("viewer-3d-display", "figure"),
     State("tbl-concrete", "selected_rows"),
@@ -3556,9 +3611,8 @@ def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
         raise PreventUpdate
     
     try:
-        import plotly.io as pio
-        from datetime import datetime
-        import io
+        # 로딩 상태로 변경
+        loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
         
         # 파일명 생성
         if selected_rows and tbl_data:
@@ -3577,17 +3631,75 @@ def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
             else:
                 filename = f"3D_히트맵_{concrete_name}.png"
         else:
+            from datetime import datetime
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"3D_히트맵_{timestamp}.png"
         
-        # Plotly figure를 PNG로 변환
-        img_bytes = pio.to_image(figure, format="png", width=1200, height=800, scale=2)
+        # 이미지 저장 방법 1: plotly.io 시도
+        try:
+            import plotly.io as pio
+            # kaleido 엔진 확인
+            img_bytes = pio.to_image(figure, format="png", width=1200, height=800, scale=2, engine="kaleido")
+            success_btn = [html.I(className="fas fa-check me-1"), "완료"]
+            return dcc.send_bytes(img_bytes, filename=filename), success_btn, False
+            
+        except ImportError:
+            print("kaleido가 설치되지 않음. 대안 방법 시도 중...")
+            
+        except Exception as pio_error:
+            print(f"plotly.io 저장 실패: {pio_error}")
         
-        return dcc.send_bytes(img_bytes, filename=filename)
+        # 이미지 저장 방법 2: HTML을 통한 이미지 생성 (대안)
+        try:
+            import json
+            import base64
+            
+            # figure를 JSON으로 변환하여 HTML 생성
+            fig_json = json.dumps(figure, cls=plotly.utils.PlotlyJSONEncoder)
+            
+            html_template = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+            </head>
+            <body>
+                <div id="plotly-div" style="width:1200px;height:800px;"></div>
+                <script>
+                    var figureData = {fig_json};
+                    Plotly.newPlot('plotly-div', figureData.data, figureData.layout, {{displayModeBar: false}});
+                </script>
+            </body>
+            </html>
+            """
+            
+            # HTML 파일로 저장 (이미지 대신)
+            html_filename = filename.replace('.png', '.html')
+            success_btn = [html.I(className="fas fa-check me-1"), "HTML저장"]
+            return dict(content=html_template, filename=html_filename), success_btn, False
+            
+        except Exception as html_error:
+            print(f"HTML 저장도 실패: {html_error}")
+            error_btn = [html.I(className="fas fa-times me-1"), "실패"]
+            return dash.no_update, error_btn, False
         
     except Exception as e:
-        print(f"3D 이미지 저장 오류: {e}")
-        raise PreventUpdate
+        print(f"3D 이미지 저장 전체 오류: {e}")
+        error_btn = [html.I(className="fas fa-times me-1"), "오류"]
+        return dash.no_update, error_btn, False
+
+# ───────────────────── 이미지 저장 버튼 상태 초기화 ─────────────────────
+@callback(
+    Output("btn-save-3d-image", "children", allow_duplicate=True),
+    Output("btn-save-3d-image", "disabled", allow_duplicate=True),
+    Input("tabs-main", "active_tab"),
+    Input("tbl-concrete", "selected_rows"),
+    prevent_initial_call=True,
+)
+def reset_image_save_button(active_tab, selected_rows):
+    """탭 변경이나 콘크리트 선택 시 이미지 저장 버튼 상태 초기화"""
+    default_btn = [html.I(className="fas fa-camera me-1"), "이미지"]
+    return default_btn, False
 
 # ───────────────────── 현재 INP 파일 저장 콜백 ─────────────────────
 @callback(
