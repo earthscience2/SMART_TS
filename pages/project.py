@@ -1346,8 +1346,19 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             dbc.Row([
                 # 왼쪽: 현재 시간/물성치 정보
                 dbc.Col([
-                    html.Div(id="viewer-3d-time-info", style={"minHeight": "120px"})
-                ], md=8),
+                    html.Div(
+                        id="viewer-3d-time-info", 
+                        style={
+                            "minHeight": "130px !important",
+                            "height": "130px",
+                            "display": "flex",
+                            "flexDirection": "column",
+                            "justifyContent": "center"
+                        }
+                    )
+                ], md=8, style={
+                    "height": "130px"
+                }),
                 
                 # 오른쪽: 저장 버튼들
                 dbc.Col([
@@ -1393,13 +1404,15 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         "backgroundColor": "#f9fafb",
                         "borderRadius": "8px",
                         "border": "1px solid #e5e7eb",
-                        "minHeight": "120px",
+                        "height": "130px",
                         "display": "flex",
                         "flexDirection": "column",
                         "justifyContent": "center"
                     })
-                ], md=4),
-            ], className="mb-3", style={"alignItems": "stretch"}),
+                ], md=4, style={
+                    "height": "130px"
+                }),
+            ], className="mb-3 align-items-stretch h-100", style={"minHeight": "120px"}),
             
             # 3D 뷰어 (노션 스타일)
             html.Div([
@@ -3819,8 +3832,15 @@ def update_viewer3d_time_info(current_file_title, active_tab):
             "borderRadius": "8px",
             "border": "1px solid #e2e8f0",
             "boxShadow": "0 1px 3px rgba(0,0,0,0.05)",
-            "marginBottom": "16px"
+            "height": "130px",
+            "display": "flex",
+            "flexDirection": "column",
+            "justifyContent": "center"
         })
-    ])
+    ], style={
+        "height": "130px",
+        "display": "flex",
+        "flexDirection": "column"
+    })
 
 
