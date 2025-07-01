@@ -1363,16 +1363,10 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 # 오른쪽: 저장 버튼들
                 dbc.Col([
                     html.Div([
-                        html.H6("💾 저장 옵션", style={
-                            "fontWeight": "600",
-                            "color": "#374151",
-                            "marginBottom": "8px",
-                            "fontSize": "13px",
-                            "textAlign": "center"
-                        }),
+
                         html.Div([
                             dbc.Button(
-                                [html.I(className="fas fa-camera me-1"), "이미지"],
+                                [html.I(className="fas fa-camera me-1"), "이미지 저장"],
                                 id="btn-save-3d-image",
                                 color="primary",
                                 size="sm",
@@ -1380,13 +1374,13 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                                     "borderRadius": "6px",
                                     "fontWeight": "500",
                                     "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                    "fontSize": "12px",
-                                    "width": "70px",
+                                    "fontSize": "11px",
+                                    "width": "85px",
                                     "marginRight": "8px"
                                 }
                             ),
                             dbc.Button(
-                                [html.I(className="fas fa-file-download me-1"), "INP"],
+                                [html.I(className="fas fa-file-download me-1"), "INP 파일 저장"],
                                 id="btn-save-current-inp",
                                 color="success",
                                 size="sm",
@@ -1394,8 +1388,8 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                                     "borderRadius": "6px",
                                     "fontWeight": "500",
                                     "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                    "fontSize": "12px",
-                                    "width": "70px"
+                                    "fontSize": "11px",
+                                    "width": "95px"
                                 }
                             ),
                         ], style={"display": "flex", "justifyContent": "center"})
@@ -3711,7 +3705,7 @@ def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
 )
 def reset_image_save_button(active_tab, selected_rows):
     """탭 변경이나 콘크리트 선택 시 이미지 저장 버튼 상태 초기화"""
-    default_btn = [html.I(className="fas fa-camera me-1"), "이미지"]
+    default_btn = [html.I(className="fas fa-camera me-1"), "이미지 저장"]
     return default_btn, False
 
 # ───────────────────── 현재 INP 파일 저장 콜백 ─────────────────────
