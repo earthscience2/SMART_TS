@@ -177,6 +177,10 @@ layout = dbc.Container(
         dcc.Store(id="viewer-3d-store", data=None),
         dcc.Graph(id='section-colorbar', style={'display':'none'}),
         
+        # ── 다운로드 컴포넌트들
+        dcc.Download(id="download-3d-image"),
+        dcc.Download(id="download-current-inp"),
+        
         # 키보드 이벤트 처리 스크립트
         html.Div([
             html.Script("""
@@ -1288,6 +1292,48 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             
             # 현재 시간 정보 (동적 업데이트)
             html.Div(id="viewer-3d-time-info"),
+            
+            # 저장 버튼들 (노션 스타일)
+            html.Div([
+                html.Div([
+                    html.H6("💾 저장 옵션", style={
+                        "fontWeight": "600",
+                        "color": "#374151",
+                        "marginBottom": "12px",
+                        "fontSize": "14px"
+                    }),
+                    dbc.ButtonGroup([
+                        dbc.Button(
+                            [html.I(className="fas fa-camera me-2"), "3D 이미지 저장"],
+                            id="btn-save-3d-image",
+                            color="primary",
+                            size="sm",
+                            style={
+                                "borderRadius": "6px",
+                                "fontWeight": "500",
+                                "boxShadow": "0 1px 2px rgba(0,0,0,0.1)"
+                            }
+                        ),
+                        dbc.Button(
+                            [html.I(className="fas fa-file-download me-2"), "현재 INP 파일 저장"],
+                            id="btn-save-current-inp",
+                            color="success",
+                            size="sm",
+                            style={
+                                "borderRadius": "6px",
+                                "fontWeight": "500",
+                                "boxShadow": "0 1px 2px rgba(0,0,0,0.1)"
+                            }
+                        ),
+                    ], className="w-100")
+                ], style={
+                    "padding": "16px 20px",
+                    "backgroundColor": "#f9fafb",
+                    "borderRadius": "8px",
+                    "border": "1px solid #e5e7eb",
+                    "marginBottom": "16px"
+                })
+            ]),
             
             # 3D 뷰어 (노션 스타일)
             html.Div([
@@ -3480,6 +3526,106 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
             seen_dates.add(date_str)
     
     return 0, max_idx, max_idx, marks
+
+# ───────────────────── 3D 이미지 저장 콜백 ─────────────────────
+@callback(
+    Output("download-3d-image", "data"),
+    Input("btn-save-3d-image", "n_clicks"),
+    State("viewer-3d-display", "figure"),
+    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    State("time-slider-display", "value"),
+    prevent_initial_call=True,
+)
+def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
+    """3D 뷰어의 현재 이미지를 PNG 파일로 저장"""
+    if not n_clicks or not figure:
+        raise PreventUpdate
+    
+    try:
+        import plotly.io as pio
+        from datetime import datetime
+        import io
+        
+        # 파일명 생성
+        if selected_rows and tbl_data:
+            row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+            concrete_pk = row["concrete_pk"]
+            concrete_name = row.get("name", concrete_pk)
+            
+            # 현재 시간 정보 추가
+            inp_dir = f"inp/{concrete_pk}"
+            inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+            if inp_files and time_value is not None:
+                file_idx = min(int(time_value), len(inp_files)-1)
+                current_file = inp_files[file_idx]
+                time_str = os.path.basename(current_file).split(".")[0]
+                filename = f"3D_히트맵_{concrete_name}_{time_str}.png"
+            else:
+                filename = f"3D_히트맵_{concrete_name}.png"
+        else:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"3D_히트맵_{timestamp}.png"
+        
+        # Plotly figure를 PNG로 변환
+        img_bytes = pio.to_image(figure, format="png", width=1200, height=800, scale=2)
+        
+        return dcc.send_bytes(img_bytes, filename=filename)
+        
+    except Exception as e:
+        print(f"3D 이미지 저장 오류: {e}")
+        raise PreventUpdate
+
+# ───────────────────── 현재 INP 파일 저장 콜백 ─────────────────────
+@callback(
+    Output("download-current-inp", "data"),
+    Input("btn-save-current-inp", "n_clicks"),
+    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    State("time-slider-display", "value"),
+    prevent_initial_call=True,
+)
+def save_current_inp(n_clicks, selected_rows, tbl_data, time_value):
+    """현재 선택된 시간의 INP 파일을 저장"""
+    if not n_clicks or not selected_rows or not tbl_data:
+        raise PreventUpdate
+    
+    try:
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+        concrete_pk = row["concrete_pk"]
+        concrete_name = row.get("name", concrete_pk)
+        
+        # INP 파일 경로 찾기
+        inp_dir = f"inp/{concrete_pk}"
+        inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+        
+        if not inp_files:
+            raise PreventUpdate
+        
+        # 현재 시간에 해당하는 파일 선택
+        if time_value is not None:
+            file_idx = min(int(time_value), len(inp_files)-1)
+        else:
+            file_idx = len(inp_files) - 1  # 최신 파일
+        
+        current_file = inp_files[file_idx]
+        
+        if not os.path.exists(current_file):
+            raise PreventUpdate
+        
+        # 파일명 생성
+        time_str = os.path.basename(current_file).split(".")[0]
+        filename = f"{concrete_name}_{time_str}.inp"
+        
+        # 파일 읽기 및 다운로드
+        with open(current_file, 'r', encoding='utf-8') as f:
+            file_content = f.read()
+        
+        return dict(content=file_content, filename=filename)
+        
+    except Exception as e:
+        print(f"INP 파일 저장 오류: {e}")
+        raise PreventUpdate
 
     # 3D 뷰 탭 시간 정보 업데이트 콜백
 @callback(
