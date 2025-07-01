@@ -1290,50 +1290,57 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 })
             ]),
             
-            # 현재 시간 정보 (동적 업데이트)
-            html.Div(id="viewer-3d-time-info"),
-            
-            # 저장 버튼들 (노션 스타일)
-            html.Div([
-                html.Div([
-                    html.H6("💾 저장 옵션", style={
-                        "fontWeight": "600",
-                        "color": "#374151",
-                        "marginBottom": "12px",
-                        "fontSize": "14px"
-                    }),
-                    dbc.ButtonGroup([
-                        dbc.Button(
-                            [html.I(className="fas fa-camera me-2"), "3D 이미지 저장"],
-                            id="btn-save-3d-image",
-                            color="primary",
-                            size="sm",
-                            style={
-                                "borderRadius": "6px",
-                                "fontWeight": "500",
-                                "boxShadow": "0 1px 2px rgba(0,0,0,0.1)"
-                            }
-                        ),
-                        dbc.Button(
-                            [html.I(className="fas fa-file-download me-2"), "현재 INP 파일 저장"],
-                            id="btn-save-current-inp",
-                            color="success",
-                            size="sm",
-                            style={
-                                "borderRadius": "6px",
-                                "fontWeight": "500",
-                                "boxShadow": "0 1px 2px rgba(0,0,0,0.1)"
-                            }
-                        ),
-                    ], className="w-100")
-                ], style={
-                    "padding": "16px 20px",
-                    "backgroundColor": "#f9fafb",
-                    "borderRadius": "8px",
-                    "border": "1px solid #e5e7eb",
-                    "marginBottom": "16px"
-                })
-            ]),
+            # 현재 시간 정보 + 저장 옵션 (한 줄 배치)
+            dbc.Row([
+                # 왼쪽: 현재 시간/물성치 정보
+                dbc.Col([
+                    html.Div(id="viewer-3d-time-info")
+                ], md=8),
+                
+                # 오른쪽: 저장 버튼들
+                dbc.Col([
+                    html.Div([
+                        html.H6("💾 저장 옵션", style={
+                            "fontWeight": "600",
+                            "color": "#374151",
+                            "marginBottom": "12px",
+                            "fontSize": "14px"
+                        }),
+                        dbc.ButtonGroup([
+                            dbc.Button(
+                                [html.I(className="fas fa-camera me-1"), "이미지"],
+                                id="btn-save-3d-image",
+                                color="primary",
+                                size="sm",
+                                style={
+                                    "borderRadius": "6px",
+                                    "fontWeight": "500",
+                                    "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                    "fontSize": "12px"
+                                }
+                            ),
+                            dbc.Button(
+                                [html.I(className="fas fa-file-download me-1"), "INP"],
+                                id="btn-save-current-inp",
+                                color="success",
+                                size="sm",
+                                style={
+                                    "borderRadius": "6px",
+                                    "fontWeight": "500",
+                                    "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                    "fontSize": "12px"
+                                }
+                            ),
+                        ], className="w-100")
+                    ], style={
+                        "padding": "16px 20px",
+                        "backgroundColor": "#f9fafb",
+                        "borderRadius": "8px",
+                        "border": "1px solid #e5e7eb",
+                        "height": "100%"
+                    })
+                ], md=4),
+            ], className="mb-3"),
             
             # 3D 뷰어 (노션 스타일)
             html.Div([
