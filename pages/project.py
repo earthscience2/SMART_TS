@@ -1888,50 +1888,36 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 # 오른쪽: 저장 버튼들
                 dbc.Col([
                     html.Div([
-                        html.H6("💾 저장 옵션", style={
-                            "fontWeight": "600",
-                            "color": "#374151",
-                            "marginBottom": "12px",
-                            "fontSize": "14px"
-                        }),
-                        html.Div([
-                            dbc.Button(
-                                [html.I(className="fas fa-camera me-1"), "이미지 저장"],
-                                id="btn-save-temp-image",
-                                color="primary",
-                                size="lg",
-                                style={
-                                    "borderRadius": "8px",
-                                    "fontWeight": "600",
-                                    "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                    "fontSize": "15px",
-                                    "width": "120px",
-                                    "height": "48px",
-                                    "marginRight": "16px"
-                                }
-                            ),
-                            dbc.Button(
-                                [html.I(className="fas fa-file-csv me-1"), "데이터 저장"],
-                                id="btn-save-temp-data",
-                                color="success",
-                                size="lg",
-                                style={
-                                    "borderRadius": "8px",
-                                    "fontWeight": "600",
-                                    "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                    "fontSize": "15px",
-                                    "width": "120px",
-                                    "height": "48px"
-                                }
-                            ),
-                        ], style={"display": "flex", "justifyContent": "center", "alignItems": "center"})
-                    ], style={
-                        "padding": "12px 16px",
-                        "backgroundColor": "#f9fafb",
-                        "borderRadius": "8px",
-                        "border": "1px solid #e5e7eb",
-                        "height": "100%"
-                    })
+                        dbc.Button(
+                            [html.I(className="fas fa-camera me-1"), "이미지 저장"],
+                            id="btn-save-temp-image",
+                            color="primary",
+                            size="lg",
+                            style={
+                                "borderRadius": "8px",
+                                "fontWeight": "600",
+                                "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                "fontSize": "15px",
+                                "width": "120px",
+                                "height": "48px",
+                                "marginRight": "16px"
+                            }
+                        ),
+                        dbc.Button(
+                            [html.I(className="fas fa-file-csv me-1"), "데이터 저장"],
+                            id="btn-save-temp-data",
+                            color="success",
+                            size="lg",
+                            style={
+                                "borderRadius": "8px",
+                                "fontWeight": "600",
+                                "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                "fontSize": "15px",
+                                "width": "120px",
+                                "height": "48px"
+                            }
+                        ),
+                    ], style={"display": "flex", "justifyContent": "center", "alignItems": "center", "height": "100%"})
                 ], md=4),
             ], className="mb-4 align-items-stretch", style={"minHeight": "120px"}),
             
