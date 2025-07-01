@@ -2809,7 +2809,7 @@ def update_section_views(time_idx,
     Input("temp-x-input", "value"),
     Input("temp-y-input", "value"),
     Input("temp-z-input", "value"),
-    Input("temp-range-filter", "value"),
+    State("temp-range-filter", "value"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=False,
@@ -2964,6 +2964,9 @@ def update_temp_tab(store_data, x, y, z, range_filter, selected_rows, tbl_data):
             temp_values = filtered_values
         except Exception as e:
             print(f"온도 범위 필터링 오류: {e}")
+    elif not range_filter:
+        # range_filter가 None이면 전체 데이터 사용
+        range_filter = "all"
     
     # 그래프 생성
     fig_temp = go.Figure()
