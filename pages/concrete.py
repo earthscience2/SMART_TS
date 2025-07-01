@@ -858,7 +858,15 @@ def show_selected(sel, data):
             ]),
             html.Hr(className="my-2"),
             html.Small("타설시간", className="text-muted", style={"fontSize": "0.7rem"}),
-            html.Div(con_t_formatted, className="fw-bold", style={"fontSize": "0.8rem", "lineHeight": "1.2"})
+            html.Div(con_t_formatted, className="fw-bold", style={"fontSize": "0.8rem", "lineHeight": "1.2"}),
+            # 분석중일 때 수정 불가 안내 메시지 추가
+            html.Div([
+                html.Hr(className="my-2"),
+                dbc.Alert([
+                    html.I(className="fas fa-exclamation-triangle me-2"),
+                    "분석중인 콘크리트는 수정할 수 없습니다."
+                ], color="warning", className="py-2 mb-0", style={"fontSize": "0.75rem"})
+            ] if not is_active else [], style={"marginTop": "8px"})
         ], className="py-2")
     ], className="shadow-sm")
 
