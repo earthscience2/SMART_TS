@@ -3611,14 +3611,12 @@ def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
     
     try:
         # 로딩 상태로 변경
-        loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
-        
+        # loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
         # 파일명 생성
         if selected_rows and tbl_data:
             row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
             concrete_pk = row["concrete_pk"]
             concrete_name = row.get("name", concrete_pk)
-            
             # 현재 시간 정보 추가
             inp_dir = f"inp/{concrete_pk}"
             inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
@@ -3633,37 +3631,31 @@ def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
             from datetime import datetime
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"3D_히트맵_{timestamp}.png"
-        
         # 이미지 저장 방법 1: plotly.io 시도
         try:
             import plotly.io as pio
             # kaleido 엔진 확인
             img_bytes = pio.to_image(figure, format="png", width=1200, height=800, scale=2, engine="kaleido")
-            success_btn = [html.I(className="fas fa-check me-1"), "완료"]
-            return dcc.send_bytes(img_bytes, filename=filename), success_btn, False
-            
+            # 저장 후 버튼 텍스트를 항상 '이미지 저장'으로 복원
+            default_btn = [html.I(className="fas fa-camera me-1"), "이미지 저장"]
+            return dcc.send_bytes(img_bytes, filename=filename), default_btn, False
         except ImportError:
             print("kaleido가 설치되지 않음. 대안 방법 시도 중...")
-            
         except Exception as pio_error:
             print(f"plotly.io 저장 실패: {pio_error}")
-        
         # 이미지 저장 방법 2: HTML을 통한 이미지 생성 (대안)
         try:
             import json
             import base64
-            
-            # figure를 JSON으로 변환하여 HTML 생성
             fig_json = json.dumps(figure, cls=plotly.utils.PlotlyJSONEncoder)
-            
             html_template = f"""
             <!DOCTYPE html>
             <html>
             <head>
-                <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+                <script src=\"https://cdn.plot.ly/plotly-latest.min.js\"></script>
             </head>
             <body>
-                <div id="plotly-div" style="width:1200px;height:800px;"></div>
+                <div id=\"plotly-div\" style=\"width:1200px;height:800px;\"></div>
                 <script>
                     var figureData = {fig_json};
                     Plotly.newPlot('plotly-div', figureData.data, figureData.layout, {{displayModeBar: false}});
@@ -3671,17 +3663,13 @@ def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
             </body>
             </html>
             """
-            
-            # HTML 파일로 저장 (이미지 대신)
             html_filename = filename.replace('.png', '.html')
-            success_btn = [html.I(className="fas fa-check me-1"), "HTML저장"]
-            return dict(content=html_template, filename=html_filename), success_btn, False
-            
+            default_btn = [html.I(className="fas fa-camera me-1"), "이미지 저장"]
+            return dict(content=html_template, filename=html_filename), default_btn, False
         except Exception as html_error:
             print(f"HTML 저장도 실패: {html_error}")
             error_btn = [html.I(className="fas fa-times me-1"), "실패"]
             return dash.no_update, error_btn, False
-        
     except Exception as e:
         print(f"3D 이미지 저장 전체 오류: {e}")
         error_btn = [html.I(className="fas fa-times me-1"), "오류"]
