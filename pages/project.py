@@ -143,7 +143,7 @@ def parse_material_info_from_inp(lines):
     if density is not None:
         parts.append(f"밀도: {density:.0f}kg/m³")
     if expansion is not None:
-        parts.append(f"열팽창: {format_scientific_notation(expansion)}/°C")
+        parts.append(f"열팽창: {expansion:.1f}×10⁻⁵/°C")
 
     return ", ".join(parts) if parts else "물성치 정보 없음"
 
