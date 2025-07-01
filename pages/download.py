@@ -112,6 +112,7 @@ def get_file_info_grouped(folder, ext):
 layout = html.Div([
     dcc.Location(id="download-url", refresh=False),
     dcc.Store(id="selected-project-store"),
+    dcc.Store(id="loading-state", data=False),  # 로딩 상태 저장용
     dbc.Container([
         dbc.Alert(id="download-alert", is_open=False, duration=3000, color="info"),
         dcc.Store(id="file-data-store"),  # 파일 데이터 저장용
@@ -258,14 +259,19 @@ layout = html.Div([
             ], className="py-2")
         ], className="mb-3", style={"border": "1px solid #e9ecef"}),
                         
-                        html.Div(id="dl-tab-content", children=[
-                            html.Div([
+                        dcc.Loading(
+                            id="loading-files",
+                            type="dot",
+                            color="#1d4ed8",
+                            children=html.Div(id="dl-tab-content", children=[
                                 html.Div([
-                                    html.I(className="fas fa-search me-2", style={"color": "#6b7280", "fontSize": "1.2rem"}),
-                                    html.Span("콘크리트를 선택하고 🔍 조회 버튼을 클릭하세요", style={"color": "#6b7280", "fontSize": "0.9rem"})
-                                ], className="d-flex align-items-center justify-content-center p-4", style={"backgroundColor": "#f9fafb", "borderRadius": "8px", "border": "1px dashed #d1d5db"})
+                                    html.Div([
+                                        html.I(className="fas fa-search me-2", style={"color": "#6b7280", "fontSize": "1.2rem"}),
+                                        html.Span("콘크리트를 선택하고 🔍 조회 버튼을 클릭하세요", style={"color": "#6b7280", "fontSize": "0.9rem"})
+                                    ], className="d-flex align-items-center justify-content-center p-4", style={"backgroundColor": "#f9fafb", "borderRadius": "8px", "border": "1px dashed #d1d5db"})
+                                ])
                             ])
-                        ]),
+                        ),
                     ], className="p-3")
                 ], className="bg-white rounded shadow-sm border"),
             ], md=9),
@@ -399,24 +405,15 @@ def update_file_data(n_clicks, active_tab, sel_rows, tbl_data, project_pk):
         "project_pk": project_pk
     }
 
-# ───────────────────── ⑥ 조회 버튼 → 탭 콘텐츠 업데이트 ────────────────────
+# ───────────────────── ⑥ 파일 데이터 변경 → 탭 콘텐츠 업데이트 ────────────────────
 @dash.callback(
     Output("dl-tab-content", "children"),
-    Input("btn-search-files", "n_clicks"),
-    State("file-data-store", "data"),
-    State("date-range-picker", "start_date"),
-    State("date-range-picker", "end_date"),
+    Input("file-data-store", "data"),
+    Input("date-range-picker", "start_date"),
+    Input("date-range-picker", "end_date"),
     prevent_initial_call=True,
 )
-def dl_switch_tab(n_clicks, file_data, start_date, end_date):
-    if not n_clicks:
-        return html.Div([
-            html.Div([
-                html.I(className="fas fa-search me-2", style={"color": "#6b7280", "fontSize": "1.2rem"}),
-                html.Span("콘크리트를 선택하고 🔍 조회 버튼을 클릭하세요", style={"color": "#6b7280", "fontSize": "0.9rem"})
-            ], className="d-flex align-items-center justify-content-center p-4", style={"backgroundColor": "#f9fafb", "borderRadius": "8px", "border": "1px dashed #d1d5db"})
-        ])
-    
+def dl_switch_tab(file_data, start_date, end_date):
     if not file_data or not file_data.get("grouped_files"):
         return html.Div([
             html.Div([
