@@ -180,6 +180,8 @@ layout = dbc.Container(
         # ── 다운로드 컴포넌트들
         dcc.Download(id="download-3d-image"),
         dcc.Download(id="download-current-inp"),
+        dcc.Download(id="download-section-image"),
+        dcc.Download(id="download-section-inp"),
         
         # 키보드 이벤트 처리 스크립트
         html.Div([
@@ -1492,8 +1494,52 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 })
             ]),
             
-            # 현재 시간 정보 (동적 업데이트)
-            html.Div(id="section-time-info"),
+            # 현재 시간 정보 + 저장 옵션 (한 줄 배치)
+            dbc.Row([
+                # 왼쪽: 현재 시간/물성치 정보
+                dbc.Col([
+                    html.Div(id="section-time-info")
+                ], md=8, style={
+                    "height": "65px"
+                }),
+                
+                # 오른쪽: 저장 버튼들
+                dbc.Col([
+                    html.Div([
+                        dbc.Button(
+                            [html.I(className="fas fa-camera me-1"), "이미지 저장"],
+                            id="btn-save-section-image",
+                            color="primary",
+                            size="lg",
+                            style={
+                                "borderRadius": "8px",
+                                "fontWeight": "600",
+                                "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                "fontSize": "15px",
+                                "width": "120px",
+                                "height": "48px",
+                                "marginRight": "16px"
+                            }
+                        ),
+                        dbc.Button(
+                            [html.I(className="fas fa-file-download me-1"), "INP 파일 저장"],
+                            id="btn-save-section-inp",
+                            color="success",
+                            size="lg",
+                            style={
+                                "borderRadius": "8px",
+                                "fontWeight": "600",
+                                "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                "fontSize": "15px",
+                                "width": "140px",
+                                "height": "48px"
+                            }
+                        ),
+                    ], style={"display": "flex", "justifyContent": "center", "alignItems": "center", "height": "65px"})
+                ], md=4, style={
+                    "height": "65px"
+                }),
+            ], className="mb-3 align-items-stretch h-100", style={"minHeight": "65px"}),
             
             # 단면 위치 설정 섹션 (노션 스타일)
             html.Div([
@@ -1504,56 +1550,95 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         "marginBottom": "16px",
                         "fontSize": "14px"
                     }),
-                    html.Div([
-                        dbc.InputGroup([
-                            html.Span("●", style={
-                                "color": "#ef4444", 
-                                "fontSize": "20px", 
-                                "marginRight": "8px", 
-                                "lineHeight": "1"
-                            }),
-                            dbc.InputGroupText("X", style={"fontWeight": "500"}),
-                            dbc.Input(
-                                id="section-x-input", 
-                                type="number", 
-                                step=0.1, 
-                                value=None,
-                                style={"width": "100px"}
-                            ),
-                        ], className="me-3", style={"width": "auto"}),
-                        dbc.InputGroup([
-                            html.Span("●", style={
-                                "color": "#3b82f6", 
-                                "fontSize": "20px", 
-                                "marginRight": "8px", 
-                                "lineHeight": "1"
-                            }),
-                            dbc.InputGroupText("Y", style={"fontWeight": "500"}),
-                            dbc.Input(
-                                id="section-y-input", 
-                                type="number", 
-                                step=0.1, 
-                                value=None,
-                                style={"width": "100px"}
-                            ),
-                        ], className="me-3", style={"width": "auto"}),
-                        dbc.InputGroup([
-                            html.Span("●", style={
-                                "color": "#22c55e", 
-                                "fontSize": "20px", 
-                                "marginRight": "8px", 
-                                "lineHeight": "1"
-                            }),
-                            dbc.InputGroupText("Z", style={"fontWeight": "500"}),
-                            dbc.Input(
-                                id="section-z-input", 
-                                type="number", 
-                                step=0.1, 
-                                value=None,
-                                style={"width": "100px"}
-                            ),
-                        ], style={"width": "auto"}),
-                    ], style={"display": "flex", "alignItems": "center", "flexWrap": "wrap", "gap": "12px"}),
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Card([
+                                dbc.CardBody([
+                                    html.Div([
+                                        html.I(className="fas fa-arrows-alt-h", style={
+                                            "color": "#ef4444", 
+                                            "fontSize": "16px", 
+                                            "marginRight": "8px"
+                                        }),
+                                        html.Span("X축", style={
+                                            "fontWeight": "600",
+                                            "color": "#ef4444",
+                                            "fontSize": "14px"
+                                        })
+                                    ], style={"marginBottom": "8px"}),
+                                    dbc.Input(
+                                        id="section-x-input", 
+                                        type="number", 
+                                        step=0.1, 
+                                        value=None,
+                                        placeholder="X 좌표",
+                                        style={"width": "100%"}
+                                    )
+                                ])
+                            ], style={
+                                "border": "1px solid #fecaca",
+                                "backgroundColor": "#fef2f2"
+                            })
+                        ], md=4),
+                        dbc.Col([
+                            dbc.Card([
+                                dbc.CardBody([
+                                    html.Div([
+                                        html.I(className="fas fa-arrows-alt-v", style={
+                                            "color": "#3b82f6", 
+                                            "fontSize": "16px", 
+                                            "marginRight": "8px"
+                                        }),
+                                        html.Span("Y축", style={
+                                            "fontWeight": "600",
+                                            "color": "#3b82f6",
+                                            "fontSize": "14px"
+                                        })
+                                    ], style={"marginBottom": "8px"}),
+                                    dbc.Input(
+                                        id="section-y-input", 
+                                        type="number", 
+                                        step=0.1, 
+                                        value=None,
+                                        placeholder="Y 좌표",
+                                        style={"width": "100%"}
+                                    )
+                                ])
+                            ], style={
+                                "border": "1px solid #bfdbfe",
+                                "backgroundColor": "#eff6ff"
+                            })
+                        ], md=4),
+                        dbc.Col([
+                            dbc.Card([
+                                dbc.CardBody([
+                                    html.Div([
+                                        html.I(className="fas fa-arrows-alt", style={
+                                            "color": "#22c55e", 
+                                            "fontSize": "16px", 
+                                            "marginRight": "8px"
+                                        }),
+                                        html.Span("Z축", style={
+                                            "fontWeight": "600",
+                                            "color": "#22c55e",
+                                            "fontSize": "14px"
+                                        })
+                                    ], style={"marginBottom": "8px"}),
+                                    dbc.Input(
+                                        id="section-z-input", 
+                                        type="number", 
+                                        step=0.1, 
+                                        value=None,
+                                        placeholder="Z 좌표",
+                                        style={"width": "100%"}
+                                    )
+                                ])
+                            ], style={
+                                "border": "1px solid #bbf7d0",
+                                "backgroundColor": "#f0fdf4"
+                            })
+                        ], md=4),
+                    ], className="g-3"),
                 ], style={
                     "padding": "16px 20px",
                     "backgroundColor": "#f9fafb",
@@ -3819,5 +3904,195 @@ def update_viewer3d_time_info(current_file_title, active_tab):
         "display": "flex",
         "flexDirection": "column"
     })
+
+# ───────────────────── 단면도 이미지 저장 콜백 ─────────────────────
+@callback(
+    Output("download-section-image", "data"),
+    Output("btn-save-section-image", "children"),
+    Output("btn-save-section-image", "disabled"),
+    Input("btn-save-section-image", "n_clicks"),
+    State("viewer-3d-section", "figure"),
+    State("viewer-section-x", "figure"),
+    State("viewer-section-y", "figure"),
+    State("viewer-section-z", "figure"),
+    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    State("time-slider-section", "value"),
+    prevent_initial_call=True,
+)
+def save_section_image(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl_data, time_value):
+    """단면도 탭의 모든 뷰를 합쳐서 하나의 이미지로 저장"""
+    if not n_clicks:
+        raise PreventUpdate
+    
+    try:
+        # 파일명 생성
+        if selected_rows and tbl_data:
+            row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+            concrete_pk = row["concrete_pk"]
+            concrete_name = row.get("name", concrete_pk)
+            
+            # 현재 시간 정보 추가
+            inp_dir = f"inp/{concrete_pk}"
+            inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+            if inp_files and time_value is not None:
+                file_idx = min(int(time_value), len(inp_files)-1)
+                current_file = inp_files[file_idx]
+                time_str = os.path.basename(current_file).split(".")[0]
+                filename = f"단면도_{concrete_name}_{time_str}.png"
+            else:
+                filename = f"단면도_{concrete_name}.png"
+        else:
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"단면도_{timestamp}.png"
+        
+        # 4개의 그래프를 하나로 합치기
+        try:
+            import plotly.graph_objects as go
+            from plotly.subplots import make_subplots
+            
+            # 서브플롯 생성 (2x2 그리드)
+            fig_combined = make_subplots(
+                rows=2, cols=2,
+                subplot_titles=('3D 뷰', 'X 단면도', 'Y 단면도', 'Z 단면도'),
+                specs=[[{"type": "scene"}, {"type": "xy"}],
+                       [{"type": "xy"}, {"type": "xy"}]]
+            )
+            
+            # 3D 뷰 추가
+            if fig_3d and fig_3d.get('data'):
+                for trace in fig_3d['data']:
+                    fig_combined.add_trace(trace, row=1, col=1)
+            
+            # X 단면도 추가
+            if fig_x and fig_x.get('data'):
+                for trace in fig_x['data']:
+                    fig_combined.add_trace(trace, row=1, col=2)
+            
+            # Y 단면도 추가
+            if fig_y and fig_y.get('data'):
+                for trace in fig_y['data']:
+                    fig_combined.add_trace(trace, row=2, col=1)
+            
+            # Z 단면도 추가
+            if fig_z and fig_z.get('data'):
+                for trace in fig_z['data']:
+                    fig_combined.add_trace(trace, row=2, col=2)
+            
+            # 레이아웃 업데이트
+            fig_combined.update_layout(
+                height=800,
+                width=1200,
+                showlegend=False,
+                title_text="단면도 분석 결과",
+                title_x=0.5
+            )
+            
+            # 각 서브플롯의 축 레이블 설정
+            fig_combined.update_xaxes(title_text="X (m)", row=1, col=2)
+            fig_combined.update_yaxes(title_text="Z (m)", row=1, col=2)
+            fig_combined.update_xaxes(title_text="X (m)", row=2, col=1)
+            fig_combined.update_yaxes(title_text="Z (m)", row=2, col=1)
+            fig_combined.update_xaxes(title_text="X (m)", row=2, col=2)
+            fig_combined.update_yaxes(title_text="Y (m)", row=2, col=2)
+            
+            # 이미지 저장
+            import plotly.io as pio
+            img_bytes = pio.to_image(fig_combined, format="png", width=1200, height=800, scale=2, engine="kaleido")
+            default_btn = [html.I(className="fas fa-camera me-1"), "이미지 저장"]
+            return dcc.send_bytes(img_bytes, filename=filename), default_btn, False
+            
+        except ImportError:
+            print("kaleido가 설치되지 않음. 대안 방법 시도 중...")
+            
+        except Exception as pio_error:
+            print(f"plotly.io 저장 실패: {pio_error}")
+        
+        # 대안: HTML 파일로 저장
+        try:
+            import json
+            fig_json = json.dumps(fig_combined, cls=plotly.utils.PlotlyJSONEncoder)
+            
+            html_template = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+            </head>
+            <body>
+                <div id="plotly-div" style="width:1200px;height:800px;"></div>
+                <script>
+                    var figureData = {fig_json};
+                    Plotly.newPlot('plotly-div', figureData.data, figureData.layout, {{displayModeBar: false}});
+                </script>
+            </body>
+            </html>
+            """
+            
+            html_filename = filename.replace('.png', '.html')
+            default_btn = [html.I(className="fas fa-camera me-1"), "이미지 저장"]
+            return dict(content=html_template, filename=html_filename), default_btn, False
+            
+        except Exception as html_error:
+            print(f"HTML 저장도 실패: {html_error}")
+            error_btn = [html.I(className="fas fa-times me-1"), "실패"]
+            return dash.no_update, error_btn, False
+        
+    except Exception as e:
+        print(f"단면도 이미지 저장 전체 오류: {e}")
+        error_btn = [html.I(className="fas fa-times me-1"), "오류"]
+        return dash.no_update, error_btn, False
+
+# ───────────────────── 단면도 INP 파일 저장 콜백 ─────────────────────
+@callback(
+    Output("download-section-inp", "data"),
+    Input("btn-save-section-inp", "n_clicks"),
+    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    State("time-slider-section", "value"),
+    prevent_initial_call=True,
+)
+def save_section_inp(n_clicks, selected_rows, tbl_data, time_value):
+    """단면도 탭에서 현재 선택된 시간의 INP 파일을 저장"""
+    if not n_clicks or not selected_rows or not tbl_data:
+        raise PreventUpdate
+    
+    try:
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+        concrete_pk = row["concrete_pk"]
+        concrete_name = row.get("name", concrete_pk)
+        
+        # INP 파일 경로 찾기
+        inp_dir = f"inp/{concrete_pk}"
+        inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+        
+        if not inp_files:
+            raise PreventUpdate
+        
+        # 현재 시간에 해당하는 파일 선택
+        if time_value is not None:
+            file_idx = min(int(time_value), len(inp_files)-1)
+        else:
+            file_idx = len(inp_files) - 1  # 최신 파일
+        
+        current_file = inp_files[file_idx]
+        
+        if not os.path.exists(current_file):
+            raise PreventUpdate
+        
+        # 파일명 생성
+        time_str = os.path.basename(current_file).split(".")[0]
+        filename = f"{concrete_name}_{time_str}.inp"
+        
+        # 파일 읽기 및 다운로드
+        with open(current_file, 'r', encoding='utf-8') as f:
+            file_content = f.read()
+        
+        return dict(content=file_content, filename=filename)
+        
+    except Exception as e:
+        print(f"단면도 INP 파일 저장 오류: {e}")
+        raise PreventUpdate
 
 
