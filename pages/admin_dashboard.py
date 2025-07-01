@@ -467,86 +467,54 @@ def layout(**kwargs):
     """Admin dashboard layout."""
     return html.Div([
         dcc.Location(id="admin-dashboard-url", refresh=False),
-        dcc.Interval(
-            id='dashboard-interval',
-            interval=30*1000,  # 30초마다 업데이트
-            n_intervals=0
-        ),
-        # 카스텀 CSS 스타일
-        html.Style("""
-            .hover-card {
-                transition: all 0.3s ease !important;
-                border: 1px solid rgba(0,0,0,0.1) !important;
-            }
-            .hover-card:hover {
-                transform: translateY(-2px) !important;
-                box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
-                border-color: rgba(0,123,255,0.3) !important;
-            }
-            .card-body {
-                border-radius: 8px;
-            }
-            .card-header {
-                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                border-bottom: 1px solid rgba(0,0,0,0.1);
-                font-weight: 600;
-            }
-        """),
         dbc.Container([
-            # 메인 콘텐츠
+            # 간단한 테스트 레이아웃
             dbc.Row([
                 dbc.Col([
                     dbc.Card([
                         dbc.CardHeader([
-                            html.Div([
-                                html.H4("🔧 관리자 기능", className="mb-0 text-primary"),
-                                html.Small("실시간 모니터링 • 30초마다 자동 업데이트", className="text-muted")
-                            ])
+                            html.H4("🔧 관리자 대시보드", className="mb-0 text-primary")
                         ]),
                         dbc.CardBody([
+                            html.P("관리자 대시보드가 정상적으로 로드되었습니다.", className="text-center"),
+                            html.Hr(),
                             dbc.Row([
                                 dbc.Col([
-                                    create_feature_card(
-                                        "📊 프로젝트 관리",
-                                        "프로젝트 생성, 수정, 삭제 및 권한 관리",
-                                        "/admin_projects",
-                                        "primary"
-                                    )
-                                ], width=3),
+                                    dbc.Card([
+                                        dbc.CardBody([
+                                            html.H5("📊 프로젝트 관리", className="card-title text-primary"),
+                                            html.P("프로젝트 생성, 수정, 삭제 및 권한 관리", className="card-text"),
+                                            dcc.Link(
+                                                dbc.Button("프로젝트 관리", color="primary", className="w-100"),
+                                                href="/admin_projects"
+                                            )
+                                        ])
+                                    ], className="mb-3")
+                                ], width=4),
                                 dbc.Col([
-                                    create_feature_card(
-                                        "📋 일반 로그",
-                                        "로그인, 센서, 프로젝트, 콘크리트 로그 확인",
-                                        "/admin_logs",
-                                        "success"
-                                    )
-                                ], width=3),
+                                    dbc.Card([
+                                        dbc.CardBody([
+                                            html.H5("📋 일반 로그", className="card-title text-success"),
+                                            html.P("로그인, 센서, 프로젝트, 콘크리트 로그 확인", className="card-text"),
+                                            dcc.Link(
+                                                dbc.Button("일반 로그", color="success", className="w-100"),
+                                                href="/admin_logs"
+                                            )
+                                        ])
+                                    ], className="mb-3")
+                                ], width=4),
                                 dbc.Col([
-                                    create_feature_card(
-                                        "⚙️ 자동화 로그",
-                                        "자동화 작업 로그 및 모니터링",
-                                        "/admin_automation",
-                                        "warning"
-                                    )
-                                ], width=3),
-                            ]),
-                            
-                            html.Hr(className="my-4"),
-                            
-                            # 시스템 현황
-                            dbc.Row([
-                                dbc.Col([
-                                    html.H5("📈 시스템 현황", className="text-dark mb-3"),
-                                    html.Div(id="system-overview-charts")
-                                ])
-                            ]),
-                            
-                            # 데이터 분석
-                            dbc.Row([
-                                dbc.Col([
-                                    html.H5("📊 데이터 분석", className="text-dark mb-3 mt-4"),
-                                    html.Div(id="data-analysis-charts")
-                                ])
+                                    dbc.Card([
+                                        dbc.CardBody([
+                                            html.H5("⚙️ 자동화 로그", className="card-title text-warning"),
+                                            html.P("자동화 작업 로그 및 모니터링", className="card-text"),
+                                            dcc.Link(
+                                                dbc.Button("자동화 로그", color="warning", className="w-100"),
+                                                href="/admin_automation"
+                                            )
+                                        ])
+                                    ], className="mb-3")
+                                ], width=4)
                             ])
                         ])
                     ], className="shadow")
@@ -555,173 +523,4 @@ def layout(**kwargs):
         ], fluid=True)
     ])
 
-@callback(
-    [Output("system-overview-charts", "children"),
-     Output("data-analysis-charts", "children")],
-    [Input("admin-dashboard-url", "pathname"),
-     Input("dashboard-interval", "n_intervals")]
-)
-def update_dashboard_charts(pathname, n_intervals):
-    """대시보드 차트 업데이트"""
-    try:
-        stats = get_system_stats()
-        
-        # 안전한 데이터 추출
-        dates = stats.get('dates', [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(6, -1, -1)])
-        login_daily = stats.get('login_daily', [0] * 7)
-        project_cumulative = stats.get('project_cumulative', [0] * 7)
-        concrete_cumulative = stats.get('concrete_cumulative', [0] * 7)
-        sensor_data_cumulative = stats.get('sensor_data_cumulative', [0] * 7)
-        sensor_data_daily = stats.get('sensor_data_daily', [0] * 7)
-        inp_conversion_daily = stats.get('inp_conversion_daily', [0] * 7)
-        inp_to_frd_daily = stats.get('inp_to_frd_daily', [0] * 7)
-        frd_to_vtk_daily = stats.get('frd_to_vtk_daily', [0] * 7)
-        
-        # === 시스템 현황 차트 ===
-        overview_charts = dbc.Row([
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardBody([
-                        create_mini_chart(
-                            dates, 
-                            login_daily, 
-                            "일별 로그인 횟수", 
-                            "#007bff", 
-                            "bar", 
-                            "회"
-                        )
-                    ], className="p-2")
-                ], className="h-100 shadow-sm border-0 hover-card")
-            ], width=3),
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardBody([
-                        create_mini_chart(
-                            dates, 
-                            project_cumulative, 
-                            "누적 프로젝트 수", 
-                            "#28a745", 
-                            "line", 
-                            "개"
-                        )
-                    ], className="p-2")
-                ], className="h-100 shadow-sm border-0 hover-card")
-            ], width=3),
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardBody([
-                        create_mini_chart(
-                            dates, 
-                            concrete_cumulative, 
-                            "누적 콘크리트 수", 
-                            "#ffc107", 
-                            "line", 
-                            "개"
-                        )
-                    ], className="p-2")
-                ], className="h-100 shadow-sm border-0 hover-card")
-            ], width=3),
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardBody([
-                        create_mini_chart(
-                            dates, 
-                            sensor_data_cumulative, 
-                            "누적 센서 데이터 수", 
-                            "#17a2b8", 
-                            "line", 
-                            "건"
-                        )
-                    ], className="p-2")
-                ], className="h-100 shadow-sm border-0 hover-card")
-            ], width=3)
-        ], className="g-3")
-        
-        # === 데이터 분석 차트 ===
-        analysis_charts = dbc.Row([
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardHeader([
-                        html.H6("📊 센서 데이터 수집", className="mb-0 text-primary")
-                    ]),
-                    dbc.CardBody([
-                        create_analysis_chart(
-                            dates, 
-                            sensor_data_daily, 
-                            "일별 센서 데이터 수집", 
-                            "#007bff"
-                        )
-                    ], className="p-2")
-                ], className="h-100 shadow-sm border-0 hover-card")
-            ], width=6),
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardHeader([
-                        html.H6("🔄 INP 파일 변환", className="mb-0 text-success")
-                    ]),
-                    dbc.CardBody([
-                        create_analysis_chart(
-                            dates, 
-                            inp_conversion_daily, 
-                            "일별 INP 변환 작업", 
-                            "#28a745"
-                        )
-                    ], className="p-2")
-                ], className="h-100 shadow-sm border-0 hover-card")
-            ], width=6)
-        ], className="g-3 mb-3")
-        
-        analysis_charts_2 = dbc.Row([
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardHeader([
-                        html.H6("🔄 INP → FRD 변환", className="mb-0 text-warning")
-                    ]),
-                    dbc.CardBody([
-                        create_analysis_chart(
-                            dates, 
-                            inp_to_frd_daily, 
-                            "일별 INP to FRD 변환", 
-                            "#ffc107"
-                        )
-                    ], className="p-2")
-                ], className="h-100 shadow-sm border-0 hover-card")
-            ], width=6),
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardHeader([
-                        html.H6("🔄 FRD → VTK 변환", className="mb-0 text-info")
-                    ]),
-                    dbc.CardBody([
-                        create_analysis_chart(
-                            dates, 
-                            frd_to_vtk_daily, 
-                            "일별 FRD to VTK 변환", 
-                            "#17a2b8"
-                        )
-                    ], className="p-2")
-                ], className="h-100 shadow-sm border-0 hover-card")
-            ], width=6)
-        ], className="g-3")
-        
-        # 분석 차트들을 하나의 div로 결합
-        analysis_section = html.Div([
-            analysis_charts,
-            analysis_charts_2
-        ])
-        
-        return overview_charts, analysis_section
-    
-    except Exception as e:
-        print(f"대시보드 차트 업데이트 오류: {e}")
-        # 에러 발생 시 기본 메시지 반환
-        error_message = html.Div([
-            html.Div([
-                html.I(className="fas fa-exclamation-triangle fa-3x text-warning mb-3"),
-                html.H5("데이터 로딩 중 오류가 발생했습니다", className="text-muted"),
-                html.P("잠시 후 다시 시도해주세요.", className="text-muted")
-            ], className="text-center py-5")
-        ])
-        return error_message, error_message
-
-# 권한 확인은 app.py의 통합 콜백에서 처리하므로 이 콜백을 제거합니다 
+# 복잡한 콜백들은 임시로 제거하여 페이지 로딩 문제를 해결합니다 
