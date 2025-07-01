@@ -30,6 +30,15 @@ def setup_auto_inp_to_frd_logger():
 
 logger = setup_auto_inp_to_frd_logger()
 
+# 로그 기록할 이벤트만 정의
+def log_frd_conversion_success(concrete_pk, base):
+    """FRD 변환 성공 시에만 로그 기록"""
+    logger.info(f"{concrete_pk}/{base}.inp → frd/dat 변환 완료")
+
+def log_error(message):
+    """오류 로그 기록"""
+    logger.error(message)
+
 def inp_to_frd(concrete_pk, inp_path):
     """
     ccx 로 inp 를 실행한 뒤,
@@ -52,36 +61,31 @@ def inp_to_frd(concrete_pk, inp_path):
     dat_target = os.path.join(dat_dir, f"{base}.dat")
     
     if os.path.exists(frd_target) and os.path.exists(dat_target):
-        logger.info(f"{concrete_pk}/{base} 파일들이 이미 존재하므로 건너뜁니다.")
         return
 
     try:
-        logger.info(f"{concrete_pk}/{base} CCX 실행 시작")
         # 1) CCX 실행 (.frd, .dat, .cvg, .sta 생성) - 파일명만 사용, 확장자 제외
         subprocess.run(['ccx', base], cwd=work_dir, check=True)
-        logger.info(f"{concrete_pk}/{base} CCX 실행 완료")
         
         # 3) .frd, .dat 이동
         frd_src = os.path.join(work_dir, f"{base}.frd")
         dat_src = os.path.join(work_dir, f"{base}.dat")
         if os.path.exists(frd_src):
             shutil.move(frd_src, frd_target)
-            logger.info(f"{concrete_pk}/{base}.frd 파일 이동 완료")
         if os.path.exists(dat_src):
             shutil.move(dat_src, dat_target)
-            logger.info(f"{concrete_pk}/{base}.dat 파일 이동 완료")
 
         # 4) .cvg, .sta 파일 삭제
         for ext in ('.cvg', '.sta'):
             p = os.path.join(work_dir, f"{base}{ext}")
             if os.path.exists(p):
                 os.remove(p)
-                logger.info(f"{concrete_pk}/{base}{ext} 파일 삭제")
                 
-        logger.info(f"{concrete_pk}/{base} INP to FRD 변환 완료")
+        # FRD 변환 성공 시에만 로그 기록
+        log_frd_conversion_success(concrete_pk, base)
         
     except Exception as e:
-        logger.error(f"{concrete_pk}/{base} INP to FRD 변환 오류: {e}")
+        log_error(f"{concrete_pk}/{base} INP to FRD 변환 오류: {e}")
 
 def convert_all_inp_to_frd():
     """
@@ -91,8 +95,6 @@ def convert_all_inp_to_frd():
          dat/{concrete_pk}/ 에 .dat
       3) .cvg, .sta 파일 삭제
     """
-    logger.info("전체 INP to FRD 변환 시작")
-    
     total_files = 0
     converted_files = 0
     skipped_files = 0
@@ -120,41 +122,34 @@ def convert_all_inp_to_frd():
             dat_target = os.path.join(dat_dir, f"{base}.dat")
             
             if os.path.exists(frd_target) and os.path.exists(dat_target):
-                logger.info(f"{concrete_pk}/{base} 파일들이 이미 존재하므로 건너뜁니다.")
                 skipped_files += 1
                 continue
 
             try:
-                logger.info(f"{concrete_pk}/{base} CCX 실행 시작")
                 # 1) CCX 실행 (파일명만 사용, 확장자 제외)
                 subprocess.run(['ccx', base], cwd=root, check=True)
-                logger.info(f"{concrete_pk}/{base} CCX 실행 완료")
 
                 # 3) .frd, .dat 이동
                 frd_src = os.path.join(root, f"{base}.frd")
                 dat_src = os.path.join(root, f"{base}.dat")
                 if os.path.exists(frd_src):
                     shutil.move(frd_src, frd_target)
-                    logger.info(f"{concrete_pk}/{base}.frd 파일 이동 완료")
                 if os.path.exists(dat_src):
                     shutil.move(dat_src, dat_target)
-                    logger.info(f"{concrete_pk}/{base}.dat 파일 이동 완료")
 
                 # 4) .cvg, .sta 파일 삭제
                 for ext in ('.cvg', '.sta'):
                     p = os.path.join(root, f"{base}{ext}")
                     if os.path.exists(p):
                         os.remove(p)
-                        logger.info(f"{concrete_pk}/{base}{ext} 파일 삭제")
 
-                logger.info(f"{concrete_pk}/{base}.inp → frd/dat 변환 완료")
+                # FRD 변환 성공 시에만 로그 기록
+                log_frd_conversion_success(concrete_pk, base)
                 converted_files += 1
                 
             except Exception as e:
-                logger.error(f"{concrete_pk}/{base} INP to FRD 변환 오류: {e}")
+                log_error(f"{concrete_pk}/{base} INP to FRD 변환 오류: {e}")
                 error_files += 1
-    
-    logger.info(f"전체 INP to FRD 변환 완료 - 총: {total_files}, 변환: {converted_files}, 건너뜀: {skipped_files}, 오류: {error_files}")
 
 # 스크립트 맨 아래나 auto_inp() 호출 직후에 추가:
 if __name__ == "__main__":

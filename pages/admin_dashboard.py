@@ -257,8 +257,8 @@ def get_system_stats():
                                         log_data = parse_automation_log_line(line)
                                         if log_data and date in log_data["timestamp"]:
                                             if log_data["category"] == "AUTO_SENSOR":
-                                                # 센서 데이터 처리 완료 메시지 카운트
-                                                if any(keyword in log_data["message"] for keyword in ["데이터 처리 완료", "데이터 수집", "처리 완료"]):
+                                                # UPDATED 메시지만 카운트
+                                                if "UPDATED" in log_data["message"]:
                                                     sensor_data_daily[i] += 1
                             except Exception as e:
                                 print(f"센서 자동화 로그 읽기 오류: {e}")
@@ -272,8 +272,8 @@ def get_system_stats():
                                         log_data = parse_automation_log_line(line)
                                         if log_data and date in log_data["timestamp"]:
                                             if log_data["category"] == "AUTO_INP":
-                                                # INP 파일 생성 완료 메시지 카운트
-                                                if any(keyword in log_data["message"] for keyword in ["INP 파일 생성 완료", "처리 완료", ".inp"]):
+                                                # "Successfully generated INP file:" 메시지만 카운트
+                                                if "Successfully generated INP file:" in log_data["message"]:
                                                     inp_conversion_daily[i] += 1
                             except Exception as e:
                                 print(f"INP 자동화 로그 읽기 오류: {e}")
@@ -287,8 +287,8 @@ def get_system_stats():
                                         log_data = parse_automation_log_line(line)
                                         if log_data and date in log_data["timestamp"]:
                                             if log_data["category"] == "AUTO_INP_TO_FRD":
-                                                # CCX 실행 완료 메시지 카운트 (FRD 파일 생성 의미)
-                                                if any(keyword in log_data["message"] for keyword in ["CCX 실행 완료", "실행 완료", "완료"]):
+                                                # "→ frd/dat 변환 완료" 메시지만 카운트
+                                                if "→ frd/dat 변환 완료" in log_data["message"]:
                                                     inp_to_frd_daily[i] += 1
                             except Exception as e:
                                 print(f"INP_TO_FRD 자동화 로그 읽기 오류: {e}")
@@ -302,9 +302,8 @@ def get_system_stats():
                                         log_data = parse_automation_log_line(line)
                                         if log_data and date in log_data["timestamp"]:
                                             if log_data["category"] == "AUTO_FRD_TO_VTK":
-                                                # VTK 변환 성공 메시지 카운트 (실패는 제외)
-                                                if any(keyword in log_data["message"] for keyword in ["변환 완료", "생성 완료", "완료"]) and \
-                                                   not any(keyword in log_data["message"] for keyword in ["실패", "오류", "ERROR"]):
+                                                # "VTK 변환 완료:" 메시지만 카운트
+                                                if "VTK 변환 완료:" in log_data["message"]:
                                                     frd_to_vtk_daily[i] += 1
                             except Exception as e:
                                 print(f"FRD_TO_VTK 자동화 로그 읽기 오류: {e}")

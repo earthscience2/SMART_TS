@@ -185,6 +185,7 @@ def auto_sensor_data():
                                 WHERE device_id=%s AND channel=%s AND time=%s
                             """, (hmd, sv, tmp, device_id, channel, ts))
                             update_count += 1
+                            # UPDATE 시에만 로그 기록
                             logger.info(f"UPDATED {device_id}/{channel} @ {ts}: hmd={hmd}, sv={sv}, tmp={tmp}")
                         else:
                             cursor.execute("""
@@ -193,7 +194,7 @@ def auto_sensor_data():
                                 VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
                             """, (device_id, channel, ts, hmd, sv, tmp))
                             insert_count += 1
-                            logger.info(f"INSERTED {device_id}/{channel} @ {ts}: hmd={hmd}, sv={sv}, tmp={tmp}")
+                            # INSERT는 로그 기록하지 않음
 
                     conn.commit()
                     print(f"✅ 완료 (신규:{insert_count}, 갱신:{update_count})")
