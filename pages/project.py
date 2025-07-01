@@ -2968,8 +2968,8 @@ def update_temp_tab(store_data, x, y, z, range_filter, selected_rows, tbl_data):
     # 그래프 생성
     fig_temp = go.Figure()
     if temp_times and temp_values:
-        # 모든 시간 정보를 'M/D H시' 형식으로 표시
-        x_labels = [dt.strftime('%-m/%-d %H시') for dt in temp_times]
+        # 날짜만 표시 (시간 제거)
+        x_labels = [dt.strftime('%-m/%-d') for dt in temp_times]
         fig_temp.add_trace(go.Scatter(x=x_labels, y=temp_values, mode='lines+markers', name='온도'))
         
         # 필터 정보를 제목에 표시
@@ -2979,7 +2979,7 @@ def update_temp_tab(store_data, x, y, z, range_filter, selected_rows, tbl_data):
         
         fig_temp.update_layout(
             title=title,
-            xaxis_title="시간",
+            xaxis_title="날짜",
             yaxis_title="온도(°C)"
         )
     return fig_3d, fig_temp
