@@ -3833,7 +3833,7 @@ def update_viewer3d_time_info(current_file_title, active_tab):
             "height": "65px",
             "display": "flex",
             "flexDirection": "column",
-            "justifyContent": "flex-start",
+            "justifyContent": "center",
             "alignItems": "center"
         })
     ], style={
