@@ -257,18 +257,6 @@ layout = html.Div([
                         # 기본 정보 섹션
                         html.Div([
                             html.H6("📝 기본 정보", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
-                            # 기존 콘크리트에서 불러오기
-                            dbc.Row([
-                                dbc.Col([
-                                    dbc.Label("기존 콘크리트에서 복사", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
-                                    dcc.Dropdown(
-                                        id="add-copy-dropdown",
-                                        placeholder="복사할 콘크리트를 선택하세요",
-                                        clearable=True,
-                                        style={"fontSize": "0.85rem"}
-                                    )
-                                ], width=12),
-                            ], className="mb-2"),
                             dbc.Row([
                                 dbc.Col([
                                     dbc.Label("콘크리트 이름", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
@@ -387,6 +375,7 @@ layout = html.Div([
                 ], className="mt-3"),
             ]),
             dbc.ModalFooter([
+                dbc.Button("📥 불러오기", id="add-load-btn", color="outline-primary", className="px-3", size="sm"),
                 dbc.Button("3D 미리보기", id="add-build", color="info", className="px-3", size="sm"),
                 dbc.Button("재령분석", id="add-age-analysis", color="warning", className="px-3", size="sm"),
                 dbc.Button("저장", id="add-save", color="success", className="px-3 fw-semibold ms-auto", size="sm"),
@@ -529,6 +518,63 @@ layout = html.Div([
                 dbc.Button("재령분석", id="edit-age-analysis", color="warning", className="px-3", size="sm"),
                 dbc.Button("저장", id="edit-save", color="success", className="px-3 fw-semibold ms-auto", size="sm"),
                 dbc.Button("닫기", id="edit-close", color="secondary", className="px-3", size="sm"),
+            ], className="border-0 pt-2"),
+        ]),
+
+        # 콘크리트 불러오기 모달
+        dbc.Modal(id="modal-load-concrete", is_open=False, size="md", className="modal-notion", children=[
+            dbc.ModalHeader([
+                html.H5("📥 기존 콘크리트 불러오기", className="mb-0 text-secondary fw-bold", style={"fontSize": "1.1rem"})
+            ], className="border-0 pb-1"),
+            dbc.ModalBody([
+                html.P("복사할 콘크리트를 선택하세요. 선택한 콘크리트의 설정값이 입력창에 복사됩니다.", 
+                       className="text-muted mb-3", style={"fontSize": "0.9rem"}),
+                html.Div([
+                    dash_table.DataTable(
+                        id="load-concrete-table",
+                        page_size=5,
+                        row_selectable="single",
+                        style_table={"overflowY": "auto", "height": "40vh"},
+                        style_cell={
+                            "whiteSpace": "nowrap", 
+                            "textAlign": "center",
+                            "fontSize": "0.85rem",
+                            "padding": "12px 8px",
+                            "border": "none",
+                            "borderBottom": "1px solid #f1f1f0",
+                        },
+                        style_header={
+                            "backgroundColor": "#fafafa", 
+                            "fontWeight": 600,
+                            "color": "#37352f",
+                            "border": "none",
+                            "borderBottom": "1px solid #e9e9e7",
+                            "fontSize": "0.8rem",
+                        },
+                        style_data={
+                            "backgroundColor": "white",
+                            "border": "none",
+                            "color": "#37352f"
+                        },
+                        style_data_conditional=[
+                            {
+                                'if': {'row_index': 'odd'},
+                                'backgroundColor': '#fbfbfa'
+                            },
+                            {
+                                'if': {'state': 'selected'},
+                                'backgroundColor': '#e8f4fd',
+                                'border': '1px solid #579ddb',
+                                'borderRadius': '6px',
+                                'color': '#1d4ed8'
+                            }
+                        ]
+                    )
+                ], className="rounded border")
+            ]),
+            dbc.ModalFooter([
+                dbc.Button("불러오기", id="load-concrete-apply", color="primary", className="px-3", size="sm", disabled=True),
+                dbc.Button("취소", id="load-concrete-cancel", color="secondary", className="px-3", size="sm"),
             ], className="border-0 pt-2"),
         ]),
 
@@ -903,7 +949,6 @@ def control_add_button(project_pk):
 # ───────────────────── ④ 추가 모달 토글
 @callback(
     Output("modal-add", "is_open"),
-    Output("add-copy-dropdown", "value"),
     Input("btn-add", "n_clicks"),
     Input("add-close", "n_clicks"),
     Input("add-save", "n_clicks"),
@@ -913,41 +958,72 @@ def control_add_button(project_pk):
 def toggle_add(b1, b2, b3, is_open):
     trig = ctx.triggered_id
     if trig == "btn-add":
-        return True, None  # 모달 열 때 드롭다운 초기화
+        return True
     if trig in ("add-close", "add-save"):
-        return False, None  # 모달 닫을 때 드롭다운 초기화
-    return is_open, dash.no_update
+        return False
+    return is_open
 
-# ───────────────────── ④-1 추가 모달 열릴 때 기존 콘크리트 목록 로드
+# ───────────────────── ④-1 불러오기 모달 토글
 @callback(
-    Output("add-copy-dropdown", "options"),
-    Input("modal-add", "is_open"),
+    Output("modal-load-concrete", "is_open"),
+    Input("add-load-btn", "n_clicks"),
+    Input("load-concrete-cancel", "n_clicks"),
+    Input("load-concrete-apply", "n_clicks"),
+    State("modal-load-concrete", "is_open"),
+    prevent_initial_call=True
+)
+def toggle_load_modal(open_btn, cancel_btn, apply_btn, is_open):
+    trig = ctx.triggered_id
+    if trig == "add-load-btn":
+        return True
+    if trig in ("load-concrete-cancel", "load-concrete-apply"):
+        return False
+    return is_open
+
+# ───────────────────── ④-2 불러오기 모달 열릴 때 테이블 데이터 로드
+@callback(
+    Output("load-concrete-table", "data"),
+    Output("load-concrete-table", "columns"),
+    Output("load-concrete-table", "selected_rows"),
+    Input("modal-load-concrete", "is_open"),
     State("selected-project-store", "data"),
     prevent_initial_call=True
 )
-def load_concrete_options_for_copy(is_open, project_pk):
+def load_concrete_table_data(is_open, project_pk):
     if not is_open or not project_pk:
-        return []
+        return [], [], []
     
     try:
         df_all = api_db.get_concrete_data()
         df = df_all[df_all["project_pk"] == project_pk]
         
         if df.empty:
-            return []
+            return [], [], []
         
-        options = []
-        for _, row in df.iterrows():
-            options.append({
-                "label": row["name"],
-                "value": row["concrete_pk"]
-            })
+        # 필요한 컬럼만 선택하여 표시
+        display_df = df[["concrete_pk", "name", "con_unit", "con_e"]].copy()
         
-        return options
+        cols = [
+            {"name": "이름", "id": "name", "type": "text"},
+            {"name": "해석단위(m)", "id": "con_unit", "type": "numeric"},
+            {"name": "탄성계수(GPa)", "id": "con_e", "type": "numeric"},
+        ]
+        
+        return display_df.to_dict("records"), cols, []
+        
     except Exception:
-        return []
+        return [], [], []
 
-# ───────────────────── ④-2 기존 콘크리트 선택 시 값들 복사
+# ───────────────────── ④-3 테이블 선택 시 불러오기 버튼 활성화
+@callback(
+    Output("load-concrete-apply", "disabled"),
+    Input("load-concrete-table", "selected_rows"),
+    prevent_initial_call=True
+)
+def enable_load_button(selected_rows):
+    return len(selected_rows) == 0  # 선택된 행이 없으면 비활성화
+
+# ───────────────────── ④-4 불러오기 적용 시 값들 복사
 @callback(
     Output("add-name", "value", allow_duplicate=True),
     Output("add-nodes", "value", allow_duplicate=True),
@@ -962,14 +1038,19 @@ def load_concrete_options_for_copy(is_open, project_pk):
     Output("add-d", "value", allow_duplicate=True),
     Output("add-e", "value", allow_duplicate=True),
     Output("add-preview", "figure", allow_duplicate=True),
-    Input("add-copy-dropdown", "value"),
+    Input("load-concrete-apply", "n_clicks"),
+    State("load-concrete-table", "selected_rows"),
+    State("load-concrete-table", "data"),
     prevent_initial_call=True
 )
-def copy_concrete_values(selected_concrete_pk):
-    if not selected_concrete_pk:
+def apply_concrete_load(n_clicks, selected_rows, table_data):
+    if not n_clicks or not selected_rows:
         raise PreventUpdate
     
     try:
+        # 선택된 행의 concrete_pk 가져오기
+        selected_concrete_pk = table_data[selected_rows[0]]["concrete_pk"]
+        
         # 선택된 콘크리트 데이터 조회
         df = api_db.get_concrete_data(selected_concrete_pk)
         
