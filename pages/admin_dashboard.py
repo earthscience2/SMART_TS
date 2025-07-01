@@ -643,6 +643,12 @@ def layout(**kwargs):
                              html.H5("📈 시스템 현황 (최근 7일)", className="text-dark mb-3"),
                              html.Div(id="system-stats-charts"),
                              
+                             html.Hr(className="my-4"),
+                             
+                             # 자동화 현황 차트
+                             html.H5("⚙️ 자동화 현황 (최근 7일)", className="text-dark mb-3"),
+                             html.Div(id="automation-stats-charts"),
+                             
                              # 자동 업데이트용 interval
                              dcc.Interval(
                                  id='stats-interval',
@@ -724,11 +730,12 @@ def create_simple_chart(dates, data, title, color="#007bff", unit="개"):
         ])
 
 @callback(
-    Output("system-stats-charts", "children"),
+    [Output("system-stats-charts", "children"),
+     Output("automation-stats-charts", "children")],
     [Input("admin-dashboard-url", "pathname"),
      Input("stats-interval", "n_intervals")]
 )
-def update_system_stats(pathname, n_intervals):
+def update_dashboard_stats(pathname, n_intervals):
     """시스템 통계 차트 업데이트"""
     try:
         stats = get_system_stats()
@@ -740,15 +747,15 @@ def update_system_stats(pathname, n_intervals):
         concrete_daily = stats.get('concrete_daily', [0] * 7)
         sensor_daily = stats.get('sensor_daily', [0] * 7)
         
-        # 4개의 차트를 2x2 그리드로 배치
-        return dbc.Row([
+        # 4개의 시스템 현황 차트를 2x2 그리드로 배치
+        system_charts = dbc.Row([
             dbc.Col([
                 dbc.Card([
                     dbc.CardBody([
                         create_simple_chart(
                             dates, 
                             login_daily, 
-                            "일별 로그인 횟수", 
+                            "로그인 횟수", 
                             "#007bff",
                             "회"
                         )
@@ -762,7 +769,7 @@ def update_system_stats(pathname, n_intervals):
                         create_simple_chart(
                             dates, 
                             project_daily, 
-                            "일별 프로젝트 수", 
+                            "프로젝트 수", 
                             "#28a745",
                             "개"
                         )
@@ -776,7 +783,7 @@ def update_system_stats(pathname, n_intervals):
                         create_simple_chart(
                             dates, 
                             concrete_daily, 
-                            "일별 콘크리트 수", 
+                            "콘크리트 수", 
                             "#ffc107",
                             "개"
                         )
@@ -790,7 +797,7 @@ def update_system_stats(pathname, n_intervals):
                         create_simple_chart(
                             dates, 
                             sensor_daily, 
-                            "일별 센서 수", 
+                            "센서 수", 
                             "#17a2b8",
                             "개"
                         )
@@ -799,12 +806,80 @@ def update_system_stats(pathname, n_intervals):
             ], width=6, className="mb-3")
         ])
         
+        # 자동화 현황 데이터 추출
+        sensor_data_daily = stats.get('sensor_data_daily', [0] * 7)
+        inp_conversion_daily = stats.get('inp_conversion_daily', [0] * 7)
+        inp_to_frd_daily = stats.get('inp_to_frd_daily', [0] * 7)
+        frd_to_vtk_daily = stats.get('frd_to_vtk_daily', [0] * 7)
+        
+        # 4개의 자동화 현황 차트를 2x2 그리드로 배치
+        automation_charts = dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        create_simple_chart(
+                            dates, 
+                            sensor_data_daily, 
+                            "센서 데이터 수집", 
+                            "#8e44ad",
+                            "회"
+                        )
+                    ], className="p-2")
+                ], className="shadow-sm border-0")
+            ], width=6, className="mb-3"),
+            
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        create_simple_chart(
+                            dates, 
+                            inp_conversion_daily, 
+                            "INP 파일 생성", 
+                            "#e67e22",
+                            "회"
+                        )
+                    ], className="p-2")
+                ], className="shadow-sm border-0")
+            ], width=6, className="mb-3"),
+            
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        create_simple_chart(
+                            dates, 
+                            inp_to_frd_daily, 
+                            "FRD 파일 생성", 
+                            "#27ae60",
+                            "회"
+                        )
+                    ], className="p-2")
+                ], className="shadow-sm border-0")
+            ], width=6, className="mb-3"),
+            
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        create_simple_chart(
+                            dates, 
+                            frd_to_vtk_daily, 
+                            "VTK 파일 생성", 
+                            "#c0392b",
+                            "회"
+                        )
+                    ], className="p-2")
+                ], className="shadow-sm border-0")
+            ], width=6, className="mb-3")
+        ])
+        
+        return system_charts, automation_charts
+        
     except Exception as e:
         print(f"시스템 통계 업데이트 오류: {e}")
-        return html.Div([
+        error_div = html.Div([
             html.Div([
                 html.I(className="fas fa-exclamation-triangle fa-2x text-warning mb-2"),
                 html.P("데이터 로딩 중 오류가 발생했습니다", className="text-muted"),
                 html.Small("잠시 후 다시 시도해주세요.", className="text-muted")
             ], className="text-center py-4")
-        ]) 
+        ])
+        return error_div, error_div 
