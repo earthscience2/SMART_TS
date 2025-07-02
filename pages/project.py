@@ -84,8 +84,11 @@ def create_probability_curve_figure():
     tci_values = np.linspace(0.1, 3.0, 300)
     
     # 수정된 로지스틱 근사식: 0.4에서 100%, 1.0에서 40%, 2.0에서 0%
-    # P(x) = 100 / (1 + e^(6(x-0.6)))
-    probabilities = 100 / (1 + np.exp(6 * (tci_values - 0.6)))
+    # P(x) = 100 / (1 + e^(6(x-0.6))) (오버플로우 방지)
+    exponents = 6 * (tci_values - 0.6)
+    # 오버플로우 방지: 큰 값은 클리핑
+    exponents = np.clip(exponents, -700, 700)
+    probabilities = 100 / (1 + np.exp(exponents))
     
     fig = go.Figure()
     
@@ -5384,11 +5387,19 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
             tci_y.append(fct / abs(syy) if abs(syy) > 0.00001 else 0)
             tci_z.append(fct / abs(szz) if abs(szz) > 0.00001 else 0)
         
-        # 균열발생확률 함수 정의 (로지스틱 근사식)
+        # 균열발생확률 함수 정의 (로지스틱 근사식, 오버플로우 방지)
         def crack_probability(tci):
             if tci == 0 or np.isnan(tci):
                 return 0
-            return 100 / (1 + np.exp(6 * (tci - 0.6)))
+            
+            # 지수 오버플로우 방지
+            exponent = 6 * (tci - 0.6)
+            if exponent > 700:  # exp(700) ≈ 10^304, 이후는 overflow
+                return 0.0  # TCI가 매우 클 때 확률은 0%에 근사
+            elif exponent < -700:  # exp(-700) ≈ 0
+                return 100.0  # TCI가 매우 작을 때 확률은 100%에 근사
+            else:
+                return 100 / (1 + np.exp(exponent))
         
         # TCI 계산 시 음수 응력은 확률 0%로 설정
         def calculate_tci_and_probability(stress, fct):
@@ -5859,11 +5870,19 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
             tci_y.append(fct / abs(syy) if abs(syy) > 0.00001 else 0)
             tci_z.append(fct / abs(szz) if abs(szz) > 0.00001 else 0)
         
-        # 균열발생확률 함수 정의 (로지스틱 근사식)
+        # 균열발생확률 함수 정의 (로지스틱 근사식, 오버플로우 방지)
         def crack_probability(tci):
             if tci == 0 or np.isnan(tci):
                 return 0
-            return 100 / (1 + np.exp(6 * (tci - 0.6)))
+            
+            # 지수 오버플로우 방지
+            exponent = 6 * (tci - 0.6)
+            if exponent > 700:  # exp(700) ≈ 10^304, 이후는 overflow
+                return 0.0  # TCI가 매우 클 때 확률은 0%에 근사
+            elif exponent < -700:  # exp(-700) ≈ 0
+                return 100.0  # TCI가 매우 작을 때 확률은 100%에 근사
+            else:
+                return 100 / (1 + np.exp(exponent))
         
         # TCI 계산 시 음수 응력은 확률 0%로 설정
         def calculate_tci_and_probability(stress, fct):
