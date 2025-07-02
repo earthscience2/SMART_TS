@@ -479,7 +479,8 @@ def dl_switch_tab(file_data, start_date, end_date):
                              color="success", 
                              size="sm",
                              style={"fontSize": "0.8rem", "fontWeight": "600"},
-                             n_clicks=0),
+                             n_clicks=0,
+                             disabled=False),
                     dcc.Download(id=f"dl-{active_tab.split('-')[1]}-download")
                 ], className="d-flex justify-content-between align-items-center")
             ], className="py-2")
@@ -605,31 +606,34 @@ def dl_switch_tab(file_data, start_date, end_date):
     Output("dl-inp-download", "data"),
     Input("btn-dl-inp", "n_clicks"),
     State("file-data-store", "data"),
-    State("dl-tab-content", "children"),
+    State({"type": "all-files-table", "index": "tab-inp"}, "selected_rows"),
+    State({"type": "all-files-table", "index": "tab-inp"}, "data"),
     prevent_initial_call=True,
 )
-def dl_download_inp(n_clicks, file_data, tab_content):
-    return _download_selected_files(n_clicks, file_data, "inp")
+def dl_download_inp(n_clicks, file_data, selected_rows, table_data):
+    return _download_selected_files(n_clicks, file_data, "inp", selected_rows, table_data)
 
 @dash.callback(
     Output("dl-frd-download", "data"),
     Input("btn-dl-frd", "n_clicks"),
     State("file-data-store", "data"),
-    State("dl-tab-content", "children"),
+    State({"type": "all-files-table", "index": "tab-frd"}, "selected_rows"),
+    State({"type": "all-files-table", "index": "tab-frd"}, "data"),
     prevent_initial_call=True,
 )
-def dl_download_frd(n_clicks, file_data, tab_content):
-    return _download_selected_files(n_clicks, file_data, "frd")
+def dl_download_frd(n_clicks, file_data, selected_rows, table_data):
+    return _download_selected_files(n_clicks, file_data, "frd", selected_rows, table_data)
 
 @dash.callback(
     Output("dl-vtk-download", "data"),
     Input("btn-dl-vtk", "n_clicks"),
     State("file-data-store", "data"),
-    State("dl-tab-content", "children"),
+    State({"type": "all-files-table", "index": "tab-vtk"}, "selected_rows"),
+    State({"type": "all-files-table", "index": "tab-vtk"}, "data"),
     prevent_initial_call=True,
 )
-def dl_download_vtk(n_clicks, file_data, tab_content):
-    return _download_selected_files(n_clicks, file_data, "vtk")
+def dl_download_vtk(n_clicks, file_data, selected_rows, table_data):
+    return _download_selected_files(n_clicks, file_data, "vtk", selected_rows, table_data)
 
 # ───────────────────── 새로운 다운로드 로직 ────────────────────
 # ───────────────────── ⑦ 모든 파일 선택/해제 콜백 ────────────────────
@@ -658,36 +662,53 @@ def handle_select_all(select_clicks, deselect_clicks, data):
     
     raise PreventUpdate
 
-def _download_selected_files(n_clicks, file_data, ftype):
-    """선택된 파일들을 다운로드하는 함수 (새로운 구조에 맞게 수정 필요)"""
+def _download_selected_files(n_clicks, file_data, ftype, selected_rows, table_data):
+    """선택된 파일들을 다운로드하는 함수"""
     if not n_clicks or not file_data:
         raise PreventUpdate
     
-    # 임시로 모든 파일을 다운로드하도록 구현 (선택 기능은 향후 구현)
     folder = file_data["folder"]
-    grouped_files = file_data["grouped_files"]
     
-    all_files = []
-    for date_files in grouped_files.values():
-        all_files.extend([f["filename"] for f in date_files])
+    # 선택된 파일들만 다운로드
+    if selected_rows and table_data:
+        # 선택된 행의 파일명들 추출
+        selected_files = [table_data[i]["filename"] for i in selected_rows if i < len(table_data)]
+        download_type = "선택된"
+    else:
+        # 선택된 파일이 없으면 모든 파일 다운로드
+        grouped_files = file_data["grouped_files"]
+        selected_files = []
+        for date_files in grouped_files.values():
+            selected_files.extend([f["filename"] for f in date_files])
+        download_type = "전체"
     
-    if not all_files:
+    if not selected_files:
+        raise PreventUpdate
+    
+    # 실제 존재하는 파일만 필터링
+    existing_files = []
+    for fname in selected_files:
+        path = os.path.join(folder, fname)
+        if os.path.exists(path):
+            existing_files.append(fname)
+    
+    if not existing_files:
         raise PreventUpdate
     
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as zf:
-        for fname in all_files:
+        for fname in existing_files:
             path = os.path.join(folder, fname)
-            if os.path.exists(path):
-                # 날짜별 폴더 구조로 압축
-                dt = parse_filename_datetime(fname)
-                if dt:
-                    date_folder = dt.strftime("%Y-%m-%d")
-                    archive_path = f"{date_folder}/{fname}"
-                else:
-                    archive_path = f"기타/{fname}"
-                zf.write(path, arcname=archive_path)
+            # 날짜별 폴더 구조로 압축
+            dt = parse_filename_datetime(fname)
+            if dt:
+                date_folder = dt.strftime("%Y-%m-%d")
+                archive_path = f"{date_folder}/{fname}"
+            else:
+                archive_path = f"기타/{fname}"
+            zf.write(path, arcname=archive_path)
     
     buf.seek(0)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return dcc.send_bytes(buf.getvalue(), filename=f"{ftype}_files_{timestamp}.zip") 
+    file_count = len(existing_files)
+    return dcc.send_bytes(buf.getvalue(), filename=f"{ftype}_{download_type}파일_{file_count}개_{timestamp}.zip") 
