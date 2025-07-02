@@ -5020,10 +5020,9 @@ def validate_inputs(fct28, formula_type):
     Input("fct28-input", "value"),
     Input("tab-content", "children"),
     Input("tabs-main", "active_tab"),
-    Input("tci-time-slider", "value"),
     prevent_initial_call=False
 )
-def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_content, active_tab, slider_value):
+def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_content, active_tab):
     import os, glob
     import numpy as np
     from dash import dash_table
@@ -5069,10 +5068,8 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
             marks[i] = date_str
             seen_dates.add(date_str)
     
-    # 슬라이더 value
-    if slider_value is None:
-        slider_value = max_idx
-    file_idx = min(int(slider_value), max_idx)
+    # 슬라이더 value (기본값으로 마지막 인덱스 사용)
+    file_idx = max_idx
     
     # 시간 슬라이더 컴포넌트
     slider = dcc.Slider(
@@ -5354,7 +5351,300 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
         return html.Div([time_info, slider]), tci_table
         
     except Exception as e:
-        return slider, html.Div(f"데이터 파싱 오류: {str(e)}")
+        return html.Div("데이터 파싱 오류"), html.Div(f"데이터 파싱 오류: {str(e)}")
+
+# TCI 슬라이더 값 변경을 처리하는 별도 콜백
+@callback(
+    Output("tci-tci-table-container", "children", allow_duplicate=True),
+    Input("tci-time-slider", "value"),
+    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    State("fct-formula-type", "value"),
+    State("fct28-input", "value"),
+    prevent_initial_call=True
+)
+def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, formula_type, fct28):
+    """TCI 슬라이더 값이 변경될 때 표를 업데이트합니다."""
+    import os, glob
+    import numpy as np
+    from dash import dash_table
+    import pandas as pd
+    from datetime import datetime
+    
+    if not selected_rows or not tbl_data:
+        return dash.no_update
+    
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    inp_dir = f"inp/{concrete_pk}"
+    inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+    
+    if not inp_files:
+        return html.Div("INP 파일이 없습니다.")
+    
+    # 시간 파싱
+    times = []
+    for f in inp_files:
+        try:
+            time_str = os.path.basename(f).split(".")[0]
+            dt = datetime.strptime(time_str, "%Y%m%d%H")
+            times.append(dt)
+        except:
+            continue
+    
+    if not times:
+        return html.Div("시간 정보를 파싱할 수 없습니다.")
+    
+    max_idx = len(times) - 1
+    
+    # 슬라이더 value 처리
+    if slider_value is None:
+        file_idx = max_idx
+    else:
+        file_idx = min(int(slider_value), max_idx)
+    
+    # 현재 파일
+    current_file = inp_files[file_idx]
+    current_time = times[file_idx]
+    
+    # 콘크리트 타설일 기준으로 경과일 계산 (0.1일 단위)
+    try:
+        if fct28 is None or fct28 == "":
+            fct28_val = 20.0
+        else:
+            fct28_val = float(fct28)
+    except:
+        fct28_val = 20.0
+    
+    # a, b 값은 기본값 사용
+    a_val = 1.0
+    b_val = 1.0
+    
+    # 타설일을 기준으로 경과일 계산 (0.1일 단위)
+    time_diff = current_time - times[0]
+    t_days = time_diff.days + time_diff.seconds / (24 * 3600)
+    t_days = round(t_days * 10) / 10
+    
+    # fct(t) 계산
+    if formula_type == "ceb":
+        fct = fct28_val * (t_days / (a_val + b_val * t_days)) ** 0.5
+    else:
+        fct = fct28_val * (t_days / 28) ** 0.5 if t_days <= 28 else fct28_val
+    
+    # VTK 파일에서 노드별 응력 데이터 파싱 (기존 코드와 동일)
+    try:
+        vtk_dir = f"assets/vtk/{concrete_pk}"
+        vtk_files = sorted(glob.glob(f"{vtk_dir}/*.vtk"))
+        
+        if not vtk_files:
+            return html.Div("VTK 파일이 없습니다.")
+        
+        # 현재 시간에 해당하는 VTK 파일 찾기
+        current_vtk_file = None
+        for vtk_file in vtk_files:
+            vtk_time_str = os.path.basename(vtk_file).split(".")[0]
+            try:
+                vtk_dt = datetime.strptime(vtk_time_str, "%Y%m%d%H")
+                if vtk_dt == current_time:
+                    current_vtk_file = vtk_file
+                    break
+            except:
+                continue
+        
+        if not current_vtk_file:
+            return html.Div(f"현재 시간({current_time.strftime('%Y-%m-%d %H:%M')})에 해당하는 VTK 파일이 없습니다.")
+        
+        # VTK 파일 파싱 (기존 코드와 동일)
+        with open(current_vtk_file, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+        
+        # 노드 정보 파싱 (기존 코드와 동일)
+        node_coords = {}
+        n_points = 0
+        in_points_section = False
+        point_count = 0
+        
+        for i, line in enumerate(lines):
+            line = line.strip()
+            
+            if line.startswith('POINTS'):
+                parts = line.split()
+                if len(parts) >= 2:
+                    n_points = int(parts[1])
+                    in_points_section = True
+                    point_count = 0
+                    continue
+            
+            if in_points_section and (line.startswith('CELLS') or line.startswith('CELL_TYPES') or line.startswith('POINT_DATA')):
+                in_points_section = False
+                continue
+            
+            if in_points_section and line and point_count < n_points:
+                try:
+                    coords = line.split()
+                    if len(coords) >= 3:
+                        x = float(coords[0])
+                        y = float(coords[1])
+                        z = float(coords[2])
+                        node_coords[point_count + 1] = (x, y, z)
+                        point_count += 1
+                except (ValueError, IndexError):
+                    continue
+        
+        # VTK 파일에서 응력 텐서 데이터 파싱 (기존 코드와 동일)
+        stress_tensor_data = []
+        in_stress_tensor_section = False
+        stress_tensor_count = 0
+        expected_stress_tensor_count = 0
+        
+        for line in lines:
+            line = line.strip()
+            
+            if 'COMPONENT_NAMES' in line and 'XX' in line and 'YY' in line and 'ZZ' in line:
+                for j in range(max(0, lines.index(line)-10), lines.index(line)):
+                    if 'double' in lines[j]:
+                        parts = lines[j].strip().split()
+                        if len(parts) >= 3:
+                            try:
+                                expected_stress_tensor_count = int(parts[2])
+                                in_stress_tensor_section = True
+                                stress_tensor_count = 0
+                                break
+                            except ValueError:
+                                continue
+                continue
+            
+            if in_stress_tensor_section and line and stress_tensor_count < expected_stress_tensor_count * 6:
+                try:
+                    values = line.split()
+                    for value in values:
+                        try:
+                            stress_tensor_data.append(float(value))
+                            stress_tensor_count += 1
+                        except ValueError:
+                            continue
+                except:
+                    continue
+            
+            if in_stress_tensor_section and (line.startswith('S_Mises') or line.startswith('S_Principal') or line.startswith('METADATA')):
+                in_stress_tensor_section = False
+                break
+        
+        node_ids = sorted(node_coords.keys())
+        
+        if not node_ids:
+            return html.Div("노드 데이터를 찾을 수 없습니다.")
+        
+        # 응력 텐서 데이터를 노드별로 분배 (기존 코드와 동일)
+        sxx_data = []
+        syy_data = []
+        szz_data = []
+        
+        if len(stress_tensor_data) < len(node_ids) * 6:
+            np.random.seed(42)
+            sxx_data = np.random.normal(0, 0.002, len(node_ids))
+            syy_data = np.random.normal(0, 0.002, len(node_ids))
+            szz_data = np.random.normal(0, 0.002, len(node_ids))
+        else:
+            for i in range(len(node_ids)):
+                idx = i * 6
+                if idx + 2 < len(stress_tensor_data):
+                    sxx_gpa = stress_tensor_data[idx + 0] / 1e9
+                    syy_gpa = stress_tensor_data[idx + 1] / 1e9
+                    szz_gpa = stress_tensor_data[idx + 2] / 1e9
+                    sxx_data.append(sxx_gpa)
+                    syy_data.append(syy_gpa)
+                    szz_data.append(szz_gpa)
+                else:
+                    sxx_data.append(0.0)
+                    syy_data.append(0.0)
+                    szz_data.append(0.0)
+        
+        # TCI 계산 (기존 코드와 동일)
+        tci_x = []
+        tci_y = []
+        tci_z = []
+        
+        for i, node_id in enumerate(node_ids):
+            sxx = sxx_data[i]
+            syy = syy_data[i]
+            szz = szz_data[i]
+            
+            tci_x.append(fct / abs(sxx) if abs(sxx) > 0.00001 else np.nan)
+            tci_y.append(fct / abs(syy) if abs(syy) > 0.00001 else np.nan)
+            tci_z.append(fct / abs(szz) if abs(szz) > 0.00001 else np.nan)
+        
+        # 데이터프레임 생성 (기존 코드와 동일)
+        df = pd.DataFrame({
+            "Node ID": node_ids,
+            "X (m)": [f"{node_coords[nid][0]:.3f}" for nid in node_ids],
+            "Y (m)": [f"{node_coords[nid][1]:.3f}" for nid in node_ids],
+            "Z (m)": [f"{node_coords[nid][2]:.3f}" for nid in node_ids],
+            "Sxx (GPa)": [f"{sxx:.6f}" for sxx in sxx_data],
+            "Syy (GPa)": [f"{syy:.6f}" for syy in syy_data],
+            "Szz (GPa)": [f"{szz:.6f}" for szz in szz_data],
+            "TCI-X": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_x],
+            "TCI-Y": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_y],
+            "TCI-Z": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_z],
+        })
+        
+        # 표 생성 (기존 코드와 동일)
+        tci_table = dash_table.DataTable(
+            columns=[{"name": i, "id": i} for i in df.columns],
+            data=df.to_dict("records"),
+            page_size=15,
+            style_table={"overflowY": "auto", "height": "400px", "marginTop": "8px"},
+            style_cell={
+                "textAlign": "center",
+                "fontSize": "12px",
+                "padding": "8px"
+            },
+            style_header={
+                "backgroundColor": "#f8fafc",
+                "fontWeight": "600",
+                "fontSize": "13px"
+            },
+            style_data_conditional=[
+                {
+                    "if": {"column_id": "TCI-X", "filter_query": "{TCI-X} < 1.0"},
+                    "backgroundColor": "#fee2e2",
+                    "color": "#dc2626",
+                    "fontWeight": "bold"
+                },
+                {
+                    "if": {"column_id": "TCI-Y", "filter_query": "{TCI-Y} < 1.0"},
+                    "backgroundColor": "#fee2e2",
+                    "color": "#dc2626",
+                    "fontWeight": "bold"
+                },
+                {
+                    "if": {"column_id": "TCI-Z", "filter_query": "{TCI-Z} < 1.0"},
+                    "backgroundColor": "#fee2e2",
+                    "color": "#dc2626",
+                    "fontWeight": "bold"
+                },
+                {
+                    "if": {"column_id": "TCI-X", "filter_query": "{TCI-X} >= 1.0"},
+                    "backgroundColor": "#dcfce7",
+                    "color": "#166534"
+                },
+                {
+                    "if": {"column_id": "TCI-Y", "filter_query": "{TCI-Y} >= 1.0"},
+                    "backgroundColor": "#dcfce7",
+                    "color": "#166534"
+                },
+                {
+                    "if": {"column_id": "TCI-Z", "filter_query": "{TCI-Z} >= 1.0"},
+                    "backgroundColor": "#dcfce7",
+                    "color": "#166534"
+                }
+            ]
+        )
+        
+        return tci_table
+        
+    except Exception as e:
+        return html.Div(f"데이터 파싱 오류: {str(e)}")
 
 
 
