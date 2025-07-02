@@ -4716,12 +4716,18 @@ def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
     Output("fct-formula-preview", "children"),
     Input("fct-formula-type", "value"),
     Input("fct28-input", "value"),
-    prevent_initial_call=True
+    Input("a-input", "value"),
+    Input("b-input", "value"),
+    prevent_initial_call=False
 )
-def update_formula_display(formula_type, fct28):
+def update_formula_display(formula_type, fct28, a, b):
     import dash_table
     import numpy as np
     import plotly.graph_objects as go
+    
+    # 기본값 설정
+    if formula_type is None:
+        formula_type = "ceb"
     
     # a, b 입력 필드 동적 생성
     if formula_type == "ceb":
@@ -4772,79 +4778,95 @@ def update_formula_display(formula_type, fct28):
         ab_inputs = html.Div()  # 빈 div로 a, b 입력 필드 숨김
         formula_text = "식: fct(t) = fct,28 * (t/28)^0.5 (t ≤ 28)"
     
-    # 미리보기 테이블 생성
-    if fct28:
-        try:
-            fct28 = float(fct28)
-            a = float(a)
-            b = float(b)
+    try:
+        # 미리보기 테이블 생성
+        # 기본값으로 미리보기 표시
+        if fct28 is None or fct28 == "":
+            fct28 = 20.0  # 기본값
+        else:
+            try:
+                fct28 = float(fct28)
+            except (ValueError, TypeError):
+                fct28 = 20.0  # 기본값
+        
+        # a, b 값 처리
+        if a is None or a == "":
+            a = 1.0
+        else:
+            try:
+                a = float(a)
+            except (ValueError, TypeError):
+                a = 1.0
             
-            # fct(t) 계산 (1~28, 0.1 간격)
-            t_vals = np.arange(1, 28.01, 0.1)
-            fct_vals = []
-            for t in t_vals:
-                try:
-                    if formula_type == "ceb":
-                        if a and b:
-                            fct = fct28 * (t / (a + b * t)) ** 0.5
-                        else:
-                            fct = 0
+        if b is None or b == "":
+            b = 1.0
+        else:
+            try:
+                b = float(b)
+            except (ValueError, TypeError):
+                b = 1.0
+        
+        # fct(t) 계산 (1~28, 0.1 간격)
+        t_vals = np.arange(1, 28.01, 0.1)
+        fct_vals = []
+        for t in t_vals:
+            try:
+                if formula_type == "ceb":
+                    fct = fct28 * (t / (a + b * t)) ** 0.5
+                else:
+                    # 경험식 (KCI/KS)
+                    if t <= 28:
+                        fct = fct28 * (t / 28) ** 0.5
                     else:
-                        # 경험식 (KCI/KS)
-                        if t <= 28:
-                            fct = fct28 * (t / 28) ** 0.5
-                        else:
-                            fct = fct28
-                except Exception:
-                    fct = 0
-                fct_vals.append(fct)
-            
-            df = pd.DataFrame({"t[일]": np.round(t_vals, 2), "fct(t) 인장강도 [GPa]": np.round(fct_vals, 4)})
-            preview_table = dash_table.DataTable(
-                columns=[{"name": i, "id": i} for i in df.columns],
-                data=df.to_dict("records"),
-                page_size=10,
-                style_table={"overflowY": "auto", "height": "240px", "marginTop": "8px"},
-                style_cell={"textAlign": "center"},
-                style_header={"backgroundColor": "#f8fafc", "fontWeight": "600"},
-            )
-            
-            # 그래프 생성
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(
-                x=t_vals,
-                y=fct_vals,
-                mode='lines+markers',
-                name='fct(t)',
-                line=dict(color='#3b82f6', width=2),
-                marker=dict(size=4, color='#3b82f6')
-            ))
-            
-            fig.update_layout(
-                title="인장강도 발달 곡선",
-                xaxis_title="일령 (일)",
-                yaxis_title="인장강도 (MPa)",
-                height=300,
-                margin=dict(l=50, r=50, t=50, b=50),
-                showlegend=False,
-                plot_bgcolor='white',
-                paper_bgcolor='white'
-            )
-            
-            fig.update_xaxes(gridcolor='#e5e7eb', showgrid=True)
-            fig.update_yaxes(gridcolor='#e5e7eb', showgrid=True)
-            
-            preview_content = html.Div([
-                html.Small(formula_text, style={"color": "#64748b"}),
-                html.Div("↓ 1~28일 인장강도 미리보기 (0.1 간격)", style={"marginTop": "8px", "fontSize": "13px", "color": "#64748b"}),
-                dbc.Row([
-                    dbc.Col(preview_table, md=6),
-                    dbc.Col(dcc.Graph(figure=fig, config={'displayModeBar': False}), md=6)
-                ], className="g-2")
-            ])
-        except:
-            preview_content = html.Small(formula_text, style={"color": "#64748b"})
-    else:
+                        fct = fct28
+            except Exception:
+                fct = 0
+            fct_vals.append(fct)
+        
+        df = pd.DataFrame({"t[일]": np.round(t_vals, 2), "fct(t) 인장강도 [GPa]": np.round(fct_vals, 4)})
+        preview_table = dash_table.DataTable(
+            columns=[{"name": i, "id": i} for i in df.columns],
+            data=df.to_dict("records"),
+            page_size=10,
+            style_table={"overflowY": "auto", "height": "240px", "marginTop": "8px"},
+            style_cell={"textAlign": "center"},
+            style_header={"backgroundColor": "#f8fafc", "fontWeight": "600"},
+        )
+        
+        # 그래프 생성
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=t_vals,
+            y=fct_vals,
+            mode='lines+markers',
+            name='fct(t)',
+            line=dict(color='#3b82f6', width=2),
+            marker=dict(size=4, color='#3b82f6')
+        ))
+        
+        fig.update_layout(
+            title="인장강도 발달 곡선",
+            xaxis_title="일령 (일)",
+            yaxis_title="인장강도 (MPa)",
+            height=300,
+            margin=dict(l=50, r=50, t=50, b=50),
+            showlegend=False,
+            plot_bgcolor='white',
+            paper_bgcolor='white'
+        )
+        
+        fig.update_xaxes(gridcolor='#e5e7eb', showgrid=True)
+        fig.update_yaxes(gridcolor='#e5e7eb', showgrid=True)
+        
+        preview_content = html.Div([
+            html.Small(formula_text, style={"color": "#64748b"}),
+            html.Div("↓ 1~28일 인장강도 미리보기 (0.1 간격)", style={"marginTop": "8px", "fontSize": "13px", "color": "#64748b"}),
+            dbc.Row([
+                dbc.Col(preview_table, md=6),
+                dbc.Col(dcc.Graph(figure=fig, config={'displayModeBar': False}), md=6)
+            ], className="g-2")
+        ])
+    except Exception:
         preview_content = html.Small(formula_text, style={"color": "#64748b"})
     
     return ab_inputs, preview_content
