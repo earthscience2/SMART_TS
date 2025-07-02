@@ -2286,32 +2286,81 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 })
             ])
         
-        # ───────────── TCI 인장강도 계산식 선택 및 결과 UI 추가 ─────────────
+                # ───────────── TCI 인장강도 계산식 선택 및 결과 UI 추가 ─────────────
         tci_ui = html.Div([
-            html.H5("인장강도(fct) 계산식 선택", style={"marginTop": "12px"}),
-            dcc.RadioItems(
-                id="fct-formula-type",
-                options=[
-                    {"label": "CEB-FIP Model Code 1990", "value": "ceb"},
-                    {"label": "경험식 (KCI/KS)", "value": "exp"},
-                ],
-                value="ceb",
-                labelStyle={"display": "block", "marginRight": "16px"},
-                style={"marginBottom": "8px"}
-            ),
-                        html.Div([
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Label("fct,28 (28일 인장강도, GPa) [1~100]"),
-                        dbc.Input(id="fct28-input", type="number", value=20, placeholder="20", min=1, max=100),
-                    ], md=4),
-                    html.Div(id="ab-inputs-container"),
-                ], className="g-2"),
-                html.Div(id="fct-formula-preview"),
-            ]),
-            dbc.Button("CSV 다운로드", id="btn-tci-csv", color="success", className="mt-2"),
-            dcc.Download(id="download-tci-csv"),
-        ], style={"backgroundColor": "#f8fafc", "borderRadius": "12px", "padding": "20px", "marginBottom": "24px", "border": "1px solid #e2e8f0"})
+            html.Div([
+                html.H6("🧮 인장강도(fct) 계산식", style={
+                    "fontWeight": "600",
+                    "color": "#374151",
+                    "marginBottom": "16px",
+                    "fontSize": "16px"
+                }),
+                dcc.RadioItems(
+                    id="fct-formula-type",
+                    options=[
+                        {"label": "CEB-FIP Model Code 1990", "value": "ceb"},
+                        {"label": "경험식 (KCI/KS)", "value": "exp"},
+                    ],
+                    value="ceb",
+                    labelStyle={
+                        "display": "block", 
+                        "marginRight": "16px",
+                        "padding": "8px 12px",
+                        "borderRadius": "8px",
+                        "marginBottom": "8px",
+                        "backgroundColor": "#f9fafb",
+                        "border": "1px solid #e5e7eb"
+                    },
+                    style={"marginBottom": "20px"}
+                ),
+                html.Div([
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Label("fct,28 (28일 인장강도, GPa) [1~100]", style={
+                                "fontWeight": "500",
+                                "color": "#374151",
+                                "marginBottom": "8px"
+                            }),
+                            dbc.Input(
+                                id="fct28-input", 
+                                type="number", 
+                                value=20, 
+                                placeholder="20", 
+                                min=1, 
+                                max=100,
+                                style={
+                                    "borderRadius": "8px",
+                                    "border": "1px solid #d1d5db",
+                                    "padding": "10px 12px"
+                                }
+                            ),
+                        ], md=4),
+                        html.Div(id="ab-inputs-container"),
+                    ], className="g-3"),
+                    html.Div(id="fct-formula-preview"),
+                ]),
+                html.Div([
+                    dbc.Button(
+                        "📥 CSV 다운로드", 
+                        id="btn-tci-csv", 
+                        color="success", 
+                        className="mt-3",
+                        style={
+                            "borderRadius": "8px",
+                            "padding": "10px 20px",
+                            "fontWeight": "500"
+                        }
+                    ),
+                    dcc.Download(id="download-tci-csv"),
+                ], style={"textAlign": "center", "marginTop": "20px"})
+            ], style={
+                "padding": "24px",
+                "backgroundColor": "white",
+                "borderRadius": "12px",
+                "border": "1px solid #e5e7eb",
+                "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
+            })
+        ], style={"marginBottom": "24px"})
         # ───────────── 기존 TCI 분석 개요/히트맵/요약 UI 아래에 삽입 ─────────────
         return html.Div([
             # TCI 인장강도 계산식 및 결과 UI
@@ -4667,11 +4716,9 @@ def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
     Output("fct-formula-preview", "children"),
     Input("fct-formula-type", "value"),
     Input("fct28-input", "value"),
-    Input("a-input", "value"),
-    Input("b-input", "value"),
     prevent_initial_call=True
 )
-def update_formula_display(formula_type, fct28, a, b):
+def update_formula_display(formula_type, fct28):
     import dash_table
     import numpy as np
     import plotly.graph_objects as go
@@ -4680,14 +4727,46 @@ def update_formula_display(formula_type, fct28, a, b):
     if formula_type == "ceb":
         ab_inputs = dbc.Row([
             dbc.Col([
-                dbc.Label("a (보통 1.0) [0.5~2]"),
-                dbc.Input(id="a-input", type="number", value=1, placeholder="1.0", min=0.5, max=2),
+                dbc.Label("a (보통 1.0) [0.5~2]", style={
+                    "fontWeight": "500",
+                    "color": "#374151",
+                    "marginBottom": "8px"
+                }),
+                dbc.Input(
+                    id="a-input", 
+                    type="number", 
+                    value=1, 
+                    placeholder="1.0", 
+                    min=0.5, 
+                    max=2,
+                    style={
+                        "borderRadius": "8px",
+                        "border": "1px solid #d1d5db",
+                        "padding": "10px 12px"
+                    }
+                ),
             ], md=4),
             dbc.Col([
-                dbc.Label("b (보통 1.0) [0.5~2]"),
-                dbc.Input(id="b-input", type="number", value=1, placeholder="1.0", min=0.5, max=2),
+                dbc.Label("b (보통 1.0) [0.5~2]", style={
+                    "fontWeight": "500",
+                    "color": "#374151",
+                    "marginBottom": "8px"
+                }),
+                dbc.Input(
+                    id="b-input", 
+                    type="number", 
+                    value=1, 
+                    placeholder="1.0", 
+                    min=0.5, 
+                    max=2,
+                    style={
+                        "borderRadius": "8px",
+                        "border": "1px solid #d1d5db",
+                        "padding": "10px 12px"
+                    }
+                ),
             ], md=4),
-        ], className="g-2")
+        ], className="g-3")
         formula_text = "식: fct(t) = fct,28 * ( t / (a + b*t) )^0.5"
     else:
         ab_inputs = html.Div()  # 빈 div로 a, b 입력 필드 숨김
@@ -4776,12 +4855,10 @@ def update_formula_display(formula_type, fct28, a, b):
     Output("project-alert", "color", allow_duplicate=True),
     Output("project-alert", "is_open", allow_duplicate=True),
     Input("fct28-input", "value"),
-    Input("a-input", "value"),
-    Input("b-input", "value"),
     State("fct-formula-type", "value"),
     prevent_initial_call=True
 )
-def validate_inputs(fct28, a, b, formula_type):
+def validate_inputs(fct28, formula_type):
     messages = []
     
     # fct28 검증
@@ -4793,23 +4870,8 @@ def validate_inputs(fct28, a, b, formula_type):
         except ValueError:
             messages.append("28일 인장강도는 숫자로 입력하세요.")
     
-    # CEB 공식일 때만 a, b 검증
-    if formula_type == "ceb":
-        if a is not None and a != "":
-            try:
-                a_val = float(a)
-                if a_val < 0.5 or a_val > 2:
-                    messages.append(f"a 값은 0.5~2 범위 내에서 입력하세요. (현재: {a_val})")
-            except ValueError:
-                messages.append("a 값은 숫자로 입력하세요.")
-        
-        if b is not None and b != "":
-            try:
-                b_val = float(b)
-                if b_val < 0.5 or b_val > 2:
-                    messages.append(f"b 값은 0.5~2 범위 내에서 입력하세요. (현재: {b_val})")
-            except ValueError:
-                messages.append("b 값은 숫자로 입력하세요.")
+    # CEB 공식일 때만 a, b 검증 (동적으로 생성된 입력 필드는 별도 콜백에서 처리)
+    pass
     
     if messages:
         return "\n".join(messages), "warning", True
@@ -4822,13 +4884,11 @@ def validate_inputs(fct28, a, b, formula_type):
     Input("btn-tci-csv", "n_clicks"),
     Input("fct-formula-type", "value"),
     Input("fct28-input", "value"),
-    Input("a-input", "value"),
-    Input("b-input", "value"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True
 )
-def calc_tci_and_download(csv_click, formula_type, fct28, a, b, selected_rows, tbl_data):
+def calc_tci_and_download(csv_click, formula_type, fct28, selected_rows, tbl_data):
     import dash
     import numpy as np
     from dash.exceptions import PreventUpdate
@@ -4852,10 +4912,9 @@ def calc_tci_and_download(csv_click, formula_type, fct28, a, b, selected_rows, t
     try:
         fct28 = float(fct28)
         if formula_type == "ceb":
-            if not a or not b:
-                return None
-            a = float(a)
-            b = float(b)
+            # CEB 공식의 경우 기본값 사용
+            a = 1.0
+            b = 1.0
     except ValueError:
         return None
     
