@@ -3446,20 +3446,53 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             # 정확한 매칭이 안 되면 부분 매칭 시도
             if not color_array:
                 print(f"정확한 매칭 실패, 부분 매칭 시도...")
-                for i in range(point_data.GetNumberOfArrays()):
-                    arr = point_data.GetArray(i)
-                    if arr and field_name.lower() in arr.GetName().lower():
-                        color_array = arr
-                        print(f"점 데이터에서 부분 매칭 필드 '{arr.GetName()}' 찾음")
-                        break
                 
+                # 컴포넌트별 필드 처리 (예: U:0, U:1, U:2)
+                if ':' in field_name:
+                    base_name, component_str = field_name.split(':', 1)
+                    try:
+                        component_idx = int(component_str)
+                        print(f"컴포넌트 필드 검색: {base_name}, 컴포넌트 {component_idx}")
+                        
+                        # 점 데이터에서 기본 필드 찾기
+                        for i in range(point_data.GetNumberOfArrays()):
+                            arr = point_data.GetArray(i)
+                            if arr and arr.GetName() == base_name:
+                                if arr.GetNumberOfComponents() > component_idx:
+                                    # 특정 컴포넌트만 추출
+                                    component_values = []
+                                    for j in range(arr.GetNumberOfTuples()):
+                                        component_values.append(arr.GetComponent(j, component_idx))
+                                    
+                                    # 단일 컴포넌트 배열 생성
+                                    color_array = vtk.vtkFloatArray()
+                                    color_array.SetName(f"{base_name}:{component_idx}")
+                                    for val in component_values:
+                                        color_array.InsertNextValue(val)
+                                    
+                                    print(f"컴포넌트 필드 '{field_name}' 생성 완료")
+                                    break
+                                else:
+                                    print(f"컴포넌트 인덱스 {component_idx}가 범위를 벗어남 (최대: {arr.GetNumberOfComponents()-1})")
+                    except ValueError:
+                        print(f"컴포넌트 인덱스 파싱 실패: {component_str}")
+                
+                # 일반적인 부분 매칭
                 if not color_array:
-                    for i in range(cell_data.GetNumberOfArrays()):
-                        arr = cell_data.GetArray(i)
+                    for i in range(point_data.GetNumberOfArrays()):
+                        arr = point_data.GetArray(i)
                         if arr and field_name.lower() in arr.GetName().lower():
                             color_array = arr
-                            print(f"셀 데이터에서 부분 매칭 필드 '{arr.GetName()}' 찾음")
+                            print(f"점 데이터에서 부분 매칭 필드 '{arr.GetName()}' 찾음")
                             break
+                    
+                    if not color_array:
+                        for i in range(cell_data.GetNumberOfArrays()):
+                            arr = cell_data.GetArray(i)
+                            if arr and field_name.lower() in arr.GetName().lower():
+                                color_array = arr
+                                print(f"셀 데이터에서 부분 매칭 필드 '{arr.GetName()}' 찾음")
+                                break
             
             if color_array:
                 print(f"색상 매핑 필드: {color_array.GetName()}, 값 범위: {color_array.GetRange()}")
@@ -3524,7 +3557,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         
         # 색상 매핑이 있는 경우 처리
         if color_array:
-            print(f"색상 매핑 적용: {field_name}, 프리셋: {preset}")
+            print(f"색상 매핑 적용: {color_array.GetName()}, 프리셋: {preset}")
             
             # 색상 범위 계산
             color_range = color_array.GetRange()
@@ -3554,7 +3587,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 **mesh_state,
                 "scalars": {
                     "vtkClass": "vtkDataArray",
-                    "name": field_name,
+                    "name": color_array.GetName(),
                     "numberOfComponents": color_array.GetNumberOfComponents(),
                     "size": color_array.GetNumberOfTuples(),
                     "values": color_values
