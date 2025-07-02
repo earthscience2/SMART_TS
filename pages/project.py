@@ -3297,12 +3297,29 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             reader.Update()
             ds = reader.GetOutput()
 
-        # UnstructuredGrid 처리 - 표면 추출하지 않고 원본 유지
+        # UnstructuredGrid 처리 - 내부 볼륨 보존을 위한 개선된 방식
         # GeometryFilter는 표면만 추출하므로 내부 볼륨이 사라질 수 있음
-        # 대신 원본 UnstructuredGrid를 그대로 사용
+        # 대신 원본 UnstructuredGrid를 그대로 사용하되, 더 안전한 처리
         if isinstance(ds, vtk.vtkUnstructuredGrid):
-            print("UnstructuredGrid 유지 - 표면 추출하지 않음")
+            print("UnstructuredGrid 유지 - 내부 볼륨 보존")
             # 원본 UnstructuredGrid를 그대로 사용하여 내부 구조 보존
+            # 단, 일부 dash_vtk 버전에서 UnstructuredGrid 지원이 제한적일 수 있음
+            # 이 경우를 대비해 안전장치 추가
+            
+            # UnstructuredGrid의 셀 타입 확인
+            cell_types = set()
+            for i in range(ds.GetNumberOfCells()):
+                cell = ds.GetCell(i)
+                cell_types.add(cell.GetCellType())
+            print(f"셀 타입들: {cell_types}")
+            
+            # 내부 볼륨이 있는 셀 타입인지 확인 (육면체, 사면체 등)
+            volume_cell_types = {vtk.VTK_HEXAHEDRON, vtk.VTK_TETRA, vtk.VTK_WEDGE, vtk.VTK_PYRAMID}
+            has_volume_cells = bool(cell_types & volume_cell_types)
+            print(f"내부 볼륨 셀 포함: {has_volume_cells}")
+            
+            if not has_volume_cells:
+                print("경고: 내부 볼륨 셀이 없습니다. 표면만 표시될 수 있습니다.")
         else:
             print("PolyData 사용")
 
@@ -3493,8 +3510,17 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             arr = ds_for_vis.GetPointData().GetArray(field_name)
             if arr is not None:
                 print("필드", field_name, "값 범위:", arr.GetRange())
+                print("필드", field_name, "컴포넌트 수:", arr.GetNumberOfComponents())
+                print("필드", field_name, "튜플 수:", arr.GetNumberOfTuples())
             else:
                 print("필드", field_name, "없음")
+                # 사용 가능한 모든 필드 출력
+                print("사용 가능한 모든 필드:")
+                for i in range(ds_for_vis.GetPointData().GetNumberOfArrays()):
+                    arr_name = ds_for_vis.GetPointData().GetArrayName(i)
+                    arr_temp = ds_for_vis.GetPointData().GetArray(arr_name)
+                    if arr_temp:
+                        print(f"  - {arr_name}: {arr_temp.GetNumberOfComponents()} 컴포넌트, {arr_temp.GetNumberOfTuples()} 튜플")
         
         # 메쉬 상태 생성 (컴포넌트 인덱스 처리)
         if field_name:
@@ -3503,9 +3529,13 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 base_field, comp_idx = field_name.split(":")
                 try:
                     comp_idx = int(comp_idx)
+                    print(f"컴포넌트 추출: {base_field}:{comp_idx}")
+                    
                     # 해당 컴포넌트만 추출하여 새로운 배열 생성
                     arr = ds_for_vis.GetPointData().GetArray(base_field)
                     if arr and arr.GetNumberOfComponents() > comp_idx:
+                        print(f"벡터 필드 {base_field}에서 컴포넌트 {comp_idx} 추출")
+                        
                         # 안전한 컴포넌트 추출 - numpy 직접 사용
                         import vtk
                         import vtk.util.numpy_support as nps
@@ -3513,13 +3543,16 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                         
                         # 벡터 배열을 numpy 배열로 변환
                         vector_data = nps.vtk_to_numpy(arr)
+                        print(f"벡터 데이터 형태: {vector_data.shape}")
                         
                         # 해당 컴포넌트만 추출
                         comp_data = vector_data[:, comp_idx]
+                        print(f"컴포넌트 {comp_idx} 데이터 범위: {comp_data.min():.6f} ~ {comp_data.max():.6f}")
                         
                         # numpy 배열을 VTK 배열로 변환
                         comp_arr = vtk.vtkFloatArray()
-                        comp_arr.SetName(f"{base_field}_{comp_idx}")
+                        comp_name = f"{base_field}_{comp_idx}"
+                        comp_arr.SetName(comp_name)
                         comp_arr.SetNumberOfValues(len(comp_data))
                         
                         for i, val in enumerate(comp_data):
@@ -3527,14 +3560,24 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                         
                         # 원본 데이터셋에 컴포넌트 배열 추가
                         ds_for_vis.GetPointData().AddArray(comp_arr)
-                        field_name = f"{base_field}_{comp_idx}"
+                        field_name = comp_name
+                        print(f"컴포넌트 배열 {comp_name} 추가 완료")
                     else:
+                        print(f"벡터 필드 {base_field}에서 컴포넌트 {comp_idx} 추출 실패")
+                        if arr:
+                            print(f"  - 사용 가능한 컴포넌트 수: {arr.GetNumberOfComponents()}")
+                        else:
+                            print(f"  - 필드 {base_field}가 존재하지 않음")
                         field_name = base_field
-                except (ValueError, IndexError):
+                except (ValueError, IndexError) as e:
+                    print(f"컴포넌트 추출 오류: {e}")
                     field_name = base_field
+            else:
+                print(f"스칼라 필드 사용: {field_name}")
             
             mesh_state = to_mesh_state(ds_for_vis, field_name)
         else:
+            print("필드 없음 - 기본 메쉬 상태 생성")
             mesh_state = to_mesh_state(ds_for_vis)
         # mesh_state 구조 확인
         try:
@@ -3672,6 +3715,13 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         
         if color_range and len(color_range) == 2:
             geometry_rep_props["colorDataRange"] = color_range
+        
+        # UnstructuredGrid의 경우 추가 속성 설정
+        if isinstance(ds_for_vis, vtk.vtkUnstructuredGrid):
+            # 내부 볼륨이 제대로 표시되도록 설정
+            geometry_rep_props["representation"] = "Surface"  # 또는 "Volume"
+            geometry_rep_props["opacity"] = 1.0
+            print("UnstructuredGrid용 추가 속성 설정")
         
         geometry_rep = dash_vtk.GeometryRepresentation(**geometry_rep_props)
         
