@@ -3371,13 +3371,17 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             print(f"셀 데이터 존재: {cells.GetNumberOfCells()}개")
             # 처음 5개 셀의 정보 출력
             for i in range(min(5, cells.GetNumberOfCells())):
-                cell = cells.GetCell(i)
-                if cell:
-                    point_ids = cell.GetPointIds()
-                    print(f"  셀 {i}: {point_ids.GetNumberOfIds()}개 점 연결")
-                    if point_ids.GetNumberOfIds() > 0:
-                        ids = [point_ids.GetId(j) for j in range(point_ids.GetNumberOfIds())]
-                        print(f"    연결된 점 ID: {ids}")
+                try:
+                    # GetCell() 메서드는 인덱스와 셀 객체를 받습니다
+                    cell = ds_for_vis.GetCell(i)
+                    if cell:
+                        point_ids = cell.GetPointIds()
+                        print(f"  셀 {i}: {point_ids.GetNumberOfIds()}개 점 연결")
+                        if point_ids.GetNumberOfIds() > 0:
+                            ids = [point_ids.GetId(j) for j in range(point_ids.GetNumberOfIds())]
+                            print(f"    연결된 점 ID: {ids}")
+                except Exception as cell_error:
+                    print(f"  셀 {i} 분석 오류: {cell_error}")
         else:
             print("⚠️ 셀 데이터가 없습니다!")
         
@@ -3421,12 +3425,15 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             
             # 셀들이 모두 같은 점을 참조하는지 확인
             if cells.GetNumberOfCells() > 0:
-                cell = cells.GetCell(0)
-                if cell:
-                    point_ids = cell.GetPointIds()
-                    if point_ids.GetNumberOfIds() > 0:
-                        first_cell_points = [point_ids.GetId(j) for j in range(point_ids.GetNumberOfIds())]
-                        print(f"첫 번째 셀의 점 ID: {first_cell_points}")
+                try:
+                    cell = ds_for_vis.GetCell(0)
+                    if cell:
+                        point_ids = cell.GetPointIds()
+                        if point_ids.GetNumberOfIds() > 0:
+                            first_cell_points = [point_ids.GetId(j) for j in range(point_ids.GetNumberOfIds())]
+                            print(f"첫 번째 셀의 점 ID: {first_cell_points}")
+                except Exception as first_cell_error:
+                    print(f"첫 번째 셀 분석 오류: {first_cell_error}")
         
         print("=== 데이터 분석 완료 ===")
         
@@ -3501,7 +3508,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             html.P(f"셀 개수: {ds_for_vis.GetNumberOfCells()}"),
             html.Hr(),
             html.P("VTK 파일 형식을 확인해주세요. FRD → VTK 변환이 올바르게 되었는지 점검이 필요합니다.", style={"color": "gray"})
-        ]), "", go.Figure(), slice_min, slice_max
+        ]), "", slice_min, slice_max
     
     # 기본 프리셋 설정
     if not preset:
