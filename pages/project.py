@@ -2048,67 +2048,15 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         first_file = times[-1][1]  # 최신 파일 사용
         file_path = os.path.join(assets_vtk_dir if file_type=='vtk' else assets_vtp_dir, first_file)
         
-        field_options = []
-        try:
-            import vtk
-            if file_type == 'vtk':
-                reader = vtk.vtkUnstructuredGridReader()
-                reader.SetFileName(file_path)
-                reader.Update()
-                ds = reader.GetOutput()
-            else:
-                reader = vtk.vtkXMLPolyDataReader()
-                reader.SetFileName(file_path)
-                reader.Update()
-                ds = reader.GetOutput()
-            
-            # UnstructuredGrid → PolyData 변환 (GeometryFilter)  ⭐ 추가
-            if isinstance(ds, vtk.vtkUnstructuredGrid):
-                geom_filter = vtk.vtkGeometryFilter()
-                geom_filter.SetInputData(ds)
-                geom_filter.Update()
-                ds = geom_filter.GetOutput()
-            
-            # 사용 가능한 필드 추출
-            point_data = ds.GetPointData()
-            field_names = []
-            for i in range(point_data.GetNumberOfArrays()):
-                arr_name = point_data.GetArrayName(i)
-                if arr_name:
-                    field_names.append(arr_name)
-            
-            # 한글 필드명 매핑
-            field_mapping = {
-                'Temperature': '온도(Temperature)',
-                'Displacement': '변위(Displacement)', 
-                'Stress': '응력(Stress)',
-                'Strain': '변형률(Strain)',
-                'Velocity': '속도(Velocity)',
-                'Pressure': '압력(Pressure)',
-                'U': '변위(U)',
-                'S': '응력(S)',
-                'S_Mises': '미세스응력(S_Mises)',
-                'S_Principal': '주응력(S_Principal)'
-            }
-            
-            from vtk.util import numpy_support as nps
-            comp_labels = ['X', 'Y', 'Z', 'C4', 'C5', 'C6']  # 최대 6개까지 명칭
-            for name in field_names:
-                arr_obj = point_data.GetArray(name)
-                ncomp = arr_obj.GetNumberOfComponents() if arr_obj else 1
-                display_name = field_mapping.get(name, f"{name}")
-                if ncomp == 1:
-                    field_options.append({"label": display_name, "value": name})
-                else:
-                    # 전체 크기(magnitude)
-                    field_options.append({"label": f"{display_name} (Mag)", "value": name})
-                    # 각 컴포넌트
-                    for ci in range(ncomp):
-                        c_label = comp_labels[ci] if ci < len(comp_labels) else f"C{ci}"
-                        field_options.append({"label": f"{display_name} – {c_label}", "value": f"{name}:{ci}"})
-            
-        except Exception as e:
-            print(f"필드 추출 오류: {e}")
+        # 고정된 6개 필드 옵션으로 설정
+        field_options = [
+            {"label": "변위 X", "value": "U:0"},
+            {"label": "변위 Y", "value": "U:1"}, 
+            {"label": "변위 Z", "value": "U:2"},
+            {"label": "응력 X", "value": "S:0"},
+            {"label": "응력 Y", "value": "S:1"},
+            {"label": "응력 Z", "value": "S:2"}
+        ]
         
         # 컬러맵 프리셋 옵션 (3개로 제한)
         preset_options = [
@@ -2175,7 +2123,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                             dcc.Dropdown(
                                 id="analysis-field-dropdown",
                                 options=field_options,
-                                value=field_options[0]["value"] if field_options else None,
+                                value="U:0",  # 기본값을 변위 X로 설정
                                 placeholder="필드 선택",
                                 style={"fontSize": "13px"}
                             )
@@ -3533,8 +3481,40 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             else:
                 print("필드", field_name, "없음")
         
-        # 메쉬 상태 생성
+        # 메쉬 상태 생성 (컴포넌트 인덱스 처리)
         if field_name:
+            # 컴포넌트 인덱스가 포함된 필드명 처리 (예: "U:0", "S:1")
+            if ":" in field_name:
+                base_field, comp_idx = field_name.split(":")
+                try:
+                    comp_idx = int(comp_idx)
+                    # 해당 컴포넌트만 추출하여 새로운 배열 생성
+                    arr = ds_for_vis.GetPointData().GetArray(base_field)
+                    if arr and arr.GetNumberOfComponents() > comp_idx:
+                        # 컴포넌트 추출
+                        import vtk
+                        extract = vtk.vtkExtractVectorComponents()
+                        extract.SetInputData(ds_for_vis)
+                        extract.SetInputArrayToProcess(0, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, base_field)
+                        extract.Update()
+                        
+                        # 추출된 컴포넌트를 원본 데이터셋에 추가
+                        extracted_ds = extract.GetOutput()
+                        comp_name = f"{base_field}_{comp_idx}"
+                        comp_arr = extracted_ds.GetPointData().GetArray(comp_name)
+                        
+                        if comp_arr:
+                            # 원본 데이터셋에 컴포넌트 배열 추가
+                            ds_for_vis.GetPointData().AddArray(comp_arr)
+                            field_name = comp_name
+                        else:
+                            # 추출 실패시 원본 필드 사용
+                            field_name = base_field
+                    else:
+                        field_name = base_field
+                except (ValueError, IndexError):
+                    field_name = base_field
+            
             mesh_state = to_mesh_state(ds_for_vis, field_name)
         else:
             mesh_state = to_mesh_state(ds_for_vis)
@@ -3573,11 +3553,27 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             html.P("VTK 파일 형식을 확인해주세요. FRD → VTK 변환이 올바르게 되었는지 점검이 필요합니다.", style={"color": "gray"})
         ]), "", go.Figure(), slice_min, slice_max
     
-    # 컬러 데이터 범위 추출
+    # 컬러 데이터 범위 추출 (컴포넌트 인덱스 처리)
     color_range = None
     colorbar_fig = go.Figure()
     if field_name:
-        arr = ds_for_vis.GetPointData().GetArray(field_name)
+        # 컴포넌트 인덱스가 포함된 필드명 처리
+        actual_field_name = field_name
+        if ":" in field_name:
+            base_field, comp_idx = field_name.split(":")
+            try:
+                comp_idx = int(comp_idx)
+                comp_name = f"{base_field}_{comp_idx}"
+                arr = ds_for_vis.GetPointData().GetArray(comp_name)
+                if arr:
+                    actual_field_name = comp_name
+                else:
+                    arr = ds_for_vis.GetPointData().GetArray(base_field)
+            except (ValueError, IndexError):
+                arr = ds_for_vis.GetPointData().GetArray(field_name)
+        else:
+            arr = ds_for_vis.GetPointData().GetArray(field_name)
+        
         if arr is not None:
             range_val = arr.GetRange()
             if range_val[0] != range_val[1]:  # 값이 모두 같지 않을 때만 범위 설정
@@ -3600,7 +3596,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                             cmin=color_range[0],
                             cmax=color_range[1],
                             colorbar=dict(
-                                title=dict(text="값", font=dict(size=14)),
+                                title=dict(text=actual_field_name, font=dict(size=14)),
                                 thickness=15,
                                 len=0.7,
                                 x=0.5,
