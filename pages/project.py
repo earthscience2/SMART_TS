@@ -3315,7 +3315,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             return html.Div([
                 html.H5("VTK 파일 읽기 실패", style={"color": "red"}),
                 html.P(f"파일: {selected_file}")
-            ]), "", go.Figure(), 0.0, 1.0
+            ]), "", 0.0, 1.0
 
         # 점의 개수 확인
         num_points = ds.GetNumberOfPoints()
@@ -3325,7 +3325,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 html.H5("빈 데이터셋", style={"color": "red"}),
                 html.P(f"파일: {selected_file}"),
                 html.P("점이 없는 데이터셋입니다.")
-            ]), "", go.Figure(), 0.0, 1.0
+            ]), "", 0.0, 1.0
 
         # 바운딩 박스 정보 추출
         bounds = ds.GetBounds()
@@ -3788,7 +3788,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             html.P(f"오류: {str(vtk_error)}"),
             html.Hr(),
             html.P("브라우저를 새로고침하거나 다른 파일을 선택해보세요.", style={"color": "gray"})
-        ]), "", go.Figure(), slice_min, slice_max
+        ]), "", slice_min, slice_max
     
     except Exception as e:
         print(f"VTK 처리 전체 오류: {e}")
@@ -3799,7 +3799,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             html.P(f"오류: {str(e)}"),
             html.Hr(),
             html.P("다른 파일을 선택하거나 VTK 파일을 확인해주세요.", style={"color": "gray"})
-        ]), "", go.Figure(), slice_min, slice_max
+        ]), "", slice_min, slice_max
 
 # 수치해석 단면 상세 컨트롤 표시/숨김 콜백
 @callback(
