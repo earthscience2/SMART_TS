@@ -2316,8 +2316,6 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 ], className="g-2"),
                 html.Div(id="fct-formula-preview"),
             ]),
-            html.Hr(),
-            html.Div(id="tci-result-table"),
             dbc.Button("CSV 다운로드", id="btn-tci-csv", color="success", className="mt-2"),
             dcc.Download(id="download-tci-csv"),
         ], style={"backgroundColor": "#f8fafc", "borderRadius": "12px", "padding": "20px", "marginBottom": "24px", "border": "1px solid #e2e8f0"})
@@ -4713,7 +4711,7 @@ def update_formula_display(formula_type, fct28, a, b):
                     fct = 0
                 fct_vals.append(fct)
             
-            df = pd.DataFrame({"t(일)": np.round(t_vals, 2), "fct(t) (MPa)": np.round(fct_vals, 4)})
+            df = pd.DataFrame({"t[일]": np.round(t_vals, 2), "fct(t) 인장강도 [GPa]": np.round(fct_vals, 4)})
             preview_table = dash_table.DataTable(
                 columns=[{"name": i, "id": i} for i in df.columns],
                 data=df.to_dict("records"),
@@ -4765,7 +4763,6 @@ def update_formula_display(formula_type, fct28, a, b):
 
 # ───────────── TCI 계산 및 결과 표/CSV 콜백 뼈대 ─────────────
 @callback(
-    Output("tci-result-table", "children"),
     Output("download-tci-csv", "data"),
     Input("btn-tci-csv", "n_clicks"),
     Input("fct-formula-type", "value"),
@@ -4791,21 +4788,21 @@ def calc_tci_and_download(csv_click, formula_type, fct28, a, b, selected_rows, t
     
     # 기본값 처리
     if not selected_rows or not tbl_data:
-        return html.Div("콘크리트를 선택하세요."), None
+        return None
     
     # 입력값 검증
     if not fct28:
-        return html.Div("28일 인장강도를 입력하세요."), None
+        return None
     
     try:
         fct28 = float(fct28)
         if formula_type == "ceb":
             if not a or not b:
-                return html.Div("CEB 공식의 경우 a, b 값을 모두 입력하세요."), None
+                return None
             a = float(a)
             b = float(b)
     except ValueError:
-        return html.Div("올바른 숫자를 입력하세요."), None
+        return None
     
     # t별 인장강도 계산 (1~28일, 1일 간격)
     t_vals = np.arange(1, 29, 1)
@@ -4832,27 +4829,11 @@ def calc_tci_and_download(csv_click, formula_type, fct28, a, b, selected_rows, t
         "인장강도 fct(t) (MPa)": np.round(fct_vals, 4)
     })
     
-    # 테이블 생성
-    table = dash_table.DataTable(
-        columns=[{"name": i, "id": i} for i in df.columns],
-        data=df.to_dict("records"),
-        page_size=15,
-        style_table={"overflowY": "auto", "height": "400px"},
-        style_cell={"textAlign": "center"},
-        style_header={"backgroundColor": "#f8fafc", "fontWeight": "600"},
-        style_data_conditional=[
-            {
-                'if': {'row_index': 'odd'},
-                'backgroundColor': '#f9fafb'
-            }
-        ]
-    )
-    
     # CSV 다운로드
     if trigger == "btn-tci-csv":
-        return dash.no_update, dict(content=df.to_csv(index=False, encoding="utf-8-sig"), filename="TCI_인장강도_결과.csv")
+        return dict(content=df.to_csv(index=False, encoding="utf-8-sig"), filename="TCI_인장강도_결과.csv")
     
-    return table, dash.no_update
+    return dash.no_update
 
 
 
