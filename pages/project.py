@@ -5018,14 +5018,12 @@ def validate_inputs(fct28, formula_type):
     State("tbl-concrete", "data"),
     Input("fct-formula-type", "value"),
     Input("fct28-input", "value"),
-    State("a-input", "value"),
-    State("b-input", "value"),
     Input("tab-content", "children"),
     Input("tabs-main", "active_tab"),
     Input("tci-time-slider", "value"),
     prevent_initial_call=False
 )
-def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, a, b, tab_content, active_tab, slider_value):
+def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_content, active_tab, slider_value):
     import os, glob
     import numpy as np
     from dash import dash_table
@@ -5101,15 +5099,9 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, a, b
     except:
         fct28_val = 20.0
     
-    try:
-        a_val = float(a) if a not in (None, "") else 1.0
-    except:
-        a_val = 1.0
-    
-    try:
-        b_val = float(b) if b not in (None, "") else 1.0
-    except:
-        b_val = 1.0
+    # a, b 값은 기본값 사용 (동적 입력 필드 참조 문제 해결)
+    a_val = 1.0
+    b_val = 1.0
     
     # 타설일을 기준으로 경과일 계산 (0.1일 단위)
     # times[0]이 타설일이라고 가정
