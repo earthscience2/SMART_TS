@@ -5246,9 +5246,9 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
                 if idx + 2 < len(stress_tensor_data):
                     # XX, YY, ZZ 순서로 되어 있으므로 각각 사용
                     # Pa를 GPa로 변환 (10^9로 나누기)
-                    sxx_gpa = stress_tensor_data[idx + 0] / 1e9  # XX 성분
-                    syy_gpa = stress_tensor_data[idx + 1] / 1e9  # YY 성분
-                    szz_gpa = stress_tensor_data[idx + 2] / 1e9  # ZZ 성분
+                    sxx_gpa = stress_tensor_data[idx + 0] / 1e6  # XX 성분
+                    syy_gpa = stress_tensor_data[idx + 1] / 1e6  # YY 성분
+                    szz_gpa = stress_tensor_data[idx + 2] / 1e6  # ZZ 성분
                     sxx_data.append(sxx_gpa)
                     syy_data.append(syy_gpa)
                     szz_data.append(szz_gpa)
