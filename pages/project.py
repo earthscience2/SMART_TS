@@ -83,8 +83,9 @@ def create_probability_curve_figure():
     # TCI 값 범위 (0.1 ~ 3.0)
     tci_values = np.linspace(0.1, 3.0, 300)
     
-    # 로지스틱 근사식: P(x) = 1/(1 + e^(4(x-1))) × 100
-    probabilities = 1 / (1 + np.exp(4 * (tci_values - 1))) * 100
+    # 수정된 로지스틱 근사식: 0.4에서 100%, 1.0에서 40%, 2.0에서 0%
+    # P(x) = 100 / (1 + e^(4(x-0.7)))
+    probabilities = 100 / (1 + np.exp(4 * (tci_values - 0.7)))
     
     fig = go.Figure()
     
@@ -99,13 +100,17 @@ def create_probability_curve_figure():
     ))
     
     # 중요한 기준선들 추가
-    # TCI = 1.0 기준선 (50% 확률)
+    # TCI = 1.0 기준선 (40% 확률)
     fig.add_vline(x=1.0, line_dash="dash", line_color="red", line_width=2, 
-                  annotation_text="TCI = 1.0 (50%)", annotation_position="top left")
+                  annotation_text="TCI = 1.0 (40%)", annotation_position="top left")
     
-    # 확률 50% 기준선
-    fig.add_hline(y=50, line_dash="dash", line_color="red", line_width=2,
-                  annotation_text="50% 확률", annotation_position="bottom right")
+    # TCI = 0.4 기준선 (100% 확률)
+    fig.add_vline(x=0.4, line_dash="dash", line_color="orange", line_width=2,
+                  annotation_text="TCI = 0.4 (100%)", annotation_position="top right")
+    
+    # TCI = 2.0 기준선 (0% 확률)  
+    fig.add_vline(x=2.0, line_dash="dash", line_color="green", line_width=2,
+                  annotation_text="TCI = 2.0 (0%)", annotation_position="bottom right")
     
     # 안전/위험 영역 표시
     fig.add_vrect(x0=0.1, x1=1.0, fillcolor="rgba(239, 68, 68, 0.1)", 
@@ -2456,7 +2461,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         "fontSize": "16px"
                     }),
                     html.Div([
-                        html.P("로지스틱 근사식: P(x) = 1/(1 + e^(4(x-1))) × 100", style={
+                        html.P("로지스틱 근사식: P(x) = 100/(1 + e^(4(x-0.7)))", style={
                             "fontSize": "14px",
                             "color": "#6b7280",
                             "marginBottom": "12px",
