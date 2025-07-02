@@ -5322,6 +5322,19 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
             tci_y.append(fct / abs(syy) if abs(syy) > 0.00001 else np.nan)
             tci_z.append(fct / abs(szz) if abs(szz) > 0.00001 else np.nan)
         
+        # 균열발생확률 함수 정의 (로지스틱 근사식)
+        def crack_probability(tci):
+            if np.isnan(tci):
+                return np.nan
+            return 1 / (1 + np.exp(4 * (tci - 1))) * 100
+        
+        # 확률 계산
+        tci_x_p = [f"{crack_probability(tci):.1f}" if not np.isnan(tci) else "N/A" for tci in tci_x]
+        tci_y_p = [f"{crack_probability(tci):.1f}" if not np.isnan(tci) else "N/A" for tci in tci_y]
+        tci_z_p = [f"{crack_probability(tci):.1f}" if not np.isnan(tci) else "N/A" for tci in tci_z]
+        tci_max = [max([x, y, z]) if not (np.isnan(x) or np.isnan(y) or np.isnan(z)) else np.nan for x, y, z in zip(tci_x, tci_y, tci_z)]
+        tci_max_p = [f"{crack_probability(tci):.1f}" if not np.isnan(tci) else "N/A" for tci in tci_max]
+        
         # 데이터프레임 생성
         df = pd.DataFrame({
             "Node ID": node_ids,
@@ -5335,6 +5348,11 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
             "TCI-X": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_x],
             "TCI-Y": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_y],
             "TCI-Z": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_z],
+            "TCI-X-P(%)": tci_x_p,
+            "TCI-Y-P(%)": tci_y_p,
+            "TCI-Z-P(%)": tci_z_p,
+            "TCI-MAX": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_max],
+            "TCI-MAX-P(%)": tci_max_p,
         })
         
         # 표 생성
@@ -5373,6 +5391,12 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
                     "fontWeight": "bold"
                 },
                 {
+                    "if": {"column_id": "TCI-MAX", "filter_query": "{TCI-MAX} < 1.0"},
+                    "backgroundColor": "#fee2e2",
+                    "color": "#dc2626",
+                    "fontWeight": "bold"
+                },
+                {
                     "if": {"column_id": "TCI-X", "filter_query": "{TCI-X} >= 1.0"},
                     "backgroundColor": "#dcfce7",
                     "color": "#166534"
@@ -5384,6 +5408,56 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
                 },
                 {
                     "if": {"column_id": "TCI-Z", "filter_query": "{TCI-Z} >= 1.0"},
+                    "backgroundColor": "#dcfce7",
+                    "color": "#166534"
+                },
+                {
+                    "if": {"column_id": "TCI-MAX", "filter_query": "{TCI-MAX} >= 1.0"},
+                    "backgroundColor": "#dcfce7",
+                    "color": "#166534"
+                },
+                # 확률 컬럼 색상 (50% 이상이면 빨강, 미만이면 초록)
+                {
+                    "if": {"column_id": "TCI-X-P(%)", "filter_query": "{TCI-X-P(%)} >= 50.0"},
+                    "backgroundColor": "#fee2e2",
+                    "color": "#dc2626",
+                    "fontWeight": "bold"
+                },
+                {
+                    "if": {"column_id": "TCI-Y-P(%)", "filter_query": "{TCI-Y-P(%)} >= 50.0"},
+                    "backgroundColor": "#fee2e2",
+                    "color": "#dc2626",
+                    "fontWeight": "bold"
+                },
+                {
+                    "if": {"column_id": "TCI-Z-P(%)", "filter_query": "{TCI-Z-P(%)} >= 50.0"},
+                    "backgroundColor": "#fee2e2",
+                    "color": "#dc2626",
+                    "fontWeight": "bold"
+                },
+                {
+                    "if": {"column_id": "TCI-MAX-P(%)", "filter_query": "{TCI-MAX-P(%)} >= 50.0"},
+                    "backgroundColor": "#fee2e2",
+                    "color": "#dc2626",
+                    "fontWeight": "bold"
+                },
+                {
+                    "if": {"column_id": "TCI-X-P(%)", "filter_query": "{TCI-X-P(%)} < 50.0"},
+                    "backgroundColor": "#dcfce7",
+                    "color": "#166534"
+                },
+                {
+                    "if": {"column_id": "TCI-Y-P(%)", "filter_query": "{TCI-Y-P(%)} < 50.0"},
+                    "backgroundColor": "#dcfce7",
+                    "color": "#166534"
+                },
+                {
+                    "if": {"column_id": "TCI-Z-P(%)", "filter_query": "{TCI-Z-P(%)} < 50.0"},
+                    "backgroundColor": "#dcfce7",
+                    "color": "#166534"
+                },
+                {
+                    "if": {"column_id": "TCI-MAX-P(%)", "filter_query": "{TCI-MAX-P(%)} < 50.0"},
                     "backgroundColor": "#dcfce7",
                     "color": "#166534"
                 }
@@ -5687,6 +5761,19 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
             tci_y.append(fct / abs(syy) if abs(syy) > 0.00001 else np.nan)
             tci_z.append(fct / abs(szz) if abs(szz) > 0.00001 else np.nan)
         
+        # 균열발생확률 함수 정의 (로지스틱 근사식)
+        def crack_probability(tci):
+            if np.isnan(tci):
+                return np.nan
+            return 1 / (1 + np.exp(4 * (tci - 1))) * 100
+        
+        # 확률 계산
+        tci_x_p = [f"{crack_probability(tci):.1f}" if not np.isnan(tci) else "N/A" for tci in tci_x]
+        tci_y_p = [f"{crack_probability(tci):.1f}" if not np.isnan(tci) else "N/A" for tci in tci_y]
+        tci_z_p = [f"{crack_probability(tci):.1f}" if not np.isnan(tci) else "N/A" for tci in tci_z]
+        tci_max = [max([x, y, z]) if not (np.isnan(x) or np.isnan(y) or np.isnan(z)) else np.nan for x, y, z in zip(tci_x, tci_y, tci_z)]
+        tci_max_p = [f"{crack_probability(tci):.1f}" if not np.isnan(tci) else "N/A" for tci in tci_max]
+        
         # 데이터프레임 생성 (기존 코드와 동일)
         df = pd.DataFrame({
             "Node ID": node_ids,
@@ -5700,6 +5787,11 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
             "TCI-X": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_x],
             "TCI-Y": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_y],
             "TCI-Z": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_z],
+            "TCI-X-P(%)": tci_x_p,
+            "TCI-Y-P(%)": tci_y_p,
+            "TCI-Z-P(%)": tci_z_p,
+            "TCI-MAX": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_max],
+            "TCI-MAX-P(%)": tci_max_p,
         })
         
         # 표 생성 (기존 코드와 동일)
@@ -5738,6 +5830,12 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
                     "fontWeight": "bold"
                 },
                 {
+                    "if": {"column_id": "TCI-MAX", "filter_query": "{TCI-MAX} < 1.0"},
+                    "backgroundColor": "#fee2e2",
+                    "color": "#dc2626",
+                    "fontWeight": "bold"
+                },
+                {
                     "if": {"column_id": "TCI-X", "filter_query": "{TCI-X} >= 1.0"},
                     "backgroundColor": "#dcfce7",
                     "color": "#166534"
@@ -5749,6 +5847,56 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
                 },
                 {
                     "if": {"column_id": "TCI-Z", "filter_query": "{TCI-Z} >= 1.0"},
+                    "backgroundColor": "#dcfce7",
+                    "color": "#166534"
+                },
+                {
+                    "if": {"column_id": "TCI-MAX", "filter_query": "{TCI-MAX} >= 1.0"},
+                    "backgroundColor": "#dcfce7",
+                    "color": "#166534"
+                },
+                # 확률 컬럼 색상 (50% 이상이면 빨강, 미만이면 초록)
+                {
+                    "if": {"column_id": "TCI-X-P(%)", "filter_query": "{TCI-X-P(%)} >= 50.0"},
+                    "backgroundColor": "#fee2e2",
+                    "color": "#dc2626",
+                    "fontWeight": "bold"
+                },
+                {
+                    "if": {"column_id": "TCI-Y-P(%)", "filter_query": "{TCI-Y-P(%)} >= 50.0"},
+                    "backgroundColor": "#fee2e2",
+                    "color": "#dc2626",
+                    "fontWeight": "bold"
+                },
+                {
+                    "if": {"column_id": "TCI-Z-P(%)", "filter_query": "{TCI-Z-P(%)} >= 50.0"},
+                    "backgroundColor": "#fee2e2",
+                    "color": "#dc2626",
+                    "fontWeight": "bold"
+                },
+                {
+                    "if": {"column_id": "TCI-MAX-P(%)", "filter_query": "{TCI-MAX-P(%)} >= 50.0"},
+                    "backgroundColor": "#fee2e2",
+                    "color": "#dc2626",
+                    "fontWeight": "bold"
+                },
+                {
+                    "if": {"column_id": "TCI-X-P(%)", "filter_query": "{TCI-X-P(%)} < 50.0"},
+                    "backgroundColor": "#dcfce7",
+                    "color": "#166534"
+                },
+                {
+                    "if": {"column_id": "TCI-Y-P(%)", "filter_query": "{TCI-Y-P(%)} < 50.0"},
+                    "backgroundColor": "#dcfce7",
+                    "color": "#166534"
+                },
+                {
+                    "if": {"column_id": "TCI-Z-P(%)", "filter_query": "{TCI-Z-P(%)} < 50.0"},
+                    "backgroundColor": "#dcfce7",
+                    "color": "#166534"
+                },
+                {
+                    "if": {"column_id": "TCI-MAX-P(%)", "filter_query": "{TCI-MAX-P(%)} < 50.0"},
                     "backgroundColor": "#dcfce7",
                     "color": "#166534"
                 }
