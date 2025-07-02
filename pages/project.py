@@ -5179,43 +5179,47 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
                 except (ValueError, IndexError):
                     continue
         
-        # VTK 파일에서 주응력 데이터 파싱
-        stress_data = []
-        in_stress_section = False
-        stress_count = 0
-        expected_stress_count = 0
+        # VTK 파일에서 응력 텐서 데이터 파싱 (XX, YY, ZZ 성분)
+        stress_tensor_data = []
+        in_stress_tensor_section = False
+        stress_tensor_count = 0
+        expected_stress_tensor_count = 0
         
         for line in lines:
             line = line.strip()
             
-            # S_Principal 섹션 찾기 (주응력 데이터)
-            if line.startswith('S_Principal'):
-                parts = line.split()
-                if len(parts) >= 3:
-                    try:
-                        expected_stress_count = int(parts[2])  # 노드 수
-                        in_stress_section = True
-                        stress_count = 0
-                        continue
-                    except ValueError:
-                        continue
+            # 응력 텐서 데이터 섹션 찾기 (XX, YY, ZZ, XY, YZ, ZX)
+            if 'COMPONENT_NAMES' in line and 'XX' in line and 'YY' in line and 'ZZ' in line:
+                # 이전 라인에서 데이터 정보 찾기
+                for j in range(max(0, lines.index(line)-10), lines.index(line)):
+                    if 'double' in lines[j]:
+                        parts = lines[j].strip().split()
+                        if len(parts) >= 3:
+                            try:
+                                expected_stress_tensor_count = int(parts[2])  # 노드 수
+                                in_stress_tensor_section = True
+                                stress_tensor_count = 0
+                                break
+                            except ValueError:
+                                continue
+                continue
             
-            # 응력 데이터 파싱
-            if in_stress_section and line and stress_count < expected_stress_count * 4:  # 4개씩 (Min, Mid, Max, Worst)
+            # 응력 텐서 데이터 파싱
+            if in_stress_tensor_section and line and stress_tensor_count < expected_stress_tensor_count * 6:  # 6개씩 (XX, YY, ZZ, XY, YZ, ZX)
                 try:
                     values = line.split()
                     for value in values:
                         try:
-                            stress_data.append(float(value))
-                            stress_count += 1
+                            stress_tensor_data.append(float(value))
+                            stress_tensor_count += 1
                         except ValueError:
                             continue
                 except:
                     continue
             
             # 다음 섹션 시작 시 종료
-            if in_stress_section and (line.startswith('S_Mises') or line.startswith('METADATA')):
-                in_stress_section = False
+            if in_stress_tensor_section and (line.startswith('S_Mises') or line.startswith('S_Principal') or line.startswith('METADATA')):
+                in_stress_tensor_section = False
                 break
         
         node_ids = sorted(node_coords.keys())
@@ -5223,29 +5227,31 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
         if not node_ids:
             return slider, html.Div("노드 데이터를 찾을 수 없습니다.")
         
-        # 주응력 데이터를 노드별로 분배 (VTK 파일의 응력 데이터는 4개씩 묶여있음: Min, Mid, Max, Worst)
+        # 응력 텐서 데이터를 노드별로 분배 (VTK 파일의 응력 데이터는 6개씩 묶여있음: XX, YY, ZZ, XY, YZ, ZX)
         sxx_data = []
         syy_data = []
         szz_data = []
         
-        # 응력 데이터가 충분하지 않으면 예시 데이터 생성
-        if len(stress_data) < len(node_ids) * 4:
+        # 응력 텐서 데이터가 충분하지 않으면 예시 데이터 생성
+        if len(stress_tensor_data) < len(node_ids) * 6:
             np.random.seed(42)  # 재현성을 위한 시드 설정
             sxx_data = np.random.normal(0, 0.002, len(node_ids))  # GPa (0.002 GPa = 2 MPa)
             syy_data = np.random.normal(0, 0.002, len(node_ids))  # GPa
             szz_data = np.random.normal(0, 0.002, len(node_ids))  # GPa
         else:
-            # 실제 주응력 데이터 사용 (Min, Mid, Max, Worst 중에서 Max 사용)
+            # 실제 응력 텐서 데이터 사용 (XX, YY, ZZ 성분)
             # VTK 파일의 응력 데이터는 Pa 단위이므로 10^9로 나누어 GPa로 변환
             for i in range(len(node_ids)):
-                idx = i * 4  # 4개씩 묶여있음
-                if idx + 2 < len(stress_data):
-                    # Min, Mid, Max, Worst 순서로 되어 있으므로 Max(인덱스 2) 사용
+                idx = i * 6  # 6개씩 묶여있음 (XX, YY, ZZ, XY, YZ, ZX)
+                if idx + 2 < len(stress_tensor_data):
+                    # XX, YY, ZZ 순서로 되어 있으므로 각각 사용
                     # Pa를 GPa로 변환 (10^9로 나누기)
-                    stress_gpa = stress_data[idx + 2] / 1e9
-                    sxx_data.append(stress_gpa)  # Max 주응력 (GPa)
-                    syy_data.append(stress_gpa)  # Max 주응력 (GPa) (동일값 사용)
-                    szz_data.append(stress_gpa)  # Max 주응력 (GPa) (동일값 사용)
+                    sxx_gpa = stress_tensor_data[idx + 0] / 1e9  # XX 성분
+                    syy_gpa = stress_tensor_data[idx + 1] / 1e9  # YY 성분
+                    szz_gpa = stress_tensor_data[idx + 2] / 1e9  # ZZ 성분
+                    sxx_data.append(sxx_gpa)
+                    syy_data.append(syy_gpa)
+                    szz_data.append(szz_gpa)
                 else:
                     sxx_data.append(0.0)
                     syy_data.append(0.0)
