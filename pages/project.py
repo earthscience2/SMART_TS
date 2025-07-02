@@ -3279,6 +3279,8 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
     import vtk
     from dash_vtk.utils import to_mesh_state
     
+    slice_min, slice_max = 0.0, 1.0  # 기본값 미리 선언
+    
     if not selected_rows or not tbl_data:
         return html.Div("콘크리트를 선택하세요."), "", go.Figure(), 0.0, 1.0
     
@@ -3549,6 +3551,14 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         if not (('mesh' in mesh_state) or ('points' in mesh_state)):
             raise ValueError("mesh_state에 필수 데이터가 없습니다")
         
+        # 선택된 축에 따른 슬라이더 범위 결정
+        if slice_axis == "X":
+            slice_min, slice_max = xmin, xmax
+        elif slice_axis == "Y":
+            slice_min, slice_max = ymin, ymax
+        else:  # Z
+            slice_min, slice_max = zmin, zmax
+        
     except Exception as mesh_error:
         print(f"mesh_state 생성 오류: {mesh_error}")
         return html.Div([
@@ -3763,7 +3773,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             html.P(f"오류: {str(e)}"),
             html.Hr(),
             html.P("다른 파일을 선택하거나 VTK 파일을 확인해주세요.", style={"color": "gray"})
-        ]), "", go.Figure(), 0.0, 1.0
+        ]), "", go.Figure(), slice_min, slice_max
 
 # 수치해석 단면 상세 컨트롤 표시/숨김 콜백
 @callback(
