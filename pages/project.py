@@ -2134,24 +2134,16 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         "marginBottom": "16px",
                         "fontSize": "14px"
                     }),
-                    html.Div([
-                        html.Label("시간 슬라이더", style={
-                            "fontSize": "12px", 
-                            "fontWeight": "500", 
-                            "color": "#6b7280",
-                            "marginBottom": "8px"
-                        }),
-                        dcc.Slider(
-                            id="analysis-time-slider",
-                            min=0,
-                            max=max_idx,
-                            step=1,
-                            value=max_idx,
-                            marks=time_marks,
-                            tooltip={"placement": "bottom", "always_visible": True},
-                            className="mb-3"
-                        )
-                    ])
+                    dcc.Slider(
+                        id="analysis-time-slider",
+                        min=0,
+                        max=max_idx,
+                        step=1,
+                        value=max_idx,
+                        marks=time_marks,
+                        tooltip={"placement": "bottom", "always_visible": True},
+                        className="mb-3"
+                    )
                 ], style={
                     "padding": "16px 20px",
                     "backgroundColor": "#f9fafb",
