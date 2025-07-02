@@ -4751,38 +4751,75 @@ def update_formula_display(formula_type, fct28, a, b):
 )
 def calc_tci_and_download(calc_click, csv_click, formula_type, fct28, a, b, selected_rows, tbl_data):
     import dash
+    import numpy as np
+    from dash.exceptions import PreventUpdate
+    
     ctx = dash.callback_context
     trigger = ctx.triggered[0]["prop_id"].split(".")[0] if ctx.triggered else None
+    
     # 기본값 처리
     if not selected_rows or not tbl_data:
         return html.Div("콘크리트를 선택하세요."), None
-    # --- 실제 계산/파일처리 로직은 이후 단계에서 구현 ---
-    # 임시 더미 표
-    import pandas as pd
-    days = list(range(1, 8))
-    nodes = [1, 2]
-    data = []
-    for day in days:
-        for node in nodes:
-            data.append({
-                "일": day,
-                "노드": node,
-                "TCI-X": 0.1 * day * node,
-                "TCI-Y": 0.2 * day * node,
-                "TCI-Z": 0.3 * day * node,
-            })
-    df = pd.DataFrame(data)
+    
+    # 입력값 검증
+    if not fct28:
+        return html.Div("28일 인장강도를 입력하세요."), None
+    
+    try:
+        fct28 = float(fct28)
+        if formula_type == "ceb":
+            if not a or not b:
+                return html.Div("CEB 공식의 경우 a, b 값을 모두 입력하세요."), None
+            a = float(a)
+            b = float(b)
+    except ValueError:
+        return html.Div("올바른 숫자를 입력하세요."), None
+    
+    # t별 인장강도 계산 (1~28일, 1일 간격)
+    t_vals = np.arange(1, 29, 1)
+    fct_vals = []
+    
+    for t in t_vals:
+        try:
+            if formula_type == "ceb":
+                # CEB-FIP Model Code 1990
+                fct = fct28 * (t / (a + b * t)) ** 0.5
+            else:
+                # 경험식 (KCI/KS)
+                if t <= 28:
+                    fct = fct28 * (t / 28) ** 0.5
+                else:
+                    fct = fct28
+        except Exception:
+            fct = 0
+        fct_vals.append(fct)
+    
+    # 결과 데이터프레임 생성
+    df = pd.DataFrame({
+        "일령(t)": t_vals,
+        "인장강도 fct(t) (MPa)": np.round(fct_vals, 4)
+    })
+    
+    # 테이블 생성
     table = dash_table.DataTable(
         columns=[{"name": i, "id": i} for i in df.columns],
         data=df.to_dict("records"),
-        page_size=10,
+        page_size=15,
         style_table={"overflowY": "auto", "height": "400px"},
         style_cell={"textAlign": "center"},
         style_header={"backgroundColor": "#f8fafc", "fontWeight": "600"},
+        style_data_conditional=[
+            {
+                'if': {'row_index': 'odd'},
+                'backgroundColor': '#f9fafb'
+            }
+        ]
     )
+    
     # CSV 다운로드
     if trigger == "btn-tci-csv":
-        return dash.no_update, dict(content=df.to_csv(index=False, encoding="utf-8-sig"), filename="TCI_result.csv")
+        return dash.no_update, dict(content=df.to_csv(index=False, encoding="utf-8-sig"), filename="TCI_인장강도_결과.csv")
+    
     return table, None
 
 
