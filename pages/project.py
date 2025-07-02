@@ -2316,7 +2316,6 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 ], className="g-2"),
                 html.Div(id="fct-formula-preview"),
             ]),
-            dbc.Button("계산 및 결과 보기", id="btn-tci-calc", color="primary", className="mt-2"),
             html.Hr(),
             html.Div(id="tci-result-table"),
             dbc.Button("CSV 다운로드", id="btn-tci-csv", color="success", className="mt-2"),
@@ -4685,6 +4684,7 @@ def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
 def update_formula_display(formula_type, fct28, a, b):
     import dash_table
     import numpy as np
+    import plotly.graph_objects as go
     
     # a, b 입력 필드 표시/숨김 설정
     if formula_type == "ceb":
@@ -4723,10 +4723,38 @@ def update_formula_display(formula_type, fct28, a, b):
                 style_header={"backgroundColor": "#f8fafc", "fontWeight": "600"},
             )
             
+            # 그래프 생성
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=t_vals,
+                y=fct_vals,
+                mode='lines+markers',
+                name='fct(t)',
+                line=dict(color='#3b82f6', width=2),
+                marker=dict(size=4, color='#3b82f6')
+            ))
+            
+            fig.update_layout(
+                title="인장강도 발달 곡선",
+                xaxis_title="일령 (일)",
+                yaxis_title="인장강도 (MPa)",
+                height=300,
+                margin=dict(l=50, r=50, t=50, b=50),
+                showlegend=False,
+                plot_bgcolor='white',
+                paper_bgcolor='white'
+            )
+            
+            fig.update_xaxes(gridcolor='#e5e7eb', showgrid=True)
+            fig.update_yaxes(gridcolor='#e5e7eb', showgrid=True)
+            
             preview_content = html.Div([
                 html.Small(formula_text, style={"color": "#64748b"}),
                 html.Div("↓ 1~28일 인장강도 미리보기 (0.1 간격)", style={"marginTop": "8px", "fontSize": "13px", "color": "#64748b"}),
-                preview_table
+                dbc.Row([
+                    dbc.Col(preview_table, md=6),
+                    dbc.Col(dcc.Graph(figure=fig, config={'displayModeBar': False}), md=6)
+                ], className="g-2")
             ])
         except:
             preview_content = html.Small(formula_text, style={"color": "#64748b"})
@@ -4739,23 +4767,27 @@ def update_formula_display(formula_type, fct28, a, b):
 @callback(
     Output("tci-result-table", "children"),
     Output("download-tci-csv", "data"),
-    Input("btn-tci-calc", "n_clicks"),
     Input("btn-tci-csv", "n_clicks"),
-    State("fct-formula-type", "value"),
-    State("fct28-input", "value"),
-    State("a-input", "value"),
-    State("b-input", "value"),
+    Input("fct-formula-type", "value"),
+    Input("fct28-input", "value"),
+    Input("a-input", "value"),
+    Input("b-input", "value"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True
 )
-def calc_tci_and_download(calc_click, csv_click, formula_type, fct28, a, b, selected_rows, tbl_data):
+def calc_tci_and_download(csv_click, formula_type, fct28, a, b, selected_rows, tbl_data):
     import dash
     import numpy as np
     from dash.exceptions import PreventUpdate
     
     ctx = dash.callback_context
     trigger = ctx.triggered[0]["prop_id"].split(".")[0] if ctx.triggered else None
+    
+    # CSV 다운로드 버튼이 클릭된 경우에만 CSV 다운로드 처리
+    if trigger == "btn-tci-csv":
+        # CSV 다운로드 로직은 나중에 구현
+        pass
     
     # 기본값 처리
     if not selected_rows or not tbl_data:
@@ -4820,7 +4852,7 @@ def calc_tci_and_download(calc_click, csv_click, formula_type, fct28, a, b, sele
     if trigger == "btn-tci-csv":
         return dash.no_update, dict(content=df.to_csv(index=False, encoding="utf-8-sig"), filename="TCI_인장강도_결과.csv")
     
-    return table, None
+    return table, dash.no_update
 
 
 
