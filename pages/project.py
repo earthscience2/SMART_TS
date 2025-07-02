@@ -4999,7 +4999,7 @@ def validate_inputs(fct28, formula_type):
     Input("b-input", "value"),
     Input("tab-content", "children"),
     Input("tabs-main", "active_tab"),
-    Input("tci-time-slider", "value", allow_duplicate=True),
+    Input("tci-time-slider", "value"),
     prevent_initial_call=False
 )
 def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, a, b, tab_content, active_tab, slider_value):
