@@ -75,6 +75,77 @@ def format_scientific_notation(value):
     
     return exp_str
 
+def create_probability_curve_figure():
+    """로지스틱 근사식을 이용한 균열발생확률 곡선 그래프를 생성합니다."""
+    import numpy as np
+    import plotly.graph_objects as go
+    
+    # TCI 값 범위 (0.1 ~ 3.0)
+    tci_values = np.linspace(0.1, 3.0, 300)
+    
+    # 로지스틱 근사식: P(x) = 1/(1 + e^(4(x-1))) × 100
+    probabilities = 1 / (1 + np.exp(4 * (tci_values - 1))) * 100
+    
+    fig = go.Figure()
+    
+    # 메인 곡선
+    fig.add_trace(go.Scatter(
+        x=tci_values,
+        y=probabilities,
+        mode='lines',
+        name='균열발생확률',
+        line=dict(color='#3b82f6', width=3),
+        hovertemplate='TCI: %{x:.2f}<br>확률: %{y:.1f}%<extra></extra>'
+    ))
+    
+    # 중요한 기준선들 추가
+    # TCI = 1.0 기준선 (50% 확률)
+    fig.add_vline(x=1.0, line_dash="dash", line_color="red", line_width=2, 
+                  annotation_text="TCI = 1.0 (50%)", annotation_position="top left")
+    
+    # 확률 50% 기준선
+    fig.add_hline(y=50, line_dash="dash", line_color="red", line_width=2,
+                  annotation_text="50% 확률", annotation_position="bottom right")
+    
+    # 안전/위험 영역 표시
+    fig.add_vrect(x0=0.1, x1=1.0, fillcolor="rgba(239, 68, 68, 0.1)", 
+                  annotation_text="위험 영역", annotation_position="top left",
+                  annotation=dict(font_size=12, font_color="red"))
+    
+    fig.add_vrect(x0=1.0, x1=3.0, fillcolor="rgba(34, 197, 94, 0.1)",
+                  annotation_text="안전 영역", annotation_position="top right",
+                  annotation=dict(font_size=12, font_color="green"))
+    
+    # 그래프 스타일링
+    fig.update_layout(
+        title={
+            'text': "온도균열지수(TCI)와 균열발생확률의 관계",
+            'x': 0.5,
+            'font': {'size': 18, 'color': '#1f2937'}
+        },
+        xaxis=dict(
+            title="온도균열지수 (TCI)",
+            gridcolor='#f3f4f6',
+            showgrid=True,
+            range=[0.1, 3.0],
+            dtick=0.2
+        ),
+        yaxis=dict(
+            title="균열발생확률 (%)",
+            gridcolor='#f3f4f6',
+            showgrid=True,
+            range=[0, 100],
+            dtick=10
+        ),
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        showlegend=False,
+        margin=dict(l=60, r=60, t=80, b=60),
+        font=dict(family="Arial, sans-serif", size=12, color="#374151")
+    )
+    
+    return fig
+
 def parse_material_info_from_inp(lines):
     """INP 파일 라인 리스트에서 물성치 정보를 추출하여 문자열로 반환합니다.
 
@@ -2375,45 +2446,29 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 })
             ]),
             
-            # 기존 히트맵/요약
+            # 로지스틱 근사식 그래프
             html.Div([
                 html.Div([
-                    html.H6("🌡️ TCI 히트맵", style={
+                    html.H6("📈 균열발생확률 곡선", style={
                         "fontWeight": "600",
                         "color": "#374151",
                         "marginBottom": "16px",
                         "fontSize": "16px"
                     }),
-                    html.Iframe(
-                        src=f"/assets/{tci_html_path}",
-                        style={
-                            "width": "100%",
-                            "height": "60vh",
-                            "border": "none",
-                            "borderRadius": "8px"
-                        }
-                    ),
-                ], style={
-                    "padding": "20px",
-                    "backgroundColor": "white",
-                    "borderRadius": "12px",
-                    "border": "1px solid #e5e7eb",
-                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
-                    "marginBottom": "20px"
-                })
-            ]),
-            html.Div([
-                html.Div([
-                    html.H6("📋 TCI 노드별 요약", style={
-                        "fontWeight": "600",
-                        "color": "#374151",
-                        "marginBottom": "16px",
-                        "fontSize": "16px"
-                    }),
-                    html.Div(id="tci-summary-table", style={
-                        "maxHeight": "400px",
-                        "overflowY": "auto"
-                    }),
+                    html.Div([
+                        html.P("로지스틱 근사식: P(x) = 1/(1 + e^(4(x-1))) × 100", style={
+                            "fontSize": "14px",
+                            "color": "#6b7280",
+                            "marginBottom": "12px",
+                            "fontStyle": "italic"
+                        }),
+                        dcc.Graph(
+                            id="tci-probability-curve",
+                            figure=create_probability_curve_figure(),
+                            style={"height": "50vh"},
+                            config={'displayModeBar': False}
+                        ),
+                    ]),
                 ], style={
                     "padding": "20px",
                     "backgroundColor": "white",
@@ -5328,12 +5383,46 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
                 return np.nan
             return 1 / (1 + np.exp(4 * (tci - 1))) * 100
         
-        # 확률 계산
-        tci_x_p = [f"{crack_probability(tci):.1f}" if not np.isnan(tci) else "N/A" for tci in tci_x]
-        tci_y_p = [f"{crack_probability(tci):.1f}" if not np.isnan(tci) else "N/A" for tci in tci_y]
-        tci_z_p = [f"{crack_probability(tci):.1f}" if not np.isnan(tci) else "N/A" for tci in tci_z]
-        tci_max = [max([x, y, z]) if not (np.isnan(x) or np.isnan(y) or np.isnan(z)) else np.nan for x, y, z in zip(tci_x, tci_y, tci_z)]
-        tci_max_p = [f"{crack_probability(tci):.1f}" if not np.isnan(tci) else "N/A" for tci in tci_max]
+        # TCI 계산 시 음수 응력은 확률 0%로 설정
+        def calculate_tci_and_probability(stress, fct):
+            if stress <= 0:  # 음수 또는 0인 경우
+                return np.nan, "0.0"
+            elif abs(stress) > 0.00001:
+                tci_val = fct / abs(stress)
+                prob = crack_probability(tci_val)
+                return tci_val, f"{prob:.1f}" if not np.isnan(prob) else "N/A"
+            else:
+                return np.nan, "N/A"
+        
+        # TCI-MAX 계산 (Max Principal 응력 사용)
+        tci_max = []
+        tci_max_p = []
+        for i, node_id in enumerate(node_ids):
+            max_principal = max_principal_data[i]
+            tci_val, prob_str = calculate_tci_and_probability(max_principal, fct)
+            tci_max.append(tci_val)
+            tci_max_p.append(prob_str)
+        
+        # 확률 계산 (음수 응력 시 0% 처리)
+        tci_x_p = []
+        tci_y_p = []
+        tci_z_p = []
+        
+        for i in range(len(node_ids)):
+            # X축 응력
+            sxx = sxx_data[i]
+            _, prob_x = calculate_tci_and_probability(sxx, fct)
+            tci_x_p.append(prob_x)
+            
+            # Y축 응력
+            syy = syy_data[i]
+            _, prob_y = calculate_tci_and_probability(syy, fct)
+            tci_y_p.append(prob_y)
+            
+            # Z축 응력
+            szz = szz_data[i]
+            _, prob_z = calculate_tci_and_probability(szz, fct)
+            tci_z_p.append(prob_z)
         
         # 데이터프레임 생성
         df = pd.DataFrame({
@@ -5348,10 +5437,10 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
             "TCI-X": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_x],
             "TCI-Y": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_y],
             "TCI-Z": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_z],
+            "TCI-MAX": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_max],
             "TCI-X-P(%)": tci_x_p,
             "TCI-Y-P(%)": tci_y_p,
             "TCI-Z-P(%)": tci_z_p,
-            "TCI-MAX": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_max],
             "TCI-MAX-P(%)": tci_max_p,
         })
         
@@ -5740,9 +5829,9 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
                     max_principal = principal_stress_data[idx + 2] / 1e12  # Max Principal
                     worst_principal = principal_stress_data[idx + 3] / 1e12  # Worst Principal
                     
-                    # 절대값으로 비교해서 최대값 선택
+                    # 실제 최댓값 선택 (절댓값이 아닌 진짜 max)
                     principal_values = [min_principal, mid_principal, max_principal, worst_principal]
-                    max_principal_gpa = max(principal_values, key=abs)  # 절대값이 가장 큰 값
+                    max_principal_gpa = max(principal_values)  # 실제 최댓값
                     max_principal_data.append(max_principal_gpa)
                 else:
                     max_principal_data.append(0.0)
@@ -5767,12 +5856,46 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
                 return np.nan
             return 1 / (1 + np.exp(4 * (tci - 1))) * 100
         
-        # 확률 계산
-        tci_x_p = [f"{crack_probability(tci):.1f}" if not np.isnan(tci) else "N/A" for tci in tci_x]
-        tci_y_p = [f"{crack_probability(tci):.1f}" if not np.isnan(tci) else "N/A" for tci in tci_y]
-        tci_z_p = [f"{crack_probability(tci):.1f}" if not np.isnan(tci) else "N/A" for tci in tci_z]
-        tci_max = [max([x, y, z]) if not (np.isnan(x) or np.isnan(y) or np.isnan(z)) else np.nan for x, y, z in zip(tci_x, tci_y, tci_z)]
-        tci_max_p = [f"{crack_probability(tci):.1f}" if not np.isnan(tci) else "N/A" for tci in tci_max]
+        # TCI 계산 시 음수 응력은 확률 0%로 설정
+        def calculate_tci_and_probability(stress, fct):
+            if stress <= 0:  # 음수 또는 0인 경우
+                return np.nan, "0.0"
+            elif abs(stress) > 0.00001:
+                tci_val = fct / abs(stress)
+                prob = crack_probability(tci_val)
+                return tci_val, f"{prob:.1f}" if not np.isnan(prob) else "N/A"
+            else:
+                return np.nan, "N/A"
+        
+        # TCI-MAX 계산 (Max Principal 응력 사용)
+        tci_max = []
+        tci_max_p = []
+        for i, node_id in enumerate(node_ids):
+            max_principal = max_principal_data[i]
+            tci_val, prob_str = calculate_tci_and_probability(max_principal, fct)
+            tci_max.append(tci_val)
+            tci_max_p.append(prob_str)
+        
+        # 확률 계산 (음수 응력 시 0% 처리)
+        tci_x_p = []
+        tci_y_p = []
+        tci_z_p = []
+        
+        for i in range(len(node_ids)):
+            # X축 응력
+            sxx = sxx_data[i]
+            _, prob_x = calculate_tci_and_probability(sxx, fct)
+            tci_x_p.append(prob_x)
+            
+            # Y축 응력
+            syy = syy_data[i]
+            _, prob_y = calculate_tci_and_probability(syy, fct)
+            tci_y_p.append(prob_y)
+            
+            # Z축 응력
+            szz = szz_data[i]
+            _, prob_z = calculate_tci_and_probability(szz, fct)
+            tci_z_p.append(prob_z)
         
         # 데이터프레임 생성 (기존 코드와 동일)
         df = pd.DataFrame({
@@ -5787,10 +5910,10 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
             "TCI-X": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_x],
             "TCI-Y": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_y],
             "TCI-Z": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_z],
+            "TCI-MAX": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_max],
             "TCI-X-P(%)": tci_x_p,
             "TCI-Y-P(%)": tci_y_p,
             "TCI-Z-P(%)": tci_z_p,
-            "TCI-MAX": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_max],
             "TCI-MAX-P(%)": tci_max_p,
         })
         
