@@ -5272,8 +5272,12 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
             "X (m)": [f"{node_coords[nid][0]:.3f}" for nid in node_ids],
             "Y (m)": [f"{node_coords[nid][1]:.3f}" for nid in node_ids],
             "Z (m)": [f"{node_coords[nid][2]:.3f}" for nid in node_ids],
-            "주응력 (GPa)": [f"{sxx:.6f}" for sxx in sxx_data],
-            "TCI": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_x],
+            "Sxx (GPa)": [f"{sxx:.6f}" for sxx in sxx_data],
+            "Syy (GPa)": [f"{syy:.6f}" for syy in syy_data],
+            "Szz (GPa)": [f"{szz:.6f}" for szz in szz_data],
+            "TCI-X": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_x],
+            "TCI-Y": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_y],
+            "TCI-Z": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_z],
         })
         
         # 표 생성
@@ -5294,13 +5298,35 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
             },
             style_data_conditional=[
                 {
-                    "if": {"column_id": "TCI", "filter_query": "{TCI} < 1.0"},
+                    "if": {"column_id": "TCI-X", "filter_query": "{TCI-X} < 1.0"},
                     "backgroundColor": "#fee2e2",
                     "color": "#dc2626",
                     "fontWeight": "bold"
                 },
                 {
-                    "if": {"column_id": "TCI", "filter_query": "{TCI} >= 1.0"},
+                    "if": {"column_id": "TCI-Y", "filter_query": "{TCI-Y} < 1.0"},
+                    "backgroundColor": "#fee2e2",
+                    "color": "#dc2626",
+                    "fontWeight": "bold"
+                },
+                {
+                    "if": {"column_id": "TCI-Z", "filter_query": "{TCI-Z} < 1.0"},
+                    "backgroundColor": "#fee2e2",
+                    "color": "#dc2626",
+                    "fontWeight": "bold"
+                },
+                {
+                    "if": {"column_id": "TCI-X", "filter_query": "{TCI-X} >= 1.0"},
+                    "backgroundColor": "#dcfce7",
+                    "color": "#166534"
+                },
+                {
+                    "if": {"column_id": "TCI-Y", "filter_query": "{TCI-Y} >= 1.0"},
+                    "backgroundColor": "#dcfce7",
+                    "color": "#166534"
+                },
+                {
+                    "if": {"column_id": "TCI-Z", "filter_query": "{TCI-Z} >= 1.0"},
                     "backgroundColor": "#dcfce7",
                     "color": "#166534"
                 }
