@@ -1904,7 +1904,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                             }
                         ),
                         dbc.Button(
-                            [html.I(className="fas fa-file-csv me-1"), "데이터 저장(csv)"],
+                            [html.I(className="fas fa-file-csv me-1"), "데이터 저장"],
                             id="btn-save-temp-data",
                             color="success",
                             size="lg",
