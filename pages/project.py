@@ -2125,7 +2125,49 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 seen_dates.add(date_str)
         
         return html.Div([
-            # 컨트롤 패널 (노션 스타일)
+            # 시간 설정 (3D뷰, 단면도와 동일한 디자인)
+            html.Div([
+                html.Div([
+                    html.H6("⏰ 시간 설정", style={
+                        "fontWeight": "600",
+                        "color": "#374151",
+                        "marginBottom": "16px",
+                        "fontSize": "14px"
+                    }),
+                    html.Div([
+                        html.Label("시간 슬라이더", style={
+                            "fontSize": "12px", 
+                            "fontWeight": "500", 
+                            "color": "#6b7280",
+                            "marginBottom": "8px"
+                        }),
+                        dcc.Slider(
+                            id="analysis-time-slider",
+                            min=0,
+                            max=max_idx,
+                            step=1,
+                            value=max_idx,
+                            marks=time_marks,
+                            tooltip={"placement": "bottom", "always_visible": True},
+                            className="mb-3"
+                        ),
+                        html.Div(id="analysis-time-info", style={
+                            "fontSize": "13px",
+                            "color": "#6b7280",
+                            "textAlign": "center",
+                            "marginTop": "8px"
+                        })
+                    ])
+                ], style={
+                    "padding": "16px 20px",
+                    "backgroundColor": "#f9fafb",
+                    "borderRadius": "8px",
+                    "border": "1px solid #e5e7eb",
+                    "marginBottom": "16px"
+                })
+            ]),
+            
+            # 통합 분석 설정 (컬러맵 필드, 프리셋, 단면 설정을 하나로)
             html.Div([
                 html.Div([
                     html.H6("🎛️ 분석 설정", style={
@@ -2166,23 +2208,60 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                             )
                         ], md=4),
                         dbc.Col([
-                            html.Label("시간", style={
+                            html.Label("단면 설정", style={
                                 "fontSize": "12px", 
                                 "fontWeight": "500", 
                                 "color": "#6b7280",
                                 "marginBottom": "4px"
                             }),
-                            dcc.Slider(
-                                id="analysis-time-slider",
-                                min=0,
-                                max=max_idx,
-                                step=1,
-                                value=max_idx,
-                                marks=time_marks,
-                                tooltip={"placement": "bottom", "always_visible": True},
+                            dbc.Checklist(
+                                options=[{"label": "단면 보기 활성화", "value": "on"}],
+                                value=[],
+                                id="slice-enable",
+                                switch=True,
+                                style={"fontSize": "13px"}
                             )
                         ], md=4),
-                    ], className="g-3"),
+                    ], className="g-3 mb-3"),
+                    
+                    # 단면 상세 설정 (조건부 표시)
+                    html.Div(id="slice-detail-controls", style={"display": "none"}, children=[
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("축 선택", style={
+                                    "fontSize": "12px", 
+                                    "fontWeight": "500", 
+                                    "color": "#6b7280",
+                                    "marginBottom": "4px"
+                                }),
+                                dcc.Dropdown(
+                                    id="slice-axis",
+                                    options=[
+                                        {"label": "X축 (좌→우)", "value": "X"},
+                                        {"label": "Y축 (앞→뒤)", "value": "Y"},
+                                        {"label": "Z축 (아래→위)", "value": "Z"},
+                                    ],
+                                    value="Z",
+                                    clearable=False,
+                                    style={"fontSize": "13px"}
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("절단 위치", style={
+                                    "fontSize": "12px", 
+                                    "fontWeight": "500", 
+                                    "color": "#6b7280",
+                                    "marginBottom": "4px"
+                                }),
+                                dcc.Slider(
+                                    id="slice-slider",
+                                    min=0, max=1, step=0.05, value=0.5,
+                                    marks={0: '0.0', 1: '1.0'},
+                                    tooltip={"placement": "bottom", "always_visible": True},
+                                )
+                            ], md=6),
+                        ], className="g-3"),
+                    ])
                 ], style={
                     "padding": "16px 20px",
                     "backgroundColor": "#f9fafb",
@@ -2192,7 +2271,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 })
             ]),
             
-            # 현재 파일 정보 (노션 스타일 카드)
+            # 현재 파일 정보 (년/월/일/시간 형식으로 표시)
             html.Div([
                 html.Div([
                     html.I(className="fas fa-file-alt me-2", style={"color": "#6366f1"}),
@@ -2208,68 +2287,6 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
                     "marginBottom": "16px",
                     "fontSize": "14px"
-                })
-            ]),
-            
-            # 단면 컨트롤 (노션 스타일)
-            html.Div([
-                html.Div([
-                    html.H6("✂️ 단면 설정", style={
-                        "fontWeight": "600",
-                        "color": "#374151",
-                        "marginBottom": "16px",
-                        "fontSize": "14px"
-                    }),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Checklist(
-                                options=[{"label": "단면 보기 활성화", "value": "on"}],
-                                value=[],
-                                id="slice-enable",
-                                switch=True,
-                                style={"fontSize": "13px"}
-                            )
-                        ], md=3),
-                        dbc.Col([
-                            html.Label("축 선택", style={
-                                "fontSize": "12px", 
-                                "fontWeight": "500", 
-                                "color": "#6b7280",
-                                "marginBottom": "4px"
-                            }),
-                            dcc.Dropdown(
-                                id="slice-axis",
-                                options=[
-                                    {"label": "X축 (좌→우)", "value": "X"},
-                                    {"label": "Y축 (앞→뒤)", "value": "Y"},
-                                    {"label": "Z축 (아래→위)", "value": "Z"},
-                                ],
-                                value="Z",
-                                clearable=False,
-                                style={"fontSize": "13px"}
-                            )
-                        ], md=3),
-                        dbc.Col([
-                            html.Label("절단 위치", style={
-                                "fontSize": "12px", 
-                                "fontWeight": "500", 
-                                "color": "#6b7280",
-                                "marginBottom": "4px"
-                            }),
-                            dcc.Slider(
-                                id="slice-slider",
-                                min=0, max=1, step=0.05, value=0.5,
-                                marks={0: '0.0', 1: '1.0'},
-                                tooltip={"placement": "bottom", "always_visible": True},
-                            )
-                        ], md=6),
-                    ], className="g-3"),
-                ], style={
-                    "padding": "16px 20px",
-                    "backgroundColor": "#f9fafb",
-                    "borderRadius": "8px",
-                    "border": "1px solid #e5e7eb",
-                    "marginBottom": "20px"
                 })
             ]),
             
@@ -3746,7 +3763,15 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 style={"height": "60vh", "width": "100%"}
             )
             
-            label = f"파일: {selected_file}"
+            # 파일명을 년/월/일/시간 형식으로 변환
+            try:
+                time_str = os.path.splitext(selected_file)[0]
+                dt = datetime.strptime(time_str, "%Y%m%d%H")
+                time_display = dt.strftime("%Y년 %m월 %d일 %H시")
+            except:
+                time_display = selected_file
+            
+            label = f"📅 {time_display}"
             if color_range:
                 label += f" | 값 범위: {color_range[0]:.2f} ~ {color_range[1]:.2f}"
             if slice_enable and "on" in slice_enable:
@@ -3780,6 +3805,74 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             html.Hr(),
             html.P("다른 파일을 선택하거나 VTK 파일을 확인해주세요.", style={"color": "gray"})
         ]), "", go.Figure(), 0.0, 1.0
+
+# 수치해석 단면 상세 컨트롤 표시/숨김 콜백
+@callback(
+    Output("slice-detail-controls", "style"),
+    Input("slice-enable", "value"),
+    prevent_initial_call=True,
+)
+def toggle_slice_detail_controls(slice_enable):
+    if slice_enable and "on" in slice_enable:
+        return {"display": "block", "marginTop": "16px"}
+    else:
+        return {"display": "none"}
+
+# 수치해석 시간 정보 업데이트 콜백
+@callback(
+    Output("analysis-time-info", "children"),
+    Input("analysis-time-slider", "value"),
+    Input("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    prevent_initial_call=True,
+)
+def update_analysis_time_info(time_idx, selected_rows, tbl_data):
+    if not selected_rows or not tbl_data:
+        return ""
+    
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    assets_vtk_dir = f"assets/vtk/{concrete_pk}"
+    assets_vtp_dir = f"assets/vtp/{concrete_pk}"
+    
+    import os
+    from datetime import datetime
+    
+    vtk_files = []
+    vtp_files = []
+    if os.path.exists(assets_vtk_dir):
+        vtk_files = sorted([f for f in os.listdir(assets_vtk_dir) if f.endswith('.vtk')])
+    if os.path.exists(assets_vtp_dir):
+        vtp_files = sorted([f for f in os.listdir(assets_vtp_dir) if f.endswith('.vtp')])
+    
+    if not vtk_files and not vtp_files:
+        return ""
+    
+    times = []
+    files = []
+    
+    if vtk_files:
+        files = vtk_files
+    elif vtp_files:
+        files = vtp_files
+    
+    for f in files:
+        try:
+            time_str = os.path.splitext(f)[0]
+            dt = datetime.strptime(time_str, "%Y%m%d%H")
+            times.append((dt, f))
+        except:
+            continue
+    
+    if not times or time_idx is None or time_idx >= len(times):
+        return ""
+    
+    times.sort()
+    selected_dt = times[time_idx][0]
+    
+    # 년/월/일/시간 형식으로 표시
+    time_str = selected_dt.strftime("%Y년 %m월 %d일 %H시")
+    return f"📅 {time_str}"
 
 # 수치해석 컬러바 표시/숨김 콜백
 @callback(
