@@ -3571,41 +3571,41 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             html.P("VTK 파일 형식을 확인해주세요. FRD → VTK 변환이 올바르게 되었는지 점검이 필요합니다.", style={"color": "gray"})
         ]), "", go.Figure(), slice_min, slice_max
     
-            # 컬러 데이터 범위 추출 (컴포넌트 인덱스 처리)
-        color_range = None
-        colorbar_fig = go.Figure()
-        if field_name:
-            # 컴포넌트 인덱스가 포함된 필드명 처리
-            actual_field_name = field_name
-            if ":" in field_name:
-                base_field, comp_idx = field_name.split(":")
-                try:
-                    comp_idx = int(comp_idx)
-                    comp_name = f"{base_field}_{comp_idx}"
-                    arr = ds_for_vis.GetPointData().GetArray(comp_name)
-                    if arr:
+    # 컬러 데이터 범위 추출 (컴포넌트 인덱스 처리)
+    color_range = None
+    colorbar_fig = go.Figure()
+    if field_name:
+        # 컴포넌트 인덱스가 포함된 필드명 처리
+        actual_field_name = field_name
+        if ":" in field_name:
+            base_field, comp_idx = field_name.split(":")
+            try:
+                comp_idx = int(comp_idx)
+                comp_name = f"{base_field}_{comp_idx}"
+                arr = ds_for_vis.GetPointData().GetArray(comp_name)
+                if arr:
+                    actual_field_name = comp_name
+                else:
+                    # 컴포넌트 배열이 없으면 원본 벡터 필드에서 직접 추출
+                    import vtk.util.numpy_support as nps
+                    import numpy as np
+                    base_arr = ds_for_vis.GetPointData().GetArray(base_field)
+                    if base_arr and base_arr.GetNumberOfComponents() > comp_idx:
+                        vector_data = nps.vtk_to_numpy(base_arr)
+                        comp_data = vector_data[:, comp_idx]
+                        arr = vtk.vtkFloatArray()
+                        arr.SetName(comp_name)
+                        arr.SetNumberOfValues(len(comp_data))
+                        for i, val in enumerate(comp_data):
+                            arr.SetValue(i, val)
                         actual_field_name = comp_name
                     else:
-                        # 컴포넌트 배열이 없으면 원본 벡터 필드에서 직접 추출
-                        import vtk.util.numpy_support as nps
-                        import numpy as np
-                        base_arr = ds_for_vis.GetPointData().GetArray(base_field)
-                        if base_arr and base_arr.GetNumberOfComponents() > comp_idx:
-                            vector_data = nps.vtk_to_numpy(base_arr)
-                            comp_data = vector_data[:, comp_idx]
-                            arr = vtk.vtkFloatArray()
-                            arr.SetName(comp_name)
-                            arr.SetNumberOfValues(len(comp_data))
-                            for i, val in enumerate(comp_data):
-                                arr.SetValue(i, val)
-                            actual_field_name = comp_name
-                        else:
-                            arr = base_arr
-                except (ValueError, IndexError):
-                    arr = ds_for_vis.GetPointData().GetArray(field_name)
-            else:
+                        arr = base_arr
+            except (ValueError, IndexError):
                 arr = ds_for_vis.GetPointData().GetArray(field_name)
-        
+        else:
+            arr = ds_for_vis.GetPointData().GetArray(field_name)
+    
         if arr is not None:
             range_val = arr.GetRange()
             if range_val[0] != range_val[1]:  # 값이 모두 같지 않을 때만 범위 설정
@@ -3620,33 +3620,35 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                         "Grayscale": [[0, 'black'], [1, 'white']]
                     }
                     
-                    colorbar_fig = go.Figure(data=go.Scatter(
-                        x=[None], y=[None],
-                        mode='markers',
-                        marker=dict(
-                            colorscale=colorscale_map.get(preset, 'viridis'),
-                            cmin=color_range[0],
-                            cmax=color_range[1],
-                            colorbar=dict(
-                                title=dict(text=field_name.replace(":", " "), font=dict(size=14)),
-                                thickness=15,
-                                len=0.7,
-                                x=0.5,
-                                xanchor="center",
-                                tickfont=dict(size=12)
-                            ),
-                            showscale=True
+                    # color_range가 유효할 때만 컬러바 생성
+                    if color_range and len(color_range) == 2:
+                        colorbar_fig = go.Figure(data=go.Scatter(
+                            x=[None], y=[None],
+                            mode='markers',
+                            marker=dict(
+                                colorscale=colorscale_map.get(preset, 'viridis'),
+                                cmin=color_range[0],
+                                cmax=color_range[1],
+                                colorbar=dict(
+                                    title=dict(text=field_name.replace(":", " "), font=dict(size=14)),
+                                    thickness=15,
+                                    len=0.7,
+                                    x=0.5,
+                                    xanchor="center",
+                                    tickfont=dict(size=12)
+                                ),
+                                showscale=True
+                            )
+                        ))
+                        colorbar_fig.update_layout(
+                            showlegend=False,
+                            xaxis=dict(visible=False),
+                            yaxis=dict(visible=False),
+                            margin=dict(l=0, r=0, t=10, b=0),
+                            height=120,
+                            plot_bgcolor='rgba(0,0,0,0)',
+                            paper_bgcolor='rgba(0,0,0,0)'
                         )
-                    ))
-                    colorbar_fig.update_layout(
-                        showlegend=False,
-                        xaxis=dict(visible=False),
-                        yaxis=dict(visible=False),
-                        margin=dict(l=0, r=0, t=10, b=0),
-                        height=120,
-                        plot_bgcolor='rgba(0,0,0,0)',
-                        paper_bgcolor='rgba(0,0,0,0)'
-                    )
                 except Exception as colorbar_error:
                     print(f"컬러바 생성 오류: {colorbar_error}")
     
