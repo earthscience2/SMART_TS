@@ -3413,7 +3413,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         
         # 단면 적용 (slice_enable에 "on"이 있으면 활성화)
         ds_for_vis = ds
-        if slice_enable and "on" in slice_enable:
+        if slice_enable is not None and isinstance(slice_enable, list) and "on" in slice_enable:
             try:
                 # 슬라이더의 값을 절대 좌표로 직접 사용하도록 변경
                 slice_value = slice_slider
@@ -3546,7 +3546,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         # 메시 상태 생성 (더 안전한 방식)
         try:
             # 단면이 활성화된 경우 추가 처리
-            if slice_enable and "on" in slice_enable and ds_for_vis.GetNumberOfCells() > 0:
+            if slice_enable is not None and isinstance(slice_enable, list) and "on" in slice_enable and ds_for_vis.GetNumberOfCells() > 0:
                 # 단면에서 빈 공간을 최소화하기 위해 삼각형화
                 try:
                     triangulator = vtk.vtkTriangleFilter()
@@ -3760,7 +3760,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             label = f"📅 {time_display}"
             if color_range:
                 label += f" | 값 범위: {color_range[0]:.2f} ~ {color_range[1]:.2f}"
-            if slice_enable and "on" in slice_enable:
+            if slice_enable is not None and isinstance(slice_enable, list) and "on" in slice_enable:
                 slice_value = slice_slider
                 if slice_axis == "X":
                     label += f" | X ≥ {slice_value:.1f} 영역"
