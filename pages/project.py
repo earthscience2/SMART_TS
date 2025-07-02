@@ -587,7 +587,7 @@ layout = dbc.Container(
                         dcc.Slider(id="slice-slider", min=0, max=1, value=0.5),
                         html.Div(id="analysis-3d-viewer"),
                         html.Div(id="analysis-current-file-label"),
-                        dcc.Graph(id="analysis-colorbar"),
+                        # dcc.Graph(id="analysis-colorbar"),
                         html.Div(id="section-time-info"),  # 단면도용 시간 정보 표시 컴포넌트
                     ], style={"display": "none"}),
                     
@@ -2245,20 +2245,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     "marginBottom": "16px"
                 })
             ]),
-
-            # 컬러바 (조건부 표시, 노션 스타일)
-            html.Div(id="analysis-colorbar-container", children=[
-                html.Div([
-                    dcc.Graph(id="analysis-colorbar", style={"height":"120px", "display": "none"})
-                ], style={
-                    "backgroundColor": "white",
-                    "borderRadius": "8px",
-                    "border": "1px solid #e5e7eb",
-                    "overflow": "hidden"
-                })
-            ])
-            
-        ]), f"수치해석 결과 ({len(files)}개 파일)"
+        ])
     elif active_tab == "tab-tci":
         # TCI 분석 탭: 온도 균열 지수 분석 및 시각화
         if not (selected_rows and tbl_data):
