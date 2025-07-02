@@ -3343,228 +3343,13 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         print("원본 ds 셀 개수:", ds.GetNumberOfCells())
         print("원본 ds 바운딩박스:", ds.GetBounds())
 
-        # 단면 적용 (slice_enable에 "on"이 있으면 활성화)
+        # 원본 데이터 그대로 사용 (단면 기능 제거)
         ds_for_vis = ds
-        # 단면 기능이 비활성화되어 있으면 원본 데이터 그대로 사용
-        if slice_enable is None or not isinstance(slice_enable, list) or "on" not in slice_enable:
-            print("단면 기능 비활성화 - 원본 데이터 사용")
-        else:
-            try:
-                # 슬라이더의 값을 절대 좌표로 직접 사용하도록 변경
-                slice_value = slice_slider
-                
-                # 방법 1: vtkTableBasedClipDataSet 사용 (더 안정적)
-                clipper = vtk.vtkTableBasedClipDataSet()
-                clipper.SetInputData(ds)
-                
-                # 평면 생성
-                plane = vtk.vtkPlane()
-                if slice_axis == "X":
-                    plane.SetOrigin(slice_value, 0, 0)
-                    plane.SetNormal(-1, 0, 0)  # X >= slice_value 영역 유지
-                elif slice_axis == "Y":
-                    plane.SetOrigin(0, slice_value, 0) 
-                    plane.SetNormal(0, -1, 0)  # Y >= slice_value 영역 유지
-                else:  # Z
-                    plane.SetOrigin(0, 0, slice_value)
-                    plane.SetNormal(0, 0, -1)  # Z >= slice_value 영역 유지
-                
-                clipper.SetClipFunction(plane)
-                clipper.SetInsideOut(False)
-                clipper.Update()
-                
-                # 클리핑 결과를 PolyData로 변환
-                geom_filter = vtk.vtkGeometryFilter()
-                geom_filter.SetInputData(clipper.GetOutput())
-                geom_filter.Update()
-                clipped_data = geom_filter.GetOutput()
-                
-                # 클리핑이 성공했는지 확인
-                if clipped_data.GetNumberOfCells() > 0:
-                    # 빈 공간을 채우기 위해 Delaunay 3D 사용
-                    try:
-                        # 먼저 점들로부터 3D 메쉬 생성
-                        delaunay3d = vtk.vtkDelaunay3D()
-                        delaunay3d.SetInputData(clipped_data)
-                        delaunay3d.SetTolerance(0.001)
-                        delaunay3d.SetAlpha(0.0)  # 모든 점 포함
-                        delaunay3d.Update()
-                        
-                        # 3D 메쉬에서 표면 추출
-                        surface_filter = vtk.vtkGeometryFilter()
-                        surface_filter.SetInputData(delaunay3d.GetOutput())
-                        surface_filter.Update()
-                        
-                        filled_data = surface_filter.GetOutput()
-                        
-                        # 결과가 있으면 사용, 없으면 원본 클리핑 결과 사용
-                        if filled_data.GetNumberOfCells() > 0:
-                            ds_for_vis = filled_data
-                        else:
-                            ds_for_vis = clipped_data
-                            
-                    except Exception as delaunay_error:
-                        print(f"Delaunay 3D 오류: {delaunay_error}")
-                        # Delaunay가 실패하면 단순히 클리핑 결과 사용
-                        ds_for_vis = clipped_data
-                
-                else:
-                    # 클리핑 실패시 다중 방법 시도
-                    try:
-                        # 방법 2: Box를 이용한 클리핑 + 볼륨 필링
-                        box = vtk.vtkBox()
-                        if slice_axis == "X":
-                            box.SetBounds(slice_value, xmax+0.1, ymin-0.1, ymax+0.1, zmin-0.1, zmax+0.1)
-                        elif slice_axis == "Y":
-                            box.SetBounds(xmin-0.1, xmax+0.1, slice_value, ymax+0.1, zmin-0.1, zmax+0.1)
-                        else:  # Z
-                            box.SetBounds(xmin-0.1, xmax+0.1, ymin-0.1, ymax+0.1, slice_value, zmax+0.1)
-                        
-                        box_clipper = vtk.vtkTableBasedClipDataSet()
-                        box_clipper.SetInputData(ds)
-                        box_clipper.SetClipFunction(box)
-                        box_clipper.SetInsideOut(False)
-                        box_clipper.Update()
-                        
-                        box_result = box_clipper.GetOutput()
-                        
-                        if box_result.GetNumberOfCells() > 0:
-                            # Box 클리핑 성공 - 표면 생성
-                            box_geom = vtk.vtkGeometryFilter()
-                            box_geom.SetInputData(box_result)
-                            box_geom.Update()
-                            
-                            # 빈 공간을 채우기 위해 contour 필터 추가
-                            try:
-                                # 좀 더 조밀한 메쉬 생성
-                                tessellator = vtk.vtkTessellatorFilter()
-                                tessellator.SetInputData(box_result)
-                                tessellator.Update()
-                                
-                                tess_geom = vtk.vtkGeometryFilter()
-                                tess_geom.SetInputData(tessellator.GetOutput())
-                                tess_geom.Update()
-                                
-                                ds_for_vis = tess_geom.GetOutput()
-                                
-                            except Exception:
-                                # Tessellator 실패시 기본 geometry filter 결과 사용
-                                ds_for_vis = box_geom.GetOutput()
-                        else:
-                            # 방법 3: 임계값 기반 필터링 (마지막 수단)
-                            # 원본 데이터에서 해당 영역의 점들만 추출
-                            extract = vtk.vtkExtractGeometry()
-                            extract.SetInputData(ds)
-                            extract.SetImplicitFunction(box)
-                            extract.SetExtractInside(True)
-                            extract.SetExtractBoundaryCells(True)
-                            extract.Update()
-                            
-                            extract_geom = vtk.vtkGeometryFilter()
-                            extract_geom.SetInputData(extract.GetOutput())
-                            extract_geom.Update()
-                            
-                            ds_for_vis = extract_geom.GetOutput()
-                        
-                        # 여전히 결과가 없으면 원본 사용
-                        if ds_for_vis.GetNumberOfCells() == 0:
-                            ds_for_vis = ds
-                            
-                    except Exception as box_error:
-                        print(f"고급 클리핑 오류: {box_error}")
-                        ds_for_vis = ds
-                    
-            except Exception as slice_error:
-                print(f"단면 적용 오류: {slice_error}")
-                ds_for_vis = ds
-        print("ds_for_vis 점 개수:", ds_for_vis.GetNumberOfPoints())
-        print("ds_for_vis 셀 개수:", ds_for_vis.GetNumberOfCells())
-        print("ds_for_vis 바운딩박스:", ds_for_vis.GetBounds())
-        print("ds_for_vis 데이터셋 타입:", type(ds_for_vis).__name__)
+        print("원본 데이터 사용 - 점 개수:", ds_for_vis.GetNumberOfPoints())
+        print("원본 데이터 사용 - 셀 개수:", ds_for_vis.GetNumberOfCells())
         
-        # 사용 가능한 필드 확인
-        point_data = ds_for_vis.GetPointData()
-        print("사용 가능한 필드:")
-        for i in range(point_data.GetNumberOfArrays()):
-            arr_name = point_data.GetArrayName(i)
-            arr = point_data.GetArray(arr_name)
-            if arr:
-                print(f"  - {arr_name}: {arr.GetNumberOfComponents()} 컴포넌트, {arr.GetNumberOfTuples()} 튜플")
-
-        # 필드 값 min/max
-        if field_name:
-            arr = ds_for_vis.GetPointData().GetArray(field_name)
-            if arr is not None:
-                print("필드", field_name, "값 범위:", arr.GetRange())
-                print("필드", field_name, "컴포넌트 수:", arr.GetNumberOfComponents())
-                print("필드", field_name, "튜플 수:", arr.GetNumberOfTuples())
-            else:
-                print("필드", field_name, "없음")
-                # 사용 가능한 모든 필드 출력
-                print("사용 가능한 모든 필드:")
-                for i in range(ds_for_vis.GetPointData().GetNumberOfArrays()):
-                    arr_name = ds_for_vis.GetPointData().GetArrayName(i)
-                    arr_temp = ds_for_vis.GetPointData().GetArray(arr_name)
-                    if arr_temp:
-                        print(f"  - {arr_name}: {arr_temp.GetNumberOfComponents()} 컴포넌트, {arr_temp.GetNumberOfTuples()} 튜플")
-        
-        # 메쉬 상태 생성 (컴포넌트 인덱스 처리)
-        if field_name:
-            # 컴포넌트 인덱스가 포함된 필드명 처리 (예: "U:0", "S:1")
-            if ":" in field_name:
-                base_field, comp_idx = field_name.split(":")
-                try:
-                    comp_idx = int(comp_idx)
-                    print(f"컴포넌트 추출: {base_field}:{comp_idx}")
-                    
-                    # 해당 컴포넌트만 추출하여 새로운 배열 생성
-                    arr = ds_for_vis.GetPointData().GetArray(base_field)
-                    if arr and arr.GetNumberOfComponents() > comp_idx:
-                        print(f"벡터 필드 {base_field}에서 컴포넌트 {comp_idx} 추출")
-                        
-                        # 안전한 컴포넌트 추출 - numpy 직접 사용
-                        import vtk
-                        import vtk.util.numpy_support as nps
-                        import numpy as np
-                        
-                        # 벡터 배열을 numpy 배열로 변환
-                        vector_data = nps.vtk_to_numpy(arr)
-                        print(f"벡터 데이터 형태: {vector_data.shape}")
-                        
-                        # 해당 컴포넌트만 추출
-                        comp_data = vector_data[:, comp_idx]
-                        print(f"컴포넌트 {comp_idx} 데이터 범위: {comp_data.min():.6f} ~ {comp_data.max():.6f}")
-                        
-                        # numpy 배열을 VTK 배열로 변환
-                        comp_arr = vtk.vtkFloatArray()
-                        comp_name = f"{base_field}_{comp_idx}"
-                        comp_arr.SetName(comp_name)
-                        comp_arr.SetNumberOfValues(len(comp_data))
-                        
-                        for i, val in enumerate(comp_data):
-                            comp_arr.SetValue(i, val)
-                        
-                        # 원본 데이터셋에 컴포넌트 배열 추가
-                        ds_for_vis.GetPointData().AddArray(comp_arr)
-                        field_name = comp_name
-                        print(f"컴포넌트 배열 {comp_name} 추가 완료")
-                    else:
-                        print(f"벡터 필드 {base_field}에서 컴포넌트 {comp_idx} 추출 실패")
-                        if arr:
-                            print(f"  - 사용 가능한 컴포넌트 수: {arr.GetNumberOfComponents()}")
-                        else:
-                            print(f"  - 필드 {base_field}가 존재하지 않음")
-                        field_name = base_field
-                except (ValueError, IndexError) as e:
-                    print(f"컴포넌트 추출 오류: {e}")
-                    field_name = base_field
-            else:
-                print(f"스칼라 필드 사용: {field_name}")
-            
-            mesh_state = to_mesh_state(ds_for_vis, field_name)
-        else:
-            print("필드 없음 - 기본 메쉬 상태 생성")
-            mesh_state = to_mesh_state(ds_for_vis)
+        # 메쉬 상태 생성 (단순하게)
+        mesh_state = to_mesh_state(ds_for_vis)
         # mesh_state 구조 확인
         try:
             print("mesh_state keys:", list(mesh_state.keys()))
@@ -3580,13 +3365,8 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         if not (('mesh' in mesh_state) or ('points' in mesh_state)):
             raise ValueError("mesh_state에 필수 데이터가 없습니다")
         
-        # 선택된 축에 따른 슬라이더 범위 결정
-        if slice_axis == "X":
-            slice_min, slice_max = xmin, xmax
-        elif slice_axis == "Y":
-            slice_min, slice_max = ymin, ymax
-        else:  # Z
-            slice_min, slice_max = zmin, zmax
+        # 기본 슬라이더 범위 설정
+        slice_min, slice_max = 0.0, 1.0
         
     except Exception as mesh_error:
         print(f"mesh_state 생성 오류: {mesh_error}")
@@ -3600,165 +3380,21 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             html.P("VTK 파일 형식을 확인해주세요. FRD → VTK 변환이 올바르게 되었는지 점검이 필요합니다.", style={"color": "gray"})
         ]), "", go.Figure(), slice_min, slice_max
     
-    # 컬러 데이터 범위 추출 (컴포넌트 인덱스 처리)
-    color_range = None
-    # colorbar_fig = go.Figure()  # 컬러바 완전 삭제
-    if field_name:
-        # 컴포넌트 인덱스가 포함된 필드명 처리
-        actual_field_name = field_name
-        if ":" in field_name:
-            base_field, comp_idx = field_name.split(":")
-            try:
-                comp_idx = int(comp_idx)
-                comp_name = f"{base_field}_{comp_idx}"
-                arr = ds_for_vis.GetPointData().GetArray(comp_name)
-                if arr:
-                    actual_field_name = comp_name
-                else:
-                    # 컴포넌트 배열이 없으면 원본 벡터 필드에서 직접 추출
-                    import vtk.util.numpy_support as nps
-                    import numpy as np
-                    base_arr = ds_for_vis.GetPointData().GetArray(base_field)
-                    if base_arr and base_arr.GetNumberOfComponents() > comp_idx:
-                        vector_data = nps.vtk_to_numpy(base_arr)
-                        comp_data = vector_data[:, comp_idx]
-                        arr = vtk.vtkFloatArray()
-                        arr.SetName(comp_name)
-                        arr.SetNumberOfValues(len(comp_data))
-                        for i, val in enumerate(comp_data):
-                            arr.SetValue(i, val)
-                        actual_field_name = comp_name
-                    else:
-                        arr = base_arr
-            except (ValueError, IndexError):
-                arr = ds_for_vis.GetPointData().GetArray(field_name)
-        else:
-            arr = ds_for_vis.GetPointData().GetArray(field_name)
-    
-        if arr is not None:
-            range_val = arr.GetRange()
-            if range_val[0] != range_val[1]:  # 값이 모두 같지 않을 때만 범위 설정
-                color_range = [range_val[0], range_val[1]]
-                # 컬러바 생성 코드 완전 삭제
-    
     # 기본 프리셋 설정
     if not preset:
         preset = "rainbow"
     
     # dash_vtk 컴포넌트 생성 (더 안전한 방식)
     try:
-        # Mesh 컴포넌트 먼저 생성
+        # Mesh 컴포넌트 생성
         mesh_component = dash_vtk.Mesh(state=mesh_state)
         
-        # GeometryRepresentation 생성 (필수 속성만 사용)
-        geometry_rep_props = {
-            "children": [mesh_component]
-        }
+        # GeometryRepresentation 생성 (최소한의 속성만 사용)
+        geometry_rep = dash_vtk.GeometryRepresentation(children=[mesh_component])
         
-        # 안전하게 속성 추가
-        if preset:
-            geometry_rep_props["colorMapPreset"] = preset
-        
-        if color_range and len(color_range) == 2:
-            geometry_rep_props["colorDataRange"] = color_range
-        
-        # UnstructuredGrid의 경우 추가 속성 설정
-        if isinstance(ds_for_vis, vtk.vtkUnstructuredGrid):
-            # 내부 볼륨이 제대로 표시되도록 설정
-            # geometry_rep_props["representation"] = "Surface"  # 지원하지 않으므로 제거
-            # geometry_rep_props["opacity"] = 1.0  # 지원하지 않으므로 제거
-            # property를 사용해서 표면 렌더링 설정
-            geometry_rep_props["property"] = {"representation": "surface"}
-            print("UnstructuredGrid용 추가 속성 설정")
-        
-        geometry_rep = dash_vtk.GeometryRepresentation(**geometry_rep_props)
-        
-        # --- Bounding box wireframe 추가 (원본 데이터 기준) ---
-        view_children = [geometry_rep]
-        try:
-            pts = vtk.vtkPoints()
-            corners = [
-                (xmin,ymin,zmin), (xmax,ymin,zmin), (xmax,ymax,zmin), (xmin,ymax,zmin),
-                (xmin,ymin,zmax), (xmax,ymin,zmax), (xmax,ymax,zmax), (xmin,ymax,zmax)
-            ]
-            for p in corners:
-                pts.InsertNextPoint(*p)
-            lines = vtk.vtkCellArray()
-            edges = [
-                (0,1),(1,2),(2,3),(3,0),  # bottom
-                (4,5),(5,6),(6,7),(7,4),  # top
-                (0,4),(1,5),(2,6),(3,7)   # vertical
-            ]
-            for a,b in edges:
-                line = vtk.vtkLine()
-                line.GetPointIds().SetId(0,a)
-                line.GetPointIds().SetId(1,b)
-                lines.InsertNextCell(line)
-            poly = vtk.vtkPolyData()
-            poly.SetPoints(pts)
-            poly.SetLines(lines)
-            bbox_state = to_mesh_state(poly)
-            
-            # 바운딩 박스용 Mesh와 GeometryRepresentation 생성
-            bbox_mesh = dash_vtk.Mesh(state=bbox_state)
-            bbox_rep = dash_vtk.GeometryRepresentation(children=[bbox_mesh])
-            view_children.append(bbox_rep)
-
-            # 축 표시 위젯 추가 (X/Y/Z 라벨) - AxesActor 포함
-            try:
-                orientation = dash_vtk.OrientationWidget(
-                    children=[dash_vtk.AxesActor()],  # 기본 축 모델 추가
-                    interactive=True  # 마우스 회전 등 기본 인터랙션 허용
-                )
-                view_children.append(orientation)
-            except Exception:
-                pass  # 일부 dash_vtk 버전에서 OrientationWidget 또는 AxesActor가 없을 수 있음
-        except Exception as bbox_error:
-            print(f"바운딩 박스 생성 오류: {bbox_error}")
-        
-        # ───── 내부 XYZ 축 라인 추가 ─────
-        try:
-            axis_len = 0.5 * max(xmax - xmin, ymax - ymin, zmax - zmin)
-            # 축을 모델 바깥에 배치하기 위해 바운딩박스 최소좌표에서 살짝 바깥쪽으로 이동
-            margin = 0.05 * axis_len
-            ox, oy, oz = xmin - margin, ymin - margin, zmin - margin
-            axis_defs = {
-                'X': {'dir': (1, 0, 0), 'color': [1, 0, 0]},
-                'Y': {'dir': (0, 1, 0), 'color': [0, 1, 0]},
-                'Z': {'dir': (0, 0, 1), 'color': [0, 0, 1]},
-            }
-            for axis_info in axis_defs.values():
-                dx, dy, dz = axis_info['dir']
-                p0 = (ox, oy, oz)
-                p1 = (ox + dx * axis_len, oy + dy * axis_len, oz + dz * axis_len)
-
-                axis_pts = vtk.vtkPoints()
-                axis_pts.InsertNextPoint(*p0)
-                axis_pts.InsertNextPoint(*p1)
-
-                axis_lines = vtk.vtkCellArray()
-                axis_line = vtk.vtkLine()
-                axis_line.GetPointIds().SetId(0, 0)
-                axis_line.GetPointIds().SetId(1, 1)
-                axis_lines.InsertNextCell(axis_line)
-
-                axis_poly = vtk.vtkPolyData()
-                axis_poly.SetPoints(axis_pts)
-                axis_poly.SetLines(axis_lines)
-
-                axis_state = to_mesh_state(axis_poly)
-                axis_mesh = dash_vtk.Mesh(state=axis_state)
-                axis_rep = dash_vtk.GeometryRepresentation(
-                    children=[axis_mesh],
-                    property={'color': axis_info['color'], 'lineWidth': 3}
-                )
-                view_children.append(axis_rep)
-        except Exception as axis_err:
-            print(f"내부 축 생성 오류: {axis_err}")
-
-        # View 컴포넌트 생성 (안전한 방식)
+        # View 컴포넌트 생성 (단순하게)
         vtk_viewer = dash_vtk.View(
-            children=view_children, 
+            children=[geometry_rep], 
             style={"height": "60vh", "width": "100%"}
         )
         
@@ -3771,14 +3407,6 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             time_display = selected_file
         
         label = f"📅 {time_display}"
-        if slice_enable is not None and isinstance(slice_enable, list) and "on" in slice_enable:
-            slice_value = slice_slider
-            if slice_axis == "X":
-                label += f" | X ≥ {slice_value:.1f} 영역"
-            elif slice_axis == "Y":
-                label += f" | Y ≥ {slice_value:.1f} 영역"
-            else:  # Z
-                label += f" | Z ≥ {slice_value:.1f} 영역"
         
         return vtk_viewer, label, slice_min, slice_max
         
