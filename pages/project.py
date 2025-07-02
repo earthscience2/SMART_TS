@@ -2339,20 +2339,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     ], className="g-3"),
                     html.Div(id="fct-formula-preview"),
                 ]),
-                html.Div([
-                    dbc.Button(
-                        "📥 CSV 다운로드", 
-                        id="btn-tci-csv", 
-                        color="success", 
-                        className="mt-3",
-                        style={
-                            "borderRadius": "8px",
-                            "padding": "10px 20px",
-                            "fontWeight": "500"
-                        }
-                    ),
-                    dcc.Download(id="download-tci-csv"),
-                ], style={"textAlign": "center", "marginTop": "20px"})
+
             ], style={
                 "padding": "24px",
                 "backgroundColor": "white",
@@ -4721,7 +4708,7 @@ def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
     prevent_initial_call=False
 )
 def update_formula_display(formula_type, fct28, a, b):
-    import dash_table
+    from dash import dash_table
     import numpy as np
     import plotly.graph_objects as go
     
@@ -4900,76 +4887,7 @@ def validate_inputs(fct28, formula_type):
     
     return dash.no_update, dash.no_update, dash.no_update
 
-# ───────────── TCI 계산 및 결과 표/CSV 콜백 뼈대 ─────────────
-@callback(
-    Output("download-tci-csv", "data"),
-    Input("btn-tci-csv", "n_clicks"),
-    Input("fct-formula-type", "value"),
-    Input("fct28-input", "value"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
-    prevent_initial_call=True
-)
-def calc_tci_and_download(csv_click, formula_type, fct28, selected_rows, tbl_data):
-    import dash
-    import numpy as np
-    from dash.exceptions import PreventUpdate
-    
-    ctx = dash.callback_context
-    trigger = ctx.triggered[0]["prop_id"].split(".")[0] if ctx.triggered else None
-    
-    # CSV 다운로드 버튼이 클릭된 경우에만 CSV 다운로드 처리
-    if trigger == "btn-tci-csv":
-        # CSV 다운로드 로직은 나중에 구현
-        pass
-    
-    # 기본값 처리
-    if not selected_rows or not tbl_data:
-        return None
-    
-    # 입력값 검증
-    if not fct28:
-        return None
-    
-    try:
-        fct28 = float(fct28)
-        if formula_type == "ceb":
-            # CEB 공식의 경우 기본값 사용
-            a = 1.0
-            b = 1.0
-    except ValueError:
-        return None
-    
-    # t별 인장강도 계산 (1~28일, 1일 간격)
-    t_vals = np.arange(1, 29, 1)
-    fct_vals = []
-    
-    for t in t_vals:
-        try:
-            if formula_type == "ceb":
-                # CEB-FIP Model Code 1990
-                fct = fct28 * (t / (a + b * t)) ** 0.5
-            else:
-                # 경험식 (KCI/KS)
-                if t <= 28:
-                    fct = fct28 * (t / 28) ** 0.5
-                else:
-                    fct = fct28
-        except Exception:
-            fct = 0
-        fct_vals.append(fct)
-    
-    # 결과 데이터프레임 생성
-    df = pd.DataFrame({
-        "일령(t)": t_vals,
-        "인장강도 fct(t) (MPa)": np.round(fct_vals, 4)
-    })
-    
-    # CSV 다운로드
-    if trigger == "btn-tci-csv":
-        return dict(content=df.to_csv(index=False, encoding="utf-8-sig"), filename="TCI_인장강도_결과.csv")
-    
-    return dash.no_update
+
 
 
 
