@@ -2286,8 +2286,29 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 })
             ])
         
+        # ───────────── TCI 인장강도 계산식 선택 및 결과 UI 추가 ─────────────
+        tci_ui = html.Div([
+            html.H5("인장강도(fct) 계산식 선택", style={"marginTop": "12px"}),
+            dcc.RadioItems(
+                id="fct-formula-type",
+                options=[
+                    {"label": "CEB-FIP Model Code 1990", "value": "ceb"},
+                    {"label": "경험식 (KCI/KS)", "value": "exp"},
+                ],
+                value="ceb",
+                labelStyle={"display": "block", "marginRight": "16px"},
+                style={"marginBottom": "8px"}
+            ),
+            html.Div(id="fct-formula-inputs"),
+            dbc.Button("계산 및 결과 보기", id="btn-tci-calc", color="primary", className="mt-2"),
+            html.Hr(),
+            html.Div(id="tci-result-table"),
+            dbc.Button("CSV 다운로드", id="btn-tci-csv", color="success", className="mt-2"),
+            dcc.Download(id="download-tci-csv"),
+        ], style={"backgroundColor": "#f8fafc", "borderRadius": "12px", "padding": "20px", "marginBottom": "24px", "border": "1px solid #e2e8f0"})
+        # ───────────── 기존 TCI 분석 개요/히트맵/요약 UI 아래에 삽입 ─────────────
         return html.Div([
-            # TCI 분석 개요 (노션 스타일)
+            # 기존 개요/히트맵/요약
             html.Div([
                 html.Div([
                     html.H6("📊 TCI (Temperature Cracking Index) 분석", style={
@@ -2316,8 +2337,9 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     "marginBottom": "20px"
                 })
             ]),
-            
-            # TCI 히트맵 뷰어 (노션 스타일)
+            # TCI 인장강도 계산식 및 결과 UI
+            tci_ui,
+            # 기존 히트맵/요약
             html.Div([
                 html.Div([
                     html.H6("🌡️ TCI 히트맵", style={
@@ -2344,8 +2366,6 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     "marginBottom": "20px"
                 })
             ]),
-            
-            # TCI 노드별 요약 테이블 (노션 스타일)
             html.Div([
                 html.Div([
                     html.H6("📋 TCI 노드별 요약", style={
@@ -4663,5 +4683,90 @@ def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
     except Exception as e:
         print(f"온도 변화 데이터 저장 오류: {e}")
         raise PreventUpdate
+
+# ───────────── TCI 인장강도 계산식 입력창 동적 표시 콜백 ─────────────
+@callback(
+    Output("fct-formula-inputs", "children"),
+    Input("fct-formula-type", "value"),
+)
+def update_fct_formula_inputs(formula_type):
+    if formula_type == "ceb":
+        return html.Div([
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label("fct,28 (28일 인장강도, MPa)"),
+                    dbc.Input(id="fct28-input", type="number", value=2.5, min=0, step=0.1),
+                ], md=4),
+                dbc.Col([
+                    dbc.Label("a (보통 1.0)"),
+                    dbc.Input(id="a-input", type="number", value=1.0, min=0, step=0.01),
+                ], md=2),
+                dbc.Col([
+                    dbc.Label("b (보통 1.0)"),
+                    dbc.Input(id="b-input", type="number", value=1.0, min=0, step=0.01),
+                ], md=2),
+            ], className="g-2"),
+            html.Small("식: fct(t) = fct,28 * ( t / (a + b*t) )^0.5", style={"color": "#64748b"})
+        ])
+    else:
+        return html.Div([
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label("fct,28 (28일 인장강도, MPa)"),
+                    dbc.Input(id="fct28-input", type="number", value=2.5, min=0, step=0.1),
+                ], md=4),
+            ]),
+            html.Small("식: fct(t) = fct,28 * (t/28)^0.5 (t ≤ 28)", style={"color": "#64748b"})
+        ])
+
+# ───────────── TCI 계산 및 결과 표/CSV 콜백 뼈대 ─────────────
+@callback(
+    Output("tci-result-table", "children"),
+    Output("download-tci-csv", "data"),
+    Input("btn-tci-calc", "n_clicks"),
+    Input("btn-tci-csv", "n_clicks"),
+    State("fct-formula-type", "value"),
+    State("fct28-input", "value"),
+    State("a-input", "value"),
+    State("b-input", "value"),
+    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    prevent_initial_call=True
+)
+def calc_tci_and_download(calc_click, csv_click, formula_type, fct28, a, b, selected_rows, tbl_data):
+    import dash
+    ctx = dash.callback_context
+    trigger = ctx.triggered[0]["prop_id"].split(".")[0] if ctx.triggered else None
+    # 기본값 처리
+    if not selected_rows or not tbl_data:
+        return html.Div("콘크리트를 선택하세요."), None
+    # --- 실제 계산/파일처리 로직은 이후 단계에서 구현 ---
+    # 임시 더미 표
+    import pandas as pd
+    days = list(range(1, 8))
+    nodes = [1, 2]
+    data = []
+    for day in days:
+        for node in nodes:
+            data.append({
+                "일": day,
+                "노드": node,
+                "TCI-X": 0.1 * day * node,
+                "TCI-Y": 0.2 * day * node,
+                "TCI-Z": 0.3 * day * node,
+            })
+    df = pd.DataFrame(data)
+    table = dash_table.DataTable(
+        columns=[{"name": i, "id": i} for i in df.columns],
+        data=df.to_dict("records"),
+        page_size=10,
+        style_table={"overflowY": "auto", "height": "400px"},
+        style_cell={"textAlign": "center"},
+        style_header={"backgroundColor": "#f8fafc", "fontWeight": "600"},
+    )
+    # CSV 다운로드
+    if trigger == "btn-tci-csv":
+        return dash.no_update, dict(content=df.to_csv(index=False, encoding="utf-8-sig"), filename="TCI_result.csv")
+    return table, None
 
 
