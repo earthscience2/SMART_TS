@@ -3531,26 +3531,9 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 }
             }
         
-        # 축 표시 컴포넌트 추가
-        axes = dash_vtk.Axes(
-            origin=[0, 0, 0],
-            xAxis=[1, 0, 0],
-            yAxis=[0, 1, 0],
-            zAxis=[0, 0, 1],
-            scale=1.0
-        )
-        
-        # 바운딩 박스 컴포넌트 추가
-        bounds = ds_for_vis.GetBounds()
-        bbox = dash_vtk.BoundingBox(
-            bounds=bounds,
-            color=[0.5, 0.5, 0.5],
-            opacity=0.3
-        )
-        
         # View 컴포넌트 생성 (고급 설정 복구)
         vtk_viewer = dash_vtk.View(
-            children=[geometry_rep, axes, bbox],
+            children=[geometry_rep],
             style={"height": "60vh", "width": "100%"},
             cameraPosition=[0, 0, 2],
             cameraViewUp=[0, 1, 0],
