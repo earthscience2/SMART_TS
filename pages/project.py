@@ -2299,7 +2299,23 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 labelStyle={"display": "block", "marginRight": "16px"},
                 style={"marginBottom": "8px"}
             ),
-            html.Div(id="fct-formula-inputs"),
+            html.Div([
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label("fct,28 (28일 인장강도, GPa)"),
+                        dbc.Input(id="fct28-input", type="number", placeholder="2.5", min=1, max=100),
+                    ], md=4),
+                    dbc.Col([
+                        dbc.Label("a (보통 1.0)"),
+                        dbc.Input(id="a-input", type="number", placeholder="1.0", min=0.5, max=2),
+                    ], md=2),
+                    dbc.Col([
+                        dbc.Label("b (보통 1.0)"),
+                        dbc.Input(id="b-input", type="number", placeholder="1.0", min=0.5, max=2),
+                    ], md=2),
+                ], className="g-2"),
+                html.Div(id="fct-formula-preview"),
+            ]),
             dbc.Button("계산 및 결과 보기", id="btn-tci-calc", color="primary", className="mt-2"),
             html.Hr(),
             html.Div(id="tci-result-table"),
@@ -2308,35 +2324,6 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         ], style={"backgroundColor": "#f8fafc", "borderRadius": "12px", "padding": "20px", "marginBottom": "24px", "border": "1px solid #e2e8f0"})
         # ───────────── 기존 TCI 분석 개요/히트맵/요약 UI 아래에 삽입 ─────────────
         return html.Div([
-            # 기존 개요/히트맵/요약
-            html.Div([
-                html.Div([
-                    html.H6("📊 TCI (Temperature Cracking Index) 분석", style={
-                        "fontWeight": "600",
-                        "color": "#374151",
-                        "marginBottom": "12px",
-                        "fontSize": "16px"
-                    }),
-                    html.P("온도 균열 지수(TCI)는 콘크리트의 온도 응력과 인장 강도를 고려하여 균열 발생 위험도를 평가하는 지표입니다.", style={
-                        "color": "#6b7280",
-                        "fontSize": "14px",
-                        "lineHeight": "1.6",
-                        "margin": "0"
-                    }),
-                    html.Div([
-                        html.Span("🔴 높음", style={"color": "#dc2626", "fontWeight": "500", "marginRight": "16px"}),
-                        html.Span("🟡 보통", style={"color": "#d97706", "fontWeight": "500", "marginRight": "16px"}),
-                        html.Span("🟢 낮음", style={"color": "#059669", "fontWeight": "500"})
-                    ], style={"marginTop": "12px"})
-                ], style={
-                    "padding": "20px",
-                    "backgroundColor": "white",
-                    "borderRadius": "12px",
-                    "border": "1px solid #e5e7eb",
-                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
-                    "marginBottom": "20px"
-                })
-            ]),
             # TCI 인장강도 계산식 및 결과 UI
             tci_ui,
             # 기존 히트맵/요약
@@ -4686,38 +4673,67 @@ def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
 
 # ───────────── TCI 인장강도 계산식 입력창 동적 표시 콜백 ─────────────
 @callback(
-    Output("fct-formula-inputs", "children"),
+    Output("a-input", "style"),
+    Output("b-input", "style"),
+    Output("fct-formula-preview", "children"),
     Input("fct-formula-type", "value"),
+    Input("fct28-input", "value"),
+    Input("a-input", "value"),
+    Input("b-input", "value"),
+    prevent_initial_call=True
 )
-def update_fct_formula_inputs(formula_type):
+def update_formula_display(formula_type, fct28, a, b):
+    import dash_table
+    import numpy as np
+    
+    # a, b 입력 필드 표시/숨김 설정
     if formula_type == "ceb":
-        return html.Div([
-            dbc.Row([
-                dbc.Col([
-                    dbc.Label("fct,28 (28일 인장강도, GPa)"),
-                    dbc.Input(id="fct28-input", type="number", placeholder="2.5", min=1, max=100),
-                ], md=4),
-                dbc.Col([
-                    dbc.Label("a (보통 1.0)"),
-                    dbc.Input(id="a-input", type="number", placeholder="1.0", min=0.5, max=2),
-                ], md=2),
-                dbc.Col([
-                    dbc.Label("b (보통 1.0)"),
-                    dbc.Input(id="b-input", type="number", placeholder="1.0", min=0.5, max=2),
-                ], md=2),
-            ], className="g-2"),
-            html.Small("식: fct(t) = fct,28 * ( t / (a + b*t) )^0.5", style={"color": "#64748b"})
-        ])
+        a_style = {"display": "block"}
+        b_style = {"display": "block"}
+        formula_text = "식: fct(t) = fct,28 * ( t / (a + b*t) )^0.5"
     else:
-        return html.Div([
-            dbc.Row([
-                dbc.Col([
-                    dbc.Label("fct,28 (28일 인장강도, GPa)"),
-                    dbc.Input(id="fct28-input", type="number", placeholder="2.5", min=1, max=100),
-                ], md=4),
-            ]),
-            html.Small("식: fct(t) = fct,28 * (t/28)^0.5 (t ≤ 28)", style={"color": "#64748b"})
-        ])
+        a_style = {"display": "none"}
+        b_style = {"display": "none"}
+        formula_text = "식: fct(t) = fct,28 * (t/28)^0.5 (t ≤ 28)"
+    
+    # 미리보기 테이블 생성 (CEB 공식일 때만)
+    if formula_type == "ceb" and fct28 and a and b:
+        try:
+            fct28 = float(fct28)
+            a = float(a)
+            b = float(b)
+            
+            # fct(t) 계산 (1~28, 0.1 간격)
+            t_vals = np.arange(1, 28.01, 0.1)
+            fct_vals = []
+            for t in t_vals:
+                try:
+                    fct = fct28 * (t / (a + b * t)) ** 0.5
+                except Exception:
+                    fct = 0
+                fct_vals.append(fct)
+            
+            df = pd.DataFrame({"t(일)": np.round(t_vals, 2), "fct(t) (MPa)": np.round(fct_vals, 4)})
+            preview_table = dash_table.DataTable(
+                columns=[{"name": i, "id": i} for i in df.columns],
+                data=df.to_dict("records"),
+                page_size=10,
+                style_table={"overflowY": "auto", "height": "240px", "marginTop": "8px"},
+                style_cell={"textAlign": "center"},
+                style_header={"backgroundColor": "#f8fafc", "fontWeight": "600"},
+            )
+            
+            preview_content = html.Div([
+                html.Small(formula_text, style={"color": "#64748b"}),
+                html.Div("↓ 1~28일 인장강도 미리보기 (0.1 간격)", style={"marginTop": "8px", "fontSize": "13px", "color": "#64748b"}),
+                preview_table
+            ])
+        except:
+            preview_content = html.Small(formula_text, style={"color": "#64748b"})
+    else:
+        preview_content = html.Small(formula_text, style={"color": "#64748b"})
+    
+    return a_style, b_style, preview_content
 
 # ───────────── TCI 계산 및 결과 표/CSV 콜백 뼈대 ─────────────
 @callback(
@@ -4769,66 +4785,6 @@ def calc_tci_and_download(calc_click, csv_click, formula_type, fct28, a, b, sele
         return dash.no_update, dict(content=df.to_csv(index=False, encoding="utf-8-sig"), filename="TCI_result.csv")
     return table, None
 
-# ───────────── fct(t) 미리보기 표 콜백 (CEB-FIP Model Code 1990 전용) ─────────────
-@callback(
-    Output("fct-formula-inputs", "children", allow_duplicate=True),
-    Input("fct-formula-type", "value"),
-    Input("fct28-input", "value"),
-    Input("a-input", "value"),
-    Input("b-input", "value"),
-    prevent_initial_call=True
-)
-def update_fct_formula_inputs_with_preview(formula_type, fct28, a, b):
-    import dash_table
-    import numpy as np
-    # 기존 입력창
-    if formula_type == "ceb":
-        # fct(t) 계산 (1~28, 0.1 간격)
-        t_vals = np.arange(1, 28.01, 0.1)
-        fct_vals = []
-        for t in t_vals:
-            try:
-                fct = fct28 * (t / (a + b * t)) ** 0.5
-            except Exception:
-                fct = 0
-            fct_vals.append(fct)
-        df = pd.DataFrame({"t(일)": np.round(t_vals, 2), "fct(t) (MPa)": np.round(fct_vals, 4)})
-        preview_table = dash_table.DataTable(
-            columns=[{"name": i, "id": i} for i in df.columns],
-            data=df.to_dict("records"),
-            page_size=10,
-            style_table={"overflowY": "auto", "height": "240px", "marginTop": "8px"},
-            style_cell={"textAlign": "center"},
-            style_header={"backgroundColor": "#f8fafc", "fontWeight": "600"},
-        )
-        return html.Div([
-            dbc.Row([
-                dbc.Col([
-                    dbc.Label("fct,28 (28일 인장강도, GPa)"),
-                    dbc.Input(id="fct28-input", type="number", value=fct28, placeholder="2.5", min=1, max=100),
-                ], md=4),
-                dbc.Col([
-                    dbc.Label("a (보통 1.0)"),
-                    dbc.Input(id="a-input", type="number", value=a, placeholder="1.0", min=0.5, max=2),
-                ], md=2),
-                dbc.Col([
-                    dbc.Label("b (보통 1.0)"),
-                    dbc.Input(id="b-input", type="number", value=b, placeholder="1.0", min=0.5, max=2),
-                ], md=2),
-            ], className="g-2"),
-            html.Small("식: fct(t) = fct,28 * ( t / (a + b*t) )^0.5", style={"color": "#64748b"}),
-            html.Div("\u2193 1~28일 인장강도 미리보기 (0.1 간격)", style={"marginTop": "8px", "fontSize": "13px", "color": "#64748b"}),
-            preview_table
-        ])
-    else:
-        return html.Div([
-            dbc.Row([
-                dbc.Col([
-                    dbc.Label("fct,28 (28일 인장강도, GPa)"),
-                    dbc.Input(id="fct28-input", type="number", value=fct28, placeholder="2.5", min=1, max=100),
-                ], md=4),
-            ]),
-            html.Small("식: fct(t) = fct,28 * (t/28)^0.5 (t ≤ 28)", style={"color": "#64748b"})
-        ])
+
 
 
