@@ -3348,13 +3348,136 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         print("원본 데이터 사용 - 점 개수:", ds_for_vis.GetNumberOfPoints())
         print("원본 데이터 사용 - 셀 개수:", ds_for_vis.GetNumberOfCells())
         
+        # === 상세 데이터 분석 ===
+        print("=== VTK 데이터 상세 분석 ===")
+        
+        # 1. 데이터셋 타입 확인
+        print(f"데이터셋 타입: {type(ds_for_vis).__name__}")
+        
+        # 2. 점 데이터 분석
+        points = ds_for_vis.GetPoints()
+        if points:
+            print(f"점 데이터 존재: {points.GetNumberOfPoints()}개")
+            # 처음 5개 점의 좌표 출력
+            for i in range(min(5, points.GetNumberOfPoints())):
+                pt = points.GetPoint(i)
+                print(f"  점 {i}: ({pt[0]:.3f}, {pt[1]:.3f}, {pt[2]:.3f})")
+        else:
+            print("⚠️ 점 데이터가 없습니다!")
+        
+        # 3. 셀 데이터 분석
+        cells = ds_for_vis.GetCells()
+        if cells:
+            print(f"셀 데이터 존재: {cells.GetNumberOfCells()}개")
+            # 처음 5개 셀의 정보 출력
+            for i in range(min(5, cells.GetNumberOfCells())):
+                cell = cells.GetCell(i)
+                if cell:
+                    point_ids = cell.GetPointIds()
+                    print(f"  셀 {i}: {point_ids.GetNumberOfIds()}개 점 연결")
+                    if point_ids.GetNumberOfIds() > 0:
+                        ids = [point_ids.GetId(j) for j in range(point_ids.GetNumberOfIds())]
+                        print(f"    연결된 점 ID: {ids}")
+        else:
+            print("⚠️ 셀 데이터가 없습니다!")
+        
+        # 4. 바운딩 박스 분석
+        bounds = ds_for_vis.GetBounds()
+        print(f"바운딩 박스: X[{bounds[0]:.3f}, {bounds[1]:.3f}], Y[{bounds[2]:.3f}, {bounds[3]:.3f}], Z[{bounds[4]:.3f}, {bounds[5]:.3f}]")
+        
+        # 5. 점 데이터 필드 분석
+        point_data = ds_for_vis.GetPointData()
+        print(f"점 데이터 필드 개수: {point_data.GetNumberOfArrays()}")
+        for i in range(point_data.GetNumberOfArrays()):
+            arr = point_data.GetArray(i)
+            if arr:
+                print(f"  필드 {i}: {arr.GetName()} - {arr.GetNumberOfComponents()}컴포넌트, {arr.GetNumberOfTuples()}튜플")
+                if arr.GetNumberOfTuples() > 0:
+                    range_val = arr.GetRange()
+                    print(f"    값 범위: [{range_val[0]:.6f}, {range_val[1]:.6f}]")
+        
+        # 6. 셀 데이터 필드 분석
+        cell_data = ds_for_vis.GetCellData()
+        print(f"셀 데이터 필드 개수: {cell_data.GetNumberOfArrays()}")
+        for i in range(cell_data.GetNumberOfArrays()):
+            arr = cell_data.GetArray(i)
+            if arr:
+                print(f"  필드 {i}: {arr.GetName()} - {arr.GetNumberOfComponents()}컴포넌트, {arr.GetNumberOfTuples()}튜플")
+                if arr.GetNumberOfTuples() > 0:
+                    range_val = arr.GetRange()
+                    print(f"    값 범위: [{range_val[0]:.6f}, {range_val[1]:.6f}]")
+        
+        # 7. 빈 공간 검사
+        if points and cells:
+            # 점들이 모두 같은 위치에 있는지 확인
+            unique_points = set()
+            for i in range(points.GetNumberOfPoints()):
+                pt = points.GetPoint(i)
+                unique_points.add((round(pt[0], 3), round(pt[1], 3), round(pt[2], 3)))
+            print(f"고유한 점 위치 개수: {len(unique_points)} (전체 점: {points.GetNumberOfPoints()})")
+            
+            if len(unique_points) < points.GetNumberOfPoints():
+                print("⚠️ 중복된 점 위치가 있습니다!")
+            
+            # 셀들이 모두 같은 점을 참조하는지 확인
+            if cells.GetNumberOfCells() > 0:
+                cell = cells.GetCell(0)
+                if cell:
+                    point_ids = cell.GetPointIds()
+                    if point_ids.GetNumberOfIds() > 0:
+                        first_cell_points = [point_ids.GetId(j) for j in range(point_ids.GetNumberOfIds())]
+                        print(f"첫 번째 셀의 점 ID: {first_cell_points}")
+        
+        print("=== 데이터 분석 완료 ===")
+        
         # 메쉬 상태 생성 (단순하게)
         mesh_state = to_mesh_state(ds_for_vis)
-        # mesh_state 구조 확인
+        
+        # === mesh_state 상세 분석 ===
+        print("=== mesh_state 분석 ===")
         try:
             print("mesh_state keys:", list(mesh_state.keys()))
+            
+            # mesh_state의 각 키에 대한 상세 정보
+            for key, value in mesh_state.items():
+                if isinstance(value, (list, tuple)):
+                    print(f"  {key}: {type(value).__name__} 길이 {len(value)}")
+                    if len(value) > 0:
+                        print(f"    첫 번째 요소: {value[0]}")
+                        if len(value) > 1:
+                            print(f"    마지막 요소: {value[-1]}")
+                elif isinstance(value, dict):
+                    print(f"  {key}: dict with keys {list(value.keys())}")
+                else:
+                    print(f"  {key}: {type(value).__name__} = {value}")
+            
+            # points와 polys 정보가 있는지 확인
+            if 'points' in mesh_state:
+                points_data = mesh_state['points']
+                print(f"points 데이터 타입: {type(points_data)}")
+                if isinstance(points_data, (list, tuple)):
+                    print(f"points 개수: {len(points_data)}")
+                    if len(points_data) > 0:
+                        print(f"첫 번째 점: {points_data[0]}")
+            
+            if 'polys' in mesh_state:
+                polys_data = mesh_state['polys']
+                print(f"polys 데이터 타입: {type(polys_data)}")
+                if isinstance(polys_data, (list, tuple)):
+                    print(f"polys 개수: {len(polys_data)}")
+                    if len(polys_data) > 0:
+                        print(f"첫 번째 폴리곤: {polys_data[0]}")
+            
+            if 'mesh' in mesh_state:
+                mesh_data = mesh_state['mesh']
+                print(f"mesh 데이터 타입: {type(mesh_data)}")
+                if isinstance(mesh_data, dict):
+                    print(f"mesh 내부 키: {list(mesh_data.keys())}")
+                    
         except Exception as e:
             print("mesh_state 구조 확인 실패:", e)
+        
+        print("=== mesh_state 분석 완료 ===")
         
         # mesh_state 검증
         if mesh_state is None or not isinstance(mesh_state, dict):
