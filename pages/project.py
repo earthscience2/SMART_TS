@@ -3479,10 +3479,13 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             }
         )
         
-        # 색상 매핑이 있는 경우 LookupTable 추가
+        # 색상 매핑이 있는 경우 처리
         if color_array:
+            print(f"색상 매핑 적용: {field_name}, 프리셋: {preset}")
+            
             # 색상 범위 계산
             color_range = color_array.GetRange()
+            print(f"색상 범위: {color_range}")
             
             # 프리셋에 따른 색상 맵 설정
             if preset == "rainbow":
@@ -3498,38 +3501,44 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             else:
                 color_map = "rainbow"
             
-            # LookupTable 생성
-            lut = dash_vtk.LookupTable(
-                tableRange=color_range,
-                hueRange=[0.667, 0.0] if color_map == "rainbow" else None,
-                saturationRange=[1, 1],
-                valueRange=[1, 1],
-                vectorMode="Magnitude"
-            )
+            # 색상 배열을 mesh_state에 직접 추가
+            color_values = []
+            for i in range(color_array.GetNumberOfTuples()):
+                color_values.append(color_array.GetValue(i))
             
-            # GeometryRepresentation에 색상 매핑 적용
-            geometry_rep.property = {
-                "representation": "surface",
-                "opacity": 1.0,
-                "lineWidth": 1,
-                "pointSize": 3,
-                "ambient": 0.3,
-                "diffuse": 0.7,
-                "specular": 0.2,
-                "specularPower": 10
-            }
-            
-            # Mesh에 색상 배열 설정
-            mesh_component.state = {
+            # mesh_state에 색상 데이터 추가
+            mesh_state_with_color = {
                 **mesh_state,
                 "scalars": {
                     "vtkClass": "vtkDataArray",
                     "name": field_name,
                     "numberOfComponents": color_array.GetNumberOfComponents(),
                     "size": color_array.GetNumberOfTuples(),
-                    "values": [color_array.GetValue(i) for i in range(color_array.GetNumberOfTuples())]
+                    "values": color_values
                 }
             }
+            
+            # Mesh 컴포넌트를 색상 데이터로 업데이트
+            mesh_component = dash_vtk.Mesh(state=mesh_state_with_color)
+            
+            # GeometryRepresentation에 색상 매핑 적용
+            geometry_rep = dash_vtk.GeometryRepresentation(
+                children=[mesh_component],
+                property={
+                    "representation": "surface",
+                    "opacity": 1.0,
+                    "lineWidth": 1,
+                    "pointSize": 3,
+                    "ambient": 0.3,
+                    "diffuse": 0.7,
+                    "specular": 0.2,
+                    "specularPower": 10
+                }
+            )
+            
+            print(f"색상 매핑 완료: {len(color_values)}개 값")
+        else:
+            print("색상 매핑 없음 - 기본 회색으로 렌더링")
         
         # View 컴포넌트 생성 (고급 설정 복구)
         vtk_viewer = dash_vtk.View(
@@ -3541,17 +3550,8 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             background=[0.1, 0.1, 0.1]
         )
         
-        # 컬러바 컴포넌트 추가 (색상 매핑이 있는 경우)
-        colorbar = None
-        if color_array:
-            colorbar = dash_vtk.ColorBar(
-                lookupTable=lut,
-                title=field_name,
-                width=0.15,
-                height=0.4,
-                position=[0.85, 0.1]
-            )
-            vtk_viewer.children.append(colorbar)
+        # 컬러바는 현재 지원되지 않으므로 제거
+        # 향후 dash_vtk 업데이트 시 추가 예정
         
         # 파일명을 년/월/일/시간 형식으로 변환
         try:
