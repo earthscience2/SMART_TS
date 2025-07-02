@@ -84,8 +84,8 @@ def create_probability_curve_figure():
     tci_values = np.linspace(0.1, 3.0, 300)
     
     # 수정된 로지스틱 근사식: 0.4에서 100%, 0.5에서 40%, 2.0에서 0%
-    # P(x) = 100 / (1 + e^(12(x-0.52))) (오버플로우 방지)
-    exponents = 12 * (tci_values - 0.52)
+    # P(x) = 100 / (1 + e^(54(x-0.4925))) (오버플로우 방지)
+    exponents = 54 * (tci_values - 0.4925)
     # 오버플로우 방지: 큰 값은 클리핑
     exponents = np.clip(exponents, -700, 700)
     probabilities = 100 / (1 + np.exp(exponents))
@@ -2464,7 +2464,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         "fontSize": "16px"
                     }),
                     html.Div([
-                        html.P("로지스틱 근사식: P(x) = 100/(1 + e^(12(x-0.52)))", style={
+                        html.P("로지스틱 근사식: P(x) = 100/(1 + e^(54(x-0.4925)))", style={
                             "fontSize": "14px",
                             "color": "#6b7280",
                             "marginBottom": "12px",
@@ -5393,7 +5393,7 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
                 return 0
             
             # 지수 오버플로우 방지
-            exponent = 12 * (tci - 0.52)
+            exponent = 54 * (tci - 0.4925)
             if exponent > 700:  # exp(700) ≈ 10^304, 이후는 overflow
                 return 0.0  # TCI가 매우 클 때 확률은 0%에 근사
             elif exponent < -700:  # exp(-700) ≈ 0
@@ -5876,7 +5876,7 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
                 return 0
             
             # 지수 오버플로우 방지
-            exponent = 12 * (tci - 0.52)
+            exponent = 54 * (tci - 0.4925)
             if exponent > 700:  # exp(700) ≈ 10^304, 이후는 overflow
                 return 0.0  # TCI가 매우 클 때 확률은 0%에 근사
             elif exponent < -700:  # exp(-700) ≈ 0
