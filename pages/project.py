@@ -3198,7 +3198,6 @@ def select_deselect_all_vtp(n_all, n_none, table_data):
 @callback(
     Output("analysis-3d-viewer", "children"),
     Output("analysis-current-file-label", "children"),
-    Output("analysis-colorbar", "figure"),
     Output("slice-slider", "min"),
     Output("slice-slider", "max"),
     Input("analysis-field-dropdown", "value"),
@@ -3219,7 +3218,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
     slice_min, slice_max = 0.0, 1.0  # 기본값 미리 선언
     
     if not selected_rows or not tbl_data or len(selected_rows) == 0:
-        return html.Div("콘크리트를 선택하세요."), "", go.Figure(), 0.0, 1.0
+        return html.Div("콘크리트를 선택하세요."), "", 0.0, 1.0
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
@@ -3234,7 +3233,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         vtp_files = sorted([f for f in os.listdir(assets_vtp_dir) if f.endswith('.vtp')])
     
     if not vtk_files and not vtp_files:
-        return html.Div("VTK/VTP 파일이 없습니다."), "", go.Figure(), 0.0, 1.0
+        return html.Div("VTK/VTP 파일이 없습니다."), "", 0.0, 1.0
     
     from datetime import datetime
     times = []
@@ -3257,7 +3256,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             continue
     
     if not times:
-        return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다."), "", go.Figure(), 0.0, 1.0
+        return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다."), "", 0.0, 1.0
     
     times.sort()
     max_idx = len(times) - 1
@@ -3603,7 +3602,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
     
     # 컬러 데이터 범위 추출 (컴포넌트 인덱스 처리)
     color_range = None
-    colorbar_fig = go.Figure()
+    # colorbar_fig = go.Figure()  # 컬러바 완전 삭제
     if field_name:
         # 컴포넌트 인덱스가 포함된 필드명 처리
         actual_field_name = field_name
@@ -3640,47 +3639,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             range_val = arr.GetRange()
             if range_val[0] != range_val[1]:  # 값이 모두 같지 않을 때만 범위 설정
                 color_range = [range_val[0], range_val[1]]
-                
-                # 컬러바 생성
-                try:
-                    # 프리셋에 따른 컬러스케일 매핑
-                    colorscale_map = {
-                        "rainbow": [[0, 'blue'], [0.25, 'cyan'], [0.5, 'green'], [0.75, 'yellow'], [1, 'red']],
-                        "Cool to Warm": [[0, 'blue'], [0.5, 'white'], [1, 'red']],
-                        "Grayscale": [[0, 'black'], [1, 'white']]
-                    }
-                    
-                    # color_range가 유효할 때만 컬러바 생성
-                    if color_range and len(color_range) == 2:
-                        colorbar_fig = go.Figure(data=go.Scatter(
-                            x=[None], y=[None],
-                            mode='markers',
-                            marker=dict(
-                                colorscale=colorscale_map.get(preset, 'viridis'),
-                                cmin=color_range[0],
-                                cmax=color_range[1],
-                                colorbar=dict(
-                                    title=dict(text=field_name.replace(":", " "), font=dict(size=14)),
-                                    thickness=15,
-                                    len=0.7,
-                                    x=0.5,
-                                    xanchor="center",
-                                    tickfont=dict(size=12)
-                                ),
-                                showscale=True
-                            )
-                        ))
-                        colorbar_fig.update_layout(
-                            showlegend=False,
-                            xaxis=dict(visible=False),
-                            yaxis=dict(visible=False),
-                            margin=dict(l=0, r=0, t=10, b=0),
-                            height=120,
-                            plot_bgcolor='rgba(0,0,0,0)',
-                            paper_bgcolor='rgba(0,0,0,0)'
-                        )
-                except Exception as colorbar_error:
-                    print(f"컬러바 생성 오류: {colorbar_error}")
+                # 컬러바 생성 코드 완전 삭제
     
     # 기본 프리셋 설정
     if not preset:
@@ -3707,7 +3666,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         if isinstance(ds_for_vis, vtk.vtkUnstructuredGrid):
             # 내부 볼륨이 제대로 표시되도록 설정
             geometry_rep_props["representation"] = "Surface"  # 또는 "Volume"
-            geometry_rep_props["opacity"] = 1.0
+            # geometry_rep_props["opacity"] = 1.0  # 지원하지 않으므로 제거
             print("UnstructuredGrid용 추가 속성 설정")
         
         geometry_rep = dash_vtk.GeometryRepresentation(**geometry_rep_props)
@@ -3819,7 +3778,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             else:  # Z
                 label += f" | Z ≥ {slice_value:.1f} 영역"
         
-        return vtk_viewer, label, colorbar_fig, slice_min, slice_max
+        return vtk_viewer, label, slice_min, slice_max
         
     except Exception as vtk_error:
         print(f"dash_vtk 컴포넌트 생성 오류: {vtk_error}")
@@ -3856,17 +3815,17 @@ def toggle_slice_detail_controls(slice_enable):
 
 
 
-# 수치해석 컬러바 표시/숨김 콜백
-@callback(
-    Output("analysis-colorbar", "style"),
-    Input("analysis-field-dropdown", "value"),
-    prevent_initial_call=True,
-)
-def toggle_colorbar_visibility(field_name):
-    if field_name:
-        return {"height": "120px", "display": "block"}
-    else:
-        return {"height": "120px", "display": "none"}
+# 수치해석 컬러바 표시/숨김 콜백 - 완전 삭제
+# @callback(
+#     Output("analysis-colorbar", "style"),
+#     Input("analysis-field-dropdown", "value"),
+#     prevent_initial_call=True,
+# )
+# def toggle_colorbar_visibility(field_name):
+#     if field_name:
+#         return {"height": "120px", "display": "block"}
+#     else:
+#         return {"height": "120px", "display": "none"}
 
 # 3D 뷰 슬라이더 동기화 콜백 (display용 슬라이더와 실제 슬라이더만, 단면도 슬라이더는 제외)
 @callback(
