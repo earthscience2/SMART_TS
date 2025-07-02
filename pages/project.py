@@ -4987,6 +4987,185 @@ def validate_inputs(fct28, formula_type):
     
     return dash.no_update, dash.no_update, dash.no_update
 
+# 시간 슬라이더 및 표 콜백 추가
+@callback(
+    Output("tci-time-slider-container", "children"),
+    Output("tci-tci-table-container", "children"),
+    Input("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    Input("fct-formula-type", "value"),
+    Input("fct28-input", "value"),
+    Input("a-input", "value"),
+    Input("b-input", "value"),
+    Input("tab-content", "children"),
+    Input("tabs-main", "active_tab"),
+    Input("tci-time-slider", "value", allow_duplicate=True),
+    prevent_initial_call=False
+)
+def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, a, b, tab_content, active_tab, slider_value):
+    import os, glob
+    import numpy as np
+    from dash import dash_table
+    import plotly.graph_objects as go
+    import pandas as pd
+    from datetime import datetime
+    
+    # 탭이 tci가 아니면 아무것도 표시하지 않음
+    if active_tab != "tab-tci":
+        return dash.no_update, dash.no_update
+    if not selected_rows or not tbl_data:
+        return dash.no_update, dash.no_update
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    inp_dir = f"inp/{concrete_pk}"
+    inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+    if not inp_files:
+        return dash.no_update, dash.no_update
+    # 시간 파싱
+    times = []
+    for f in inp_files:
+        try:
+            time_str = os.path.basename(f).split(".")[0]
+            dt = datetime.strptime(time_str, "%Y%m%d%H")
+            times.append(dt)
+        except:
+            continue
+    if not times:
+        return dash.no_update, dash.no_update
+    max_idx = len(times) - 1
+    # 슬라이더 마크 생성
+    marks = {}
+    seen_dates = set()
+    for i, dt in enumerate(times):
+        date_str = dt.strftime("%m/%d")
+        if date_str not in seen_dates:
+            marks[i] = date_str
+            seen_dates.add(date_str)
+    # 슬라이더 value
+    if slider_value is None:
+        slider_value = max_idx
+    file_idx = min(int(slider_value), max_idx)
+    # 시간 슬라이더 컴포넌트
+    slider = dcc.Slider(
+        id="tci-time-slider",
+        min=0,
+        max=max_idx,
+        step=1,
+        value=file_idx,
+        marks=marks,
+        tooltip={"placement": "bottom", "always_visible": True},
+        updatemode='drag',
+    )
+    # 현재 파일
+    current_file = inp_files[file_idx]
+    # fct(t) 계산
+    try:
+        if fct28 is None or fct28 == "":
+            fct28_val = 20.0
+        else:
+            fct28_val = float(fct28)
+    except:
+        fct28_val = 20.0
+    try:
+        a_val = float(a) if a not in (None, "") else 1.0
+    except:
+        a_val = 1.0
+    try:
+        b_val = float(b) if b not in (None, "") else 1.0
+    except:
+        b_val = 1.0
+    t_days = (times[file_idx] - times[0]).days + 1
+    if formula_type == "ceb":
+        fct = fct28_val * (t_days / (a_val + b_val * t_days)) ** 0.5
+    else:
+        fct = fct28_val * (t_days / 28) ** 0.5 if t_days <= 28 else fct28_val
+    # INP 파일에서 노드별 Sxx, Syy, Szz 파싱 (예시)
+    nodes = []
+    sxxs, syys, szzs = [], [], []
+    with open(current_file, 'r') as f:
+        lines = f.readlines()
+    # 예시: *NODE, *STRESS_X, *STRESS_Y, *STRESS_Z 섹션에서 파싱
+    node_section = False
+    stress_x_section = False
+    stress_y_section = False
+    stress_z_section = False
+    node_map = {}
+    for line in lines:
+        if line.startswith('*NODE'):
+            node_section = True
+            stress_x_section = stress_y_section = stress_z_section = False
+            continue
+        elif line.startswith('*STRESS_X'):
+            stress_x_section = True
+            node_section = stress_y_section = stress_z_section = False
+            continue
+        elif line.startswith('*STRESS_Y'):
+            stress_y_section = True
+            node_section = stress_x_section = stress_z_section = False
+            continue
+        elif line.startswith('*STRESS_Z'):
+            stress_z_section = True
+            node_section = stress_x_section = stress_y_section = False
+            continue
+        elif line.startswith('*'):
+            node_section = stress_x_section = stress_y_section = stress_z_section = False
+            continue
+        if node_section and ',' in line:
+            parts = line.strip().split(',')
+            if len(parts) >= 4:
+                node_id = int(parts[0])
+                node_map[node_id] = True
+        if stress_x_section and ',' in line:
+            parts = line.strip().split(',')
+            if len(parts) >= 2:
+                node_id = int(parts[0])
+                sxx = float(parts[1])
+                sxxs.append((node_id, sxx))
+        if stress_y_section and ',' in line:
+            parts = line.strip().split(',')
+            if len(parts) >= 2:
+                node_id = int(parts[0])
+                syy = float(parts[1])
+                syys.append((node_id, syy))
+        if stress_z_section and ',' in line:
+            parts = line.strip().split(',')
+            if len(parts) >= 2:
+                node_id = int(parts[0])
+                szz = float(parts[1])
+                szzs.append((node_id, szz))
+    # 노드별 매핑
+    node_ids = sorted(node_map.keys())
+    sxx_dict = dict(sxxs)
+    syy_dict = dict(syys)
+    szz_dict = dict(szzs)
+    tci_x, tci_y, tci_z = [], [], []
+    for nid in node_ids:
+        sxx = sxx_dict.get(nid, np.nan)
+        syy = syy_dict.get(nid, np.nan)
+        szz = szz_dict.get(nid, np.nan)
+        tci_x.append(fct / sxx if sxx else np.nan)
+        tci_y.append(fct / syy if syy else np.nan)
+        tci_z.append(fct / szz if szz else np.nan)
+    # 표 생성
+    df = pd.DataFrame({
+        "Node": node_ids,
+        "Sxx": [sxx_dict.get(nid, np.nan) for nid in node_ids],
+        "Syy": [syy_dict.get(nid, np.nan) for nid in node_ids],
+        "Szz": [szz_dict.get(nid, np.nan) for nid in node_ids],
+        "TCI-X": tci_x,
+        "TCI-Y": tci_y,
+        "TCI-Z": tci_z,
+    })
+    tci_table = dash_table.DataTable(
+        columns=[{"name": i, "id": i} for i in df.columns],
+        data=df.to_dict("records"),
+        page_size=10,
+        style_table={"overflowY": "auto", "height": "320px", "marginTop": "8px"},
+        style_cell={"textAlign": "center"},
+        style_header={"backgroundColor": "#f8fafc", "fontWeight": "600"},
+    )
+    return slider, tci_table
+
 
 
 
