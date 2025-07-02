@@ -3333,7 +3333,48 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
     file_path = os.path.join(assets_vtk_dir if file_type=='vtk' else assets_vtp_dir, selected_file)
     
     try:
-        # 디버깅용 출력
+        # VTK 파일 읽기
+        if file_type == 'vtk':
+            reader = vtk.vtkUnstructuredGridReader()
+            reader.SetFileName(file_path)
+            reader.Update()
+            ds = reader.GetOutput()
+        else:
+            reader = vtk.vtkXMLPolyDataReader()
+            reader.SetFileName(file_path)
+            reader.Update()
+            ds = reader.GetOutput()
+
+        # UnstructuredGrid → PolyData 변환 (GeometryFilter)
+        if isinstance(ds, vtk.vtkUnstructuredGrid):
+            geom_filter = vtk.vtkGeometryFilter()
+            geom_filter.SetInputData(ds)
+            geom_filter.Update()
+            ds = geom_filter.GetOutput()
+
+        # 데이터 검증
+        if ds is None:
+            print("ds is None")
+            return html.Div([
+                html.H5("VTK 파일 읽기 실패", style={"color": "red"}),
+                html.P(f"파일: {selected_file}")
+            ]), "", go.Figure(), 0.0, 1.0
+
+        # 점의 개수 확인
+        num_points = ds.GetNumberOfPoints()
+        if num_points == 0:
+            print("ds has 0 points")
+            return html.Div([
+                html.H5("빈 데이터셋", style={"color": "red"}),
+                html.P(f"파일: {selected_file}"),
+                html.P("점이 없는 데이터셋입니다.")
+            ]), "", go.Figure(), 0.0, 1.0
+
+        # 바운딩 박스 정보 추출
+        bounds = ds.GetBounds()
+        xmin, xmax, ymin, ymax, zmin, zmax = bounds
+
+        # 디버깅 출력
         print("==== [디버깅] 슬라이스 상태 ====")
         print("slice_enable:", slice_enable)
         print("slice_axis:", slice_axis)
