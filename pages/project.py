@@ -2150,13 +2150,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                             marks=time_marks,
                             tooltip={"placement": "bottom", "always_visible": True},
                             className="mb-3"
-                        ),
-                        html.Div(id="analysis-time-info", style={
-                            "fontSize": "13px",
-                            "color": "#6b7280",
-                            "textAlign": "center",
-                            "marginTop": "8px"
-                        })
+                        )
                     ])
                 ], style={
                     "padding": "16px 20px",
@@ -3818,61 +3812,7 @@ def toggle_slice_detail_controls(slice_enable):
     else:
         return {"display": "none"}
 
-# 수치해석 시간 정보 업데이트 콜백
-@callback(
-    Output("analysis-time-info", "children"),
-    Input("analysis-time-slider", "value"),
-    Input("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
-    prevent_initial_call=True,
-)
-def update_analysis_time_info(time_idx, selected_rows, tbl_data):
-    if not selected_rows or not tbl_data:
-        return ""
-    
-    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-    concrete_pk = row["concrete_pk"]
-    assets_vtk_dir = f"assets/vtk/{concrete_pk}"
-    assets_vtp_dir = f"assets/vtp/{concrete_pk}"
-    
-    import os
-    from datetime import datetime
-    
-    vtk_files = []
-    vtp_files = []
-    if os.path.exists(assets_vtk_dir):
-        vtk_files = sorted([f for f in os.listdir(assets_vtk_dir) if f.endswith('.vtk')])
-    if os.path.exists(assets_vtp_dir):
-        vtp_files = sorted([f for f in os.listdir(assets_vtp_dir) if f.endswith('.vtp')])
-    
-    if not vtk_files and not vtp_files:
-        return ""
-    
-    times = []
-    files = []
-    
-    if vtk_files:
-        files = vtk_files
-    elif vtp_files:
-        files = vtp_files
-    
-    for f in files:
-        try:
-            time_str = os.path.splitext(f)[0]
-            dt = datetime.strptime(time_str, "%Y%m%d%H")
-            times.append((dt, f))
-        except:
-            continue
-    
-    if not times or time_idx is None or time_idx >= len(times):
-        return ""
-    
-    times.sort()
-    selected_dt = times[time_idx][0]
-    
-    # 년/월/일/시간 형식으로 표시
-    time_str = selected_dt.strftime("%Y년 %m월 %d일 %H시")
-    return f"📅 {time_str}"
+
 
 # 수치해석 컬러바 표시/숨김 콜백
 @callback(
