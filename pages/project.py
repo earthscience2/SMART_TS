@@ -5296,13 +5296,13 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
             max_principal_data = np.random.normal(0, 0.003, len(node_ids))  # GPa (0.003 GPa = 3 MPa)
         else:
             # 실제 주응력 데이터 사용 (Max Principal)
-            # VTK 파일의 주응력 데이터는 Pa 단위이므로 10^9로 나누어 GPa로 변환
+            # VTK 파일의 주응력 데이터는 잘못된 단위로 저장되어 있으므로 10^12로 나누어 GPa로 변환
             for i in range(len(node_ids)):
                 idx = i * 4  # 4개씩 묶여있음 (Min, Mid, Max, Worst)
                 if idx + 2 < len(principal_stress_data):
                     # Min, Mid, Max, Worst 순서로 되어 있으므로 Max(인덱스 2) 사용
-                    # Pa를 GPa로 변환 (10^9로 나누기)
-                    max_principal_gpa = principal_stress_data[idx + 2] / 1e9  # Max Principal
+                    # 잘못된 단위를 GPa로 변환 (10^12로 나누기)
+                    max_principal_gpa = principal_stress_data[idx + 2] / 1e12  # Max Principal
                     max_principal_data.append(max_principal_gpa)
                 else:
                     max_principal_data.append(0.0)
