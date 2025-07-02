@@ -2299,20 +2299,13 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 labelStyle={"display": "block", "marginRight": "16px"},
                 style={"marginBottom": "8px"}
             ),
-            html.Div([
+                        html.Div([
                 dbc.Row([
-                                    dbc.Col([
-                    dbc.Label("fct,28 (28일 인장강도, GPa) [1~100]"),
-                    dbc.Input(id="fct28-input", type="number", placeholder="2.5", min=1, max=100),
-                ], md=4),
-                dbc.Col([
-                    dbc.Label("a (보통 1.0) [0.5~2]"),
-                    dbc.Input(id="a-input", type="number", placeholder="1.0", min=0.5, max=2),
-                ], md=2),
-                dbc.Col([
-                    dbc.Label("b (보통 1.0) [0.5~2]"),
-                    dbc.Input(id="b-input", type="number", placeholder="1.0", min=0.5, max=2),
-                ], md=2),
+                    dbc.Col([
+                        dbc.Label("fct,28 (28일 인장강도, GPa) [1~100]"),
+                        dbc.Input(id="fct28-input", type="number", value=20, placeholder="20", min=1, max=100),
+                    ], md=4),
+                    html.Div(id="ab-inputs-container"),
                 ], className="g-2"),
                 html.Div(id="fct-formula-preview"),
             ]),
@@ -4670,8 +4663,7 @@ def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
 
 # ───────────── TCI 인장강도 계산식 입력창 동적 표시 콜백 ─────────────
 @callback(
-    Output("a-input", "style"),
-    Output("b-input", "style"),
+    Output("ab-inputs-container", "children"),
     Output("fct-formula-preview", "children"),
     Input("fct-formula-type", "value"),
     Input("fct28-input", "value"),
@@ -4684,14 +4676,21 @@ def update_formula_display(formula_type, fct28, a, b):
     import numpy as np
     import plotly.graph_objects as go
     
-    # a, b 입력 필드 표시/숨김 설정
+    # a, b 입력 필드 동적 생성
     if formula_type == "ceb":
-        a_style = {"display": "block"}
-        b_style = {"display": "block"}
+        ab_inputs = dbc.Row([
+            dbc.Col([
+                dbc.Label("a (보통 1.0) [0.5~2]"),
+                dbc.Input(id="a-input", type="number", value=1, placeholder="1.0", min=0.5, max=2),
+            ], md=4),
+            dbc.Col([
+                dbc.Label("b (보통 1.0) [0.5~2]"),
+                dbc.Input(id="b-input", type="number", value=1, placeholder="1.0", min=0.5, max=2),
+            ], md=4),
+        ], className="g-2")
         formula_text = "식: fct(t) = fct,28 * ( t / (a + b*t) )^0.5"
     else:
-        a_style = {"display": "none"}
-        b_style = {"display": "none"}
+        ab_inputs = html.Div()  # 빈 div로 a, b 입력 필드 숨김
         formula_text = "식: fct(t) = fct,28 * (t/28)^0.5 (t ≤ 28)"
     
     # 미리보기 테이블 생성
@@ -4769,7 +4768,7 @@ def update_formula_display(formula_type, fct28, a, b):
     else:
         preview_content = html.Small(formula_text, style={"color": "#64748b"})
     
-    return a_style, b_style, preview_content
+    return ab_inputs, preview_content
 
 # ───────────── 입력값 검증 및 알림 콜백 ─────────────
 @callback(
@@ -4783,13 +4782,10 @@ def update_formula_display(formula_type, fct28, a, b):
     prevent_initial_call=True
 )
 def validate_inputs(fct28, a, b, formula_type):
-    if not fct28 and not a and not b:
-        return dash.no_update, dash.no_update, dash.no_update
-    
     messages = []
     
     # fct28 검증
-    if fct28 is not None:
+    if fct28 is not None and fct28 != "":
         try:
             fct28_val = float(fct28)
             if fct28_val < 1 or fct28_val > 100:
@@ -4799,7 +4795,7 @@ def validate_inputs(fct28, a, b, formula_type):
     
     # CEB 공식일 때만 a, b 검증
     if formula_type == "ceb":
-        if a is not None:
+        if a is not None and a != "":
             try:
                 a_val = float(a)
                 if a_val < 0.5 or a_val > 2:
@@ -4807,7 +4803,7 @@ def validate_inputs(fct28, a, b, formula_type):
             except ValueError:
                 messages.append("a 값은 숫자로 입력하세요.")
         
-        if b is not None:
+        if b is not None and b != "":
             try:
                 b_val = float(b)
                 if b_val < 0.5 or b_val > 2:
