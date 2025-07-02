@@ -810,7 +810,7 @@ def load_concrete_data(search, pathname):
     prevent_initial_call=True,
 )
 def on_concrete_select(selected_rows, tbl_data):
-    if not selected_rows:
+    if not selected_rows or not tbl_data:
         return True, True, "", "", 0, 5, 0, {}
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
@@ -938,7 +938,7 @@ def store_section_coord(clickData):
     prevent_initial_call=True,
 )
 def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_time):
-    if not selected_rows:
+    if not selected_rows or not tbl_data:
         raise PreventUpdate
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
@@ -1211,6 +1211,8 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             guide_message = "⏳ 아직 수집된 데이터가 없습니다. 잠시 후 다시 확인해주세요."
     elif tbl_data is not None and len(tbl_data) == 0:
         guide_message = "분석할 콘크리트를 추가하세요."
+    elif tbl_data is None:
+        guide_message = "콘크리트 데이터를 불러오는 중입니다..."
     if guide_message:
         return html.Div([
             # 안내 메시지 (노션 스타일)
@@ -1259,7 +1261,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         display_title = current_file_title
         
                         # 콘크리트가 선택된 경우 시간 정보를 직접 계산하여 확실히 표시
-        if selected_rows and tbl_data:
+        if selected_rows and tbl_data and len(selected_rows) > 0:
             try:
                 row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
                 concrete_pk = row["concrete_pk"]
@@ -1435,7 +1437,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
         
         # 선택된 콘크리트가 있으면 해당 INP 파일 기반으로 슬라이더 설정
-        if selected_rows and tbl_data:
+        if selected_rows and tbl_data and len(selected_rows) > 0:
             row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
             concrete_pk = row["concrete_pk"]
             inp_dir = f"inp/{concrete_pk}"
@@ -2497,7 +2499,7 @@ def select_deselect_all(n_all, n_none, table_data):
     prevent_initial_call=True,
 )
 def start_analysis(n_clicks, selected_rows, tbl_data):
-    if not selected_rows:
+    if not selected_rows or not tbl_data:
         return "콘크리트를 선택하세요", "warning", True, dash.no_update, dash.no_update
 
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
@@ -2544,7 +2546,7 @@ def ask_delete_concrete(n, sel):
     prevent_initial_call=True,
 )
 def delete_concrete_confirm(_click, sel, tbl_data):
-    if not sel:
+    if not sel or not tbl_data:
         raise PreventUpdate
 
     row = pd.DataFrame(tbl_data).iloc[sel[0]]
@@ -2602,7 +2604,7 @@ def update_section_views(time_idx,
     
     print(f"단면도 뷰 업데이트: time_idx={time_idx}, selected_rows={selected_rows}")  # 디버깅
     
-    if not selected_rows:
+    if not selected_rows or not tbl_data:
         return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, ""
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
@@ -3281,7 +3283,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
     
     slice_min, slice_max = 0.0, 1.0  # 기본값 미리 선언
     
-    if not selected_rows or not tbl_data:
+    if not selected_rows or not tbl_data or len(selected_rows) == 0:
         return html.Div("콘크리트를 선택하세요."), "", go.Figure(), 0.0, 1.0
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
@@ -3741,8 +3743,6 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             time_display = selected_file
         
         label = f"📅 {time_display}"
-        if color_range:
-            label += f" | 값 범위: {color_range[0]:.2f} ~ {color_range[1]:.2f}"
         if slice_enable is not None and isinstance(slice_enable, list) and "on" in slice_enable:
             slice_value = slice_slider
             if slice_axis == "X":
@@ -3751,7 +3751,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                 label += f" | Y ≥ {slice_value:.1f} 영역"
             else:  # Z
                 label += f" | Z ≥ {slice_value:.1f} 영역"
-            
+        
         return vtk_viewer, label, colorbar_fig, slice_min, slice_max
         
     except Exception as vtk_error:

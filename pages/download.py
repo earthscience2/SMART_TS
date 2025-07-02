@@ -672,7 +672,7 @@ def _download_selected_files(n_clicks, file_data, ftype, selected_rows, table_da
     # 선택된 파일들만 다운로드
     if selected_rows and table_data:
         # 선택된 행의 파일명들 추출
-        selected_files = [table_data[i]["filename"] for i in selected_rows if i < len(table_data)]
+        selected_files = [table_data[i]["filename"] for i in selected_rows if table_data and i < len(table_data)]
         download_type = "선택된"
     else:
         # 선택된 파일이 없으면 모든 파일 다운로드
