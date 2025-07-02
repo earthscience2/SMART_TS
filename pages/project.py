@@ -3343,171 +3343,141 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         print("원본 ds 셀 개수:", ds.GetNumberOfCells())
         print("원본 ds 바운딩박스:", ds.GetBounds())
 
-        # === 단면 기능 복구 ===
-        if slice_enable and "on" in slice_enable and slice_axis and slice_slider is not None:
-            print(f"단면 기능 활성화: {slice_axis} 축, 위치 {slice_slider}")
-            
-            # 단면 클리퍼 생성
-            clipper = vtk.vtkClipDataSet()
-            clipper.SetInputData(ds)
-            
-            # 단면 평면 생성
-            plane = vtk.vtkPlane()
-            
-            # 축에 따른 평면 설정
-            if slice_axis == "x":
-                plane.SetNormal(1, 0, 0)
-                slice_pos = xmin + slice_slider * (xmax - xmin)
-                plane.SetOrigin(slice_pos, 0, 0)
-                slice_min, slice_max = xmin, xmax
-            elif slice_axis == "y":
-                plane.SetNormal(0, 1, 0)
-                slice_pos = ymin + slice_slider * (ymax - ymin)
-                plane.SetOrigin(0, slice_pos, 0)
-                slice_min, slice_max = ymin, ymax
-            elif slice_axis == "z":
-                plane.SetNormal(0, 0, 1)
-                slice_pos = zmin + slice_slider * (zmax - zmin)
-                plane.SetOrigin(0, 0, slice_pos)
-                slice_min, slice_max = zmin, zmax
-            else:
-                # 기본값
-                plane.SetNormal(0, 0, 1)
-                slice_pos = zmin + slice_slider * (zmax - zmin)
-                plane.SetOrigin(0, 0, slice_pos)
-                slice_min, slice_max = zmin, zmax
-            
-            clipper.SetClipFunction(plane)
-            clipper.Update()
-            ds_for_vis = clipper.GetOutput()
-            
-            print(f"단면 적용 후 - 점 개수: {ds_for_vis.GetNumberOfPoints()}, 셀 개수: {ds_for_vis.GetNumberOfCells()}")
+        # 원본 데이터 그대로 사용 (단면 기능 제거)
+        ds_for_vis = ds
+        print("원본 데이터 사용 - 점 개수:", ds_for_vis.GetNumberOfPoints())
+        print("원본 데이터 사용 - 셀 개수:", ds_for_vis.GetNumberOfCells())
+        
+        # === 상세 데이터 분석 ===
+        print("=== VTK 데이터 상세 분석 ===")
+        
+        # 1. 데이터셋 타입 확인
+        print(f"데이터셋 타입: {type(ds_for_vis).__name__}")
+        
+        # 2. 점 데이터 분석
+        points = ds_for_vis.GetPoints()
+        if points:
+            print(f"점 데이터 존재: {points.GetNumberOfPoints()}개")
+            # 처음 5개 점의 좌표 출력
+            for i in range(min(5, points.GetNumberOfPoints())):
+                pt = points.GetPoint(i)
+                print(f"  점 {i}: ({pt[0]:.3f}, {pt[1]:.3f}, {pt[2]:.3f})")
         else:
-            # 단면 기능 비활성화 - 원본 데이터 사용
-            ds_for_vis = ds
-            slice_min, slice_max = 0.0, 1.0
-            print("단면 기능 비활성화 - 원본 데이터 사용")
+            print("⚠️ 점 데이터가 없습니다!")
         
-        # === 고급 메쉬 처리 복구 ===
-        # UnstructuredGrid를 PolyData로 변환 (더 안정적인 렌더링)
-        if isinstance(ds_for_vis, vtk.vtkUnstructuredGrid):
-            print("UnstructuredGrid를 PolyData로 변환")
-            
-            # GeometryFilter로 표면 추출
-            geometry_filter = vtk.vtkGeometryFilter()
-            geometry_filter.SetInputData(ds_for_vis)
-            geometry_filter.Update()
-            ds_for_vis = geometry_filter.GetOutput()
-            
-            print(f"PolyData 변환 후 - 점 개수: {ds_for_vis.GetNumberOfPoints()}, 셀 개수: {ds_for_vis.GetNumberOfCells()}")
+        # 3. 셀 데이터 분석
+        cells = ds_for_vis.GetCells()
+        if cells:
+            print(f"셀 데이터 존재: {cells.GetNumberOfCells()}개")
+            # 처음 5개 셀의 정보 출력
+            for i in range(min(5, cells.GetNumberOfCells())):
+                cell = cells.GetCell(i)
+                if cell:
+                    point_ids = cell.GetPointIds()
+                    print(f"  셀 {i}: {point_ids.GetNumberOfIds()}개 점 연결")
+                    if point_ids.GetNumberOfIds() > 0:
+                        ids = [point_ids.GetId(j) for j in range(point_ids.GetNumberOfIds())]
+                        print(f"    연결된 점 ID: {ids}")
+        else:
+            print("⚠️ 셀 데이터가 없습니다!")
         
-        # === 필드 데이터 처리 복구 ===
-        # 선택된 필드에 따른 색상 매핑
-        color_array = None
+        # 4. 바운딩 박스 분석
+        bounds = ds_for_vis.GetBounds()
+        print(f"바운딩 박스: X[{bounds[0]:.3f}, {bounds[1]:.3f}], Y[{bounds[2]:.3f}, {bounds[3]:.3f}], Z[{bounds[4]:.3f}, {bounds[5]:.3f}]")
         
-        # 사용 가능한 필드 목록 출력
+        # 5. 점 데이터 필드 분석
         point_data = ds_for_vis.GetPointData()
-        cell_data = ds_for_vis.GetCellData()
-        
-        print("=== 사용 가능한 필드 목록 ===")
         print(f"점 데이터 필드 개수: {point_data.GetNumberOfArrays()}")
         for i in range(point_data.GetNumberOfArrays()):
             arr = point_data.GetArray(i)
             if arr:
-                print(f"  점 필드 {i}: '{arr.GetName()}' - {arr.GetNumberOfComponents()}컴포넌트, {arr.GetNumberOfTuples()}튜플")
+                print(f"  필드 {i}: {arr.GetName()} - {arr.GetNumberOfComponents()}컴포넌트, {arr.GetNumberOfTuples()}튜플")
+                if arr.GetNumberOfTuples() > 0:
+                    range_val = arr.GetRange()
+                    print(f"    값 범위: [{range_val[0]:.6f}, {range_val[1]:.6f}]")
         
+        # 6. 셀 데이터 필드 분석
+        cell_data = ds_for_vis.GetCellData()
         print(f"셀 데이터 필드 개수: {cell_data.GetNumberOfArrays()}")
         for i in range(cell_data.GetNumberOfArrays()):
             arr = cell_data.GetArray(i)
             if arr:
-                print(f"  셀 필드 {i}: '{arr.GetName()}' - {arr.GetNumberOfComponents()}컴포넌트, {arr.GetNumberOfTuples()}튜플")
-        print("=== 필드 목록 끝 ===")
+                print(f"  필드 {i}: {arr.GetName()} - {arr.GetNumberOfComponents()}컴포넌트, {arr.GetNumberOfTuples()}튜플")
+                if arr.GetNumberOfTuples() > 0:
+                    range_val = arr.GetRange()
+                    print(f"    값 범위: [{range_val[0]:.6f}, {range_val[1]:.6f}]")
         
-        if field_name and field_name != "none":
-            print(f"검색 중인 필드: '{field_name}'")
+        # 7. 빈 공간 검사
+        if points and cells:
+            # 점들이 모두 같은 위치에 있는지 확인
+            unique_points = set()
+            for i in range(points.GetNumberOfPoints()):
+                pt = points.GetPoint(i)
+                unique_points.add((round(pt[0], 3), round(pt[1], 3), round(pt[2], 3)))
+            print(f"고유한 점 위치 개수: {len(unique_points)} (전체 점: {points.GetNumberOfPoints()})")
             
-            # 점 데이터에서 필드 찾기
-            for i in range(point_data.GetNumberOfArrays()):
-                arr = point_data.GetArray(i)
-                if arr and arr.GetName() == field_name:
-                    color_array = arr
-                    print(f"점 데이터에서 필드 '{field_name}' 찾음")
-                    break
+            if len(unique_points) < points.GetNumberOfPoints():
+                print("⚠️ 중복된 점 위치가 있습니다!")
             
-            # 셀 데이터에서 필드 찾기
-            if not color_array:
-                for i in range(cell_data.GetNumberOfArrays()):
-                    arr = cell_data.GetArray(i)
-                    if arr and arr.GetName() == field_name:
-                        color_array = arr
-                        print(f"셀 데이터에서 필드 '{field_name}' 찾음")
-                        break
-            
-            # 정확한 매칭이 안 되면 부분 매칭 시도
-            if not color_array:
-                print(f"정확한 매칭 실패, 부분 매칭 시도...")
-                
-                # 컴포넌트별 필드 처리 (예: U:0, U:1, U:2)
-                if ':' in field_name:
-                    base_name, component_str = field_name.split(':', 1)
-                    try:
-                        component_idx = int(component_str)
-                        print(f"컴포넌트 필드 검색: {base_name}, 컴포넌트 {component_idx}")
-                        
-                        # 점 데이터에서 기본 필드 찾기
-                        for i in range(point_data.GetNumberOfArrays()):
-                            arr = point_data.GetArray(i)
-                            if arr and arr.GetName() == base_name:
-                                if arr.GetNumberOfComponents() > component_idx:
-                                    # 특정 컴포넌트만 추출
-                                    component_values = []
-                                    for j in range(arr.GetNumberOfTuples()):
-                                        component_values.append(arr.GetComponent(j, component_idx))
-                                    
-                                    # 단일 컴포넌트 배열 생성
-                                    color_array = vtk.vtkFloatArray()
-                                    color_array.SetName(f"{base_name}:{component_idx}")
-                                    for val in component_values:
-                                        color_array.InsertNextValue(val)
-                                    
-                                    print(f"컴포넌트 필드 '{field_name}' 생성 완료")
-                                    break
-                                else:
-                                    print(f"컴포넌트 인덱스 {component_idx}가 범위를 벗어남 (최대: {arr.GetNumberOfComponents()-1})")
-                    except ValueError:
-                        print(f"컴포넌트 인덱스 파싱 실패: {component_str}")
-                
-                # 일반적인 부분 매칭
-                if not color_array:
-                    for i in range(point_data.GetNumberOfArrays()):
-                        arr = point_data.GetArray(i)
-                        if arr and field_name.lower() in arr.GetName().lower():
-                            color_array = arr
-                            print(f"점 데이터에서 부분 매칭 필드 '{arr.GetName()}' 찾음")
-                            break
-                    
-                    if not color_array:
-                        for i in range(cell_data.GetNumberOfArrays()):
-                            arr = cell_data.GetArray(i)
-                            if arr and field_name.lower() in arr.GetName().lower():
-                                color_array = arr
-                                print(f"셀 데이터에서 부분 매칭 필드 '{arr.GetName()}' 찾음")
-                                break
-            
-            if color_array:
-                print(f"색상 매핑 필드: {color_array.GetName()}, 값 범위: {color_array.GetRange()}")
-            else:
-                print(f"필드 '{field_name}'를 찾을 수 없습니다")
-                # 첫 번째 사용 가능한 필드를 기본값으로 사용
-                if point_data.GetNumberOfArrays() > 0:
-                    color_array = point_data.GetArray(0)
-                    print(f"기본 필드로 '{color_array.GetName()}' 사용")
-                elif cell_data.GetNumberOfArrays() > 0:
-                    color_array = cell_data.GetArray(0)
-                    print(f"기본 필드로 '{color_array.GetName()}' 사용")
+            # 셀들이 모두 같은 점을 참조하는지 확인
+            if cells.GetNumberOfCells() > 0:
+                cell = cells.GetCell(0)
+                if cell:
+                    point_ids = cell.GetPointIds()
+                    if point_ids.GetNumberOfIds() > 0:
+                        first_cell_points = [point_ids.GetId(j) for j in range(point_ids.GetNumberOfIds())]
+                        print(f"첫 번째 셀의 점 ID: {first_cell_points}")
         
-        # 메쉬 상태 생성
+        print("=== 데이터 분석 완료 ===")
+        
+        # 메쉬 상태 생성 (단순하게)
         mesh_state = to_mesh_state(ds_for_vis)
+        
+        # === mesh_state 상세 분석 ===
+        print("=== mesh_state 분석 ===")
+        try:
+            print("mesh_state keys:", list(mesh_state.keys()))
+            
+            # mesh_state의 각 키에 대한 상세 정보
+            for key, value in mesh_state.items():
+                if isinstance(value, (list, tuple)):
+                    print(f"  {key}: {type(value).__name__} 길이 {len(value)}")
+                    if len(value) > 0:
+                        print(f"    첫 번째 요소: {value[0]}")
+                        if len(value) > 1:
+                            print(f"    마지막 요소: {value[-1]}")
+                elif isinstance(value, dict):
+                    print(f"  {key}: dict with keys {list(value.keys())}")
+                else:
+                    print(f"  {key}: {type(value).__name__} = {value}")
+            
+            # points와 polys 정보가 있는지 확인
+            if 'points' in mesh_state:
+                points_data = mesh_state['points']
+                print(f"points 데이터 타입: {type(points_data)}")
+                if isinstance(points_data, (list, tuple)):
+                    print(f"points 개수: {len(points_data)}")
+                    if len(points_data) > 0:
+                        print(f"첫 번째 점: {points_data[0]}")
+            
+            if 'polys' in mesh_state:
+                polys_data = mesh_state['polys']
+                print(f"polys 데이터 타입: {type(polys_data)}")
+                if isinstance(polys_data, (list, tuple)):
+                    print(f"polys 개수: {len(polys_data)}")
+                    if len(polys_data) > 0:
+                        print(f"첫 번째 폴리곤: {polys_data[0]}")
+            
+            if 'mesh' in mesh_state:
+                mesh_data = mesh_state['mesh']
+                print(f"mesh 데이터 타입: {type(mesh_data)}")
+                if isinstance(mesh_data, dict):
+                    print(f"mesh 내부 키: {list(mesh_data.keys())}")
+                    
+        except Exception as e:
+            print("mesh_state 구조 확인 실패:", e)
+        
+        print("=== mesh_state 분석 완료 ===")
         
         # mesh_state 검증
         if mesh_state is None or not isinstance(mesh_state, dict):
@@ -3517,6 +3487,9 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         # 'mesh' 키 또는 'points' 키 중 하나라도 있으면 정상으로 간주
         if not (('mesh' in mesh_state) or ('points' in mesh_state)):
             raise ValueError("mesh_state에 필수 데이터가 없습니다")
+        
+        # 기본 슬라이더 범위 설정
+        slice_min, slice_max = 0.0, 1.0
         
     except Exception as mesh_error:
         print(f"mesh_state 생성 오류: {mesh_error}")
@@ -3528,106 +3501,25 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             html.P(f"셀 개수: {ds_for_vis.GetNumberOfCells()}"),
             html.Hr(),
             html.P("VTK 파일 형식을 확인해주세요. FRD → VTK 변환이 올바르게 되었는지 점검이 필요합니다.", style={"color": "gray"})
-        ]), "", slice_min, slice_max
+        ]), "", go.Figure(), slice_min, slice_max
     
     # 기본 프리셋 설정
     if not preset:
         preset = "rainbow"
     
-    # === 고급 3D 뷰어 구성 복구 ===
+    # dash_vtk 컴포넌트 생성 (더 안전한 방식)
     try:
         # Mesh 컴포넌트 생성
         mesh_component = dash_vtk.Mesh(state=mesh_state)
         
-        # GeometryRepresentation 생성 (고급 속성 복구)
-        geometry_rep = dash_vtk.GeometryRepresentation(
-            children=[mesh_component],
-            property={
-                "representation": "surface",
-                "color": [0.8, 0.8, 0.8] if not color_array else None,
-                "opacity": 1.0,
-                "lineWidth": 1,
-                "pointSize": 3,
-                "ambient": 0.3,
-                "diffuse": 0.7,
-                "specular": 0.2,
-                "specularPower": 10
-            }
-        )
+        # GeometryRepresentation 생성 (최소한의 속성만 사용)
+        geometry_rep = dash_vtk.GeometryRepresentation(children=[mesh_component])
         
-        # 색상 매핑이 있는 경우 처리
-        if color_array:
-            print(f"색상 매핑 적용: {color_array.GetName()}, 프리셋: {preset}")
-            
-            # 색상 범위 계산
-            color_range = color_array.GetRange()
-            print(f"색상 범위: {color_range}")
-            
-            # 프리셋에 따른 색상 맵 설정
-            if preset == "rainbow":
-                color_map = "rainbow"
-            elif preset == "jet":
-                color_map = "jet"
-            elif preset == "viridis":
-                color_map = "viridis"
-            elif preset == "plasma":
-                color_map = "plasma"
-            elif preset == "coolwarm":
-                color_map = "coolwarm"
-            else:
-                color_map = "rainbow"
-            
-            # 색상 배열을 mesh_state에 직접 추가
-            color_values = []
-            for i in range(color_array.GetNumberOfTuples()):
-                color_values.append(color_array.GetValue(i))
-            
-            # mesh_state에 색상 데이터 추가
-            mesh_state_with_color = {
-                **mesh_state,
-                "scalars": {
-                    "vtkClass": "vtkDataArray",
-                    "name": color_array.GetName(),
-                    "numberOfComponents": color_array.GetNumberOfComponents(),
-                    "size": color_array.GetNumberOfTuples(),
-                    "values": color_values
-                }
-            }
-            
-            # Mesh 컴포넌트를 색상 데이터로 업데이트
-            mesh_component = dash_vtk.Mesh(state=mesh_state_with_color)
-            
-            # GeometryRepresentation에 색상 매핑 적용
-            geometry_rep = dash_vtk.GeometryRepresentation(
-                children=[mesh_component],
-                property={
-                    "representation": "surface",
-                    "opacity": 1.0,
-                    "lineWidth": 1,
-                    "pointSize": 3,
-                    "ambient": 0.3,
-                    "diffuse": 0.7,
-                    "specular": 0.2,
-                    "specularPower": 10
-                }
-            )
-            
-            print(f"색상 매핑 완료: {len(color_values)}개 값")
-        else:
-            print("색상 매핑 없음 - 기본 회색으로 렌더링")
-        
-        # View 컴포넌트 생성 (고급 설정 복구)
+        # View 컴포넌트 생성 (단순하게)
         vtk_viewer = dash_vtk.View(
-            children=[geometry_rep],
-            style={"height": "60vh", "width": "100%"},
-            cameraPosition=[0, 0, 2],
-            cameraViewUp=[0, 1, 0],
-            cameraParallelProjection=False,
-            background=[0.1, 0.1, 0.1]
+            children=[geometry_rep], 
+            style={"height": "60vh", "width": "100%"}
         )
-        
-        # 컬러바는 현재 지원되지 않으므로 제거
-        # 향후 dash_vtk 업데이트 시 추가 예정
         
         # 파일명을 년/월/일/시간 형식으로 변환
         try:
@@ -3676,17 +3568,17 @@ def toggle_slice_detail_controls(slice_enable):
 
 
 
-# 수치해석 컬러바 표시/숨김 콜백
-@callback(
-    Output("analysis-colorbar", "style"),
-    Input("analysis-field-dropdown", "value"),
-    prevent_initial_call=True,
-)
-def toggle_colorbar_visibility(field_name):
-    if field_name and field_name != "none":
-        return {"height": "120px", "display": "block"}
-    else:
-        return {"height": "120px", "display": "none"}
+# 수치해석 컬러바 표시/숨김 콜백 - 완전 삭제
+# @callback(
+#     Output("analysis-colorbar", "style"),
+#     Input("analysis-field-dropdown", "value"),
+#     prevent_initial_call=True,
+# )
+# def toggle_colorbar_visibility(field_name):
+#     if field_name:
+#         return {"height": "120px", "display": "block"}
+#     else:
+#         return {"height": "120px", "display": "none"}
 
 # 3D 뷰 슬라이더 동기화 콜백 (display용 슬라이더와 실제 슬라이더만, 단면도 슬라이더는 제외)
 @callback(
