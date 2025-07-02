@@ -83,9 +83,9 @@ def create_probability_curve_figure():
     # TCI 값 범위 (0.1 ~ 3.0)
     tci_values = np.linspace(0.1, 3.0, 300)
     
-    # 수정된 로지스틱 근사식: 0.4에서 100%, 1.0에서 40%, 2.0에서 0%
-    # P(x) = 100 / (1 + e^(6(x-0.6))) (오버플로우 방지)
-    exponents = 6 * (tci_values - 0.6)
+    # 수정된 로지스틱 근사식: 0.4에서 100%, 0.5에서 40%, 2.0에서 0%
+    # P(x) = 100 / (1 + e^(12(x-0.52))) (오버플로우 방지)
+    exponents = 12 * (tci_values - 0.52)
     # 오버플로우 방지: 큰 값은 클리핑
     exponents = np.clip(exponents, -700, 700)
     probabilities = 100 / (1 + np.exp(exponents))
@@ -103,9 +103,9 @@ def create_probability_curve_figure():
     ))
     
     # 중요한 기준선들 추가
-    # TCI = 1.0 기준선 (40% 확률)
-    fig.add_vline(x=1.0, line_dash="dash", line_color="red", line_width=2, 
-                  annotation_text="TCI = 1.0 (40%)", annotation_position="top left")
+    # TCI = 0.5 기준선 (40% 확률)
+    fig.add_vline(x=0.5, line_dash="dash", line_color="red", line_width=2, 
+                  annotation_text="TCI = 0.5 (40%)", annotation_position="top left")
     
     # TCI = 0.4 기준선 (100% 확률)
     fig.add_vline(x=0.4, line_dash="dash", line_color="orange", line_width=2,
@@ -116,11 +116,11 @@ def create_probability_curve_figure():
                   annotation_text="TCI = 2.0 (0%)", annotation_position="bottom right")
     
     # 안전/위험 영역 표시
-    fig.add_vrect(x0=0.1, x1=1.0, fillcolor="rgba(239, 68, 68, 0.1)", 
+    fig.add_vrect(x0=0.1, x1=0.5, fillcolor="rgba(239, 68, 68, 0.1)", 
                   annotation_text="위험 영역", annotation_position="top left",
                   annotation=dict(font_size=12, font_color="red"))
     
-    fig.add_vrect(x0=1.0, x1=3.0, fillcolor="rgba(34, 197, 94, 0.1)",
+    fig.add_vrect(x0=0.5, x1=3.0, fillcolor="rgba(34, 197, 94, 0.1)",
                   annotation_text="안전 영역", annotation_position="top right",
                   annotation=dict(font_size=12, font_color="green"))
     
@@ -2464,7 +2464,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         "fontSize": "16px"
                     }),
                     html.Div([
-                        html.P("로지스틱 근사식: P(x) = 100/(1 + e^(6(x-0.6)))", style={
+                        html.P("로지스틱 근사식: P(x) = 100/(1 + e^(12(x-0.52)))", style={
                             "fontSize": "14px",
                             "color": "#6b7280",
                             "marginBottom": "12px",
@@ -5393,7 +5393,7 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
                 return 0
             
             # 지수 오버플로우 방지
-            exponent = 6 * (tci - 0.6)
+            exponent = 12 * (tci - 0.52)
             if exponent > 700:  # exp(700) ≈ 10^304, 이후는 overflow
                 return 0.0  # TCI가 매우 클 때 확률은 0%에 근사
             elif exponent < -700:  # exp(-700) ≈ 0
@@ -5876,7 +5876,7 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
                 return 0
             
             # 지수 오버플로우 방지
-            exponent = 6 * (tci - 0.6)
+            exponent = 12 * (tci - 0.52)
             if exponent > 700:  # exp(700) ≈ 10^304, 이후는 overflow
                 return 0.0  # TCI가 매우 클 때 확률은 0%에 근사
             elif exponent < -700:  # exp(-700) ≈ 0
