@@ -2301,18 +2301,18 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             ),
             html.Div([
                 dbc.Row([
-                    dbc.Col([
-                        dbc.Label("fct,28 (28일 인장강도, GPa)"),
-                        dbc.Input(id="fct28-input", type="number", placeholder="2.5", min=1, max=100),
-                    ], md=4),
-                    dbc.Col([
-                        dbc.Label("a (보통 1.0)"),
-                        dbc.Input(id="a-input", type="number", placeholder="1.0", min=0.5, max=2),
-                    ], md=2),
-                    dbc.Col([
-                        dbc.Label("b (보통 1.0)"),
-                        dbc.Input(id="b-input", type="number", placeholder="1.0", min=0.5, max=2),
-                    ], md=2),
+                                    dbc.Col([
+                    dbc.Label("fct,28 (28일 인장강도, GPa) [1~100]"),
+                    dbc.Input(id="fct28-input", type="number", placeholder="2.5", min=1, max=100),
+                ], md=4),
+                dbc.Col([
+                    dbc.Label("a (보통 1.0) [0.5~2]"),
+                    dbc.Input(id="a-input", type="number", placeholder="1.0", min=0.5, max=2),
+                ], md=2),
+                dbc.Col([
+                    dbc.Label("b (보통 1.0) [0.5~2]"),
+                    dbc.Input(id="b-input", type="number", placeholder="1.0", min=0.5, max=2),
+                ], md=2),
                 ], className="g-2"),
                 html.Div(id="fct-formula-preview"),
             ]),
@@ -4694,8 +4694,8 @@ def update_formula_display(formula_type, fct28, a, b):
         b_style = {"display": "none"}
         formula_text = "식: fct(t) = fct,28 * (t/28)^0.5 (t ≤ 28)"
     
-    # 미리보기 테이블 생성 (CEB 공식일 때만)
-    if formula_type == "ceb" and fct28 and a and b:
+    # 미리보기 테이블 생성
+    if fct28:
         try:
             fct28 = float(fct28)
             a = float(a)
@@ -4706,7 +4706,17 @@ def update_formula_display(formula_type, fct28, a, b):
             fct_vals = []
             for t in t_vals:
                 try:
-                    fct = fct28 * (t / (a + b * t)) ** 0.5
+                    if formula_type == "ceb":
+                        if a and b:
+                            fct = fct28 * (t / (a + b * t)) ** 0.5
+                        else:
+                            fct = 0
+                    else:
+                        # 경험식 (KCI/KS)
+                        if t <= 28:
+                            fct = fct28 * (t / 28) ** 0.5
+                        else:
+                            fct = fct28
                 except Exception:
                     fct = 0
                 fct_vals.append(fct)
@@ -4760,6 +4770,55 @@ def update_formula_display(formula_type, fct28, a, b):
         preview_content = html.Small(formula_text, style={"color": "#64748b"})
     
     return a_style, b_style, preview_content
+
+# ───────────── 입력값 검증 및 알림 콜백 ─────────────
+@callback(
+    Output("project-alert", "children", allow_duplicate=True),
+    Output("project-alert", "color", allow_duplicate=True),
+    Output("project-alert", "is_open", allow_duplicate=True),
+    Input("fct28-input", "value"),
+    Input("a-input", "value"),
+    Input("b-input", "value"),
+    State("fct-formula-type", "value"),
+    prevent_initial_call=True
+)
+def validate_inputs(fct28, a, b, formula_type):
+    if not fct28 and not a and not b:
+        return dash.no_update, dash.no_update, dash.no_update
+    
+    messages = []
+    
+    # fct28 검증
+    if fct28 is not None:
+        try:
+            fct28_val = float(fct28)
+            if fct28_val < 1 or fct28_val > 100:
+                messages.append(f"28일 인장강도는 1~100 GPa 범위 내에서 입력하세요. (현재: {fct28_val} GPa)")
+        except ValueError:
+            messages.append("28일 인장강도는 숫자로 입력하세요.")
+    
+    # CEB 공식일 때만 a, b 검증
+    if formula_type == "ceb":
+        if a is not None:
+            try:
+                a_val = float(a)
+                if a_val < 0.5 or a_val > 2:
+                    messages.append(f"a 값은 0.5~2 범위 내에서 입력하세요. (현재: {a_val})")
+            except ValueError:
+                messages.append("a 값은 숫자로 입력하세요.")
+        
+        if b is not None:
+            try:
+                b_val = float(b)
+                if b_val < 0.5 or b_val > 2:
+                    messages.append(f"b 값은 0.5~2 범위 내에서 입력하세요. (현재: {b_val})")
+            except ValueError:
+                messages.append("b 값은 숫자로 입력하세요.")
+    
+    if messages:
+        return "\n".join(messages), "warning", True
+    
+    return dash.no_update, dash.no_update, dash.no_update
 
 # ───────────── TCI 계산 및 결과 표/CSV 콜백 뼈대 ─────────────
 @callback(
