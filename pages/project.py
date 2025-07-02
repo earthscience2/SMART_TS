@@ -4695,15 +4695,15 @@ def update_fct_formula_inputs(formula_type):
             dbc.Row([
                 dbc.Col([
                     dbc.Label("fct,28 (28일 인장강도, GPa)"),
-                    dbc.Input(id="fct28-input", type="number", value=2.5, min=1, max=100),
+                    dbc.Input(id="fct28-input", type="number", placeholder="2.5", min=1, max=100),
                 ], md=4),
                 dbc.Col([
                     dbc.Label("a (보통 1.0)"),
-                    dbc.Input(id="a-input", type="number", value=1.0, min=0.5, max=2),
+                    dbc.Input(id="a-input", type="number", placeholder="1.0", min=0.5, max=2),
                 ], md=2),
                 dbc.Col([
                     dbc.Label("b (보통 1.0)"),
-                    dbc.Input(id="b-input", type="number", value=1.0, min=0.5, max=2),
+                    dbc.Input(id="b-input", type="number", placeholder="1.0", min=0.5, max=2),
                 ], md=2),
             ], className="g-2"),
             html.Small("식: fct(t) = fct,28 * ( t / (a + b*t) )^0.5", style={"color": "#64748b"})
@@ -4713,7 +4713,7 @@ def update_fct_formula_inputs(formula_type):
             dbc.Row([
                 dbc.Col([
                     dbc.Label("fct,28 (28일 인장강도, GPa)"),
-                    dbc.Input(id="fct28-input", type="number", value=2.5, min=1, max=100),
+                    dbc.Input(id="fct28-input", type="number", placeholder="2.5", min=1, max=100),
                 ], md=4),
             ]),
             html.Small("식: fct(t) = fct,28 * (t/28)^0.5 (t ≤ 28)", style={"color": "#64748b"})
@@ -4805,15 +4805,15 @@ def update_fct_formula_inputs_with_preview(formula_type, fct28, a, b):
             dbc.Row([
                 dbc.Col([
                     dbc.Label("fct,28 (28일 인장강도, GPa)"),
-                    dbc.Input(id="fct28-input", type="number", value=fct28 or 2.5, min=1, max=100),
+                    dbc.Input(id="fct28-input", type="number", value=fct28, placeholder="2.5", min=1, max=100),
                 ], md=4),
                 dbc.Col([
                     dbc.Label("a (보통 1.0)"),
-                    dbc.Input(id="a-input", type="number", value=a or 1.0, min=0.5, max=2),
+                    dbc.Input(id="a-input", type="number", value=a, placeholder="1.0", min=0.5, max=2),
                 ], md=2),
                 dbc.Col([
                     dbc.Label("b (보통 1.0)"),
-                    dbc.Input(id="b-input", type="number", value=b or 1.0, min=0.5, max=2),
+                    dbc.Input(id="b-input", type="number", value=b, placeholder="1.0", min=0.5, max=2),
                 ], md=2),
             ], className="g-2"),
             html.Small("식: fct(t) = fct,28 * ( t / (a + b*t) )^0.5", style={"color": "#64748b"}),
@@ -4825,7 +4825,7 @@ def update_fct_formula_inputs_with_preview(formula_type, fct28, a, b):
             dbc.Row([
                 dbc.Col([
                     dbc.Label("fct,28 (28일 인장강도, GPa)"),
-                    dbc.Input(id="fct28-input", type="number", value=fct28 or 2.5, min=1, max=100),
+                    dbc.Input(id="fct28-input", type="number", value=fct28, placeholder="2.5", min=1, max=100),
                 ], md=4),
             ]),
             html.Small("식: fct(t) = fct,28 * (t/28)^0.5 (t ≤ 28)", style={"color": "#64748b"})
