@@ -5377,27 +5377,27 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
             syy = syy_data[i]
             szz = szz_data[i]
             
-            # 응력이 0이 아닐 때만 TCI 계산 (절댓값 사용, GPa 단위)
-            tci_x.append(fct / abs(sxx) if abs(sxx) > 0.00001 else np.nan)  # 0.00001 GPa = 0.01 MPa
-            tci_y.append(fct / abs(syy) if abs(syy) > 0.00001 else np.nan)
-            tci_z.append(fct / abs(szz) if abs(szz) > 0.00001 else np.nan)
+                    # 응력이 0이 아닐 때만 TCI 계산 (절댓값 사용, GPa 단위)
+        tci_x.append(fct / abs(sxx) if abs(sxx) > 0.00001 else 0)  # 0.00001 GPa = 0.01 MPa
+        tci_y.append(fct / abs(syy) if abs(syy) > 0.00001 else 0)
+        tci_z.append(fct / abs(szz) if abs(szz) > 0.00001 else 0)
         
         # 균열발생확률 함수 정의 (로지스틱 근사식)
         def crack_probability(tci):
-            if np.isnan(tci):
-                return np.nan
+            if tci == 0 or np.isnan(tci):
+                return 0
             return 1 / (1 + np.exp(4 * (tci - 1))) * 100
         
         # TCI 계산 시 음수 응력은 확률 0%로 설정
         def calculate_tci_and_probability(stress, fct):
             if stress <= 0:  # 음수 또는 0인 경우
-                return np.nan, "0.0"
+                return 0, "0.0"
             elif abs(stress) > 0.00001:
                 tci_val = fct / abs(stress)
                 prob = crack_probability(tci_val)
-                return tci_val, f"{prob:.1f}" if not np.isnan(prob) else "N/A"
+                return tci_val, f"{prob:.1f}" if not np.isnan(prob) else "0"
             else:
-                return np.nan, "N/A"
+                return 0, "0"
         
         # TCI-MAX 계산 (Max Principal 응력 사용)
         tci_max = []
@@ -5439,10 +5439,10 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
             "Syy (GPa)": [f"{syy:.6f}" for syy in syy_data],
             "Szz (GPa)": [f"{szz:.6f}" for szz in szz_data],
             "Max Principal (GPa)": [f"{max_p:.6f}" for max_p in max_principal_data],
-            "TCI-X": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_x],
-            "TCI-Y": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_y],
-            "TCI-Z": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_z],
-            "TCI-MAX": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_max],
+            "TCI-X": [f"{tci:.3f}" if tci != 0 and not np.isnan(tci) else "0" for tci in tci_x],
+            "TCI-Y": [f"{tci:.3f}" if tci != 0 and not np.isnan(tci) else "0" for tci in tci_y],
+            "TCI-Z": [f"{tci:.3f}" if tci != 0 and not np.isnan(tci) else "0" for tci in tci_z],
+            "TCI-MAX": [f"{tci:.3f}" if tci != 0 and not np.isnan(tci) else "0" for tci in tci_max],
             "TCI-X-P(%)": tci_x_p,
             "TCI-Y-P(%)": tci_y_p,
             "TCI-Z-P(%)": tci_z_p,
@@ -5454,6 +5454,8 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
             columns=[{"name": i, "id": i} for i in df.columns],
             data=df.to_dict("records"),
             page_size=15,
+            sort_action="native",
+            sort_mode="multi",
             style_table={"overflowY": "auto", "height": "400px", "marginTop": "8px"},
             style_cell={
                 "textAlign": "center",
@@ -5851,26 +5853,26 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
             syy = syy_data[i]
             szz = szz_data[i]
             
-            tci_x.append(fct / abs(sxx) if abs(sxx) > 0.00001 else np.nan)
-            tci_y.append(fct / abs(syy) if abs(syy) > 0.00001 else np.nan)
-            tci_z.append(fct / abs(szz) if abs(szz) > 0.00001 else np.nan)
+            tci_x.append(fct / abs(sxx) if abs(sxx) > 0.00001 else 0)
+            tci_y.append(fct / abs(syy) if abs(syy) > 0.00001 else 0)
+            tci_z.append(fct / abs(szz) if abs(szz) > 0.00001 else 0)
         
         # 균열발생확률 함수 정의 (로지스틱 근사식)
         def crack_probability(tci):
-            if np.isnan(tci):
-                return np.nan
+            if tci == 0 or np.isnan(tci):
+                return 0
             return 1 / (1 + np.exp(4 * (tci - 1))) * 100
         
         # TCI 계산 시 음수 응력은 확률 0%로 설정
         def calculate_tci_and_probability(stress, fct):
             if stress <= 0:  # 음수 또는 0인 경우
-                return np.nan, "0.0"
+                return 0, "0.0"
             elif abs(stress) > 0.00001:
                 tci_val = fct / abs(stress)
                 prob = crack_probability(tci_val)
-                return tci_val, f"{prob:.1f}" if not np.isnan(prob) else "N/A"
+                return tci_val, f"{prob:.1f}" if not np.isnan(prob) else "0"
             else:
-                return np.nan, "N/A"
+                return 0, "0"
         
         # TCI-MAX 계산 (Max Principal 응력 사용)
         tci_max = []
@@ -5912,10 +5914,10 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
             "Syy (GPa)": [f"{syy:.6f}" for syy in syy_data],
             "Szz (GPa)": [f"{szz:.6f}" for szz in szz_data],
             "Max Principal (GPa)": [f"{max_p:.6f}" for max_p in max_principal_data],
-            "TCI-X": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_x],
-            "TCI-Y": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_y],
-            "TCI-Z": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_z],
-            "TCI-MAX": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_max],
+            "TCI-X": [f"{tci:.3f}" if tci != 0 and not np.isnan(tci) else "0" for tci in tci_x],
+            "TCI-Y": [f"{tci:.3f}" if tci != 0 and not np.isnan(tci) else "0" for tci in tci_y],
+            "TCI-Z": [f"{tci:.3f}" if tci != 0 and not np.isnan(tci) else "0" for tci in tci_z],
+            "TCI-MAX": [f"{tci:.3f}" if tci != 0 and not np.isnan(tci) else "0" for tci in tci_max],
             "TCI-X-P(%)": tci_x_p,
             "TCI-Y-P(%)": tci_y_p,
             "TCI-Z-P(%)": tci_z_p,
@@ -5927,6 +5929,8 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
             columns=[{"name": i, "id": i} for i in df.columns],
             data=df.to_dict("records"),
             page_size=15,
+            sort_action="native",
+            sort_mode="multi",
             style_table={"overflowY": "auto", "height": "400px", "marginTop": "8px"},
             style_cell={
                 "textAlign": "center",
