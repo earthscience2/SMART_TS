@@ -3665,8 +3665,10 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         # UnstructuredGrid의 경우 추가 속성 설정
         if isinstance(ds_for_vis, vtk.vtkUnstructuredGrid):
             # 내부 볼륨이 제대로 표시되도록 설정
-            geometry_rep_props["representation"] = "Surface"  # 또는 "Volume"
+            # geometry_rep_props["representation"] = "Surface"  # 지원하지 않으므로 제거
             # geometry_rep_props["opacity"] = 1.0  # 지원하지 않으므로 제거
+            # property를 사용해서 표면 렌더링 설정
+            geometry_rep_props["property"] = {"representation": "surface"}
             print("UnstructuredGrid용 추가 속성 설정")
         
         geometry_rep = dash_vtk.GeometryRepresentation(**geometry_rep_props)
