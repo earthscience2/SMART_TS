@@ -4769,4 +4769,66 @@ def calc_tci_and_download(calc_click, csv_click, formula_type, fct28, a, b, sele
         return dash.no_update, dict(content=df.to_csv(index=False, encoding="utf-8-sig"), filename="TCI_result.csv")
     return table, None
 
+# ───────────── fct(t) 미리보기 표 콜백 (CEB-FIP Model Code 1990 전용) ─────────────
+@callback(
+    Output("fct-formula-inputs", "children", allow_duplicate=True),
+    Input("fct-formula-type", "value"),
+    Input("fct28-input", "value"),
+    Input("a-input", "value"),
+    Input("b-input", "value"),
+    prevent_initial_call=True
+)
+def update_fct_formula_inputs_with_preview(formula_type, fct28, a, b):
+    import dash_table
+    import numpy as np
+    # 기존 입력창
+    if formula_type == "ceb":
+        # fct(t) 계산 (1~28, 0.1 간격)
+        t_vals = np.arange(1, 28.01, 0.1)
+        fct_vals = []
+        for t in t_vals:
+            try:
+                fct = fct28 * (t / (a + b * t)) ** 0.5
+            except Exception:
+                fct = 0
+            fct_vals.append(fct)
+        df = pd.DataFrame({"t(일)": np.round(t_vals, 2), "fct(t) (MPa)": np.round(fct_vals, 4)})
+        preview_table = dash_table.DataTable(
+            columns=[{"name": i, "id": i} for i in df.columns],
+            data=df.to_dict("records"),
+            page_size=10,
+            style_table={"overflowY": "auto", "height": "240px", "marginTop": "8px"},
+            style_cell={"textAlign": "center"},
+            style_header={"backgroundColor": "#f8fafc", "fontWeight": "600"},
+        )
+        return html.Div([
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label("fct,28 (28일 인장강도, MPa)"),
+                    dbc.Input(id="fct28-input", type="number", value=fct28 or 2.5, min=0, step=0.1),
+                ], md=4),
+                dbc.Col([
+                    dbc.Label("a (보통 1.0)"),
+                    dbc.Input(id="a-input", type="number", value=a or 1.0, min=0, step=0.01),
+                ], md=2),
+                dbc.Col([
+                    dbc.Label("b (보통 1.0)"),
+                    dbc.Input(id="b-input", type="number", value=b or 1.0, min=0, step=0.01),
+                ], md=2),
+            ], className="g-2"),
+            html.Small("식: fct(t) = fct,28 * ( t / (a + b*t) )^0.5", style={"color": "#64748b"}),
+            html.Div("\u2193 1~28일 인장강도 미리보기 (0.1 간격)", style={"marginTop": "8px", "fontSize": "13px", "color": "#64748b"}),
+            preview_table
+        ])
+    else:
+        return html.Div([
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label("fct,28 (28일 인장강도, MPa)"),
+                    dbc.Input(id="fct28-input", type="number", value=fct28 or 2.5, min=0, step=0.1),
+                ], md=4),
+            ]),
+            html.Small("식: fct(t) = fct,28 * (t/28)^0.5 (t ≤ 28)", style={"color": "#64748b"})
+        ])
+
 
