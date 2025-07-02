@@ -5018,8 +5018,8 @@ def validate_inputs(fct28, formula_type):
     State("tbl-concrete", "data"),
     Input("fct-formula-type", "value"),
     Input("fct28-input", "value"),
-    Input("a-input", "value"),
-    Input("b-input", "value"),
+    State("a-input", "value"),
+    State("b-input", "value"),
     Input("tab-content", "children"),
     Input("tabs-main", "active_tab"),
     Input("tci-time-slider", "value"),
@@ -5239,18 +5239,21 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, a, b
         # 응력 데이터가 충분하지 않으면 예시 데이터 생성
         if len(stress_data) < len(node_ids) * 4:
             np.random.seed(42)  # 재현성을 위한 시드 설정
-            sxx_data = np.random.normal(0, 2, len(node_ids))  # MPa
-            syy_data = np.random.normal(0, 2, len(node_ids))  # MPa
-            szz_data = np.random.normal(0, 2, len(node_ids))  # MPa
+            sxx_data = np.random.normal(0, 0.002, len(node_ids))  # GPa (0.002 GPa = 2 MPa)
+            syy_data = np.random.normal(0, 0.002, len(node_ids))  # GPa
+            szz_data = np.random.normal(0, 0.002, len(node_ids))  # GPa
         else:
             # 실제 주응력 데이터 사용 (Min, Mid, Max, Worst 중에서 Max 사용)
+            # VTK 파일의 응력 데이터는 Pa 단위이므로 10^9로 나누어 GPa로 변환
             for i in range(len(node_ids)):
                 idx = i * 4  # 4개씩 묶여있음
                 if idx + 2 < len(stress_data):
                     # Min, Mid, Max, Worst 순서로 되어 있으므로 Max(인덱스 2) 사용
-                    sxx_data.append(stress_data[idx + 2])  # Max 주응력
-                    syy_data.append(stress_data[idx + 2])  # Max 주응력 (동일값 사용)
-                    szz_data.append(stress_data[idx + 2])  # Max 주응력 (동일값 사용)
+                    # Pa를 GPa로 변환 (10^9로 나누기)
+                    stress_gpa = stress_data[idx + 2] / 1e9
+                    sxx_data.append(stress_gpa)  # Max 주응력 (GPa)
+                    syy_data.append(stress_gpa)  # Max 주응력 (GPa) (동일값 사용)
+                    szz_data.append(stress_gpa)  # Max 주응력 (GPa) (동일값 사용)
                 else:
                     sxx_data.append(0.0)
                     syy_data.append(0.0)
@@ -5266,10 +5269,10 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, a, b
             syy = syy_data[i]
             szz = szz_data[i]
             
-            # 응력이 0이 아닐 때만 TCI 계산 (절댓값 사용)
-            tci_x.append(fct / abs(sxx) if abs(sxx) > 0.01 else np.nan)
-            tci_y.append(fct / abs(syy) if abs(syy) > 0.01 else np.nan)
-            tci_z.append(fct / abs(szz) if abs(szz) > 0.01 else np.nan)
+            # 응력이 0이 아닐 때만 TCI 계산 (절댓값 사용, GPa 단위)
+            tci_x.append(fct / abs(sxx) if abs(sxx) > 0.00001 else np.nan)  # 0.00001 GPa = 0.01 MPa
+            tci_y.append(fct / abs(syy) if abs(syy) > 0.00001 else np.nan)
+            tci_z.append(fct / abs(szz) if abs(szz) > 0.00001 else np.nan)
         
         # 데이터프레임 생성
         df = pd.DataFrame({
@@ -5277,7 +5280,7 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, a, b
             "X (m)": [f"{node_coords[nid][0]:.3f}" for nid in node_ids],
             "Y (m)": [f"{node_coords[nid][1]:.3f}" for nid in node_ids],
             "Z (m)": [f"{node_coords[nid][2]:.3f}" for nid in node_ids],
-            "주응력 (MPa)": [f"{sxx:.3f}" for sxx in sxx_data],
+            "주응력 (GPa)": [f"{sxx:.6f}" for sxx in sxx_data],
             "TCI": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_x],
         })
         
@@ -5316,7 +5319,7 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, a, b
         time_info = html.Div([
             html.P(f"📅 현재 시간: {current_time.strftime('%Y-%m-%d %H:%M')} (경과 {t_days:.1f}일)", 
                    style={"marginBottom": "8px", "fontWeight": "500"}),
-            html.P(f"🧮 fct(t) = {fct:.2f} MPa (타설일 기준 {t_days:.1f}일)", 
+            html.P(f"🧮 fct(t) = {fct:.6f} GPa (타설일 기준 {t_days:.1f}일)", 
                    style={"marginBottom": "8px", "fontWeight": "500", "color": "#059669"}),
             html.P(f"📊 총 {len(node_ids)}개 노드 분석", 
                    style={"marginBottom": "8px", "fontSize": "14px", "color": "#6b7280"}),
