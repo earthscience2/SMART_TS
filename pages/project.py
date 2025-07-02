@@ -3297,12 +3297,14 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             reader.Update()
             ds = reader.GetOutput()
 
-        # UnstructuredGrid → PolyData 변환 (GeometryFilter)
+        # UnstructuredGrid 처리 - 표면 추출하지 않고 원본 유지
+        # GeometryFilter는 표면만 추출하므로 내부 볼륨이 사라질 수 있음
+        # 대신 원본 UnstructuredGrid를 그대로 사용
         if isinstance(ds, vtk.vtkUnstructuredGrid):
-            geom_filter = vtk.vtkGeometryFilter()
-            geom_filter.SetInputData(ds)
-            geom_filter.Update()
-            ds = geom_filter.GetOutput()
+            print("UnstructuredGrid 유지 - 표면 추출하지 않음")
+            # 원본 UnstructuredGrid를 그대로 사용하여 내부 구조 보존
+        else:
+            print("PolyData 사용")
 
         # 데이터 검증
         if ds is None:
@@ -3340,7 +3342,10 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
 
         # 단면 적용 (slice_enable에 "on"이 있으면 활성화)
         ds_for_vis = ds
-        if slice_enable is not None and isinstance(slice_enable, list) and "on" in slice_enable:
+        # 단면 기능이 비활성화되어 있으면 원본 데이터 그대로 사용
+        if slice_enable is None or not isinstance(slice_enable, list) or "on" not in slice_enable:
+            print("단면 기능 비활성화 - 원본 데이터 사용")
+        else:
             try:
                 # 슬라이더의 값을 절대 좌표로 직접 사용하도록 변경
                 slice_value = slice_slider
@@ -3472,6 +3477,16 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         print("ds_for_vis 점 개수:", ds_for_vis.GetNumberOfPoints())
         print("ds_for_vis 셀 개수:", ds_for_vis.GetNumberOfCells())
         print("ds_for_vis 바운딩박스:", ds_for_vis.GetBounds())
+        print("ds_for_vis 데이터셋 타입:", type(ds_for_vis).__name__)
+        
+        # 사용 가능한 필드 확인
+        point_data = ds_for_vis.GetPointData()
+        print("사용 가능한 필드:")
+        for i in range(point_data.GetNumberOfArrays()):
+            arr_name = point_data.GetArrayName(i)
+            arr = point_data.GetArray(arr_name)
+            if arr:
+                print(f"  - {arr_name}: {arr.GetNumberOfComponents()} 컴포넌트, {arr.GetNumberOfTuples()} 튜플")
 
         # 필드 값 min/max
         if field_name:
@@ -3491,25 +3506,28 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                     # 해당 컴포넌트만 추출하여 새로운 배열 생성
                     arr = ds_for_vis.GetPointData().GetArray(base_field)
                     if arr and arr.GetNumberOfComponents() > comp_idx:
-                        # 컴포넌트 추출
+                        # 안전한 컴포넌트 추출 - numpy 직접 사용
                         import vtk
-                        extract = vtk.vtkExtractVectorComponents()
-                        extract.SetInputData(ds_for_vis)
-                        extract.SetInputArrayToProcess(0, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, base_field)
-                        extract.Update()
+                        import vtk.util.numpy_support as nps
+                        import numpy as np
                         
-                        # 추출된 컴포넌트를 원본 데이터셋에 추가
-                        extracted_ds = extract.GetOutput()
-                        comp_name = f"{base_field}_{comp_idx}"
-                        comp_arr = extracted_ds.GetPointData().GetArray(comp_name)
+                        # 벡터 배열을 numpy 배열로 변환
+                        vector_data = nps.vtk_to_numpy(arr)
                         
-                        if comp_arr:
-                            # 원본 데이터셋에 컴포넌트 배열 추가
-                            ds_for_vis.GetPointData().AddArray(comp_arr)
-                            field_name = comp_name
-                        else:
-                            # 추출 실패시 원본 필드 사용
-                            field_name = base_field
+                        # 해당 컴포넌트만 추출
+                        comp_data = vector_data[:, comp_idx]
+                        
+                        # numpy 배열을 VTK 배열로 변환
+                        comp_arr = vtk.vtkFloatArray()
+                        comp_arr.SetName(f"{base_field}_{comp_idx}")
+                        comp_arr.SetNumberOfValues(len(comp_data))
+                        
+                        for i, val in enumerate(comp_data):
+                            comp_arr.SetValue(i, val)
+                        
+                        # 원본 데이터셋에 컴포넌트 배열 추가
+                        ds_for_vis.GetPointData().AddArray(comp_arr)
+                        field_name = f"{base_field}_{comp_idx}"
                     else:
                         field_name = base_field
                 except (ValueError, IndexError):
@@ -3553,26 +3571,40 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             html.P("VTK 파일 형식을 확인해주세요. FRD → VTK 변환이 올바르게 되었는지 점검이 필요합니다.", style={"color": "gray"})
         ]), "", go.Figure(), slice_min, slice_max
     
-    # 컬러 데이터 범위 추출 (컴포넌트 인덱스 처리)
-    color_range = None
-    colorbar_fig = go.Figure()
-    if field_name:
-        # 컴포넌트 인덱스가 포함된 필드명 처리
-        actual_field_name = field_name
-        if ":" in field_name:
-            base_field, comp_idx = field_name.split(":")
-            try:
-                comp_idx = int(comp_idx)
-                comp_name = f"{base_field}_{comp_idx}"
-                arr = ds_for_vis.GetPointData().GetArray(comp_name)
-                if arr:
-                    actual_field_name = comp_name
-                else:
-                    arr = ds_for_vis.GetPointData().GetArray(base_field)
-            except (ValueError, IndexError):
+            # 컬러 데이터 범위 추출 (컴포넌트 인덱스 처리)
+        color_range = None
+        colorbar_fig = go.Figure()
+        if field_name:
+            # 컴포넌트 인덱스가 포함된 필드명 처리
+            actual_field_name = field_name
+            if ":" in field_name:
+                base_field, comp_idx = field_name.split(":")
+                try:
+                    comp_idx = int(comp_idx)
+                    comp_name = f"{base_field}_{comp_idx}"
+                    arr = ds_for_vis.GetPointData().GetArray(comp_name)
+                    if arr:
+                        actual_field_name = comp_name
+                    else:
+                        # 컴포넌트 배열이 없으면 원본 벡터 필드에서 직접 추출
+                        import vtk.util.numpy_support as nps
+                        import numpy as np
+                        base_arr = ds_for_vis.GetPointData().GetArray(base_field)
+                        if base_arr and base_arr.GetNumberOfComponents() > comp_idx:
+                            vector_data = nps.vtk_to_numpy(base_arr)
+                            comp_data = vector_data[:, comp_idx]
+                            arr = vtk.vtkFloatArray()
+                            arr.SetName(comp_name)
+                            arr.SetNumberOfValues(len(comp_data))
+                            for i, val in enumerate(comp_data):
+                                arr.SetValue(i, val)
+                            actual_field_name = comp_name
+                        else:
+                            arr = base_arr
+                except (ValueError, IndexError):
+                    arr = ds_for_vis.GetPointData().GetArray(field_name)
+            else:
                 arr = ds_for_vis.GetPointData().GetArray(field_name)
-        else:
-            arr = ds_for_vis.GetPointData().GetArray(field_name)
         
         if arr is not None:
             range_val = arr.GetRange()
@@ -3596,7 +3628,7 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                             cmin=color_range[0],
                             cmax=color_range[1],
                             colorbar=dict(
-                                title=dict(text=actual_field_name, font=dict(size=14)),
+                                title=dict(text=field_name.replace(":", " "), font=dict(size=14)),
                                 thickness=15,
                                 len=0.7,
                                 x=0.5,
