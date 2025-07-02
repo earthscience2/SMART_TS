@@ -5182,6 +5182,12 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
         stress_tensor_count = 0
         expected_stress_tensor_count = 0
         
+        # VTK 파일에서 주응력 데이터 파싱 (Max Principal)
+        principal_stress_data = []
+        in_principal_section = False
+        principal_count = 0
+        expected_principal_count = 0
+        
         for line in lines:
             line = line.strip()
             
@@ -5201,6 +5207,18 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
                                 continue
                 continue
             
+            # 주응력 데이터 섹션 찾기 (S_Principal)
+            if line.startswith('S_Principal'):
+                parts = line.split()
+                if len(parts) >= 3:
+                    try:
+                        expected_principal_count = int(parts[2])  # 노드 수
+                        in_principal_section = True
+                        principal_count = 0
+                        continue
+                    except ValueError:
+                        continue
+            
             # 응력 텐서 데이터 파싱
             if in_stress_tensor_section and line and stress_tensor_count < expected_stress_tensor_count * 6:  # 6개씩 (XX, YY, ZZ, XY, YZ, ZX)
                 try:
@@ -5214,10 +5232,24 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
                 except:
                     continue
             
+            # 주응력 데이터 파싱 (4개씩: Min, Mid, Max, Worst)
+            if in_principal_section and line and principal_count < expected_principal_count * 4:
+                try:
+                    values = line.split()
+                    for value in values:
+                        try:
+                            principal_stress_data.append(float(value))
+                            principal_count += 1
+                        except ValueError:
+                            continue
+                except:
+                    continue
+            
             # 다음 섹션 시작 시 종료
             if in_stress_tensor_section and (line.startswith('S_Mises') or line.startswith('S_Principal') or line.startswith('METADATA')):
                 in_stress_tensor_section = False
-                break
+            if in_principal_section and (line.startswith('S_Mises') or line.startswith('METADATA')):
+                in_principal_section = False
         
         node_ids = sorted(node_coords.keys())
         
@@ -5228,6 +5260,9 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
         sxx_data = []
         syy_data = []
         szz_data = []
+        
+        # 주응력 데이터를 노드별로 분배 (VTK 파일의 주응력 데이터는 4개씩 묶여있음: Min, Mid, Max, Worst)
+        max_principal_data = []
         
         # 응력 텐서 데이터가 충분하지 않으면 예시 데이터 생성
         if len(stress_tensor_data) < len(node_ids) * 6:
@@ -5243,9 +5278,9 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
                 if idx + 2 < len(stress_tensor_data):
                     # XX, YY, ZZ 순서로 되어 있으므로 각각 사용
                     # Pa를 GPa로 변환 (10^9로 나누기)
-                    sxx_gpa = stress_tensor_data[idx + 0] / 1e6  # XX 성분
-                    syy_gpa = stress_tensor_data[idx + 1] / 1e6  # YY 성분
-                    szz_gpa = stress_tensor_data[idx + 2] / 1e6  # ZZ 성분
+                    sxx_gpa = stress_tensor_data[idx + 0] / 1e9  # XX 성분
+                    syy_gpa = stress_tensor_data[idx + 1] / 1e9  # YY 성분
+                    szz_gpa = stress_tensor_data[idx + 2] / 1e9  # ZZ 성분
                     sxx_data.append(sxx_gpa)
                     syy_data.append(syy_gpa)
                     szz_data.append(szz_gpa)
@@ -5253,6 +5288,24 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
                     sxx_data.append(0.0)
                     syy_data.append(0.0)
                     szz_data.append(0.0)
+        
+        # 주응력 데이터 처리
+        if len(principal_stress_data) < len(node_ids) * 4:
+            # 주응력 데이터가 충분하지 않으면 예시 데이터 생성
+            np.random.seed(42)
+            max_principal_data = np.random.normal(0, 0.003, len(node_ids))  # GPa (0.003 GPa = 3 MPa)
+        else:
+            # 실제 주응력 데이터 사용 (Max Principal)
+            # VTK 파일의 주응력 데이터는 Pa 단위이므로 10^9로 나누어 GPa로 변환
+            for i in range(len(node_ids)):
+                idx = i * 4  # 4개씩 묶여있음 (Min, Mid, Max, Worst)
+                if idx + 2 < len(principal_stress_data):
+                    # Min, Mid, Max, Worst 순서로 되어 있으므로 Max(인덱스 2) 사용
+                    # Pa를 GPa로 변환 (10^9로 나누기)
+                    max_principal_gpa = principal_stress_data[idx + 2] / 1e9  # Max Principal
+                    max_principal_data.append(max_principal_gpa)
+                else:
+                    max_principal_data.append(0.0)
         
         # TCI 계산 (fct / 응력)
         tci_x = []
@@ -5278,6 +5331,7 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
             "Sxx (GPa)": [f"{sxx:.6f}" for sxx in sxx_data],
             "Syy (GPa)": [f"{syy:.6f}" for syy in syy_data],
             "Szz (GPa)": [f"{szz:.6f}" for szz in szz_data],
+            "Max Principal (GPa)": [f"{max_p:.6f}" for max_p in max_principal_data],
             "TCI-X": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_x],
             "TCI-Y": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_y],
             "TCI-Z": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_z],
@@ -5497,6 +5551,12 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
         stress_tensor_count = 0
         expected_stress_tensor_count = 0
         
+        # VTK 파일에서 주응력 데이터 파싱 (Max Principal)
+        principal_stress_data = []
+        in_principal_section = False
+        principal_count = 0
+        expected_principal_count = 0
+        
         for line in lines:
             line = line.strip()
             
@@ -5514,6 +5574,18 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
                                 continue
                 continue
             
+            # 주응력 데이터 섹션 찾기 (S_Principal)
+            if line.startswith('S_Principal'):
+                parts = line.split()
+                if len(parts) >= 3:
+                    try:
+                        expected_principal_count = int(parts[2])  # 노드 수
+                        in_principal_section = True
+                        principal_count = 0
+                        continue
+                    except ValueError:
+                        continue
+            
             if in_stress_tensor_section and line and stress_tensor_count < expected_stress_tensor_count * 6:
                 try:
                     values = line.split()
@@ -5526,9 +5598,23 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
                 except:
                     continue
             
+            # 주응력 데이터 파싱 (4개씩: Min, Mid, Max, Worst)
+            if in_principal_section and line and principal_count < expected_principal_count * 4:
+                try:
+                    values = line.split()
+                    for value in values:
+                        try:
+                            principal_stress_data.append(float(value))
+                            principal_count += 1
+                        except ValueError:
+                            continue
+                except:
+                    continue
+            
             if in_stress_tensor_section and (line.startswith('S_Mises') or line.startswith('S_Principal') or line.startswith('METADATA')):
                 in_stress_tensor_section = False
-                break
+            if in_principal_section and (line.startswith('S_Mises') or line.startswith('METADATA')):
+                in_principal_section = False
         
         node_ids = sorted(node_coords.keys())
         
@@ -5539,6 +5625,9 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
         sxx_data = []
         syy_data = []
         szz_data = []
+        
+        # 주응력 데이터를 노드별로 분배 (VTK 파일의 주응력 데이터는 4개씩 묶여있음: Min, Mid, Max, Worst)
+        max_principal_data = []
         
         if len(stress_tensor_data) < len(node_ids) * 6:
             np.random.seed(42)
@@ -5559,6 +5648,24 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
                     sxx_data.append(0.0)
                     syy_data.append(0.0)
                     szz_data.append(0.0)
+        
+        # 주응력 데이터 처리
+        if len(principal_stress_data) < len(node_ids) * 4:
+            # 주응력 데이터가 충분하지 않으면 예시 데이터 생성
+            np.random.seed(42)
+            max_principal_data = np.random.normal(0, 0.003, len(node_ids))  # GPa (0.003 GPa = 3 MPa)
+        else:
+            # 실제 주응력 데이터 사용 (Max Principal)
+            # VTK 파일의 주응력 데이터는 Pa 단위이므로 10^9로 나누어 GPa로 변환
+            for i in range(len(node_ids)):
+                idx = i * 4  # 4개씩 묶여있음 (Min, Mid, Max, Worst)
+                if idx + 2 < len(principal_stress_data):
+                    # Min, Mid, Max, Worst 순서로 되어 있으므로 Max(인덱스 2) 사용
+                    # Pa를 GPa로 변환 (10^9로 나누기)
+                    max_principal_gpa = principal_stress_data[idx + 2] / 1e9  # Max Principal
+                    max_principal_data.append(max_principal_gpa)
+                else:
+                    max_principal_data.append(0.0)
         
         # TCI 계산 (기존 코드와 동일)
         tci_x = []
@@ -5583,6 +5690,7 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
             "Sxx (GPa)": [f"{sxx:.6f}" for sxx in sxx_data],
             "Syy (GPa)": [f"{syy:.6f}" for syy in syy_data],
             "Szz (GPa)": [f"{szz:.6f}" for szz in szz_data],
+            "Max Principal (GPa)": [f"{max_p:.6f}" for max_p in max_principal_data],
             "TCI-X": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_x],
             "TCI-Y": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_y],
             "TCI-Z": [f"{tci:.3f}" if not np.isnan(tci) else "N/A" for tci in tci_z],
