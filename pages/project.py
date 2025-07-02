@@ -3404,9 +3404,27 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         # === 필드 데이터 처리 복구 ===
         # 선택된 필드에 따른 색상 매핑
         color_array = None
+        
+        # 사용 가능한 필드 목록 출력
+        point_data = ds_for_vis.GetPointData()
+        cell_data = ds_for_vis.GetCellData()
+        
+        print("=== 사용 가능한 필드 목록 ===")
+        print(f"점 데이터 필드 개수: {point_data.GetNumberOfArrays()}")
+        for i in range(point_data.GetNumberOfArrays()):
+            arr = point_data.GetArray(i)
+            if arr:
+                print(f"  점 필드 {i}: '{arr.GetName()}' - {arr.GetNumberOfComponents()}컴포넌트, {arr.GetNumberOfTuples()}튜플")
+        
+        print(f"셀 데이터 필드 개수: {cell_data.GetNumberOfArrays()}")
+        for i in range(cell_data.GetNumberOfArrays()):
+            arr = cell_data.GetArray(i)
+            if arr:
+                print(f"  셀 필드 {i}: '{arr.GetName()}' - {arr.GetNumberOfComponents()}컴포넌트, {arr.GetNumberOfTuples()}튜플")
+        print("=== 필드 목록 끝 ===")
+        
         if field_name and field_name != "none":
-            point_data = ds_for_vis.GetPointData()
-            cell_data = ds_for_vis.GetCellData()
+            print(f"검색 중인 필드: '{field_name}'")
             
             # 점 데이터에서 필드 찾기
             for i in range(point_data.GetNumberOfArrays()):
@@ -3425,10 +3443,35 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
                         print(f"셀 데이터에서 필드 '{field_name}' 찾음")
                         break
             
+            # 정확한 매칭이 안 되면 부분 매칭 시도
+            if not color_array:
+                print(f"정확한 매칭 실패, 부분 매칭 시도...")
+                for i in range(point_data.GetNumberOfArrays()):
+                    arr = point_data.GetArray(i)
+                    if arr and field_name.lower() in arr.GetName().lower():
+                        color_array = arr
+                        print(f"점 데이터에서 부분 매칭 필드 '{arr.GetName()}' 찾음")
+                        break
+                
+                if not color_array:
+                    for i in range(cell_data.GetNumberOfArrays()):
+                        arr = cell_data.GetArray(i)
+                        if arr and field_name.lower() in arr.GetName().lower():
+                            color_array = arr
+                            print(f"셀 데이터에서 부분 매칭 필드 '{arr.GetName()}' 찾음")
+                            break
+            
             if color_array:
-                print(f"색상 매핑 필드: {field_name}, 값 범위: {color_array.GetRange()}")
+                print(f"색상 매핑 필드: {color_array.GetName()}, 값 범위: {color_array.GetRange()}")
             else:
                 print(f"필드 '{field_name}'를 찾을 수 없습니다")
+                # 첫 번째 사용 가능한 필드를 기본값으로 사용
+                if point_data.GetNumberOfArrays() > 0:
+                    color_array = point_data.GetArray(0)
+                    print(f"기본 필드로 '{color_array.GetName()}' 사용")
+                elif cell_data.GetNumberOfArrays() > 0:
+                    color_array = cell_data.GetArray(0)
+                    print(f"기본 필드로 '{color_array.GetName()}' 사용")
         
         # 메쉬 상태 생성
         mesh_state = to_mesh_state(ds_for_vis)
