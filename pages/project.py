@@ -5656,13 +5656,19 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
             max_principal_data = np.random.normal(0, 0.003, len(node_ids))  # GPa (0.003 GPa = 3 MPa)
         else:
             # 실제 주응력 데이터 사용 (Max Principal)
-            # VTK 파일의 주응력 데이터는 Pa 단위이므로 10^9로 나누어 GPa로 변환
+            # VTK 파일의 주응력 데이터는 잘못된 단위로 저장되어 있으므로 10^12로 나누어 GPa로 변환
             for i in range(len(node_ids)):
                 idx = i * 4  # 4개씩 묶여있음 (Min, Mid, Max, Worst)
-                if idx + 2 < len(principal_stress_data):
-                    # Min, Mid, Max, Worst 순서로 되어 있으므로 Max(인덱스 2) 사용
-                    # Pa를 GPa로 변환 (10^9로 나누기)
-                    max_principal_gpa = principal_stress_data[idx + 2] / 1e9  # Max Principal
+                if idx + 3 < len(principal_stress_data):
+                    # 4개의 주응력 값 (Min, Mid, Max, Worst)을 모두 가져와서 절대값으로 비교
+                    min_principal = principal_stress_data[idx + 0] / 1e12  # Min Principal
+                    mid_principal = principal_stress_data[idx + 1] / 1e12  # Mid Principal
+                    max_principal = principal_stress_data[idx + 2] / 1e12  # Max Principal
+                    worst_principal = principal_stress_data[idx + 3] / 1e12  # Worst Principal
+                    
+                    # 절대값으로 비교해서 최대값 선택
+                    principal_values = [min_principal, mid_principal, max_principal, worst_principal]
+                    max_principal_gpa = max(principal_values, key=abs)  # 절대값이 가장 큰 값
                     max_principal_data.append(max_principal_gpa)
                 else:
                     max_principal_data.append(0.0)
