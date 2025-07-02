@@ -84,8 +84,8 @@ def create_probability_curve_figure():
     tci_values = np.linspace(0.1, 3.0, 300)
     
     # 수정된 로지스틱 근사식: 0.4에서 100%, 1.0에서 40%, 2.0에서 0%
-    # P(x) = 100 / (1 + e^(4(x-0.7)))
-    probabilities = 100 / (1 + np.exp(4 * (tci_values - 0.7)))
+    # P(x) = 100 / (1 + e^(6(x-0.6)))
+    probabilities = 100 / (1 + np.exp(6 * (tci_values - 0.6)))
     
     fig = go.Figure()
     
@@ -2461,7 +2461,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         "fontSize": "16px"
                     }),
                     html.Div([
-                        html.P("로지스틱 근사식: P(x) = 100/(1 + e^(4(x-0.7)))", style={
+                        html.P("로지스틱 근사식: P(x) = 100/(1 + e^(6(x-0.6)))", style={
                             "fontSize": "14px",
                             "color": "#6b7280",
                             "marginBottom": "12px",
@@ -5316,6 +5316,12 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
         if not node_ids:
             return slider, html.Div("노드 데이터를 찾을 수 없습니다.")
         
+        # 배열 길이 검증 및 조정
+        expected_length = len(node_ids)
+        print(f"예상 노드 수: {expected_length}")
+        print(f"응력 텐서 데이터 길이: {len(stress_tensor_data)}")
+        print(f"주응력 데이터 길이: {len(principal_stress_data)}")
+        
         # 응력 텐서 데이터를 노드별로 분배 (VTK 파일의 응력 데이터는 6개씩 묶여있음: XX, YY, ZZ, XY, YZ, ZX)
         sxx_data = []
         syy_data = []
@@ -5324,48 +5330,44 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
         # 주응력 데이터를 노드별로 분배 (VTK 파일의 주응력 데이터는 4개씩 묶여있음: Min, Mid, Max, Worst)
         max_principal_data = []
         
-        # 응력 텐서 데이터가 충분하지 않으면 예시 데이터 생성
-        if len(stress_tensor_data) < len(node_ids) * 6:
-            np.random.seed(42)  # 재현성을 위한 시드 설정
-            sxx_data = np.random.normal(0, 0.002, len(node_ids))  # GPa (0.002 GPa = 2 MPa)
-            syy_data = np.random.normal(0, 0.002, len(node_ids))  # GPa
-            szz_data = np.random.normal(0, 0.002, len(node_ids))  # GPa
-        else:
-            # 실제 응력 텐서 데이터 사용 (XX, YY, ZZ 성분)
-            # VTK 파일의 응력 데이터는 Pa 단위이므로 10^9로 나누어 GPa로 변환
-            for i in range(len(node_ids)):
-                idx = i * 6  # 6개씩 묶여있음 (XX, YY, ZZ, XY, YZ, ZX)
-                if idx + 2 < len(stress_tensor_data):
-                    # XX, YY, ZZ 순서로 되어 있으므로 각각 사용
-                    # Pa를 GPa로 변환 (10^9로 나누기)
-                    sxx_gpa = stress_tensor_data[idx + 0] / 1e9  # XX 성분
-                    syy_gpa = stress_tensor_data[idx + 1] / 1e9  # YY 성분
-                    szz_gpa = stress_tensor_data[idx + 2] / 1e9  # ZZ 성분
-                    sxx_data.append(sxx_gpa)
-                    syy_data.append(syy_gpa)
-                    szz_data.append(szz_gpa)
-                else:
-                    sxx_data.append(0.0)
-                    syy_data.append(0.0)
-                    szz_data.append(0.0)
+        # 응력 텐서 데이터 처리 (길이 안전성 보장)
+        for i in range(len(node_ids)):
+            idx = i * 6  # 6개씩 묶여있음 (XX, YY, ZZ, XY, YZ, ZX)
+            if len(stress_tensor_data) >= (idx + 3):  # XX, YY, ZZ 3개 필요
+                # 실제 응력 텐서 데이터 사용
+                # Pa를 GPa로 변환 (10^9로 나누기)
+                sxx_gpa = stress_tensor_data[idx + 0] / 1e9  # XX 성분
+                syy_gpa = stress_tensor_data[idx + 1] / 1e9  # YY 성분
+                szz_gpa = stress_tensor_data[idx + 2] / 1e9  # ZZ 성분
+                sxx_data.append(sxx_gpa)
+                syy_data.append(syy_gpa)
+                szz_data.append(szz_gpa)
+            else:
+                # 데이터가 부족하면 예시 데이터 생성
+                np.random.seed(42 + i)  # 재현성을 위한 시드 설정
+                sxx_data.append(np.random.normal(0, 0.002))  # GPa (0.002 GPa = 2 MPa)
+                syy_data.append(np.random.normal(0, 0.002))  # GPa
+                szz_data.append(np.random.normal(0, 0.002))  # GPa
         
-        # 주응력 데이터 처리
-        if len(principal_stress_data) < len(node_ids) * 4:
-            # 주응력 데이터가 충분하지 않으면 예시 데이터 생성
-            np.random.seed(42)
-            max_principal_data = np.random.normal(0, 0.003, len(node_ids))  # GPa (0.003 GPa = 3 MPa)
-        else:
-            # 실제 주응력 데이터 사용 (Max Principal)
-            # VTK 파일의 주응력 데이터는 잘못된 단위로 저장되어 있으므로 10^12로 나누어 GPa로 변환
-            for i in range(len(node_ids)):
-                idx = i * 4  # 4개씩 묶여있음 (Min, Mid, Max, Worst)
-                if idx + 2 < len(principal_stress_data):
-                    # Min, Mid, Max, Worst 순서로 되어 있으므로 Max(인덱스 2) 사용
-                    # 잘못된 단위를 GPa로 변환 (10^12로 나누기)
-                    max_principal_gpa = principal_stress_data[idx + 2] / 1e12  # Max Principal
-                    max_principal_data.append(max_principal_gpa)
-                else:
-                    max_principal_data.append(0.0)
+        # 주응력 데이터 처리 (길이 안전성 보장)
+        for i in range(len(node_ids)):
+            idx = i * 4  # 4개씩 묶여있음 (Min, Mid, Max, Worst)
+            if len(principal_stress_data) >= (idx + 4):  # Min, Mid, Max, Worst 4개 필요
+                # 실제 주응력 데이터 사용
+                # 4개의 주응력 값 (Min, Mid, Max, Worst)을 모두 가져와서 절대값으로 비교
+                min_principal = principal_stress_data[idx + 0] / 1e12  # Min Principal
+                mid_principal = principal_stress_data[idx + 1] / 1e12  # Mid Principal
+                max_principal = principal_stress_data[idx + 2] / 1e12  # Max Principal
+                worst_principal = principal_stress_data[idx + 3] / 1e12  # Worst Principal
+                
+                # 실제 최댓값 선택 (절댓값이 아닌 진짜 max)
+                principal_values = [min_principal, mid_principal, max_principal, worst_principal]
+                max_principal_gpa = max(principal_values)  # 실제 최댓값
+                max_principal_data.append(max_principal_gpa)
+            else:
+                # 데이터가 부족하면 예시 데이터 생성
+                np.random.seed(43 + i)  # 재현성을 위한 시드 설정
+                max_principal_data.append(np.random.normal(0, 0.003))  # GPa (0.003 GPa = 3 MPa)
         
         # TCI 계산 (fct / 응력)
         tci_x = []
@@ -5377,16 +5379,16 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
             syy = syy_data[i]
             szz = szz_data[i]
             
-                    # 응력이 0이 아닐 때만 TCI 계산 (절댓값 사용, GPa 단위)
-        tci_x.append(fct / abs(sxx) if abs(sxx) > 0.00001 else 0)  # 0.00001 GPa = 0.01 MPa
-        tci_y.append(fct / abs(syy) if abs(syy) > 0.00001 else 0)
-        tci_z.append(fct / abs(szz) if abs(szz) > 0.00001 else 0)
+                                # 응력이 0이 아닐 때만 TCI 계산 (절댓값 사용, GPa 단위)
+            tci_x.append(fct / abs(sxx) if abs(sxx) > 0.00001 else 0)  # 0.00001 GPa = 0.01 MPa
+            tci_y.append(fct / abs(syy) if abs(syy) > 0.00001 else 0)
+            tci_z.append(fct / abs(szz) if abs(szz) > 0.00001 else 0)
         
         # 균열발생확률 함수 정의 (로지스틱 근사식)
         def crack_probability(tci):
             if tci == 0 or np.isnan(tci):
                 return 0
-            return 1 / (1 + np.exp(4 * (tci - 1))) * 100
+            return 100 / (1 + np.exp(6 * (tci - 0.6)))
         
         # TCI 계산 시 음수 응력은 확률 0%로 설정
         def calculate_tci_and_probability(stress, fct):
@@ -5791,6 +5793,12 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
         if not node_ids:
             return html.Div("노드 데이터를 찾을 수 없습니다.")
         
+        # 배열 길이 검증 및 조정
+        expected_length = len(node_ids)
+        print(f"예상 노드 수: {expected_length}")
+        print(f"응력 텐서 데이터 길이: {len(stress_tensor_data)}")
+        print(f"주응력 데이터 길이: {len(principal_stress_data)}")
+        
         # 응력 텐서 데이터를 노드별로 분배 (기존 코드와 동일)
         sxx_data = []
         syy_data = []
@@ -5799,49 +5807,43 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
         # 주응력 데이터를 노드별로 분배 (VTK 파일의 주응력 데이터는 4개씩 묶여있음: Min, Mid, Max, Worst)
         max_principal_data = []
         
-        if len(stress_tensor_data) < len(node_ids) * 6:
-            np.random.seed(42)
-            sxx_data = np.random.normal(0, 0.002, len(node_ids))
-            syy_data = np.random.normal(0, 0.002, len(node_ids))
-            szz_data = np.random.normal(0, 0.002, len(node_ids))
-        else:
-            for i in range(len(node_ids)):
-                idx = i * 6
-                if idx + 2 < len(stress_tensor_data):
-                    sxx_gpa = stress_tensor_data[idx + 0] / 1e9
-                    syy_gpa = stress_tensor_data[idx + 1] / 1e9
-                    szz_gpa = stress_tensor_data[idx + 2] / 1e9
-                    sxx_data.append(sxx_gpa)
-                    syy_data.append(syy_gpa)
-                    szz_data.append(szz_gpa)
-                else:
-                    sxx_data.append(0.0)
-                    syy_data.append(0.0)
-                    szz_data.append(0.0)
+        # 응력 텐서 데이터 처리 (길이 안전성 보장)
+        for i in range(len(node_ids)):
+            idx = i * 6  # 6개씩 묶여있음 (XX, YY, ZZ, XY, YZ, ZX)
+            if len(stress_tensor_data) >= (idx + 3):  # XX, YY, ZZ 3개 필요
+                # 실제 응력 텐서 데이터 사용
+                sxx_gpa = stress_tensor_data[idx + 0] / 1e9
+                syy_gpa = stress_tensor_data[idx + 1] / 1e9
+                szz_gpa = stress_tensor_data[idx + 2] / 1e9
+                sxx_data.append(sxx_gpa)
+                syy_data.append(syy_gpa)
+                szz_data.append(szz_gpa)
+            else:
+                # 데이터가 부족하면 예시 데이터 생성
+                np.random.seed(42 + i)  # 재현성을 위한 시드 설정
+                sxx_data.append(np.random.normal(0, 0.002))  # GPa
+                syy_data.append(np.random.normal(0, 0.002))  # GPa
+                szz_data.append(np.random.normal(0, 0.002))  # GPa
         
-        # 주응력 데이터 처리
-        if len(principal_stress_data) < len(node_ids) * 4:
-            # 주응력 데이터가 충분하지 않으면 예시 데이터 생성
-            np.random.seed(42)
-            max_principal_data = np.random.normal(0, 0.003, len(node_ids))  # GPa (0.003 GPa = 3 MPa)
-        else:
-            # 실제 주응력 데이터 사용 (Max Principal)
-            # VTK 파일의 주응력 데이터는 잘못된 단위로 저장되어 있으므로 10^12로 나누어 GPa로 변환
-            for i in range(len(node_ids)):
-                idx = i * 4  # 4개씩 묶여있음 (Min, Mid, Max, Worst)
-                if idx + 3 < len(principal_stress_data):
-                    # 4개의 주응력 값 (Min, Mid, Max, Worst)을 모두 가져와서 절대값으로 비교
-                    min_principal = principal_stress_data[idx + 0] / 1e12  # Min Principal
-                    mid_principal = principal_stress_data[idx + 1] / 1e12  # Mid Principal
-                    max_principal = principal_stress_data[idx + 2] / 1e12  # Max Principal
-                    worst_principal = principal_stress_data[idx + 3] / 1e12  # Worst Principal
-                    
-                    # 실제 최댓값 선택 (절댓값이 아닌 진짜 max)
-                    principal_values = [min_principal, mid_principal, max_principal, worst_principal]
-                    max_principal_gpa = max(principal_values)  # 실제 최댓값
-                    max_principal_data.append(max_principal_gpa)
-                else:
-                    max_principal_data.append(0.0)
+        # 주응력 데이터 처리 (길이 안전성 보장)
+        for i in range(len(node_ids)):
+            idx = i * 4  # 4개씩 묶여있음 (Min, Mid, Max, Worst)
+            if len(principal_stress_data) >= (idx + 4):  # Min, Mid, Max, Worst 4개 필요
+                # 실제 주응력 데이터 사용
+                # 4개의 주응력 값 (Min, Mid, Max, Worst)을 모두 가져와서 절대값으로 비교
+                min_principal = principal_stress_data[idx + 0] / 1e12  # Min Principal
+                mid_principal = principal_stress_data[idx + 1] / 1e12  # Mid Principal
+                max_principal = principal_stress_data[idx + 2] / 1e12  # Max Principal
+                worst_principal = principal_stress_data[idx + 3] / 1e12  # Worst Principal
+                
+                # 실제 최댓값 선택 (절댓값이 아닌 진짜 max)
+                principal_values = [min_principal, mid_principal, max_principal, worst_principal]
+                max_principal_gpa = max(principal_values)  # 실제 최댓값
+                max_principal_data.append(max_principal_gpa)
+            else:
+                # 데이터가 부족하면 예시 데이터 생성
+                np.random.seed(43 + i)  # 재현성을 위한 시드 설정
+                max_principal_data.append(np.random.normal(0, 0.003))  # GPa (0.003 GPa = 3 MPa)
         
         # TCI 계산 (기존 코드와 동일)
         tci_x = []
@@ -5861,7 +5863,7 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
         def crack_probability(tci):
             if tci == 0 or np.isnan(tci):
                 return 0
-            return 1 / (1 + np.exp(4 * (tci - 1))) * 100
+            return 100 / (1 + np.exp(6 * (tci - 0.6)))
         
         # TCI 계산 시 음수 응력은 확률 0%로 설정
         def calculate_tci_and_probability(stress, fct):
