@@ -4048,17 +4048,17 @@ def toggle_slice_detail_controls(slice_enable):
 # 3D 뷰 슬라이더 동기화 콜백 (display용 슬라이더와 실제 슬라이더만, 단면도 슬라이더는 제외)
 @callback(
     Output("time-slider", "value", allow_duplicate=True),
-    Input("time-slider-display", "value"),
+    Input("time-slider", "value"),
     prevent_initial_call=True,
 )
 def sync_display_slider_to_main(display_value):
     return display_value
 
 @callback(
-    Output("time-slider-display", "value", allow_duplicate=True),
-    Output("time-slider-display", "min", allow_duplicate=True),
-    Output("time-slider-display", "max", allow_duplicate=True),
-    Output("time-slider-display", "marks", allow_duplicate=True),
+    Output("time-slider", "value", allow_duplicate=True),
+    Output("time-slider", "min", allow_duplicate=True),
+    Output("time-slider", "max", allow_duplicate=True),
+    Output("time-slider", "marks", allow_duplicate=True),
     Input("time-slider", "value"),
     Input("time-slider", "min"),
     Input("time-slider", "max"),
@@ -4226,7 +4226,7 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
     State("viewer-3d-display", "figure"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
-    State("time-slider-display", "value"),
+    State("time-slider", "value"),
     prevent_initial_call=True,
 )
 def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
@@ -4319,7 +4319,7 @@ def reset_image_save_button(active_tab, selected_rows):
     Input("btn-save-current-inp", "n_clicks"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
-    State("time-slider-display", "value"),
+    State("time-slider", "value"),
     prevent_initial_call=True,
 )
 def save_current_inp(n_clicks, selected_rows, tbl_data, time_value):
