@@ -231,12 +231,26 @@ def layout():
                             # 분석 결과 드롭다운
                             dbc.DropdownMenu(
                                 children=[
-                                    dbc.DropdownMenuItem("🌡️ 온도분석", href=f"/analysis_temp?page={proj_pk}"),
-                                    dbc.DropdownMenuItem("🔬 응력분석", href=f"/analysis_stress?page={proj_pk}"),
-                                    dbc.DropdownMenuItem("⚠️ TCI분석", href=f"/analysis_tci?page={proj_pk}"),
-                                    dbc.DropdownMenuItem("💪 강도분석", href=f"/analysis_str?page={proj_pk}"),
-                                    dbc.DropdownMenuItem(divider=True),
-                                    dbc.DropdownMenuItem("📈 통합 분석", href=f"/project?page={proj_pk}")
+                                    dbc.DropdownMenuItem(
+                                        "🌡️ 온도분석", 
+                                        href=f"/temp?page={proj_pk}",
+                                        style={"padding": "8px 16px", "fontSize": "14px", "fontWeight": "500"}
+                                    ),
+                                    dbc.DropdownMenuItem(
+                                        "🔬 응력분석", 
+                                        href=f"/stress?page={proj_pk}",
+                                        style={"padding": "8px 16px", "fontSize": "14px", "fontWeight": "500"}
+                                    ),
+                                    dbc.DropdownMenuItem(
+                                        "⚠️ TCI분석", 
+                                        href=f"/tci?page={proj_pk}",
+                                        style={"padding": "8px 16px", "fontSize": "14px", "fontWeight": "500"}
+                                    ),
+                                    dbc.DropdownMenuItem(
+                                        "💪 강도분석", 
+                                        href=f"/strength?page={proj_pk}",
+                                        style={"padding": "8px 16px", "fontSize": "14px", "fontWeight": "500"}
+                                    ),
                                 ],
                                 nav=True,
                                 in_navbar=True,
@@ -244,25 +258,46 @@ def layout():
                                 color="primary",
                                 size="sm",
                                 className="me-2",
-                                style={"boxShadow": "0 2px 4px rgba(0,0,0,0.1)"}
+                                style={
+                                    "boxShadow": "0 4px 6px rgba(0,0,0,0.1)",
+                                    "borderRadius": "8px",
+                                    "border": "1px solid #e5e7eb"
+                                },
+                                menu_variant="light",
+                                align_end=True
                             ),
                             dcc.Link(
                                 "콘크리트 관리 →",
                                 href=f"/concrete?page={proj_pk}",
                                 className="btn btn-secondary btn-sm me-2",
-                                style={"boxShadow": "0 2px 4px rgba(0,0,0,0.1)"}
+                                style={
+                                    "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
+                                    "borderRadius": "6px",
+                                    "fontWeight": "500",
+                                    "textDecoration": "none"
+                                }
                             ),
                             dcc.Link(
                                 "센서 관리 →",
                                 href=f"/sensor?page={proj_pk}",
                                 className="btn btn-info btn-sm me-2",
-                                style={"boxShadow": "0 2px 4px rgba(0,0,0,0.1)"}
+                                style={
+                                    "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
+                                    "borderRadius": "6px",
+                                    "fontWeight": "500",
+                                    "textDecoration": "none"
+                                }
                             ),
                             dcc.Link(
                                 "데이터 다운로드 →",
                                 href=f"/download?page={proj_pk}",
                                 className="btn btn-warning btn-sm",
-                                style={"boxShadow": "0 2px 4px rgba(0,0,0,0.1)"}
+                                style={
+                                    "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
+                                    "borderRadius": "6px",
+                                    "fontWeight": "500",
+                                    "textDecoration": "none"
+                                }
                             )
                         ], className="d-flex flex-wrap gap-1")
                     ], className="d-flex justify-content-between align-items-center mb-4"),
