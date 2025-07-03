@@ -388,51 +388,6 @@ app.layout = dbc.Container(
     fluid=True,
     children=[
         dcc.Location(id="url"),
-        # 네비게이션 바 스타일
-        html.Style("""
-            .user-navbar .nav-link {
-                font-weight: 500 !important;
-                font-size: 14px !important;
-                padding: 8px 16px !important;
-                border-radius: 4px !important;
-                border: 1px solid transparent !important;
-                transition: all 0.2s ease !important;
-                color: rgba(255, 255, 255, 0.75) !important;
-                text-decoration: none !important;
-                margin: 0 2px !important;
-            }
-            .user-navbar .nav-link:hover {
-                color: rgba(255, 255, 255, 0.9) !important;
-                background-color: rgba(255, 255, 255, 0.1) !important;
-                border-color: rgba(255, 255, 255, 0.2) !important;
-            }
-            .user-navbar .nav-link.active {
-                color: #fff !important;
-                background-color: rgba(255, 255, 255, 0.15) !important;
-                border-color: rgba(255, 255, 255, 0.3) !important;
-            }
-            .user-navbar .dropdown-toggle {
-                font-weight: 500 !important;
-                font-size: 14px !important;
-                padding: 8px 16px !important;
-                border-radius: 4px !important;
-                border: 1px solid transparent !important;
-                transition: all 0.2s ease !important;
-                color: rgba(255, 255, 255, 0.75) !important;
-                text-decoration: none !important;
-                margin: 0 2px !important;
-            }
-            .user-navbar .dropdown-toggle:hover {
-                color: rgba(255, 255, 255, 0.9) !important;
-                background-color: rgba(255, 255, 255, 0.1) !important;
-                border-color: rgba(255, 255, 255, 0.2) !important;
-            }
-            .user-navbar .dropdown-toggle.active {
-                color: #fff !important;
-                background-color: rgba(255, 255, 255, 0.15) !important;
-                border-color: rgba(255, 255, 255, 0.3) !important;
-            }
-        """),
         html.Div(id="navbar-container"),
         dbc.Card(className="shadow-sm p-4", children=[page_container]),
     ],
