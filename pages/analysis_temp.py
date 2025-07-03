@@ -4782,11 +4782,11 @@ def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
 
 # ───────────── TCI 인장강도 계산식 입력창 동적 표시 콜백 ─────────────
 @callback(
-    Output("ab-inputs-container", "children"),
-    Output("fct-formula-preview", "children"),
+    Output("ab-inputs-container", "children", allow_duplicate=True),
+    Output("fct-formula-preview", "children", allow_duplicate=True),
     Input("fct-formula-type", "value"),
     Input("fct28-input", "value"),
-    prevent_initial_call=False
+    prevent_initial_call=True
 )
 def update_formula_display(formula_type, fct28):
     from dash import dash_table
