@@ -265,7 +265,12 @@ def _build_navbar():
     else:
         # hide logout button and ensure login link pushed right
         children[-1].style = {"display": "none"}
-        children[-2].className += " ms-auto"
+        # NavItem이 아니라, 그 안의 dcc.Link에 className 추가
+        link = children[-2].children
+        if hasattr(link, "className") and link.className:
+            link.className += " ms-auto"
+        else:
+            link.className = "ms-auto"
 
     # 브랜드 컴포넌트 설정
     if admin_user:
