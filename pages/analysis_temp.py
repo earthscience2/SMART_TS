@@ -2412,9 +2412,9 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                                 }
                             ),
                         ], md=4),
-                        html.Div(id="ab-inputs-container"),
+                        html.Div(id="temp-ab-inputs-container"),
                     ], className="g-3"),
-                    html.Div(id="fct-formula-preview"),
+                    html.Div(id="temp-fct-formula-preview"),
                 ]),
 
             ], style={
@@ -4782,8 +4782,8 @@ def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
 
 # ───────────── TCI 인장강도 계산식 입력창 동적 표시 콜백 ─────────────
 @callback(
-    Output("ab-inputs-container", "children", allow_duplicate=True),
-    Output("fct-formula-preview", "children", allow_duplicate=True),
+    Output("temp-ab-inputs-container", "children", allow_duplicate=True),
+    Output("temp-fct-formula-preview", "children", allow_duplicate=True),
     Input("fct-formula-type", "value"),
     Input("fct28-input", "value"),
     prevent_initial_call=True
@@ -4928,7 +4928,7 @@ def update_formula_display(formula_type, fct28):
 
 # ───────────── a, b 입력값 실시간 반영 콜백 ─────────────
 @callback(
-    Output("fct-formula-preview", "children", allow_duplicate=True),
+    Output("temp-fct-formula-preview", "children", allow_duplicate=True),
     Input("a-input", "value"),
     Input("b-input", "value"),
     State("fct-formula-type", "value"),

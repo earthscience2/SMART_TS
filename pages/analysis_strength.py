@@ -63,15 +63,15 @@ layout = dbc.Container(
                     dbc.Input(id="fct28-input", type="number", value=20, min=1, max=100)
                 ], md=4),
             ], className="g-3"),
-            html.Div(id="ab-inputs-container", className="mt-3"),
-            html.Div(id="fct-formula-preview", className="mt-4")
+            html.Div(id="strength-ab-inputs-container", className="mt-3"),
+            html.Div(id="strength-fct-formula-preview", className="mt-4")
         ], className="p-3 bg-light rounded mb-4"),
 
         # 시간 슬라이더 및 TCI 표
         html.Div([
             html.H6("⏰ 시간별 TCI 분석", className="mb-2"),
-            html.Div(id="tci-time-slider-container", className="mb-3"),
-            html.Div(id="tci-tci-table-container")
+            html.Div(id="strength-tci-time-slider-container", className="mb-3"),
+            html.Div(id="strength-tci-table-container")
         ], className="p-3 bg-light rounded mb-4"),
 
         # 균열발생확률 그래프
@@ -90,8 +90,8 @@ layout = dbc.Container(
 
 # fct 계산식 입력 및 미리보기
 @callback(
-    Output("ab-inputs-container", "children", allow_duplicate=True),
-    Output("fct-formula-preview", "children", allow_duplicate=True),
+    Output("strength-ab-inputs-container", "children"),
+    Output("strength-fct-formula-preview", "children"),
     Input("fct-formula-type", "value"),
     Input("fct28-input", "value"),
     prevent_initial_call=True
@@ -126,7 +126,7 @@ def update_formula_display(formula_type, fct28):
 
 # a,b 변경 시 미리보기 업데이트
 @callback(
-    Output("fct-formula-preview", "children", allow_duplicate=True),
+    Output("strength-fct-formula-preview", "children", allow_duplicate=True),
     Input("a-input", "value"),
     Input("b-input", "value"),
     State("fct-formula-type", "value"),
@@ -154,22 +154,22 @@ def update_preview_with_ab(a, b, formula_type, fct28):
 
 # TCI 시간 및 표 업데이트
 @callback(
-    Output("tci-time-slider-container", "children", allow_duplicate=True),
-    Output("tci-tci-table-container", "children", allow_duplicate=True),
+    Output("strength-tci-time-slider-container", "children"),
+    Output("strength-tci-table-container", "children"),
     Input("fct-formula-type", "value"),
     Input("fct28-input", "value"),
     prevent_initial_call=True
 )
 def update_tci_ui(formula_type, fct28):
     # 단순 예시: 슬라이더만, 실제 파일 파싱 로직 생략
-    slider = dcc.Slider(id="tci-time-slider", min=0, max=5, step=1, value=5, marks={i:str(i) for i in range(6)})
+    slider = dcc.Slider(id="strength-tci-time-slider", min=0, max=5, step=1, value=5, marks={i:str(i) for i in range(6)})
     table = html.Div("TCI 결과표가 여기에 표시됩니다.")
     return slider, table
 
 # 슬라이더 변경 시 표만 업데이트
 @callback(
-    Output("tci-tci-table-container", "children", allow_duplicate=True),
-    Input("tci-time-slider", "value"),
+    Output("strength-tci-table-container", "children", allow_duplicate=True),
+    Input("strength-tci-time-slider", "value"),
     State("fct-formula-type", "value"),
     State("fct28-input", "value"),
     prevent_initial_call=True
