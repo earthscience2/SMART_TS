@@ -267,18 +267,25 @@ def _build_navbar():
     )
 
 def serve_layout():
-    path = flask_request.path if flask_request else ""
-    show_navbar = not path.startswith("/login")
     return dbc.Container(
         fluid=True,
         children=[
             dcc.Location(id="url"),
-            _build_navbar() if show_navbar else None,
+            html.Div(id="navbar-container"),
             dbc.Card(className="shadow-sm p-4", children=[page_container]),
         ],
     )
-
 app.layout = serve_layout
+
+# 네비게이션 바 표시 여부를 동적으로 제어하는 콜백 추가
+@app.callback(
+    Output("navbar-container", "children"),
+    Input("url", "pathname")
+)
+def toggle_navbar(pathname):
+    if pathname and pathname.startswith("/login"):
+        return None
+    return _build_navbar()
 
 # 통합된 URL 리다이렉트 콜백
 @app.callback(
