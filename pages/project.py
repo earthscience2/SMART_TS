@@ -5523,31 +5523,28 @@ def update_tci_3d_isosurface(display_type, direction_filter, filter_value, time_
             else:
                 size = 8 if val < 0.5 else 4
             marker_sizes.append(size)
-        fig.add_trace(go.Scatter3d(
-            x=filtered_x,
-            y=filtered_y,
-            z=filtered_z,
-            mode='markers',
-            marker=dict(
-                size=marker_sizes,
-                color=filtered_values,
+
+        if display_type in ["TCI-MAX", "TCI-MAX-P"] and len(filtered_x) > 10:
+            fig.add_trace(go.Isosurface(
+                x=filtered_x,
+                y=filtered_y,
+                z=filtered_z,
+                value=filtered_values,
+                isomin=min(filtered_values),
+                isomax=max(filtered_values),
+                surface_count=3,
                 colorscale=colorscale,
-                opacity=0.9,
-                line=dict(width=1, color='rgba(0,0,0,0.3)'),
                 colorbar=dict(
-                    title=colorbar_title,
+                    title=f"{colorbar_title} (등면)",
                     thickness=20,
                     len=0.8,
-                    x=1.1,
+                    x=1.2,
                     tickformat='.2f'
                 ),
-                showscale=True
-            ),
-            text=[f"Node: {node_ids[i]}<br>{value_name}: {values[i]:.3f}<br>위치: ({filtered_x[j]:.3f}, {filtered_y[j]:.3f}, {filtered_z[j]:.3f})" 
-                  for i, m in enumerate(mask) if m for j in range(len(filtered_x))],
-            hovertemplate="%{text}<extra></extra>",
-            name=value_name
-        ))
+                opacity=0.6,
+                caps=dict(x_show=False, y_show=False, z_show=False),
+                name=f"{value_name} 등면"
+            ))
         
         # 콘크리트 외곽선 추가
         try:
@@ -6471,31 +6468,27 @@ def update_tci_3d_isosurface(display_type, direction_filter, filter_value, time_
             else:
                 size = 8 if val < 0.5 else 4
             marker_sizes.append(size)
-        fig.add_trace(go.Scatter3d(
-            x=filtered_x,
-            y=filtered_y,
-            z=filtered_z,
-            mode='markers',
-            marker=dict(
-                size=marker_sizes,
-                color=filtered_values,
+        if display_type in ["TCI-MAX", "TCI-MAX-P"] and len(filtered_x) > 10:
+            fig.add_trace(go.Isosurface(
+                x=filtered_x,
+                y=filtered_y,
+                z=filtered_z,
+                value=filtered_values,
+                isomin=min(filtered_values),
+                isomax=max(filtered_values),
+                surface_count=3,
                 colorscale=colorscale,
-                opacity=0.9,
-                line=dict(width=1, color='rgba(0,0,0,0.3)'),
                 colorbar=dict(
-                    title=colorbar_title,
+                    title=f"{colorbar_title} (등면)",
                     thickness=20,
                     len=0.8,
-                    x=1.1,
+                    x=1.2,
                     tickformat='.2f'
                 ),
-                showscale=True
-            ),
-            text=[f"Node: {node_ids[i]}<br>{value_name}: {values[i]:.3f}<br>위치: ({filtered_x[j]:.3f}, {filtered_y[j]:.3f}, {filtered_z[j]:.3f})" 
-                  for i, m in enumerate(mask) if m for j in range(len(filtered_x))],
-            hovertemplate="%{text}<extra></extra>",
-            name=value_name
-        ))
+                opacity=0.6,
+                caps=dict(x_show=False, y_show=False, z_show=False),
+                name=f"{value_name} 등면"
+            ))
         
         # 콘크리트 외곽선 추가
         try:
