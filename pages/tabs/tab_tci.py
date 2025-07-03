@@ -313,7 +313,7 @@ def update_preview_with_ab(a, b, formula_type, fct28):
 
 @callback(
     Output("tci-time-slider-container", "children"),
-    Output("tci-tci-table-container", "children"),
+    Output("tci-tci-table-container", "children", allow_duplicate=True),
     Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     Input("fct-formula-type", "value"),
