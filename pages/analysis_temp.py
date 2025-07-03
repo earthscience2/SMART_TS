@@ -640,7 +640,7 @@ layout = dbc.Container(
                         dcc.Slider(id="time-slider", min=0, max=5, step=1, value=0, marks={}),
                         dcc.Slider(id="time-slider-display", min=0, max=5, step=1, value=0, marks={}),
                         dcc.Slider(id="time-slider-section", min=0, max=5, step=1, value=0, marks={}),  # 단면도용 독립 슬라이더 복원
-                        dcc.Slider(id="tci-time-slider", min=0, max=5, step=1, value=0, marks={}),  # TCI용 시간 슬라이더
+                        dcc.Slider(id="temp-tci-time-slider", min=0, max=5, step=1, value=0, marks={}),  # TCI용 시간 슬라이더
                         dcc.Graph(id="viewer-3d"),
                         dcc.Graph(id="viewer-3d-display"),
                         dbc.Input(id="section-x-input", type="number", value=None),
@@ -2439,8 +2439,8 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         "marginBottom": "16px",
                         "fontSize": "16px"
                     }),
-                    html.Div(id="tci-time-slider-container", style={"marginBottom": "16px"}),
-                    html.Div(id="tci-tci-table-container"),
+                                            html.Div(id="temp-tci-time-slider-container", style={"marginBottom": "16px"}),
+                                            html.Div(id="temp-tci-table-container"),
                 ], style={
                     "padding": "20px",
                     "backgroundColor": "white",
@@ -2539,9 +2539,9 @@ def select_deselect_all(n_all, n_none, table_data):
 
 # ───────────────────── ⑤ 분석 시작 콜백 ─────────────────────
 @callback(
-    Output("project-alert", "children"),
-    Output("project-alert", "color"),
-    Output("project-alert", "is_open"),
+    Output("project-alert", "children", allow_duplicate=True),
+    Output("project-alert", "color", allow_duplicate=True),
+    Output("project-alert", "is_open", allow_duplicate=True),
     Output("tbl-concrete", "data", allow_duplicate=True),
     Output("btn-concrete-analyze", "disabled", allow_duplicate=True),
     Input("btn-concrete-analyze", "n_clicks"),
@@ -5072,8 +5072,8 @@ def validate_inputs(fct28, formula_type):
 
 # 시간 슬라이더 및 표 콜백 추가
 @callback(
-    Output("tci-time-slider-container", "children"),
-    Output("tci-tci-table-container", "children", allow_duplicate=True),
+    Output("temp-tci-time-slider-container", "children"),
+    Output("temp-tci-table-container", "children", allow_duplicate=True),
     Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     Input("fct-formula-type", "value"),
@@ -5133,7 +5133,7 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
     
     # 시간 슬라이더 컴포넌트
     slider = dcc.Slider(
-        id="tci-time-slider",
+        id="temp-tci-time-slider",
         min=0,
         max=max_idx,
         step=1,
@@ -5589,8 +5589,8 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
 
 # TCI 슬라이더 값 변경을 처리하는 별도 콜백
 @callback(
-    Output("tci-tci-table-container", "children", allow_duplicate=True),
-    Input("tci-time-slider", "value"),
+    Output("temp-tci-table-container", "children", allow_duplicate=True),
+    Input("temp-tci-time-slider", "value"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     State("fct-formula-type", "value"),
