@@ -279,12 +279,7 @@ def _build_navbar():
                 size="sm",
                 id="nav-analysis-dropdown",
                 className="nav-link d-none",
-                style={
-                    "fontWeight": "500",
-                    "fontSize": "14px",
-                    "textDecoration": "none",
-                    "color": "rgba(255, 255, 255, 0.75)"
-                },
+                style={},
                 menu_variant="light",
                 align_end=True
             )
@@ -333,13 +328,16 @@ def _build_navbar():
             dbc.Nav(
                 children,
                 navbar=True,
-                className="me-3"  # 전체 네비게이션을 오른쪽에서 더 멀어지게 하여 왼쪽으로 이동
+                className="me-3 align-items-center"  # 전체 네비게이션을 오른쪽에서 더 멀어지게 하여 왼쪽으로 이동하고 세로 중앙 정렬
             ),
         ], fluid=True),
         color="dark",
         dark=True,
         className="mb-4 user-navbar",
-        style={"borderBottom": "2px solid #ffc107"}
+        style={
+            "borderBottom": "2px solid #ffc107",
+            "padding": "0.5rem 1rem"
+        }
     )
 
 def _build_admin_navbar():
@@ -390,6 +388,51 @@ app.layout = dbc.Container(
     fluid=True,
     children=[
         dcc.Location(id="url"),
+        # 네비게이션 바 스타일
+        html.Style("""
+            .user-navbar .nav-link {
+                font-weight: 500 !important;
+                font-size: 14px !important;
+                padding: 8px 16px !important;
+                border-radius: 4px !important;
+                border: 1px solid transparent !important;
+                transition: all 0.2s ease !important;
+                color: rgba(255, 255, 255, 0.75) !important;
+                text-decoration: none !important;
+                margin: 0 2px !important;
+            }
+            .user-navbar .nav-link:hover {
+                color: rgba(255, 255, 255, 0.9) !important;
+                background-color: rgba(255, 255, 255, 0.1) !important;
+                border-color: rgba(255, 255, 255, 0.2) !important;
+            }
+            .user-navbar .nav-link.active {
+                color: #fff !important;
+                background-color: rgba(255, 255, 255, 0.15) !important;
+                border-color: rgba(255, 255, 255, 0.3) !important;
+            }
+            .user-navbar .dropdown-toggle {
+                font-weight: 500 !important;
+                font-size: 14px !important;
+                padding: 8px 16px !important;
+                border-radius: 4px !important;
+                border: 1px solid transparent !important;
+                transition: all 0.2s ease !important;
+                color: rgba(255, 255, 255, 0.75) !important;
+                text-decoration: none !important;
+                margin: 0 2px !important;
+            }
+            .user-navbar .dropdown-toggle:hover {
+                color: rgba(255, 255, 255, 0.9) !important;
+                background-color: rgba(255, 255, 255, 0.1) !important;
+                border-color: rgba(255, 255, 255, 0.2) !important;
+            }
+            .user-navbar .dropdown-toggle.active {
+                color: #fff !important;
+                background-color: rgba(255, 255, 255, 0.15) !important;
+                border-color: rgba(255, 255, 255, 0.3) !important;
+            }
+        """),
         html.Div(id="navbar-container"),
         dbc.Card(className="shadow-sm p-4", children=[page_container]),
     ],
