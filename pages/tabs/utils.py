@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """공통 유틸리티 함수들"""
 
+import plotly.graph_objects as go
+import numpy as np
+
 def format_scientific_notation(value):
     """과학적 표기법을 ×10ⁿ 형식으로 변환합니다.
     
@@ -111,4 +114,61 @@ def parse_material_info_from_inp(lines):
     if info_parts:
         return ", ".join(info_parts)
     else:
-        return "물성치 정보 없음" 
+        return "물성치 정보 없음"
+
+def create_probability_curve_figure():
+    """TCI 확률 곡선을 생성하는 기본 figure를 반환합니다."""
+    # 기본 TCI 값 범위 (0.1 ~ 2.0)
+    tci_values = np.linspace(0.1, 2.0, 100)
+    
+    # 기본 확률 계산 (TCI가 클수록 균열 확률이 높음)
+    # TCI = 1.0일 때 50% 확률, TCI = 2.0일 때 95% 확률로 설정
+    probabilities = 1 / (1 + np.exp(-5 * (tci_values - 1.0)))
+    
+    fig = go.Figure()
+    
+    fig.add_trace(go.Scatter(
+        x=tci_values,
+        y=probabilities * 100,  # 퍼센트로 변환
+        mode='lines',
+        name='균열 확률',
+        line=dict(color='#3b82f6', width=3),
+        hovertemplate='TCI: %{x:.2f}<br>균열 확률: %{y:.1f}%<extra></extra>'
+    ))
+    
+    # 기준선 추가
+    fig.add_hline(y=50, line_dash="dash", line_color="red", 
+                  annotation_text="50% 확률 기준", 
+                  annotation_position="top right")
+    
+    fig.add_vline(x=1.0, line_dash="dash", line_color="orange", 
+                  annotation_text="TCI = 1.0", 
+                  annotation_position="top right")
+    
+    fig.update_layout(
+        title={
+            'text': 'TCI 확률 곡선',
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 16, 'color': '#374151'}
+        },
+        xaxis_title='TCI 값',
+        yaxis_title='균열 확률 (%)',
+        xaxis=dict(
+            gridcolor='#e5e7eb',
+            zeroline=False,
+            range=[0.1, 2.0]
+        ),
+        yaxis=dict(
+            gridcolor='#e5e7eb',
+            zeroline=False,
+            range=[0, 100]
+        ),
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        font=dict(color='#374151'),
+        margin=dict(l=60, r=60, t=80, b=60),
+        showlegend=False
+    )
+    
+    return fig 
