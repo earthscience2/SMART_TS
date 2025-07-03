@@ -266,6 +266,32 @@ def _build_navbar():
         style={"borderBottom": "1px solid #eee", "padding": "0.5rem 1rem"}
     )
 
+def _build_admin_navbar():
+    admin_user = flask_request.cookies.get("admin_user")
+
+    # 관리자 네비게이션 바: 브랜드 + 관리자 메뉴
+    admin_nav_links = [
+        dbc.NavItem(dcc.Link("Dashboard", href="/admin_dashboard", className="nav-link", id="admin-nav-dashboard")),
+        dbc.NavItem(dcc.Link("Projects", href="/admin_projects", className="nav-link", id="admin-nav-projects")),
+        dbc.NavItem(dcc.Link("Logs", href="/admin_logs", className="nav-link", id="admin-nav-logs")),
+        dbc.NavItem(dcc.Link("Automation", href="/admin_automation", className="nav-link", id="admin-nav-automation")),
+        dbc.NavItem(html.A("Logout", href="/logout", className="nav-link")),
+    ]
+
+    # 브랜드(좌측)
+    brand = f"Concrete MONITOR | {admin_user} (admin)"
+
+    return dbc.Navbar(
+        dbc.Container([
+            dbc.NavbarBrand(brand, href="/admin_dashboard"),
+            dbc.Nav(admin_nav_links, navbar=True, className="admin-navbar"),
+        ], fluid=True),
+        color="light",
+        dark=False,
+        className="mb-4",
+        style={"borderBottom": "1px solid #eee", "padding": "0.5rem 1rem"}
+    )
+
 def serve_layout():
     return dbc.Container(
         fluid=True,
@@ -276,17 +302,6 @@ def serve_layout():
         ],
     )
 app.layout = serve_layout
-
-# 기존 navbar-container 관련 콜백(예: update_navbar 등) 완전히 삭제
-# toggle_navbar 콜백만 남김
-@app.callback(
-    Output("navbar-container", "children"),
-    Input("url", "pathname")
-)
-def toggle_navbar(pathname):
-    if pathname and pathname.startswith("/login"):
-        return None
-    return _build_navbar()
 
 # 통합된 URL 리다이렉트 콜백
 @app.callback(
@@ -315,19 +330,24 @@ def handle_url_redirects(pathname):
     
     return no_update
 
-# 네비게이션 바 동적 생성 콜백
+# 통합된 네비게이션 바 콜백
 @app.callback(
     Output("navbar-container", "children"),
     Input("url", "pathname")
 )
 def update_navbar(pathname):
     """URL에 따라 적절한 네비게이션 바를 반환합니다."""
+    # 로그인 페이지에서는 네비게이션 바 숨김
+    if pathname and pathname.startswith("/login"):
+        return None
+    
     # 관리자 페이지 접근 체크
     if pathname.startswith("/admin_dashboard") or pathname.startswith("/admin_projects") or pathname.startswith("/admin_logs") or pathname.startswith("/admin_automation"):
         if not flask_request.cookies.get("admin_user"):
             return html.Div()  # 빈 div 반환
         return _build_admin_navbar()
     
+    # 일반 사용자 페이지 접근 체크
     if not flask_request.cookies.get("login_user"):
         return html.Div()  # 빈 div 반환
     
