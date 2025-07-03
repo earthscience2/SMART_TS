@@ -505,20 +505,6 @@ def update_nav_active(pathname, search):
         nav_texts[0], nav_texts[1], nav_texts[2], nav_texts[3], nav_texts[4]
     )
 
-# 분석결과 드롭다운 가시성 및 스타일 제어
-@app.callback(
-    Output("nav-analysis-dropdown", "className"),
-    [Input("url", "pathname")]
-)
-def update_analysis_dropdown_visibility(pathname):
-    """홈 페이지에서는 분석결과 드롭다운을 숨기고, 다른 페이지에서는 표시합니다."""
-    if pathname == "/":
-        return "nav-link d-none"
-    elif pathname.startswith(("/temp", "/stress", "/tci", "/strength")):
-        return "nav-link active"
-    else:
-        return "nav-link"
-
 # 관리자 네비게이션 바 active 클래스 동적 적용 콜백
 @app.callback(
     [Output("admin-nav-dashboard", "className"),
