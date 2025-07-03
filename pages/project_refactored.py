@@ -191,14 +191,16 @@ layout = dbc.Container([
                         "border": "1px solid #f3f4f6",
                         "fontSize": "13px"
                     },
-                    style_data_conditional=[],
+                    style_data_conditional=[
+                        {
+                            'if': {'state': 'selected'},
+                            'backgroundColor': '#dbeafe',
+                            'color': '#1e40af'
+                        }
+                    ],
                     style_data={
                         "backgroundColor": "white",
                         "color": "#374151"
-                    },
-                    style_selected={
-                        "backgroundColor": "#dbeafe !important",
-                        "color": "#1e40af !important"
                     },
                     row_selectable="single",
                     sort_action="native",
