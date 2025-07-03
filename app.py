@@ -299,16 +299,17 @@ def _build_navbar():
         }
     )
 
-# 정적 레이아웃 설정
-app.layout = dbc.Container(
-    fluid=True,
-    children=[
-        dcc.Location(id="url"),
-        # 네비게이션 바를 직접 포함 (기본 사용자용)
-        _build_navbar(),
-        dbc.Card(className="shadow-sm p-4", children=[page_container]),
-    ],
-)
+def serve_layout():
+    return dbc.Container(
+        fluid=True,
+        children=[
+            dcc.Location(id="url"),
+            _build_navbar(),
+            dbc.Card(className="shadow-sm p-4", children=[page_container]),
+        ],
+    )
+
+app.layout = serve_layout
 
 # 통합된 URL 리다이렉트 콜백
 @app.callback(
