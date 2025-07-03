@@ -240,51 +240,10 @@ def _build_navbar():
     admin_user = flask_request.cookies.get("admin_user")
 
     children = [
-        # 네비게이션 링크들 (로그아웃 버튼 바로 왼쪽에 배치)
-        dbc.NavItem(dcc.Link("", href="/", className="nav-link d-none", id="nav-home")),
-        dbc.NavItem(dcc.Link("", href="/concrete", className="nav-link d-none", id="nav-concrete")),
-        dbc.NavItem(dcc.Link("", href="/sensor", className="nav-link d-none", id="nav-sensor")),
-        # 분석결과 드롭다운 메뉴
-        dbc.NavItem(
-            dbc.DropdownMenu(
-                children=[
-                    dbc.DropdownMenuItem(
-                        "🌡️ 온도분석", 
-                        href="/temp",
-                        id="nav-temp",
-                        style={"padding": "8px 16px", "fontSize": "14px", "fontWeight": "500"}
-                    ),
-                    dbc.DropdownMenuItem(
-                        "🔬 응력분석", 
-                        href="/stress",
-                        id="nav-stress",
-                        style={"padding": "8px 16px", "fontSize": "14px", "fontWeight": "500"}
-                    ),
-                    dbc.DropdownMenuItem(
-                        "⚠️ TCI분석", 
-                        href="/tci",
-                        id="nav-tci",
-                        style={"padding": "8px 16px", "fontSize": "14px", "fontWeight": "500"}
-                    ),
-                    dbc.DropdownMenuItem(
-                        "💪 강도분석", 
-                        href="/strength",
-                        id="nav-strength",
-                        style={"padding": "8px 16px", "fontSize": "14px", "fontWeight": "500"}
-                    ),
-                ],
-                nav=True,
-                label="📊 분석결과",
-                color="primary",
-                size="sm",
-                id="nav-analysis-dropdown",
-                className="nav-link d-none",
-                style={},
-                menu_variant="light",
-                align_end=True
-            )
-        ),
-        dbc.NavItem(dcc.Link("", href="/download", className="nav-link d-none", id="nav-download")),
+        dbc.NavItem(dcc.Link("🏠 홈", href="/", className="nav-link", id="nav-home")),
+        dbc.NavItem(dcc.Link("🧱 콘크리트", href="/concrete", className="nav-link", id="nav-concrete")),
+        dbc.NavItem(dcc.Link("📡 센서", href="/sensor", className="nav-link", id="nav-sensor")),
+        dbc.NavItem(dcc.Link("💾 다운로드", href="/download", className="nav-link", id="nav-download")),
         # Login 버튼 (숨김 처리용)
         dbc.NavItem(dcc.Link("Login", href="/login", className="nav-link", id="nav-login")),
         # Logout 버튼 (오른쪽 끝에 배치)
@@ -328,7 +287,7 @@ def _build_navbar():
             dbc.Nav(
                 children,
                 navbar=True,
-                className="me-3 align-items-center"  # 전체 네비게이션을 오른쪽에서 더 멀어지게 하여 왼쪽으로 이동하고 세로 중앙 정렬
+                className="me-3 align-items-center"
             ),
         ], fluid=True),
         color="dark",
@@ -401,15 +360,9 @@ def update_navbar(pathname):
     [Output("nav-home", "className"),
      Output("nav-concrete", "className"),
      Output("nav-sensor", "className"),
-     Output("nav-analysis-dropdown", "className"),
      Output("nav-download", "className"),
      Output("nav-login", "className"),
-     Output("nav-logout", "className"),
-     Output("nav-home", "children"),
-     Output("nav-concrete", "children"),
-     Output("nav-sensor", "children"),
-     Output("nav-analysis-dropdown", "children"),
-     Output("nav-download", "children")],
+     Output("nav-logout", "className")],
     [Input("url", "pathname"),
      Input("url", "search")]
 )
@@ -440,10 +393,8 @@ def update_nav_active(pathname, search):
         base_classes[1] += " active"
     elif pathname.startswith("/sensor"):
         base_classes[2] += " active"
-    elif pathname.startswith(("/temp", "/stress", "/tci", "/strength")):
-        base_classes[3] += " active"
     elif pathname.startswith("/download"):
-        base_classes[4] += " active"
+        base_classes[3] += " active"
     elif pathname.startswith("/login"):
         login_logout_classes[0] += " active"
     # 네비게이션 링크 텍스트 및 아이콘 설정
@@ -458,9 +409,8 @@ def update_nav_active(pathname, search):
     else:
         nav_texts = [""] * 5
     return (
-        base_classes[0], base_classes[1], base_classes[2], base_classes[3], base_classes[4],
-        login_logout_classes[0], login_logout_classes[1],
-        nav_texts[0], nav_texts[1], nav_texts[2], nav_texts[3], nav_texts[4]
+        base_classes[0], base_classes[1], base_classes[2], base_classes[3],
+        login_logout_classes[0], login_logout_classes[1]
     )
 
 # 관리자 네비게이션 바 active 클래스 동적 적용 콜백
