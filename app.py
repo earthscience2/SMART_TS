@@ -244,23 +244,16 @@ app.index_string = '''
 def _build_navbar():
     user_id = flask_request.cookies.get("login_user")
     admin_user = flask_request.cookies.get("admin_user")
-    current_path = flask_request.path if flask_request else "/"
 
-    # 홈화면에서는 콘크리트~다운로드 메뉴만 숨김
-    if current_path == "/":
-        nav_links = [
-            dbc.NavItem(dcc.Link("Home", href="/", className="nav-link")),
-            dbc.NavItem(html.A("Logout", href="/logout", className="nav-link text-muted")),
-        ]
-    else:
-        # 다른 페이지에서는 모든 메뉴 항목 표시
-        nav_links = [
-            dbc.NavItem(dcc.Link("Home", href="/", className="nav-link")),
-            dbc.NavItem(dcc.Link("Concrete", href="/concrete", className="nav-link")),
-            dbc.NavItem(dcc.Link("Sensor", href="/sensor", className="nav-link")),
-            dbc.NavItem(dcc.Link("Download", href="/download", className="nav-link")),
-            dbc.NavItem(html.A("Logout", href="/logout", className="nav-link text-muted")),
-        ]
+    # 모든 네비게이션 링크를 정의 (홈화면에서는 숨겨질 것임)
+    nav_links = [
+        dbc.NavItem(dcc.Link("Home", href="/", className="nav-link", id="nav-home")),
+        dbc.NavItem(dcc.Link("Concrete", href="/concrete", className="nav-link", id="nav-concrete")),
+        dbc.NavItem(dcc.Link("Sensor", href="/sensor", className="nav-link", id="nav-sensor")),
+        dbc.NavItem(dcc.Link("Download", href="/download", className="nav-link", id="nav-download")),
+        dbc.NavItem(html.A("Login", href="/login", className="nav-link", id="nav-login")),
+        dbc.NavItem(html.A("Logout", href="/logout", className="nav-link text-muted", id="nav-logout")),
+    ]
 
     # 브랜드(좌측)
     if admin_user:
@@ -402,10 +395,10 @@ def update_nav_active(pathname, search):
     
     # 기본 클래스 설정
     if is_home:
-        # 홈에서는 모든 네비게이션 링크 숨김
-        base_classes = ["nav-link d-none"] * 5
+        # 홈에서는 콘크리트, 센서, 다운로드 링크만 숨김
+        base_classes = ["nav-link", "nav-link d-none", "nav-link d-none", "nav-link d-none"]
     else:
-        base_classes = ["nav-link"] * 5
+        base_classes = ["nav-link"] * 4
     login_logout_classes = ["nav-link"] * 2
     # Active 클래스 추가
     if pathname == "/":
