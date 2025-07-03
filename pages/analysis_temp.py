@@ -5080,7 +5080,7 @@ def validate_inputs(fct28, formula_type):
     Input("fct28-input", "value"),
     Input("tab-content", "children"),
     Input("tabs-main", "active_tab"),
-    prevent_initial_call=False
+    prevent_initial_call=True
 )
 def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_content, active_tab):
     import os, glob
