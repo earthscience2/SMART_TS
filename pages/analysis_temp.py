@@ -239,7 +239,7 @@ layout = dbc.Container(
             message="선택한 콘크리트를 정말 삭제하시겠습니까?"
         ),
         dbc.Alert(
-            id="project-alert",
+                                id="temp-project-alert",
             is_open=False,
             duration=3000,
             color="danger",
@@ -2539,9 +2539,9 @@ def select_deselect_all(n_all, n_none, table_data):
 
 # ───────────────────── ⑤ 분석 시작 콜백 ─────────────────────
 @callback(
-    Output("project-alert", "children", allow_duplicate=True),
-    Output("project-alert", "color", allow_duplicate=True),
-    Output("project-alert", "is_open", allow_duplicate=True),
+    Output("temp-project-alert", "children", allow_duplicate=True),
+    Output("temp-project-alert", "color", allow_duplicate=True),
+    Output("temp-project-alert", "is_open", allow_duplicate=True),
     Output("tbl-concrete", "data", allow_duplicate=True),
     Output("btn-concrete-analyze", "disabled", allow_duplicate=True),
     Input("btn-concrete-analyze", "n_clicks"),
@@ -2587,9 +2587,9 @@ def ask_delete_concrete(n, sel):
 
 # ───────────────────── ⑦ 삭제 실행 콜백 ─────────────────────
 @callback(
-    Output("project-alert", "children", allow_duplicate=True),
-    Output("project-alert", "color", allow_duplicate=True),
-    Output("project-alert", "is_open", allow_duplicate=True),
+    Output("temp-project-alert", "children", allow_duplicate=True),
+    Output("temp-project-alert", "color", allow_duplicate=True),
+    Output("temp-project-alert", "is_open", allow_duplicate=True),
     Output("tbl-concrete", "data", allow_duplicate=True),
     Input("confirm-del-concrete", "submit_n_clicks"),
     State("tbl-concrete", "selected_rows"),
@@ -5043,9 +5043,9 @@ def update_preview_with_ab(a, b, formula_type, fct28):
 
 # ───────────── 입력값 검증 및 알림 콜백 ─────────────
 @callback(
-    Output("project-alert", "children", allow_duplicate=True),
-    Output("project-alert", "color", allow_duplicate=True),
-    Output("project-alert", "is_open", allow_duplicate=True),
+    Output("temp-project-alert", "children", allow_duplicate=True),
+    Output("temp-project-alert", "color", allow_duplicate=True),
+    Output("temp-project-alert", "is_open", allow_duplicate=True),
     Input("fct28-input", "value"),
     State("fct-formula-type", "value"),
     prevent_initial_call=True
