@@ -176,6 +176,33 @@ def create_temp_tab_layout():
         dcc.Download(id="download-temp-data"),
     ])
 
+def create_temp_tab_content(selected_rows, tbl_data):
+    """온도 분석 탭 콘텐츠를 생성합니다."""
+    return html.Div([
+        html.H6("🌡️ 온도 분석", style={
+            "fontWeight": "600",
+            "color": "#374151",
+            "marginBottom": "16px",
+            "fontSize": "16px"
+        }),
+        html.Div([
+            html.I(className="fas fa-info-circle fa-2x", style={"color": "#64748b", "marginBottom": "16px"}),
+            html.H5("온도 분석 기능이 준비 중입니다.", style={
+                "color": "#475569",
+                "fontWeight": "500",
+                "lineHeight": "1.6",
+                "margin": "0"
+            })
+        ], style={
+            "textAlign": "center",
+            "padding": "60px 40px",
+            "backgroundColor": "#f8fafc",
+            "borderRadius": "12px",
+            "border": "1px solid #e2e8f0",
+            "marginTop": "60px"
+        })
+    ])
+
 # 콜백 함수들
 @callback(
     Output("temp-viewer-3d", "figure"),

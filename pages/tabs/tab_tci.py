@@ -216,6 +216,10 @@ def create_tci_tab_layout():
         ], style={"marginBottom": "16px"}),
     ])
 
+def create_tci_tab_content(selected_rows, tbl_data):
+    """TCI 탭 콘텐츠를 생성합니다."""
+    return create_tci_tab_layout()
+
 # 콜백 함수들
 @callback(
     Output("ab-inputs-container", "children"),
@@ -320,7 +324,7 @@ def update_preview_with_ab(a, b, formula_type, fct28):
     Input("fct28-input", "value"),
     Input("tab-content", "children"),
     Input("tabs-main", "active_tab"),
-    prevent_initial_call=False
+    prevent_initial_call='initial_duplicate'
 )
 def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_content, active_tab):
     """TCI 시간 슬라이더와 테이블을 업데이트합니다."""

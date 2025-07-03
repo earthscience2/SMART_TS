@@ -1267,6 +1267,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
 )
 def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_title):
     from datetime import datetime as dt_import  # 명시적 import로 충돌 방지
+    
     # 안내 문구만 보여야 하는 경우(분석 시작 안내, 데이터 없음)
     guide_message = None
     if selected_rows and tbl_data:
@@ -1290,6 +1291,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
         guide_message = "분석할 콘크리트를 추가하세요."
     elif tbl_data is None:
         guide_message = "콘크리트 데이터를 불러오는 중입니다..."
+    
     if guide_message:
         return html.Div([
             # 안내 메시지 (노션 스타일)
@@ -1312,8 +1314,25 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 })
             ])
         ])
-    # 이하 기존 코드 유지
+    
+    # 탭별 콘텐츠 생성
     if active_tab == "tab-3d":
+        from .tabs.tab_3d import create_3d_tab_content
+        return create_3d_tab_content(viewer_data, current_file_title, selected_rows, tbl_data)
+    elif active_tab == "tab-section":
+        from .tabs.tab_section import create_section_tab_content
+        return create_section_tab_content(selected_rows, tbl_data)
+    elif active_tab == "tab-temp":
+        from .tabs.tab_temp import create_temp_tab_content
+        return create_temp_tab_content(selected_rows, tbl_data)
+    elif active_tab == "tab-analysis":
+        from .tabs.tab_analysis import create_analysis_tab_content
+        return create_analysis_tab_content(selected_rows, tbl_data)
+    elif active_tab == "tab-tci":
+        from .tabs.tab_tci import create_tci_tab_content
+        return create_tci_tab_content(selected_rows, tbl_data)
+    else:
+        return html.Div("알 수 없는 탭입니다.")
         # 저장된 3D 뷰 정보가 있으면 복원, 없으면 기본 빈 3D 뷰
         if viewer_data and 'figure' in viewer_data:
             fig_3d = viewer_data['figure']

@@ -325,4 +325,31 @@ def toggle_slice_detail_controls(slice_enable):
     if slice_enable and "enabled" in slice_enable:
         return {"display": "block"}
     else:
-        return {"display": "none"} 
+        return {"display": "none"}
+
+def create_analysis_tab_content(selected_rows, tbl_data):
+    """분석 도구 탭 콘텐츠를 생성합니다."""
+    return html.Div([
+        html.H6("🔧 분석 도구", style={
+            "fontWeight": "600",
+            "color": "#374151",
+            "marginBottom": "16px",
+            "fontSize": "16px"
+        }),
+        html.Div([
+            html.I(className="fas fa-info-circle fa-2x", style={"color": "#64748b", "marginBottom": "16px"}),
+            html.H5("분석 도구 기능이 준비 중입니다.", style={
+                "color": "#475569",
+                "fontWeight": "500",
+                "lineHeight": "1.6",
+                "margin": "0"
+            })
+        ], style={
+            "textAlign": "center",
+            "padding": "60px 40px",
+            "backgroundColor": "#f8fafc",
+            "borderRadius": "12px",
+            "border": "1px solid #e2e8f0",
+            "marginTop": "60px"
+        })
+    ]) 

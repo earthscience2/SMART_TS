@@ -356,4 +356,31 @@ def save_section_inp(n_clicks, selected_rows, tbl_data, time_value):
         
     except Exception as e:
         print(f"단면도 INP 파일 저장 오류: {e}")
-        return None 
+        return None
+
+def create_section_tab_content(selected_rows, tbl_data):
+    """단면도 탭 콘텐츠를 생성합니다."""
+    return html.Div([
+        html.H6("📐 단면도 분석", style={
+            "fontWeight": "600",
+            "color": "#374151",
+            "marginBottom": "16px",
+            "fontSize": "16px"
+        }),
+        html.Div([
+            html.I(className="fas fa-info-circle fa-2x", style={"color": "#64748b", "marginBottom": "16px"}),
+            html.H5("단면도 분석 기능이 준비 중입니다.", style={
+                "color": "#475569",
+                "fontWeight": "500",
+                "lineHeight": "1.6",
+                "margin": "0"
+            })
+        ], style={
+            "textAlign": "center",
+            "padding": "60px 40px",
+            "backgroundColor": "#f8fafc",
+            "borderRadius": "12px",
+            "border": "1px solid #e2e8f0",
+            "marginTop": "60px"
+        })
+    ]) 

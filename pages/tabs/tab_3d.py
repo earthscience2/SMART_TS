@@ -265,4 +265,84 @@ def save_current_inp(n_clicks, selected_rows, tbl_data, time_value):
         
     except Exception as e:
         print(f"INP 파일 저장 오류: {e}")
-        return None 
+        return None
+
+def create_3d_tab_content(viewer_data, current_file_title, selected_rows, tbl_data):
+    """3D 탭 콘텐츠를 생성합니다."""
+    # 저장된 3D 뷰 정보가 있으면 복원, 없으면 기본 빈 3D 뷰
+    if viewer_data and 'figure' in viewer_data:
+        fig_3d = viewer_data['figure']
+        slider = viewer_data.get('slider', {})
+        slider_min = slider.get('min', 0)
+        slider_max = slider.get('max', 5)
+        slider_marks = slider.get('marks', {})
+        slider_value = slider.get('value', 0)
+    else:
+        # 기본 빈 3D 뷰
+        fig_3d = go.Figure()
+        fig_3d.update_layout(
+            scene=dict(
+                xaxis=dict(title="X"),
+                yaxis=dict(title="Y"),
+                zaxis=dict(title="Z"),
+            ),
+            title="콘크리트를 선택하고 시간을 조절하세요"
+        )
+        slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
+    
+    return html.Div([
+        # 시간 컨트롤 섹션
+        html.Div([
+            html.Div([
+                html.H6("⏰ 시간 설정", style={
+                    "fontWeight": "600",
+                    "color": "#374151",
+                    "marginBottom": "12px",
+                    "fontSize": "14px"
+                }),
+                dcc.Slider(
+                    id="time-slider-display",
+                    min=slider_min,
+                    max=slider_max,
+                    step=1,
+                    value=slider_value,
+                    marks=slider_marks,
+                    tooltip={"placement": "bottom", "always_visible": True},
+                ),
+            ], style={
+                "padding": "16px 20px",
+                "backgroundColor": "#f9fafb",
+                "borderRadius": "8px",
+                "border": "1px solid #e5e7eb",
+                "marginBottom": "16px"
+            })
+        ]),
+        
+        # 3D 뷰어
+        html.Div([
+            html.Div([
+                html.H6("🎯 3D 히트맵 뷰어", style={
+                    "fontWeight": "600",
+                    "color": "#374151",
+                    "marginBottom": "16px",
+                    "fontSize": "16px"
+                }),
+                dcc.Graph(
+                    id="viewer-3d-display",
+                    style={
+                        "height": "65vh", 
+                        "borderRadius": "8px",
+                        "overflow": "hidden"
+                    },
+                    config={"scrollZoom": True},
+                    figure=fig_3d,
+                ),
+            ], style={
+                "padding": "20px",
+                "backgroundColor": "white",
+                "borderRadius": "12px",
+                "border": "1px solid #e5e7eb",
+                "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
+            })
+        ]),
+    ]) 
