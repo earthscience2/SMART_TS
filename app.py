@@ -242,9 +242,9 @@ def _build_navbar():
     children = [
         # 네비게이션 링크들 (로그아웃 버튼 바로 왼쪽에 배치)
         dbc.NavItem(dcc.Link("", href="/", className="nav-link d-none", id="nav-home")),
-        dbc.NavItem(dcc.Link("", href="/project", className="nav-link d-none", id="nav-project")),
-        dbc.NavItem(dcc.Link("", href="/sensor", className="nav-link d-none", id="nav-sensor")),
         dbc.NavItem(dcc.Link("", href="/concrete", className="nav-link d-none", id="nav-concrete")),
+        dbc.NavItem(dcc.Link("", href="/sensor", className="nav-link d-none", id="nav-sensor")),
+        dbc.NavItem(dcc.Link("", href="/project", className="nav-link d-none", id="nav-project")),
         dbc.NavItem(dcc.Link("", href="/download", className="nav-link d-none", id="nav-download")),
         # Login 버튼 (숨김 처리용)
         dbc.NavItem(dcc.Link("Login", href="/login", className="nav-link", id="nav-login")),
@@ -399,16 +399,16 @@ def update_navbar(pathname):
 # 네비게이션 바 active 클래스 동적 적용 콜백
 @app.callback(
     [Output("nav-home", "className"),
-     Output("nav-project", "className"),
-     Output("nav-sensor", "className"),
      Output("nav-concrete", "className"),
+     Output("nav-sensor", "className"),
+     Output("nav-project", "className"),
      Output("nav-download", "className"),
      Output("nav-login", "className"),
      Output("nav-logout", "className"),
      Output("nav-home", "children"),
-     Output("nav-project", "children"),
-     Output("nav-sensor", "children"),
      Output("nav-concrete", "children"),
+     Output("nav-sensor", "children"),
+     Output("nav-project", "children"),
      Output("nav-download", "children")],
     [Input("url", "pathname"),
      Input("url", "search")]
@@ -440,11 +440,11 @@ def update_nav_active(pathname, search):
     # Active 클래스 추가
     if pathname == "/":
         base_classes[0] += " active"
-    elif pathname.startswith("/project"):
+    elif pathname.startswith("/concrete"):
         base_classes[1] += " active"
     elif pathname.startswith("/sensor"):
         base_classes[2] += " active"
-    elif pathname.startswith("/concrete"):
+    elif pathname.startswith("/project"):
         base_classes[3] += " active"
     elif pathname.startswith("/download"):
         base_classes[4] += " active"
@@ -455,9 +455,9 @@ def update_nav_active(pathname, search):
     if project_pk and not is_home:
         nav_texts = [
             [html.Span("🏠", className="me-2"), "대쉬보드"],
-            [html.Span("📊", className="me-2"), "분석"],
-            [html.Span("📡", className="me-2"), "센서"],
-            [html.Span("🧱", className="me-2"), "콘크리트"],
+            [html.Span("🧱", className="me-2"), "콘크리트 모델링"],
+            [html.Span("📡", className="me-2"), "센서 위치 설정"],
+            [html.Span("📊", className="me-2"), "분석결과"],
             [html.Span("💾", className="me-2"), "다운로드"]
         ]
     else:
@@ -497,9 +497,9 @@ def update_admin_nav_active(pathname):
 # 네비게이션 링크 href 동적 업데이트
 @app.callback(
     [Output("nav-home", "href"),
-     Output("nav-project", "href"),
-     Output("nav-sensor", "href"),
      Output("nav-concrete", "href"),
+     Output("nav-sensor", "href"),
+     Output("nav-project", "href"),
      Output("nav-download", "href")],
     [Input("url", "pathname"),
      Input("url", "search")]
@@ -519,13 +519,13 @@ def update_nav_links(pathname, search):
     if project_pk and pathname != "/":
         return (
             "/",
-            f"/project?page={project_pk}",
-            f"/sensor?page={project_pk}",
             f"/concrete?page={project_pk}",
+            f"/sensor?page={project_pk}",
+            f"/project?page={project_pk}",
             f"/download?page={project_pk}"
         )
     else:
-        return "/", "/project", "/sensor", "/concrete", "/download"
+        return "/", "/concrete", "/sensor", "/project", "/download"
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=23022)
