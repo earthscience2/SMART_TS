@@ -235,81 +235,45 @@ app.index_string = '''
 '''
 
 def _build_navbar():
-    """쿠키(login_user) 존재 여부에 따라 Login/Logout 버튼 토글"""
     user_id = flask_request.cookies.get("login_user")
     admin_user = flask_request.cookies.get("admin_user")
 
-    children = [
-        dbc.NavItem(dcc.Link("🏠 홈", href="/", className="nav-link", id="nav-home")),
-        dbc.NavItem(dcc.Link("🧱 콘크리트", href="/concrete", className="nav-link", id="nav-concrete")),
-        dbc.NavItem(dcc.Link("📡 센서", href="/sensor", className="nav-link", id="nav-sensor")),
-        dbc.NavItem(dcc.Link("💾 다운로드", href="/download", className="nav-link", id="nav-download")),
-        # Login 버튼 (숨김 처리용)
-        dbc.NavItem(dcc.Link("Login", href="/login", className="nav-link", id="nav-login")),
-        # Logout 버튼 (오른쪽 끝에 배치)
-        dbc.NavItem(
-            html.A(
-                "Logout",
-                href="/logout",
-                id="nav-logout",
-                className="btn btn-danger btn-sm fw-bold mt-1 ms-auto",
-                style={"color": "white", "backgroundColor": "#dc3545", "border": "none", "borderRadius": "4px"},
-            ),
-        ),
+    # 심플한 네비게이션 바: 브랜드 + 메뉴(텍스트만)
+    nav_links = [
+        dbc.NavItem(dcc.Link("Home", href="/", className="nav-link")),
+        dbc.NavItem(dcc.Link("Concrete", href="/concrete", className="nav-link")),
+        dbc.NavItem(dcc.Link("Sensor", href="/sensor", className="nav-link")),
+        dbc.NavItem(dcc.Link("Download", href="/download", className="nav-link")),
+        dbc.NavItem(html.A("Logout", href="/logout", className="nav-link")),
     ]
 
-    # 가시성 제어
-    if user_id or admin_user:
-        # hide login link
-        children[-2].style = {"display": "none"}
-    else:
-        # hide logout button and ensure login link pushed right
-        children[-1].style = {"display": "none"}
-        # NavItem이 아니라, 그 안의 dcc.Link에 className 추가
-        link = children[-2].children
-        if hasattr(link, "className") and link.className:
-            link.className += " ms-auto"
-        else:
-            link.className = "ms-auto"
-
-    # 브랜드 컴포넌트 설정
+    # 브랜드(좌측)
     if admin_user:
-        brand_component = html.Span([
-            html.Span("Concrete MONITORㅤ| ", className="fw-bold"),
-            html.Span(f"  🔧 {admin_user} (관리자)", className="ms-2 fw-bold text-warning")
-        ])
+        brand = f"Concrete MONITOR | {admin_user} (admin)"
     elif user_id:
-        brand_component = html.Span([
-            html.Span("Concrete MONITORㅤ| ", className="fw-bold"),
-            html.Span(f"  {user_id}", className="ms-2 fw-bold text-warning")
-        ])
+        brand = f"Concrete MONITOR | {user_id}"
     else:
-        brand_component = html.Span("Concrete MONITOR", className="fw-bold")
+        brand = "Concrete MONITOR"
 
     return dbc.Navbar(
         dbc.Container([
-            dbc.NavbarBrand(brand_component, href="/"),
-            dbc.Nav(
-                children,
-                navbar=True,
-                className="me-3 align-items-center"
-            ),
+            dbc.NavbarBrand(brand, href="/"),
+            dbc.Nav(nav_links, navbar=True),
         ], fluid=True),
-        color="dark",
-        dark=True,
-        className="mb-4 user-navbar",
-        style={
-            "borderBottom": "2px solid #ffc107",
-            "padding": "0.5rem 1rem"
-        }
+        color="light",
+        dark=False,
+        className="mb-4",
+        style={"borderBottom": "1px solid #eee", "padding": "0.5rem 1rem"}
     )
 
 def serve_layout():
+    path = flask_request.path if flask_request else ""
+    show_navbar = not path.startswith("/login")
     return dbc.Container(
         fluid=True,
         children=[
             dcc.Location(id="url"),
-            _build_navbar(),
+            _build_navbar() if show_navbar else None,
             dbc.Card(className="shadow-sm p-4", children=[page_container]),
         ],
     )
