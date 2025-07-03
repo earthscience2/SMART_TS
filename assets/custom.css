@@ -1,0 +1,48 @@
+/* 네비게이션 바 통일 스타일 (노란색 버튼/드롭다운) */
+.user-navbar .nav-link,
+.user-navbar .dropdown-toggle {
+    font-weight: 600 !important;
+    font-size: 17px !important;
+    padding: 8px 24px !important;
+    border-radius: 12px !important;
+    border: none !important;
+    transition: all 0.2s;
+    color: #111 !important;
+    background: #ffc107 !important;
+    height: 48px !important;
+    display: flex !important;
+    align-items: center !important;
+    box-shadow: 0 0 0 3px #233 !important;
+    margin: 0 8px !important;
+}
+
+.user-navbar .nav-link.active,
+.user-navbar .dropdown-toggle.active {
+    background: #ffe066 !important;
+    color: #111 !important;
+    box-shadow: 0 0 0 3px #3b82f6 !important;
+}
+
+.user-navbar .dropdown-toggle::after {
+    margin-left: 8px !important;
+    vertical-align: middle !important;
+}
+
+.user-navbar .dropdown-menu {
+    border-radius: 12px !important;
+    min-width: 180px !important;
+    margin-top: 4px !important;
+}
+
+.user-navbar .dropdown-item {
+    font-size: 16px !important;
+    font-weight: 500 !important;
+    padding: 10px 24px !important;
+    border-radius: 8px !important;
+    color: #222 !important;
+}
+
+.user-navbar .dropdown-item:hover {
+    background: #ffe066 !important;
+    color: #111 !important;
+} 
