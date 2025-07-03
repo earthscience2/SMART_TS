@@ -80,8 +80,8 @@ def create_probability_curve_figure():
     import numpy as np
     import plotly.graph_objects as go
     
-    # TCI 값 범위 (0.1 ~ 3.0)
-    tci_values = np.linspace(0.1, 3.0, 300)
+    # TCI 값 범위 (0.1 ~ 1.0)
+    tci_values = np.linspace(0.1, 1.0, 300)
     
     # 수정된 로지스틱 근사식: 0.4에서 100%, 0.5에서 40%, 2.0에서 0%
     # P(x) = 100 / (1 + e^(54(x-0.4925))) (오버플로우 방지)
@@ -111,16 +111,16 @@ def create_probability_curve_figure():
     fig.add_vline(x=0.4, line_dash="dash", line_color="orange", line_width=2,
                   annotation_text="TCI = 0.4 (100%)", annotation_position="top right")
     
-    # TCI = 2.0 기준선 (0% 확률)  
-    fig.add_vline(x=2.0, line_dash="dash", line_color="green", line_width=2,
-                  annotation_text="TCI = 2.0 (0%)", annotation_position="bottom right")
+    # TCI = 1.0 기준선 (낮은 확률)  
+    fig.add_vline(x=1.0, line_dash="dash", line_color="green", line_width=2,
+                  annotation_text="TCI = 1.0 (3%)", annotation_position="bottom right")
     
     # 안전/위험 영역 표시
     fig.add_vrect(x0=0.1, x1=0.5, fillcolor="rgba(239, 68, 68, 0.1)", 
                   annotation_text="위험 영역", annotation_position="top left",
                   annotation=dict(font_size=12, font_color="red"))
     
-    fig.add_vrect(x0=0.5, x1=3.0, fillcolor="rgba(34, 197, 94, 0.1)",
+    fig.add_vrect(x0=0.5, x1=1.0, fillcolor="rgba(34, 197, 94, 0.1)",
                   annotation_text="안전 영역", annotation_position="top right",
                   annotation=dict(font_size=12, font_color="green"))
     
@@ -135,8 +135,8 @@ def create_probability_curve_figure():
             title="온도균열지수 (TCI)",
             gridcolor='#f3f4f6',
             showgrid=True,
-            range=[0.1, 3.0],
-            dtick=0.2
+            range=[0.1, 1.0],
+            dtick=0.1
         ),
         yaxis=dict(
             title="균열발생확률 (%)",
