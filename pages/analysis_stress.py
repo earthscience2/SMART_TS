@@ -79,8 +79,8 @@ layout = dbc.Container(
 
 # ───────────────────── 수치해석 콜백 ─────────────────────
 @callback(
-    Output("analysis-3d-viewer", "children"),
-    Output("analysis-current-file-label", "children"),
+    Output("analysis-3d-viewer", "children", allow_duplicate=True),
+    Output("analysis-current-file-label", "children", allow_duplicate=True),
     Output("analysis-time-slider", "min"),
     Output("analysis-time-slider", "max"),
     Input("analysis-field-dropdown", "value"),

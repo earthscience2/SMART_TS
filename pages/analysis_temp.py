@@ -3312,8 +3312,8 @@ def select_deselect_all_vtp(n_all, n_none, table_data):
 
 # 수치해석 3D 뷰 콜백 (필드/프리셋/시간/단면)
 @callback(
-    Output("analysis-3d-viewer", "children"),
-    Output("analysis-current-file-label", "children"),
+    Output("analysis-3d-viewer", "children", allow_duplicate=True),
+    Output("analysis-current-file-label", "children", allow_duplicate=True),
     Output("slice-slider", "min"),
     Output("slice-slider", "max"),
     Input("analysis-field-dropdown", "value"),

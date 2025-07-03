@@ -131,7 +131,7 @@ def update_formula_display(formula_type, fct28):
     Input("b-input", "value"),
     State("fct-formula-type", "value"),
     State("fct28-input", "value"),
-    prevent_initial_call='initial_duplicate'
+    prevent_initial_call=True
 )
 def update_preview_with_ab(a, b, formula_type, fct28):
     import numpy as np
@@ -160,7 +160,7 @@ def update_preview_with_ab(a, b, formula_type, fct28):
     Input("fct28-input", "value"),
     Input("tab-content", "children"),
     Input("tabs-main", "active_tab"),
-    prevent_initial_call='initial_duplicate'
+    prevent_initial_call=True
 )
 def update_tci_time_and_table(formula_type, fct28, tab_content, active_tab):
     # 단순 예시: 슬라이더만, 실제 파일 파싱 로직 생략
@@ -174,7 +174,7 @@ def update_tci_time_and_table(formula_type, fct28, tab_content, active_tab):
     Input("tci-time-slider", "value"),
     State("fct-formula-type", "value"),
     State("fct28-input", "value"),
-    prevent_initial_call='initial_duplicate'
+    prevent_initial_call=True
 )
 def update_tci_table_on_slider_change(slider_value, formula_type, fct28):
     return html.Div(f"선택된 시간 인덱스: {slider_value} -> TCI 표 업데이트 필요")
