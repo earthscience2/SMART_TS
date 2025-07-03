@@ -230,7 +230,7 @@ def layout():
                         html.Div([
                             # 분석 결과 드롭다운
                             dcc.Link(
-                                "콘크리트 관리 →",
+                                "콘크리트 모델링 →",
                                 href=f"/concrete?page={proj_pk}",
                                 className="btn btn-secondary btn-sm me-2",
                                 style={
@@ -241,7 +241,7 @@ def layout():
                                 }
                             ),
                             dcc.Link(
-                                "센서 관리 →",
+                                "센서 위치 설정 →",
                                 href=f"/sensor?page={proj_pk}",
                                 className="btn btn-info btn-sm me-2",
                                 style={
@@ -284,8 +284,8 @@ def layout():
                                     "boxShadow": "0 4px 6px rgba(0,0,0,0.1)",
                                     "borderRadius": "8px",
                                     "border": "1px solid #e5e7eb",
-                                    "minWidth": "160px",
-                                    "padding": "0 4px",
+                                    "minWidth": "140px",
+                                    "padding": "0 2px",
                                     "fontWeight": "600",
                                     "fontSize": "14px",
                                     "display": "flex",
