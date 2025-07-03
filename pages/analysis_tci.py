@@ -10,7 +10,7 @@ import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 
-register_page(__name__, path="/project", title="TCI 분석")
+register_page(__name__, path="/tci", title="TCI 분석")
 
 
 def create_probability_curve_figure():

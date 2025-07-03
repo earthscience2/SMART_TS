@@ -37,7 +37,7 @@ import dash_vtk
 
 import api_db
 
-register_page(__name__, path="/analysis_temp", title="온도 분석")
+register_page(__name__, path="/temp", title="온도 분석")
 
 
 

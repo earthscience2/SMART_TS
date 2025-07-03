@@ -11,7 +11,7 @@ import dash_bootstrap_components as dbc
 import dash_vtk
 import api_db
 
-register_page(__name__, path="/project", title="수치해석 관리")
+register_page(__name__, path="/stress", title="응력 분석")
 
 # ────────────────────────────── 레이아웃 ────────────────────────────
 layout = dbc.Container(
