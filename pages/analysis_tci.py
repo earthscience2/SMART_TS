@@ -94,7 +94,7 @@ layout = dbc.Container(
     Output("fct-formula-preview", "children", allow_duplicate=True),
     Input("fct-formula-type", "value"),
     Input("fct28-input", "value"),
-    prevent_initial_call=False
+    prevent_initial_call='initial_duplicate'
 )
 def update_formula_display(formula_type, fct28):
     import numpy as np
@@ -131,7 +131,7 @@ def update_formula_display(formula_type, fct28):
     Input("b-input", "value"),
     State("fct-formula-type", "value"),
     State("fct28-input", "value"),
-    prevent_initial_call=True
+    prevent_initial_call='initial_duplicate'
 )
 def update_preview_with_ab(a, b, formula_type, fct28):
     import numpy as np
@@ -158,9 +158,11 @@ def update_preview_with_ab(a, b, formula_type, fct28):
     Output("tci-tci-table-container", "children", allow_duplicate=True),
     Input("fct-formula-type", "value"),
     Input("fct28-input", "value"),
-    prevent_initial_call=False
+    Input("tab-content", "children"),
+    Input("tabs-main", "active_tab"),
+    prevent_initial_call='initial_duplicate'
 )
-def update_tci_ui(formula_type, fct28):
+def update_tci_time_and_table(formula_type, fct28, tab_content, active_tab):
     # 단순 예시: 슬라이더만, 실제 파일 파싱 로직 생략
     slider = dcc.Slider(id="tci-time-slider", min=0, max=5, step=1, value=5, marks={i:str(i) for i in range(6)})
     table = html.Div("TCI 결과표가 여기에 표시됩니다.")
@@ -172,7 +174,7 @@ def update_tci_ui(formula_type, fct28):
     Input("tci-time-slider", "value"),
     State("fct-formula-type", "value"),
     State("fct28-input", "value"),
-    prevent_initial_call=True
+    prevent_initial_call='initial_duplicate'
 )
-def update_tci_table_on_slider_change(value, formula_type, fct28):
-    return html.Div(f"선택된 시간 인덱스: {value} -> TCI 표 업데이트 필요")
+def update_tci_table_on_slider_change(slider_value, formula_type, fct28):
+    return html.Div(f"선택된 시간 인덱스: {slider_value} -> TCI 표 업데이트 필요")
