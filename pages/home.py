@@ -228,10 +228,22 @@ def layout():
                             html.P(f"생성일: {format_date(row['created_at'])}", className="text-muted mb-0")
                         ], className="d-flex flex-column"),
                         html.Div([
-                            dcc.Link(
-                                "분석결과 보기 →",
-                                href=f"/project?page={proj_pk}",
-                                className="btn btn-primary btn-sm me-2",
+                            # 분석 결과 드롭다운
+                            dbc.DropdownMenu(
+                                children=[
+                                    dbc.DropdownMenuItem("🌡️ 온도분석", href=f"/analysis_temp?page={proj_pk}"),
+                                    dbc.DropdownMenuItem("🔬 응력분석", href=f"/analysis_stress?page={proj_pk}"),
+                                    dbc.DropdownMenuItem("⚠️ TCI분석", href=f"/analysis_tci?page={proj_pk}"),
+                                    dbc.DropdownMenuItem("💪 강도분석", href=f"/analysis_str?page={proj_pk}"),
+                                    dbc.DropdownMenuItem(divider=True),
+                                    dbc.DropdownMenuItem("📈 통합 분석", href=f"/project?page={proj_pk}")
+                                ],
+                                nav=True,
+                                in_navbar=True,
+                                label="📊 분석결과",
+                                color="primary",
+                                size="sm",
+                                className="me-2",
                                 style={"boxShadow": "0 2px 4px rgba(0,0,0,0.1)"}
                             ),
                             dcc.Link(

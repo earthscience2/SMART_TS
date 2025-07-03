@@ -37,7 +37,7 @@ import dash_vtk
 
 import api_db
 
-register_page(__name__, path="/project", title="프로젝트 관리")
+register_page(__name__, path="/analysis_temp", title="온도 분석")
 
 
 
@@ -5073,7 +5073,7 @@ def validate_inputs(fct28, formula_type):
 # 시간 슬라이더 및 표 콜백 추가
 @callback(
     Output("tci-time-slider-container", "children"),
-    Output("tci-tci-table-container", "children"),
+    Output("tci-tci-table-container", "children", allow_duplicate=True),
     Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     Input("fct-formula-type", "value"),
@@ -6057,9 +6057,3 @@ def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, for
         
     except Exception as e:
         return html.Div(f"데이터 파싱 오류: {str(e)}")
-
-
-
-
-
-
