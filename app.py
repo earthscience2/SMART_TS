@@ -340,55 +340,13 @@ def _build_navbar():
         }
     )
 
-def _build_admin_navbar():
-    """관리자 페이지용 네비게이션 바"""
-    admin_user = flask_request.cookies.get("admin_user")
-    
-    children = [
-        # 관리자 네비게이션 링크들
-        dbc.NavItem(dcc.Link("📈 대시보드", href="/admin_dashboard", className="nav-link fw-bold", id="admin-nav-dashboard")),
-        dbc.NavItem(dcc.Link("📊 프로젝트", href="/admin_projects", className="nav-link fw-bold", id="admin-nav-projects")),
-        dbc.NavItem(dcc.Link("📋 일반 로그", href="/admin_logs", className="nav-link fw-bold", id="admin-nav-logs")),
-        dbc.NavItem(dcc.Link("⚙️ 자동화 로그", href="/admin_automation", className="nav-link fw-bold", id="admin-nav-automation")),
-        # Logout 버튼
-        dbc.NavItem(
-            html.A(
-                "Logout",
-                href="/logout",
-                id="admin-nav-logout",
-                className="btn btn-danger btn-sm fw-bold mt-1 ms-auto",
-                style={"color": "white", "backgroundColor": "#dc3545", "border": "none", "borderRadius": "4px", "marginLeft": "200px"},
-            ),
-        ),
-    ]
-
-    # 브랜드 컴포넌트 설정
-    brand_component = html.Span([
-        html.Span("Concrete MONITORㅤ| ", className="fw-bold"),
-        html.Span(f"  🔧 {admin_user} (관리자)", className="ms-2 fw-bold text-warning")
-    ])
-
-    return dbc.Navbar(
-        dbc.Container([
-            dbc.NavbarBrand(brand_component, href="/admin_dashboard", id="admin-brand"),
-            dbc.Nav(
-                children,
-                navbar=True,
-                className="me-3"  # 전체 네비게이션을 오른쪽에서 더 멀어지게 하여 왼쪽으로 이동
-            ),
-        ], fluid=True),
-        color="dark",
-        dark=True,
-        className="mb-4 admin-navbar",
-        style={"borderBottom": "2px solid #ffc107"}
-    )
-
 # 정적 레이아웃 설정
 app.layout = dbc.Container(
     fluid=True,
     children=[
         dcc.Location(id="url"),
-        html.Div(id="navbar-container"),
+        # 네비게이션 바를 직접 포함 (기본 사용자용)
+        _build_navbar(),
         dbc.Card(className="shadow-sm p-4", children=[page_container]),
     ],
 )
