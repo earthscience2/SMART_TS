@@ -90,8 +90,8 @@ layout = dbc.Container(
 
 # fct 계산식 입력 및 미리보기
 @callback(
-    Output("ab-inputs-container", "children"),
-    Output("fct-formula-preview", "children"),
+    Output("ab-inputs-container", "children", allow_duplicate=True),
+    Output("fct-formula-preview", "children", allow_duplicate=True),
     Input("fct-formula-type", "value"),
     Input("fct28-input", "value"),
     prevent_initial_call=False
@@ -126,7 +126,7 @@ def update_formula_display(formula_type, fct28):
 
 # a,b 변경 시 미리보기 업데이트
 @callback(
-    Output("fct-formula-preview", "children"),
+    Output("fct-formula-preview", "children", allow_duplicate=True),
     Input("a-input", "value"),
     Input("b-input", "value"),
     State("fct-formula-type", "value"),
@@ -154,8 +154,8 @@ def update_preview_with_ab(a, b, formula_type, fct28):
 
 # TCI 시간 및 표 업데이트
 @callback(
-    Output("tci-time-slider-container", "children"),
-    Output("tci-tci-table-container", "children"),
+    Output("tci-time-slider-container", "children", allow_duplicate=True),
+    Output("tci-tci-table-container", "children", allow_duplicate=True),
     Input("fct-formula-type", "value"),
     Input("fct28-input", "value"),
     prevent_initial_call=False
@@ -168,7 +168,7 @@ def update_tci_ui(formula_type, fct28):
 
 # 슬라이더 변경 시 표만 업데이트
 @callback(
-    Output("tci-tci-table-container", "children"),
+    Output("tci-tci-table-container", "children", allow_duplicate=True),
     Input("tci-time-slider", "value"),
     State("fct-formula-type", "value"),
     State("fct28-input", "value"),
