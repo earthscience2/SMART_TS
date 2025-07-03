@@ -277,7 +277,8 @@ def serve_layout():
     )
 app.layout = serve_layout
 
-# 네비게이션 바 표시 여부를 동적으로 제어하는 콜백 추가
+# 기존 navbar-container 관련 콜백(예: update_navbar 등) 완전히 삭제
+# toggle_navbar 콜백만 남김
 @app.callback(
     Output("navbar-container", "children"),
     Input("url", "pathname")
