@@ -662,8 +662,8 @@ layout = dbc.Container(
                         dbc.Checklist(id="slice-enable", value=[]),
                         dcc.Dropdown(id="slice-axis", value="Z"),
                         dcc.Slider(id="slice-slider", min=0, max=1, value=0.5),
-                        html.Div(id="analysis-3d-viewer"),
-                        html.Div(id="analysis-current-file-label"),
+                        html.Div(id="temp-analysis-3d-viewer"),
+                        html.Div(id="temp-analysis-current-file-label"),
                         # dcc.Graph(id="analysis-colorbar"),
                         html.Div(id="section-time-info"),  # 단면도용 시간 정보 표시 컴포넌트
                     ], style={"display": "none"}),
@@ -2312,7 +2312,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         "marginBottom": "16px",
                         "fontSize": "16px"
                     }),
-                    html.Div(id="analysis-3d-viewer", style={"height": "55vh"}),
+                    html.Div(id="temp-analysis-3d-viewer", style={"height": "55vh"}),
                 ], style={
                     "padding": "20px",
                     "backgroundColor": "white",
@@ -3312,8 +3312,8 @@ def select_deselect_all_vtp(n_all, n_none, table_data):
 
 # 수치해석 3D 뷰 콜백 (필드/프리셋/시간/단면)
 @callback(
-    Output("analysis-3d-viewer", "children", allow_duplicate=True),
-    Output("analysis-current-file-label", "children", allow_duplicate=True),
+    Output("temp-analysis-3d-viewer", "children"),
+    Output("temp-analysis-current-file-label", "children"),
     Output("slice-slider", "min"),
     Output("slice-slider", "max"),
     Input("analysis-field-dropdown", "value"),

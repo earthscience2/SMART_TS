@@ -69,9 +69,9 @@ layout = dbc.Container(
                     ])
                 ], className="p-3 bg-light border rounded mb-4"),
                 # 파일 정보 표시
-                html.Div(id="analysis-current-file-label", className="mb-3 p-2 bg-white border rounded"),
+                html.Div(id="stress-analysis-current-file-label", className="mb-3 p-2 bg-white border rounded"),
                 # 3D 뷰어
-                html.Div(id="analysis-3d-viewer", style={"height": "60vh"})
+                html.Div(id="stress-analysis-3d-viewer", style={"height": "60vh"})
             ], width=9)
         ], className="g-4")
     ]
@@ -79,8 +79,8 @@ layout = dbc.Container(
 
 # ───────────────────── 수치해석 콜백 ─────────────────────
 @callback(
-    Output("analysis-3d-viewer", "children", allow_duplicate=True),
-    Output("analysis-current-file-label", "children", allow_duplicate=True),
+    Output("stress-analysis-3d-viewer", "children"),
+    Output("stress-analysis-current-file-label", "children"),
     Output("analysis-time-slider", "min"),
     Output("analysis-time-slider", "max"),
     Input("analysis-field-dropdown", "value"),
