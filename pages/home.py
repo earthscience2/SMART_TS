@@ -234,22 +234,22 @@ def layout():
                                     dbc.DropdownMenuItem(
                                         "🌡️ 온도분석", 
                                         href=f"/temp?page={proj_pk}",
-                                        style={"padding": "8px 16px", "fontSize": "14px", "fontWeight": "500"}
+                                        style={"padding": "10px 24px", "fontSize": "15px", "fontWeight": "500"}
                                     ),
                                     dbc.DropdownMenuItem(
                                         "🔬 응력분석", 
                                         href=f"/stress?page={proj_pk}",
-                                        style={"padding": "8px 16px", "fontSize": "14px", "fontWeight": "500"}
+                                        style={"padding": "10px 24px", "fontSize": "15px", "fontWeight": "500"}
                                     ),
                                     dbc.DropdownMenuItem(
                                         "⚠️ TCI분석", 
                                         href=f"/tci?page={proj_pk}",
-                                        style={"padding": "8px 16px", "fontSize": "14px", "fontWeight": "500"}
+                                        style={"padding": "10px 24px", "fontSize": "15px", "fontWeight": "500"}
                                     ),
                                     dbc.DropdownMenuItem(
                                         "💪 강도분석", 
                                         href=f"/strength?page={proj_pk}",
-                                        style={"padding": "8px 16px", "fontSize": "14px", "fontWeight": "500"}
+                                        style={"padding": "10px 24px", "fontSize": "15px", "fontWeight": "500"}
                                     ),
                                 ],
                                 nav=True,
@@ -261,7 +261,11 @@ def layout():
                                 style={
                                     "boxShadow": "0 4px 6px rgba(0,0,0,0.1)",
                                     "borderRadius": "8px",
-                                    "border": "1px solid #e5e7eb"
+                                    "border": "1px solid #e5e7eb",
+                                    "minWidth": "220px",
+                                    "padding": "0 8px",
+                                    "fontWeight": "600",
+                                    "fontSize": "15px"
                                 },
                                 menu_variant="light",
                                 align_end=True
