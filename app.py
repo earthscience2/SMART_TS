@@ -212,16 +212,17 @@ app.index_string = '''
                 border-radius: 4px;
                 transition: all 0.2s ease;
                 font-weight: 500;
+                color: #ffffff !important;
             }
             
             .nav-link:hover {
-                background-color: #f8f9fa;
-                color: #495057;
+                background-color: #495057;
+                color: #ffffff !important;
             }
             
             .nav-link.active {
-                background-color: #e9ecef;
-                color: #495057;
+                background-color: #ffc107;
+                color: #000000 !important;
                 font-weight: 600;
             }
             
@@ -255,25 +256,32 @@ def _build_navbar():
         dbc.NavItem(html.A("Logout", href="/logout", className="nav-link text-danger", id="nav-logout")),
     ]
 
-    # 브랜드(좌측)
+    # 브랜드(좌측) - 사용자 이름 부분을 강조색으로
     if admin_user:
-        brand = f"Concrete MONITOR | {admin_user} (admin)"
+        brand = html.Span([
+            "Concrete MONITOR | ",
+            html.Span(admin_user, className="text-warning"),
+            " (admin)"
+        ])
     elif user_id:
-        brand = f"Concrete MONITOR | {user_id}"
+        brand = html.Span([
+            "Concrete MONITOR | ",
+            html.Span(user_id, className="text-warning")
+        ])
     else:
         brand = "Concrete MONITOR"
 
     return dbc.Navbar(
         dbc.Container([
-            dbc.NavbarBrand(brand, href="/", className="fw-bold"),
+            dbc.NavbarBrand(brand, href="/", className="fw-bold text-white"),
             dbc.Nav(nav_links, navbar=True, className="ms-auto"),
         ], fluid=True),
-        color="light",
-        dark=False,
+        color="dark",
+        dark=True,
         className="mb-4",
         style={
-            "backgroundColor": "#ffffff",
-            "borderBottom": "1px solid #e9ecef",
+            "backgroundColor": "#2c3e50",
+            "borderBottom": "2px solid #34495e",
             "padding": "0.5rem 1rem"
         }
     )
@@ -290,20 +298,24 @@ def _build_admin_navbar():
         dbc.NavItem(html.A("Logout", href="/logout", className="nav-link text-danger")),
     ]
 
-    # 브랜드(좌측)
-    brand = f"Concrete MONITOR | {admin_user} (admin)"
+    # 브랜드(좌측) - 관리자 이름 부분을 강조색으로
+    brand = html.Span([
+        "Concrete MONITOR | ",
+        html.Span(admin_user, className="text-warning"),
+        " (admin)"
+    ])
 
     return dbc.Navbar(
         dbc.Container([
-            dbc.NavbarBrand(brand, href="/admin_dashboard", className="fw-bold"),
+            dbc.NavbarBrand(brand, href="/admin_dashboard", className="fw-bold text-white"),
             dbc.Nav(admin_nav_links, navbar=True, className="admin-navbar ms-auto"),
         ], fluid=True),
-        color="light",
-        dark=False,
+        color="dark",
+        dark=True,
         className="mb-4",
         style={
-            "backgroundColor": "#f8f9fa",
-            "borderBottom": "1px solid #dee2e6",
+            "backgroundColor": "#34495e",
+            "borderBottom": "2px solid #2c3e50",
             "padding": "0.5rem 1rem"
         }
     )
