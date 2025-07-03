@@ -641,7 +641,6 @@ layout = dbc.Container(
                     # 숨김 처리된 콜백 대상 컴포넌트들 (항상 포함)
                     html.Div([
                         dcc.Slider(id="time-slider", min=0, max=5, step=1, value=0, marks={}),
-                        dcc.Slider(id="time-slider-display", min=0, max=5, step=1, value=0, marks={}),
                         dcc.Slider(id="time-slider-section", min=0, max=5, step=1, value=0, marks={}),  # 단면도용 독립 슬라이더 복원
                         dcc.Slider(id="tci-time-slider", min=0, max=5, step=1, value=0, marks={}),  # TCI용 시간 슬라이더
                         dcc.Graph(id="viewer-3d"),
@@ -2735,7 +2734,7 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     Output("section-y-input", "min"), Output("section-y-input", "max"), Output("section-y-input", "value"),
     Output("section-z-input", "min"), Output("section-z-input", "max"), Output("section-z-input", "value"),
     Output("current-file-title-store", "data", allow_duplicate=True),
-    Input("time-slider-section", "value"),  # 단면도용 독립 슬라이더 사용
+    Input("time-slider", "value"),  # 단면도용 독립 슬라이더 사용
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
     Input("section-z-input", "value"),
@@ -3818,7 +3817,6 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
     
     # 컬러 데이터 범위 추출 (컴포넌트 인덱스 처리)
     color_range = None
-    # colorbar_fig = go.Figure()  # 컬러바 완전 삭제
     if field_name:
         # 컴포넌트 인덱스가 포함된 필드명 처리
         actual_field_name = field_name
@@ -3855,7 +3853,6 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
             range_val = arr.GetRange()
             if range_val[0] != range_val[1]:  # 값이 모두 같지 않을 때만 범위 설정
                 color_range = [range_val[0], range_val[1]]
-                # 컬러바 생성 코드 완전 삭제
     
     # 기본 프리셋 설정
     if not preset:
@@ -3881,8 +3878,6 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         # UnstructuredGrid의 경우 추가 속성 설정
         if isinstance(ds_for_vis, vtk.vtkUnstructuredGrid):
             # 내부 볼륨이 제대로 표시되도록 설정
-            # geometry_rep_props["representation"] = "Surface"  # 지원하지 않으므로 제거
-            # geometry_rep_props["opacity"] = 1.0  # 지원하지 않으므로 제거
             # property를 사용해서 표면 렌더링 설정
             geometry_rep_props["property"] = {"representation": "surface"}
             print("UnstructuredGrid용 추가 속성 설정")
@@ -4031,20 +4026,6 @@ def toggle_slice_detail_controls(slice_enable):
     else:
         return {"display": "none"}
 
-
-
-# 수치해석 컬러바 표시/숨김 콜백 - 완전 삭제
-# @callback(
-#     Output("analysis-colorbar", "style"),
-#     Input("analysis-field-dropdown", "value"),
-#     prevent_initial_call=True,
-# )
-# def toggle_colorbar_visibility(field_name):
-#     if field_name:
-#         return {"height": "120px", "display": "block"}
-#     else:
-#         return {"height": "120px", "display": "none"}
-
 # 3D 뷰 슬라이더 동기화 콜백 (display용 슬라이더와 실제 슬라이더만, 단면도 슬라이더는 제외)
 @callback(
     Output("time-slider", "value", allow_duplicate=True),
@@ -4076,8 +4057,6 @@ def sync_main_slider_to_display(main_value, main_min, main_max, main_marks):
 )
 def sync_viewer_to_display(main_figure):
     return main_figure
-
-# 클라이언트 사이드 콜백 제거 - 충돌 방지
 
 # 단면도 탭 시간 정보 업데이트 콜백
 @callback(
@@ -5176,7 +5155,7 @@ def validate_inputs(fct28, formula_type):
     Input("tci-display-type", "value"),
     Input("tci-direction-filter", "value"),
     Input("tci-filter-dropdown", "value"),
-    Input("time-slider-display", "value"),  # 위에서 시간 조절하는 슬라이더와 연동
+    Input("time-slider", "value"),  # 위에서 시간 조절하는 슬라이더와 연동
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     State("fct-formula-type", "value"),
@@ -5627,7 +5606,7 @@ def update_tci_3d_isosurface(display_type, direction_filter, filter_value, time_
 # TCI 테이블 업데이트 콜백 (시간 슬라이더 제거, 위의 슬라이더와 연동)
 @callback(
     Output("tci-tci-table-container", "children"),
-    Input("time-slider-display", "value"),  # 위의 슬라이더와 연동
+    Input("time-slider", "value"),  # 위의 슬라이더와 연동
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     State("fct-formula-type", "value"),
@@ -6112,7 +6091,7 @@ def update_tci_table_only(time_value, selected_rows, tbl_data, formula_type, fct
     Input("tci-display-type", "value"),
     Input("tci-direction-filter", "value"),
     Input("tci-filter-dropdown", "value"),
-    Input("time-slider-display", "value"),  # 위에서 시간 조절하는 슬라이더와 연동
+    Input("time-slider", "value"),  # 위에서 시간 조절하는 슬라이더와 연동
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     State("fct-formula-type", "value"),
