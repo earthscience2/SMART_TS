@@ -5515,24 +5515,36 @@ def update_tci_3d_isosurface(display_type, direction_filter, filter_value, time_
             colorscale = [[0, '#ef4444'], [0.5, '#fbbf24'], [1, '#22c55e']]  # 빨강-노랑-초록
             colorbar_title = value_name
         
-        # Scatter3D로 포인트 표시
+        # 3D 히트맵 스타일로 개선된 시각화
+        marker_sizes = []
+        for val in filtered_values:
+            if "확률" in value_name:
+                size = 8 if val >= 50 else 4
+            else:
+                size = 8 if val < 0.5 else 4
+            marker_sizes.append(size)
         fig.add_trace(go.Scatter3d(
             x=filtered_x,
             y=filtered_y,
             z=filtered_z,
             mode='markers',
             marker=dict(
-                size=4,
+                size=marker_sizes,
                 color=filtered_values,
                 colorscale=colorscale,
-                opacity=0.8,
+                opacity=0.9,
+                line=dict(width=1, color='rgba(0,0,0,0.3)'),
                 colorbar=dict(
                     title=colorbar_title,
-                    thickness=15,
-                    len=0.7
-                )
+                    thickness=20,
+                    len=0.8,
+                    x=1.1,
+                    tickformat='.2f'
+                ),
+                showscale=True
             ),
-            text=[f"Node: {node_ids[i]}<br>{value_name}: {values[i]:.3f}" for i, m in enumerate(mask) if m],
+            text=[f"Node: {node_ids[i]}<br>{value_name}: {values[i]:.3f}<br>위치: ({filtered_x[j]:.3f}, {filtered_y[j]:.3f}, {filtered_z[j]:.3f})" 
+                  for i, m in enumerate(mask) if m for j in range(len(filtered_x))],
             hovertemplate="%{text}<extra></extra>",
             name=value_name
         ))
@@ -6451,24 +6463,36 @@ def update_tci_3d_isosurface(display_type, direction_filter, filter_value, time_
             colorscale = [[0, '#ef4444'], [0.5, '#fbbf24'], [1, '#22c55e']]  # 빨강-노랑-초록
             colorbar_title = value_name
         
-        # Scatter3D로 포인트 표시
+        # 3D 히트맵 스타일로 개선된 시각화
+        marker_sizes = []
+        for val in filtered_values:
+            if "확률" in value_name:
+                size = 8 if val >= 50 else 4
+            else:
+                size = 8 if val < 0.5 else 4
+            marker_sizes.append(size)
         fig.add_trace(go.Scatter3d(
             x=filtered_x,
             y=filtered_y,
             z=filtered_z,
             mode='markers',
             marker=dict(
-                size=4,
+                size=marker_sizes,
                 color=filtered_values,
                 colorscale=colorscale,
-                opacity=0.8,
+                opacity=0.9,
+                line=dict(width=1, color='rgba(0,0,0,0.3)'),
                 colorbar=dict(
                     title=colorbar_title,
-                    thickness=15,
-                    len=0.7
-                )
+                    thickness=20,
+                    len=0.8,
+                    x=1.1,
+                    tickformat='.2f'
+                ),
+                showscale=True
             ),
-            text=[f"Node: {node_ids[i]}<br>{value_name}: {values[i]:.3f}" for i, m in enumerate(mask) if m],
+            text=[f"Node: {node_ids[i]}<br>{value_name}: {values[i]:.3f}<br>위치: ({filtered_x[j]:.3f}, {filtered_y[j]:.3f}, {filtered_z[j]:.3f})" 
+                  for i, m in enumerate(mask) if m for j in range(len(filtered_x))],
             hovertemplate="%{text}<extra></extra>",
             name=value_name
         ))
