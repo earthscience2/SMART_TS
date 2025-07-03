@@ -91,7 +91,7 @@ layout = dbc.Container(
     Input("slice-slider", "value"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
-    prevent_initial_call=False
+    prevent_initial_call=True
 )
 def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_axis, slice_slider, selected_rows, tbl_data):
     import os
