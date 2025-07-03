@@ -6108,7 +6108,7 @@ def update_tci_table_only(time_value, selected_rows, tbl_data, formula_type, fct
 
 # 3D TCI 등온면 뷰 콜백
 @callback(
-    Output("tci-3d-isosurface", "figure"),
+    Output("tci-3d-isosurface", "figure", allow_duplicate=True),
     Input("tci-display-type", "value"),
     Input("tci-direction-filter", "value"),
     Input("tci-filter-dropdown", "value"),
