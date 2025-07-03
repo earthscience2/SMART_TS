@@ -580,42 +580,6 @@ layout = dbc.Container(
                                     "fontWeight": "600"
                                 }
                             ),
-                            dbc.Tab(
-                                label="🔬 수치해석", 
-                                tab_id="tab-analysis",
-                                tab_style={
-                                    "marginLeft": "2px",
-                                    "marginRight": "2px",
-                                    "border": "none",
-                                    "borderRadius": "6px 6px 0 0",
-                                    "backgroundColor": "#f8fafc"
-                                },
-                                active_tab_style={
-                                    "backgroundColor": "white",
-                                    "border": "1px solid #e2e8f0",
-                                    "borderBottom": "1px solid white",
-                                    "color": "#3182ce",
-                                    "fontWeight": "600"
-                                }
-                            ),
-                            dbc.Tab(
-                                label="⚠️ TCI 분석", 
-                                tab_id="tab-tci",
-                                tab_style={
-                                    "marginLeft": "2px",
-                                    "marginRight": "2px",
-                                    "border": "none",
-                                    "borderRadius": "6px 6px 0 0",
-                                    "backgroundColor": "#f8fafc"
-                                },
-                                active_tab_style={
-                                    "backgroundColor": "white",
-                                    "border": "1px solid #e2e8f0",
-                                    "borderBottom": "1px solid white",
-                                    "color": "#3182ce",
-                                    "fontWeight": "600"
-                                }
-                            ),
                         ], 
                         id="tabs-main", 
                         active_tab="tab-3d",
@@ -640,7 +604,8 @@ layout = dbc.Container(
                         dcc.Slider(id="time-slider", min=0, max=5, step=1, value=0, marks={}),
                         dcc.Slider(id="time-slider-display", min=0, max=5, step=1, value=0, marks={}),
                         dcc.Slider(id="time-slider-section", min=0, max=5, step=1, value=0, marks={}),  # 단면도용 독립 슬라이더 복원
-                        dcc.Slider(id="temp-tci-time-slider", min=0, max=5, step=1, value=0, marks={}),  # TCI용 시간 슬라이더
+                        # TCI 관련 컴포넌트들 - 제거됨
+                        # dcc.Slider(id="temp-tci-time-slider", min=0, max=5, step=1, value=0, marks={}),  # TCI용 시간 슬라이더
                         dcc.Graph(id="viewer-3d"),
                         dcc.Graph(id="viewer-3d-display"),
                         dbc.Input(id="section-x-input", type="number", value=None),
@@ -656,14 +621,15 @@ layout = dbc.Container(
                         dbc.Input(id="temp-z-input", type="number", value=0),
                         dcc.Graph(id="temp-viewer-3d"),
                         dcc.Graph(id="temp-time-graph"),
-                        dcc.Dropdown(id="analysis-field-dropdown", value=None),
-                        dcc.Dropdown(id="analysis-preset-dropdown", value="rainbow"),
-                        dcc.Slider(id="analysis-time-slider", min=0, max=5, value=0),
-                        dbc.Checklist(id="slice-enable", value=[]),
-                        dcc.Dropdown(id="slice-axis", value="Z"),
-                        dcc.Slider(id="slice-slider", min=0, max=1, value=0.5),
-                        html.Div(id="temp-analysis-3d-viewer"),
-                        html.Div(id="temp-analysis-current-file-label"),
+                        # 수치해석 관련 컴포넌트들 - 제거됨
+                        # dcc.Dropdown(id="analysis-field-dropdown", value=None),
+                        # dcc.Dropdown(id="analysis-preset-dropdown", value="rainbow"),
+                        # dcc.Slider(id="analysis-time-slider", min=0, max=5, value=0),
+                        # dbc.Checklist(id="slice-enable", value=[]),
+                        # dcc.Dropdown(id="slice-axis", value="Z"),
+                        # dcc.Slider(id="slice-slider", min=0, max=1, value=0.5),
+                        # html.Div(id="temp-analysis-3d-viewer"),
+                        # html.Div(id="temp-analysis-current-file-label"),
                         # dcc.Graph(id="analysis-colorbar"),
                         html.Div(id="section-time-info"),  # 단면도용 시간 정보 표시 컴포넌트
                     ], style={"display": "none"}),
@@ -2073,416 +2039,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 ], md=6),
             ], className="g-3"),
         ])
-    elif active_tab == "tab-analysis":
-        # 수치해석 탭: 서버에서 VTK/VTP 파일을 파싱하여 dash_vtk.Mesh로 시각화 + 컬러맵 필드/프리셋 선택
-        if not (selected_rows and tbl_data):
-            return html.Div("콘크리트를 선택하세요.")
-        
-        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-        concrete_pk = row["concrete_pk"]
-        assets_vtk_dir = f"assets/vtk/{concrete_pk}"
-        assets_vtp_dir = f"assets/vtp/{concrete_pk}"
-        
-        vtk_files = []
-        vtp_files = []
-        if os.path.exists(assets_vtk_dir):
-            vtk_files = sorted([f for f in os.listdir(assets_vtk_dir) if f.endswith('.vtk')])
-        if os.path.exists(assets_vtp_dir):
-            vtp_files = sorted([f for f in os.listdir(assets_vtp_dir) if f.endswith('.vtp')])
-        
-        if not vtk_files and not vtp_files:
-            return html.Div("VTK/VTP 파일이 없습니다.")
-        
-        # 시간 정보 파싱
-        from datetime import datetime
-        times = []
-        file_type = None
-        files = []
-        
-        
-        if vtk_files:
-            files = vtk_files
-            file_type = 'vtk'
-        elif vtp_files:
-            files = vtp_files
-            file_type = 'vtp'
-        
-        for f in files:
-            try:
-                time_str = os.path.splitext(f)[0]
-                dt = datetime.strptime(time_str, "%Y%m%d%H")
-                times.append((dt, f))
-            except:
-                continue
-        
-        if not times:
-            return html.Div("시간 정보가 포함된 VTK/VTP 파일이 없습니다.")
-        
-        times.sort()
-        max_idx = len(times) - 1
-        
-        # 첫 번째 파일을 기본으로 사용하여 필드 정보 추출
-        first_file = times[-1][1]  # 최신 파일 사용
-        file_path = os.path.join(assets_vtk_dir if file_type=='vtk' else assets_vtp_dir, first_file)
-        
-        # 고정된 6개 필드 옵션으로 설정
-        field_options = [
-            {"label": "변위 X", "value": "U:0"},
-            {"label": "변위 Y", "value": "U:1"}, 
-            {"label": "변위 Z", "value": "U:2"},
-            {"label": "응력 X", "value": "S:0"},
-            {"label": "응력 Y", "value": "S:1"},
-            {"label": "응력 Z", "value": "S:2"}
-        ]
-        
-        # 컬러맵 프리셋 옵션 (3개로 제한)
-        preset_options = [
-            {"label": "무지개", "value": "rainbow"},
-            {"label": "블루-레드", "value": "Cool to Warm"},
-            {"label": "회색", "value": "Grayscale"},
-        ]
-        
-        # 시간 슬라이더 마크: 모든 시간을 일 단위로 표시
-        time_marks = {}
-        seen_dates = set()
-        for i, (dt, _) in enumerate(times):
-            date_str = dt.strftime("%-m/%-d")  # 6/13, 6/14 형식
-            if date_str not in seen_dates:
-                time_marks[i] = date_str
-                seen_dates.add(date_str)
-        
-        return html.Div([
-            # 시간 설정 (3D뷰, 단면도와 동일한 디자인)
-            html.Div([
-                html.Div([
-                    html.H6("⏰ 시간 설정", style={
-                        "fontWeight": "600",
-                        "color": "#374151",
-                        "marginBottom": "16px",
-                        "fontSize": "14px"
-                    }),
-                    dcc.Slider(
-                        id="analysis-time-slider",
-                        min=0,
-                        max=max_idx,
-                        step=1,
-                        value=max_idx,
-                        marks=time_marks,
-                        tooltip={"placement": "bottom", "always_visible": True},
-                        className="mb-3"
-                    )
-                ], style={
-                    "padding": "16px 20px",
-                    "backgroundColor": "#f9fafb",
-                    "borderRadius": "8px",
-                    "border": "1px solid #e5e7eb",
-                    "marginBottom": "16px"
-                })
-            ]),
-            
-            # 통합 분석 설정 (컬러맵 필드, 프리셋, 단면 설정을 하나로)
-            html.Div([
-                html.Div([
-                    html.H6("🎛️ 분석 설정", style={
-                        "fontWeight": "600",
-                        "color": "#374151",
-                        "marginBottom": "16px",
-                        "fontSize": "14px"
-                    }),
-                    dbc.Row([
-                        dbc.Col([
-                            html.Label("컬러맵 필드", style={
-                                "fontSize": "12px", 
-                                "fontWeight": "500", 
-                                "color": "#6b7280",
-                                "marginBottom": "4px"
-                            }),
-                            dcc.Dropdown(
-                                id="analysis-field-dropdown",
-                                options=field_options,
-                                value="U:0",  # 기본값을 변위 X로 설정
-                                placeholder="필드 선택",
-                                style={"fontSize": "13px"}
-                            )
-                        ], md=4),
-                        dbc.Col([
-                            html.Label("컬러맵 프리셋", style={
-                                "fontSize": "12px", 
-                                "fontWeight": "500", 
-                                "color": "#6b7280",
-                                "marginBottom": "4px"
-                            }),
-                            dcc.Dropdown(
-                                id="analysis-preset-dropdown", 
-                                options=preset_options,
-                                value="rainbow",
-                                placeholder="프리셋 선택",
-                                style={"fontSize": "13px"}
-                            )
-                        ], md=4),
-                        dbc.Col([
-                            html.Label("단면 설정", style={
-                                "fontSize": "12px", 
-                                "fontWeight": "500", 
-                                "color": "#6b7280",
-                                "marginBottom": "4px"
-                            }),
-                            dbc.Checklist(
-                                options=[{"label": "단면 보기 활성화", "value": "on"}],
-                                value=[],
-                                id="slice-enable",
-                                switch=True,
-                                style={"fontSize": "13px"}
-                            )
-                        ], md=4),
-                    ], className="g-3 mb-3"),
-                    
-                    # 단면 상세 설정 (조건부 표시)
-                    html.Div(id="slice-detail-controls", style={"display": "none"}, children=[
-                        dbc.Row([
-                            dbc.Col([
-                                html.Label("축 선택", style={
-                                    "fontSize": "12px", 
-                                    "fontWeight": "500", 
-                                    "color": "#6b7280",
-                                    "marginBottom": "4px"
-                                }),
-                                dcc.Dropdown(
-                                    id="slice-axis",
-                                    options=[
-                                        {"label": "X축 (좌→우)", "value": "X"},
-                                        {"label": "Y축 (앞→뒤)", "value": "Y"},
-                                        {"label": "Z축 (아래→위)", "value": "Z"},
-                                    ],
-                                    value="Z",
-                                    clearable=False,
-                                    style={"fontSize": "13px"}
-                                )
-                            ], md=6),
-                            dbc.Col([
-                                html.Label("절단 위치", style={
-                                    "fontSize": "12px", 
-                                    "fontWeight": "500", 
-                                    "color": "#6b7280",
-                                    "marginBottom": "4px"
-                                }),
-                                dcc.Slider(
-                                    id="slice-slider",
-                                    min=0, max=1, step=0.05, value=0.5,
-                                    marks={0: '0.0', 1: '1.0'},
-                                    tooltip={"placement": "bottom", "always_visible": True},
-                                )
-                            ], md=6),
-                        ], className="g-3"),
-                    ])
-                ], style={
-                    "padding": "16px 20px",
-                    "backgroundColor": "#f9fafb",
-                    "borderRadius": "8px",
-                    "border": "1px solid #e5e7eb",
-                    "marginBottom": "16px"
-                })
-            ]),
-            
-            # 현재 파일 정보 (년/월/일/시간 형식으로 표시)
-            html.Div([
-                html.Div([
-                    html.I(className="fas fa-file-alt me-2", style={"color": "#6366f1"}),
-                    html.Span(id="analysis-current-file-label", style={
-                        "fontWeight": "500",
-                        "color": "#374151"
-                    })
-                ], style={
-                    "padding": "12px 16px",
-                    "backgroundColor": "white",
-                    "borderRadius": "8px",
-                    "border": "1px solid #e5e7eb",
-                    "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
-                    "marginBottom": "16px",
-                    "fontSize": "14px"
-                })
-            ]),
-            
-            # 3D 뷰어 (노션 스타일)
-            html.Div([
-                html.Div([
-                    html.H6("🔬 수치해석 3D 뷰어", style={
-                        "fontWeight": "600",
-                        "color": "#374151",
-                        "marginBottom": "16px",
-                        "fontSize": "16px"
-                    }),
-                    html.Div(id="temp-analysis-3d-viewer", style={"height": "55vh"}),
-                ], style={
-                    "padding": "20px",
-                    "backgroundColor": "white",
-                    "borderRadius": "12px",
-                    "border": "1px solid #e5e7eb",
-                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
-                    "marginBottom": "16px"
-                })
-            ]),
-        ])
-    elif active_tab == "tab-tci":
-        # TCI 분석 탭: 온도 균열 지수 분석 및 시각화
-        if not (selected_rows and tbl_data):
-            return html.Div("콘크리트를 선택하세요.")
-        
-        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-        concrete_pk = row["concrete_pk"]
-        
-        # TCI 관련 파일 경로 확인
-        tci_html_path = f"source/tci_heatmap_risk_only.html"
-        tci_csv_path = f"source/tci_node_summary_fixed.csv"
-        
-        # TCI 파일 존재 여부 확인
-        tci_files_exist = os.path.exists(tci_html_path) and os.path.exists(tci_csv_path)
-        
-        if not tci_files_exist:
-            return html.Div([
-                html.Div([
-                    html.I(className="fas fa-exclamation-triangle fa-2x", style={"color": "#f59e0b", "marginBottom": "16px"}),
-                    html.H5("TCI 분석 파일이 없습니다", style={
-                        "color": "#374151",
-                        "fontWeight": "500",
-                        "lineHeight": "1.6",
-                        "margin": "0"
-                    }),
-                    html.P("TCI 분석을 실행하려면 먼저 수치해석을 완료해야 합니다.", style={
-                        "color": "#6b7280",
-                        "fontSize": "14px",
-                        "marginTop": "8px"
-                    })
-                ], style={
-                    "textAlign": "center",
-                    "padding": "60px 40px",
-                    "backgroundColor": "#f8fafc",
-                    "borderRadius": "12px",
-                    "border": "1px solid #e2e8f0",
-                    "marginTop": "60px"
-                })
-            ])
-        
-                # ───────────── TCI 인장강도 계산식 선택 및 결과 UI 추가 ─────────────
-        tci_ui = html.Div([
-            html.Div([
-                html.H6("🧮 인장강도(fct) 계산식", style={
-                    "fontWeight": "600",
-                    "color": "#374151",
-                    "marginBottom": "16px",
-                    "fontSize": "16px"
-                }),
-                dcc.RadioItems(
-                    id="fct-formula-type",
-                    options=[
-                        {"label": "CEB-FIP Model Code 1990", "value": "ceb"},
-                        {"label": "경험식 (KCI/KS)", "value": "exp"},
-                    ],
-                    value="ceb",
-                    labelStyle={
-                        "display": "block", 
-                        "marginRight": "16px",
-                        "padding": "8px 12px",
-                        "borderRadius": "8px",
-                        "marginBottom": "8px",
-                        "backgroundColor": "#f9fafb",
-                        "border": "1px solid #e5e7eb"
-                    },
-                    style={"marginBottom": "20px"}
-                ),
-                html.Div([
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Label("fct,28 (28일 인장강도, GPa) [1~100]", style={
-                                "fontWeight": "500",
-                                "color": "#374151",
-                                "marginBottom": "8px"
-                            }),
-                            dbc.Input(
-                                id="fct28-input", 
-                                type="number", 
-                                value=20, 
-                                placeholder="20", 
-                                min=1, 
-                                max=100,
-                                style={
-                                    "borderRadius": "8px",
-                                    "border": "1px solid #d1d5db",
-                                    "padding": "10px 12px"
-                                }
-                            ),
-                        ], md=4),
-                        html.Div(id="temp-ab-inputs-container"),
-                    ], className="g-3"),
-                    html.Div(id="temp-fct-formula-preview"),
-                ]),
 
-            ], style={
-                "padding": "24px",
-                "backgroundColor": "white",
-                "borderRadius": "12px",
-                "border": "1px solid #e5e7eb",
-                "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
-            })
-        ], style={"marginBottom": "24px"})
-        # ───────────── 기존 TCI 분석 개요/히트맵/요약 UI 아래에 삽입 ─────────────
-        return html.Div([
-            # TCI 인장강도 계산식 및 결과 UI
-            tci_ui,
-            
-            # 시간 슬라이더 및 노드별 응력 표 컨테이너
-            html.Div([
-                html.Div([
-                    html.H6("⏰ 시간별 TCI 분석", style={
-                        "fontWeight": "600",
-                        "color": "#374151",
-                        "marginBottom": "16px",
-                        "fontSize": "16px"
-                    }),
-                                            html.Div(id="temp-tci-time-slider-container", style={"marginBottom": "16px"}),
-                                            html.Div(id="temp-tci-table-container"),
-                ], style={
-                    "padding": "20px",
-                    "backgroundColor": "white",
-                    "borderRadius": "12px",
-                    "border": "1px solid #e5e7eb",
-                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
-                    "marginBottom": "20px"
-                })
-            ]),
-            
-            # 로지스틱 근사식 그래프
-            html.Div([
-                html.Div([
-                    html.H6("📈 균열발생확률 곡선", style={
-                        "fontWeight": "600",
-                        "color": "#374151",
-                        "marginBottom": "16px",
-                        "fontSize": "16px"
-                    }),
-                    html.Div([
-                        html.P("로지스틱 근사식: P(x) = 100/(1 + e^(6(x-0.6)))", style={
-                            "fontSize": "14px",
-                            "color": "#6b7280",
-                            "marginBottom": "12px",
-                            "fontStyle": "italic"
-                        }),
-                        dcc.Graph(
-                            id="tci-probability-curve",
-                            figure=create_probability_curve_figure(),
-                            style={"height": "50vh"},
-                            config={'displayModeBar': False}
-                        ),
-                    ]),
-                ], style={
-                    "padding": "20px",
-                    "backgroundColor": "white",
-                    "borderRadius": "12px",
-                    "border": "1px solid #e5e7eb",
-                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
-                })
-            ]),
-        ])
 
 # 선택 파일 zip 다운로드 콜백
 @callback(
@@ -3310,26 +2867,11 @@ def select_deselect_all_vtp(n_all, n_none, table_data):
         return []
     raise dash.exceptions.PreventUpdate
 
-# 수치해석 3D 뷰 콜백 (필드/프리셋/시간/단면)
-@callback(
-    Output("temp-analysis-3d-viewer", "children"),
-    Output("temp-analysis-current-file-label", "children"),
-    Output("slice-slider", "min"),
-    Output("slice-slider", "max"),
-    Input("analysis-field-dropdown", "value"),
-    Input("analysis-preset-dropdown", "value"),
-    Input("analysis-time-slider", "value"),
-    Input("slice-enable", "value"),
-    Input("slice-axis", "value"),
-    Input("slice-slider", "value"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
-    prevent_initial_call=True,
-)
-def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_axis, slice_slider, selected_rows, tbl_data):
-    import os
-    import vtk
-    from dash_vtk.utils import to_mesh_state
+# 수치해석 3D 뷰 콜백 (필드/프리셋/시간/단면) - 제거됨
+# def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_axis, slice_slider, selected_rows, tbl_data):
+#     import os
+#     import vtk
+#     from dash_vtk.utils import to_mesh_state
     
     slice_min, slice_max = 0.0, 1.0  # 기본값 미리 선언
     
@@ -3920,12 +3462,13 @@ def update_analysis_3d_view(field_name, preset, time_idx, slice_enable, slice_ax
         ]), "", slice_min, slice_max
 
 # 수치해석 단면 상세 컨트롤 표시/숨김 콜백
-@callback(
-    Output("slice-detail-controls", "style"),
-    Input("slice-enable", "value"),
-    prevent_initial_call=True,
-)
-def toggle_slice_detail_controls(slice_enable):
+# 수치해석 관련 콜백 - 제거됨
+# @callback(
+#     Output("slice-detail-controls", "style"),
+#     Input("slice-enable", "value"),
+#     prevent_initial_call=True,
+# )
+# def toggle_slice_detail_controls(slice_enable):
     if slice_enable and "on" in slice_enable:
         return {"display": "block", "marginTop": "16px"}
     else:
@@ -5071,18 +4614,19 @@ def validate_inputs(fct28, formula_type):
     return dash.no_update, dash.no_update, dash.no_update
 
 # 시간 슬라이더 및 표 콜백 추가
-@callback(
-    Output("temp-tci-time-slider-container", "children"),
-    Output("temp-tci-table-container", "children", allow_duplicate=True),
-    Input("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
-    Input("fct-formula-type", "value"),
-    Input("fct28-input", "value"),
-    Input("tab-content", "children"),
-    Input("tabs-main", "active_tab"),
-    prevent_initial_call=True
-)
-def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_content, active_tab):
+# TCI 분석 콜백 - 제거됨
+# @callback(
+#     Output("temp-tci-time-slider-container", "children"),
+#     Output("temp-tci-table-container", "children", allow_duplicate=True),
+#     Input("tbl-concrete", "selected_rows"),
+#     State("tbl-concrete", "data"),
+#     Input("fct-formula-type", "value"),
+#     Input("fct28-input", "value"),
+#     Input("tab-content", "children"),
+#     Input("tabs-main", "active_tab"),
+#     prevent_initial_call=True
+# )
+# def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_content, active_tab):
     import os, glob
     import numpy as np
     from dash import dash_table
@@ -5588,16 +5132,17 @@ def update_tci_time_and_table(selected_rows, tbl_data, formula_type, fct28, tab_
         return html.Div("데이터 파싱 오류"), html.Div(f"데이터 파싱 오류: {str(e)}")
 
 # TCI 슬라이더 값 변경을 처리하는 별도 콜백
-@callback(
-    Output("temp-tci-table-container", "children", allow_duplicate=True),
-    Input("temp-tci-time-slider", "value"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
-    State("fct-formula-type", "value"),
-    State("fct28-input", "value"),
-    prevent_initial_call=True
-)
-def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, formula_type, fct28):
+# TCI 테이블 업데이트 콜백 - 제거됨
+# @callback(
+#     Output("temp-tci-table-container", "children", allow_duplicate=True),
+#     Input("temp-tci-time-slider", "value"),
+#     State("tbl-concrete", "selected_rows"),
+#     State("tbl-concrete", "data"),
+#     State("fct-formula-type", "value"),
+#     State("fct28-input", "value"),
+#     prevent_initial_call=True
+# )
+# def update_tci_table_on_slider_change(slider_value, selected_rows, tbl_data, formula_type, fct28):
     """TCI 슬라이더 값이 변경될 때 표를 업데이트합니다."""
     import os, glob
     import numpy as np
