@@ -252,7 +252,7 @@ def _build_navbar():
         dbc.NavItem(dcc.Link("Sensor", href="/sensor", className="nav-link", id="nav-sensor")),
         dbc.NavItem(dcc.Link("Download", href="/download", className="nav-link", id="nav-download")),
         dbc.NavItem(html.A("Login", href="/login", className="nav-link", id="nav-login")),
-        dbc.NavItem(html.A("Logout", href="/logout", className="nav-link text-muted", id="nav-logout")),
+        dbc.NavItem(html.A("Logout", href="/logout", className="nav-link text-danger", id="nav-logout")),
     ]
 
     # 브랜드(좌측)
@@ -287,7 +287,7 @@ def _build_admin_navbar():
         dbc.NavItem(dcc.Link("Projects", href="/admin_projects", className="nav-link", id="admin-nav-projects")),
         dbc.NavItem(dcc.Link("Logs", href="/admin_logs", className="nav-link", id="admin-nav-logs")),
         dbc.NavItem(dcc.Link("Automation", href="/admin_automation", className="nav-link", id="admin-nav-automation")),
-        dbc.NavItem(html.A("Logout", href="/logout", className="nav-link text-muted")),
+        dbc.NavItem(html.A("Logout", href="/logout", className="nav-link text-danger")),
     ]
 
     # 브랜드(좌측)
@@ -395,11 +395,12 @@ def update_nav_active(pathname, search):
     
     # 기본 클래스 설정
     if is_home:
-        # 홈에서는 콘크리트, 센서, 다운로드 링크만 숨김
-        base_classes = ["nav-link", "nav-link d-none", "nav-link d-none", "nav-link d-none"]
+        # 홈에서는 홈, 콘크리트, 센서, 다운로드, 로그인 링크 숨김
+        base_classes = ["nav-link d-none", "nav-link d-none", "nav-link d-none", "nav-link d-none"]
+        login_logout_classes = ["nav-link d-none", "nav-link text-danger"]
     else:
         base_classes = ["nav-link"] * 4
-    login_logout_classes = ["nav-link"] * 2
+        login_logout_classes = ["nav-link", "nav-link text-danger"]
     # Active 클래스 추가
     if pathname == "/":
         base_classes[0] += " active"
