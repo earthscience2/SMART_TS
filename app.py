@@ -443,12 +443,14 @@ def update_navbar(pathname):
     [Output("nav-home", "className"),
      Output("nav-concrete", "className"),
      Output("nav-sensor", "className"),
+     Output("nav-analysis-dropdown", "className"),
      Output("nav-download", "className"),
      Output("nav-login", "className"),
      Output("nav-logout", "className"),
      Output("nav-home", "children"),
      Output("nav-concrete", "children"),
      Output("nav-sensor", "children"),
+     Output("nav-analysis-dropdown", "children"),
      Output("nav-download", "children")],
     [Input("url", "pathname"),
      Input("url", "search")]
@@ -464,19 +466,15 @@ def update_nav_active(pathname, search):
         except Exception:
             pass
     
-    # 홈 페이지인지 확인
     is_home = pathname == "/"
     
     # 기본 클래스 설정
     if is_home:
         # 홈에서는 모든 네비게이션 링크 숨김
-        base_classes = ["nav-link d-none"] * 4
+        base_classes = ["nav-link d-none"] * 5
     else:
-        # 다른 페이지에서는 네비게이션 링크 표시
-        base_classes = ["nav-link"] * 4
-    
+        base_classes = ["nav-link"] * 5
     login_logout_classes = ["nav-link"] * 2
-    
     # Active 클래스 추가
     if pathname == "/":
         base_classes[0] += " active"
@@ -484,26 +482,27 @@ def update_nav_active(pathname, search):
         base_classes[1] += " active"
     elif pathname.startswith("/sensor"):
         base_classes[2] += " active"
-    elif pathname.startswith("/download"):
+    elif pathname.startswith(("/temp", "/stress", "/tci", "/strength")):
         base_classes[3] += " active"
+    elif pathname.startswith("/download"):
+        base_classes[4] += " active"
     elif pathname.startswith("/login"):
         login_logout_classes[0] += " active"
-    
     # 네비게이션 링크 텍스트 및 아이콘 설정
     if project_pk and not is_home:
         nav_texts = [
             [html.Span("🏠", className="me-2"), "대쉬보드"],
             [html.Span("🧱", className="me-2"), "콘크리트 모델링"],
             [html.Span("📡", className="me-2"), "센서 위치 설정"],
+            [html.Span("📊", className="me-2"), "분석결과"],
             [html.Span("💾", className="me-2"), "다운로드"]
         ]
     else:
-        nav_texts = [""] * 4
-    
+        nav_texts = [""] * 5
     return (
-        base_classes[0], base_classes[1], base_classes[2], base_classes[3],
+        base_classes[0], base_classes[1], base_classes[2], base_classes[3], base_classes[4],
         login_logout_classes[0], login_logout_classes[1],
-        nav_texts[0], nav_texts[1], nav_texts[2], nav_texts[3]
+        nav_texts[0], nav_texts[1], nav_texts[2], nav_texts[3], nav_texts[4]
     )
 
 # 분석결과 드롭다운 가시성 및 스타일 제어
