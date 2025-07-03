@@ -244,7 +244,49 @@ def _build_navbar():
         dbc.NavItem(dcc.Link("", href="/", className="nav-link d-none", id="nav-home")),
         dbc.NavItem(dcc.Link("", href="/concrete", className="nav-link d-none", id="nav-concrete")),
         dbc.NavItem(dcc.Link("", href="/sensor", className="nav-link d-none", id="nav-sensor")),
-        dbc.NavItem(dcc.Link("", href="/project", className="nav-link d-none", id="nav-project")),
+        # 분석결과 드롭다운 메뉴
+        dbc.NavItem(
+            dbc.DropdownMenu(
+                children=[
+                    dbc.DropdownMenuItem(
+                        "🌡️ 온도분석", 
+                        href="/temp",
+                        id="nav-temp",
+                        style={"padding": "8px 16px", "fontSize": "14px", "fontWeight": "500"}
+                    ),
+                    dbc.DropdownMenuItem(
+                        "🔬 응력분석", 
+                        href="/stress",
+                        id="nav-stress",
+                        style={"padding": "8px 16px", "fontSize": "14px", "fontWeight": "500"}
+                    ),
+                    dbc.DropdownMenuItem(
+                        "⚠️ TCI분석", 
+                        href="/tci",
+                        id="nav-tci",
+                        style={"padding": "8px 16px", "fontSize": "14px", "fontWeight": "500"}
+                    ),
+                    dbc.DropdownMenuItem(
+                        "💪 강도분석", 
+                        href="/strength",
+                        id="nav-strength",
+                        style={"padding": "8px 16px", "fontSize": "14px", "fontWeight": "500"}
+                    ),
+                ],
+                nav=True,
+                label="📊 분석결과",
+                color="primary",
+                size="sm",
+                id="nav-analysis-dropdown",
+                style={
+                    "minWidth": "140px",
+                    "fontWeight": "600",
+                    "fontSize": "14px"
+                },
+                menu_variant="light",
+                align_end=True
+            )
+        ),
         dbc.NavItem(dcc.Link("", href="/download", className="nav-link d-none", id="nav-download")),
         # Login 버튼 (숨김 처리용)
         dbc.NavItem(dcc.Link("Login", href="/login", className="nav-link", id="nav-login")),
@@ -401,14 +443,12 @@ def update_navbar(pathname):
     [Output("nav-home", "className"),
      Output("nav-concrete", "className"),
      Output("nav-sensor", "className"),
-     Output("nav-project", "className"),
      Output("nav-download", "className"),
      Output("nav-login", "className"),
      Output("nav-logout", "className"),
      Output("nav-home", "children"),
      Output("nav-concrete", "children"),
      Output("nav-sensor", "children"),
-     Output("nav-project", "children"),
      Output("nav-download", "children")],
     [Input("url", "pathname"),
      Input("url", "search")]
@@ -430,10 +470,10 @@ def update_nav_active(pathname, search):
     # 기본 클래스 설정
     if is_home:
         # 홈에서는 모든 네비게이션 링크 숨김
-        base_classes = ["nav-link d-none"] * 5
+        base_classes = ["nav-link d-none"] * 4
     else:
         # 다른 페이지에서는 네비게이션 링크 표시
-        base_classes = ["nav-link"] * 5
+        base_classes = ["nav-link"] * 4
     
     login_logout_classes = ["nav-link"] * 2
     
@@ -444,10 +484,8 @@ def update_nav_active(pathname, search):
         base_classes[1] += " active"
     elif pathname.startswith("/sensor"):
         base_classes[2] += " active"
-    elif pathname.startswith("/project"):
-        base_classes[3] += " active"
     elif pathname.startswith("/download"):
-        base_classes[4] += " active"
+        base_classes[3] += " active"
     elif pathname.startswith("/login"):
         login_logout_classes[0] += " active"
     
@@ -457,16 +495,15 @@ def update_nav_active(pathname, search):
             [html.Span("🏠", className="me-2"), "대쉬보드"],
             [html.Span("🧱", className="me-2"), "콘크리트 모델링"],
             [html.Span("📡", className="me-2"), "센서 위치 설정"],
-            [html.Span("📊", className="me-2"), "분석결과"],
             [html.Span("💾", className="me-2"), "다운로드"]
         ]
     else:
-        nav_texts = [""] * 5
+        nav_texts = [""] * 4
     
     return (
-        base_classes[0], base_classes[1], base_classes[2], base_classes[3], base_classes[4],
+        base_classes[0], base_classes[1], base_classes[2], base_classes[3],
         login_logout_classes[0], login_logout_classes[1],
-        nav_texts[0], nav_texts[1], nav_texts[2], nav_texts[3], nav_texts[4]
+        nav_texts[0], nav_texts[1], nav_texts[2], nav_texts[3]
     )
 
 # 관리자 네비게이션 바 active 클래스 동적 적용 콜백
@@ -499,7 +536,6 @@ def update_admin_nav_active(pathname):
     [Output("nav-home", "href"),
      Output("nav-concrete", "href"),
      Output("nav-sensor", "href"),
-     Output("nav-project", "href"),
      Output("nav-download", "href")],
     [Input("url", "pathname"),
      Input("url", "search")]
@@ -521,11 +557,41 @@ def update_nav_links(pathname, search):
             "/",
             f"/concrete?page={project_pk}",
             f"/sensor?page={project_pk}",
-            f"/project?page={project_pk}",
             f"/download?page={project_pk}"
         )
     else:
-        return "/", "/concrete", "/sensor", "/project", "/download"
+        return "/", "/concrete", "/sensor", "/download"
+
+# 분석결과 드롭다운 메뉴 href 동적 업데이트
+@app.callback(
+    [Output("nav-temp", "href"),
+     Output("nav-stress", "href"),
+     Output("nav-tci", "href"),
+     Output("nav-strength", "href")],
+    [Input("url", "pathname"),
+     Input("url", "search")]
+)
+def update_analysis_dropdown_links(pathname, search):
+    # 프로젝트 ID 추출
+    project_pk = None
+    if search:
+        try:
+            from urllib.parse import parse_qs
+            params = parse_qs(search.lstrip('?'))
+            project_pk = params.get('page', [None])[0]
+        except Exception:
+            pass
+    
+    # 분석 페이지 링크
+    if project_pk and pathname != "/":
+        return (
+            f"/temp?page={project_pk}",
+            f"/stress?page={project_pk}",
+            f"/tci?page={project_pk}",
+            f"/strength?page={project_pk}"
+        )
+    else:
+        return "/temp", "/stress", "/tci", "/strength"
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=23022)
