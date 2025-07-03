@@ -6117,7 +6117,7 @@ def update_tci_table_only(time_value, selected_rows, tbl_data, formula_type, fct
     State("tbl-concrete", "data"),
     State("fct-formula-type", "value"),
     State("fct28-input", "value"),
-    prevent_initial_call=False
+    prevent_initial_call=True
 )
 def update_tci_3d_isosurface(display_type, direction_filter, filter_value, time_value, selected_rows, tbl_data, formula_type, fct28):
     """3D TCI 등온면을 생성합니다."""
