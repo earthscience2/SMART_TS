@@ -209,47 +209,24 @@ app.index_string = '''
             .nav-link {
                 padding: 8px 15px !important;
                 margin: 0 5px;
-                border-radius: 8px;
-                transition: all 0.3s ease;
-                font-weight: 600;
-                position: relative;
-                overflow: hidden;
-            }
-            
-            .nav-link::before {
-                content: '';
-                position: absolute;
-                top: 0;
-                left: -100%;
-                width: 100%;
-                height: 100%;
-                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-                transition: left 0.5s;
-            }
-            
-            .nav-link:hover::before {
-                left: 100%;
+                border-radius: 4px;
+                transition: all 0.2s ease;
+                font-weight: 500;
             }
             
             .nav-link:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                background-color: #f8f9fa;
+                color: #495057;
             }
             
             .nav-link.active {
-                background: linear-gradient(135deg, #ffc107 0%, #ffca2c 100%) !important;
-                color: #000 !important;
-                box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
-                transform: translateY(-1px);
+                background-color: #e9ecef;
+                color: #495057;
+                font-weight: 600;
             }
             
             .navbar-brand {
-                font-size: 1.5rem;
-                text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-            }
-            
-            .navbar {
-                box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+                font-size: 1.25rem;
             }
         </style>
     </head>
@@ -272,38 +249,38 @@ def _build_navbar():
     # 홈화면에서는 메뉴 항목들을 숨김
     if current_path == "/":
         nav_links = [
-            dbc.NavItem(html.A("Logout", href="/logout", className="nav-link text-danger fw-bold")),
+            dbc.NavItem(html.A("Logout", href="/logout", className="nav-link text-muted")),
         ]
     else:
         # 다른 페이지에서는 모든 메뉴 항목 표시
         nav_links = [
-            dbc.NavItem(dcc.Link("🏠 Home", href="/", className="nav-link fw-bold")),
-            dbc.NavItem(dcc.Link("🧱 Concrete", href="/concrete", className="nav-link fw-bold")),
-            dbc.NavItem(dcc.Link("📡 Sensor", href="/sensor", className="nav-link fw-bold")),
-            dbc.NavItem(dcc.Link("📊 Download", href="/download", className="nav-link fw-bold")),
-            dbc.NavItem(html.A("🚪 Logout", href="/logout", className="nav-link text-danger fw-bold")),
+            dbc.NavItem(dcc.Link("Home", href="/", className="nav-link")),
+            dbc.NavItem(dcc.Link("Concrete", href="/concrete", className="nav-link")),
+            dbc.NavItem(dcc.Link("Sensor", href="/sensor", className="nav-link")),
+            dbc.NavItem(dcc.Link("Download", href="/download", className="nav-link")),
+            dbc.NavItem(html.A("Logout", href="/logout", className="nav-link text-muted")),
         ]
 
     # 브랜드(좌측)
     if admin_user:
-        brand = f"🏗️ Concrete MONITOR | {admin_user} (admin)"
+        brand = f"Concrete MONITOR | {admin_user} (admin)"
     elif user_id:
-        brand = f"🏗️ Concrete MONITOR | {user_id}"
+        brand = f"Concrete MONITOR | {user_id}"
     else:
-        brand = "🏗️ Concrete MONITOR"
+        brand = "Concrete MONITOR"
 
     return dbc.Navbar(
         dbc.Container([
-            dbc.NavbarBrand(brand, href="/", className="fw-bold text-primary"),
+            dbc.NavbarBrand(brand, href="/", className="fw-bold"),
             dbc.Nav(nav_links, navbar=True, className="ms-auto"),
         ], fluid=True),
-        color="primary",
-        dark=True,
-        className="mb-4 shadow",
+        color="light",
+        dark=False,
+        className="mb-4",
         style={
-            "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            "borderBottom": "3px solid #ffc107",
-            "padding": "0.75rem 1rem"
+            "backgroundColor": "#ffffff",
+            "borderBottom": "1px solid #e9ecef",
+            "padding": "0.5rem 1rem"
         }
     )
 
@@ -312,28 +289,28 @@ def _build_admin_navbar():
 
     # 관리자 네비게이션 바: 브랜드 + 관리자 메뉴
     admin_nav_links = [
-        dbc.NavItem(dcc.Link("📊 Dashboard", href="/admin_dashboard", className="nav-link fw-bold", id="admin-nav-dashboard")),
-        dbc.NavItem(dcc.Link("📁 Projects", href="/admin_projects", className="nav-link fw-bold", id="admin-nav-projects")),
-        dbc.NavItem(dcc.Link("📋 Logs", href="/admin_logs", className="nav-link fw-bold", id="admin-nav-logs")),
-        dbc.NavItem(dcc.Link("⚙️ Automation", href="/admin_automation", className="nav-link fw-bold", id="admin-nav-automation")),
-        dbc.NavItem(html.A("🚪 Logout", href="/logout", className="nav-link text-danger fw-bold")),
+        dbc.NavItem(dcc.Link("Dashboard", href="/admin_dashboard", className="nav-link", id="admin-nav-dashboard")),
+        dbc.NavItem(dcc.Link("Projects", href="/admin_projects", className="nav-link", id="admin-nav-projects")),
+        dbc.NavItem(dcc.Link("Logs", href="/admin_logs", className="nav-link", id="admin-nav-logs")),
+        dbc.NavItem(dcc.Link("Automation", href="/admin_automation", className="nav-link", id="admin-nav-automation")),
+        dbc.NavItem(html.A("Logout", href="/logout", className="nav-link text-muted")),
     ]
 
     # 브랜드(좌측)
-    brand = f"👑 Concrete MONITOR | {admin_user} (admin)"
+    brand = f"Concrete MONITOR | {admin_user} (admin)"
 
     return dbc.Navbar(
         dbc.Container([
-            dbc.NavbarBrand(brand, href="/admin_dashboard", className="fw-bold text-warning"),
+            dbc.NavbarBrand(brand, href="/admin_dashboard", className="fw-bold"),
             dbc.Nav(admin_nav_links, navbar=True, className="admin-navbar ms-auto"),
         ], fluid=True),
-        color="dark",
-        dark=True,
-        className="mb-4 shadow",
+        color="light",
+        dark=False,
+        className="mb-4",
         style={
-            "background": "linear-gradient(135deg, #2c3e50 0%, #34495e 100%)",
-            "borderBottom": "3px solid #f39c12",
-            "padding": "0.75rem 1rem"
+            "backgroundColor": "#f8f9fa",
+            "borderBottom": "1px solid #dee2e6",
+            "padding": "0.5rem 1rem"
         }
     )
 
@@ -382,8 +359,8 @@ def handle_url_redirects(pathname):
 )
 def update_navbar(pathname):
     """URL에 따라 적절한 네비게이션 바를 반환합니다."""
-    # 로그인 페이지에서는 네비게이션 바 숨김
-    if pathname and pathname.startswith("/login"):
+    # 로그인 페이지나 홈화면에서는 네비게이션 바 숨김
+    if pathname and (pathname.startswith("/login") or pathname == "/"):
         return None
     
     # 관리자 페이지 접근 체크
