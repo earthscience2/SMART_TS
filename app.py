@@ -246,9 +246,10 @@ def _build_navbar():
     admin_user = flask_request.cookies.get("admin_user")
     current_path = flask_request.path if flask_request else "/"
 
-    # 홈화면에서는 메뉴 항목들을 숨김
+    # 홈화면에서는 콘크리트~다운로드 메뉴만 숨김
     if current_path == "/":
         nav_links = [
+            dbc.NavItem(dcc.Link("Home", href="/", className="nav-link")),
             dbc.NavItem(html.A("Logout", href="/logout", className="nav-link text-muted")),
         ]
     else:
@@ -359,8 +360,8 @@ def handle_url_redirects(pathname):
 )
 def update_navbar(pathname):
     """URL에 따라 적절한 네비게이션 바를 반환합니다."""
-    # 로그인 페이지나 홈화면에서는 네비게이션 바 숨김
-    if pathname and (pathname.startswith("/login") or pathname == "/"):
+    # 로그인 페이지에서는 네비게이션 바 숨김
+    if pathname and pathname.startswith("/login"):
         return None
     
     # 관리자 페이지 접근 체크
