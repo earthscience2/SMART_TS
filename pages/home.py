@@ -237,7 +237,8 @@ def layout():
                                     "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
                                     "borderRadius": "6px",
                                     "fontWeight": "500",
-                                    "textDecoration": "none"
+                                    "textDecoration": "none",
+                                    "textAlign": "center"
                                 }
                             ),
                             dcc.Link(
@@ -248,7 +249,8 @@ def layout():
                                     "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
                                     "borderRadius": "6px",
                                     "fontWeight": "500",
-                                    "textDecoration": "none"
+                                    "textDecoration": "none",
+                                    "textAlign": "center"
                                 }
                             ),
                             dbc.DropdownMenu(
@@ -304,7 +306,8 @@ def layout():
                                     "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
                                     "borderRadius": "6px",
                                     "fontWeight": "500",
-                                    "textDecoration": "none"
+                                    "textDecoration": "none",
+                                    "textAlign": "center"
                                 }
                             )
                         ], className="d-flex flex-wrap gap-1")
