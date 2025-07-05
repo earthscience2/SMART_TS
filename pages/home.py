@@ -338,10 +338,11 @@ def layout():
                                     "justifyContent": "center",
                                     "padding": "8px 18px",
                                     "height": "40px",
-                                    "fontSize": "13px"
+                                    "fontSize": "13px",
+                                    "flexShrink": "0"
                                 }
                             )
-                        ], className="d-flex flex-wrap gap-1 align-items-center")
+                        ], className="d-flex flex-wrap gap-3 align-items-center")
                     ], className="d-flex justify-content-between align-items-center mb-3"),
                     
                     # 콘텐츠 그리드
