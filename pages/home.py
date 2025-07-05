@@ -242,7 +242,7 @@ def layout():
                                             style={
                                                 "textDecoration": "none",
                                                 "borderRadius": "6px",
-                                                "padding": "8px 20px",
+                                                "padding": "8px 24px",
                                                 "height": "40px",
                                                 "display": "flex",
                                                 "alignItems": "center",
@@ -263,7 +263,7 @@ def layout():
                                             style={
                                                 "textDecoration": "none",
                                                 "borderRadius": "6px",
-                                                "padding": "8px 20px",
+                                                "padding": "8px 24px",
                                                 "height": "40px",
                                                 "display": "flex",
                                                 "alignItems": "center",
@@ -284,7 +284,7 @@ def layout():
                                             style={
                                                 "textDecoration": "none",
                                                 "borderRadius": "6px",
-                                                "padding": "8px 20px",
+                                                "padding": "8px 24px",
                                                 "height": "40px",
                                                 "display": "flex",
                                                 "alignItems": "center",
@@ -305,7 +305,7 @@ def layout():
                                             style={
                                                 "textDecoration": "none",
                                                 "borderRadius": "6px",
-                                                "padding": "8px 20px",
+                                                "padding": "8px 24px",
                                                 "height": "40px",
                                                 "display": "flex",
                                                 "alignItems": "center",
