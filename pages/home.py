@@ -230,23 +230,22 @@ def layout():
                         html.Div([
                             # 분석 결과 드롭다운
                             html.Div([
-                                html.H6("📊 분석 결과", className="mb-3 text-secondary fw-bold text-center"),
+                                html.H6("📊 분석 결과", className="mb-2 text-secondary fw-bold text-center"),
                                 dbc.Row([
                                     dbc.Col([
                                         dcc.Link(
                                             html.Div([
-                                                html.Div("🌡️", className="text-center mb-1", style={"fontSize": "20px"}),
-                                                html.Div("온도분석", className="text-center", style={"fontSize": "12px", "fontWeight": "500"})
+                                                html.Span("🌡️", className="me-2", style={"fontSize": "16px"}),
+                                                html.Span("온도분석", style={"fontSize": "13px", "fontWeight": "500"})
                                             ]),
                                             href=f"/temp?page={proj_pk}",
                                             className="btn btn-outline-primary btn-sm w-100",
                                             style={
                                                 "textDecoration": "none",
-                                                "borderRadius": "8px",
-                                                "padding": "12px 8px",
-                                                "height": "60px",
+                                                "borderRadius": "6px",
+                                                "padding": "8px 12px",
+                                                "height": "40px",
                                                 "display": "flex",
-                                                "flexDirection": "column",
                                                 "alignItems": "center",
                                                 "justifyContent": "center",
                                                 "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
@@ -257,18 +256,17 @@ def layout():
                                     dbc.Col([
                                         dcc.Link(
                                             html.Div([
-                                                html.Div("🔬", className="text-center mb-1", style={"fontSize": "20px"}),
-                                                html.Div("응력분석", className="text-center", style={"fontSize": "12px", "fontWeight": "500"})
+                                                html.Span("🔬", className="me-2", style={"fontSize": "16px"}),
+                                                html.Span("응력분석", style={"fontSize": "13px", "fontWeight": "500"})
                                             ]),
                                             href=f"/stress?page={proj_pk}",
                                             className="btn btn-outline-warning btn-sm w-100",
                                             style={
                                                 "textDecoration": "none",
-                                                "borderRadius": "8px",
-                                                "padding": "12px 8px",
-                                                "height": "60px",
+                                                "borderRadius": "6px",
+                                                "padding": "8px 12px",
+                                                "height": "40px",
                                                 "display": "flex",
-                                                "flexDirection": "column",
                                                 "alignItems": "center",
                                                 "justifyContent": "center",
                                                 "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
@@ -279,18 +277,17 @@ def layout():
                                     dbc.Col([
                                         dcc.Link(
                                             html.Div([
-                                                html.Div("⚠️", className="text-center mb-1", style={"fontSize": "20px"}),
-                                                html.Div("TCI분석", className="text-center", style={"fontSize": "12px", "fontWeight": "500"})
+                                                html.Span("⚠️", className="me-2", style={"fontSize": "16px"}),
+                                                html.Span("TCI분석", style={"fontSize": "13px", "fontWeight": "500"})
                                             ]),
                                             href=f"/tci?page={proj_pk}",
                                             className="btn btn-outline-danger btn-sm w-100",
                                             style={
                                                 "textDecoration": "none",
-                                                "borderRadius": "8px",
-                                                "padding": "12px 8px",
-                                                "height": "60px",
+                                                "borderRadius": "6px",
+                                                "padding": "8px 12px",
+                                                "height": "40px",
                                                 "display": "flex",
-                                                "flexDirection": "column",
                                                 "alignItems": "center",
                                                 "justifyContent": "center",
                                                 "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
@@ -301,18 +298,17 @@ def layout():
                                     dbc.Col([
                                         dcc.Link(
                                             html.Div([
-                                                html.Div("💪", className="text-center mb-1", style={"fontSize": "20px"}),
-                                                html.Div("강도분석", className="text-center", style={"fontSize": "12px", "fontWeight": "500"})
+                                                html.Span("💪", className="me-2", style={"fontSize": "16px"}),
+                                                html.Span("강도분석", style={"fontSize": "13px", "fontWeight": "500"})
                                             ]),
                                             href=f"/strength?page={proj_pk}",
                                             className="btn btn-outline-success btn-sm w-100",
                                             style={
                                                 "textDecoration": "none",
-                                                "borderRadius": "8px",
-                                                "padding": "12px 8px",
-                                                "height": "60px",
+                                                "borderRadius": "6px",
+                                                "padding": "8px 12px",
+                                                "height": "40px",
                                                 "display": "flex",
-                                                "flexDirection": "column",
                                                 "alignItems": "center",
                                                 "justifyContent": "center",
                                                 "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
@@ -321,7 +317,7 @@ def layout():
                                         )
                                     ], width=3)
                                 ], className="g-2")
-                            ], className="bg-light p-3 rounded border", style={"borderColor": "#e9ecef"}),
+                            ], className="bg-light p-2 rounded border", style={"borderColor": "#e9ecef"}),
                             dcc.Link(
                                 "해석 파일 다운로드",
                                 href=f"/download?page={proj_pk}",
@@ -338,7 +334,7 @@ def layout():
                                 }
                             )
                         ], className="d-flex flex-wrap gap-1")
-                    ], className="d-flex justify-content-between align-items-center mb-4"),
+                    ], className="d-flex justify-content-between align-items-center mb-3"),
                     
                     # 콘텐츠 그리드
                     dbc.Row([
@@ -356,7 +352,7 @@ def layout():
                                             {"name": "센서", "id": "sensor_count", "type": "text"},
                                             {"name": "분석", "id": "status", "type": "text"},
                                         ],
-                                        style_table={"height": "200px", "overflowY": "auto"},
+                                        style_table={"height": "150px", "overflowY": "auto"},
                                         style_cell={
                                             "textAlign": "center",
                                             "fontSize": "0.8rem",
@@ -404,8 +400,8 @@ def layout():
                                             }
                                         ]
                                     ) if concrete_data else 
-                                    html.P("콘크리트가 없습니다", className="text-muted small text-center", style={"paddingTop": "75px"})
-                                ], style={"height": "200px"}),
+                                    html.P("콘크리트가 없습니다", className="text-muted small text-center", style={"paddingTop": "50px"})
+                                ], style={"height": "150px"}),
                                 html.Div([
                                     dcc.Link(
                                         "콘크리트 모델링 추가/수정",
@@ -455,7 +451,7 @@ def layout():
                                             {"name": "채널", "id": "channel", "type": "text"},
                                             {"name": "데이터", "id": "status", "type": "text"},
                                         ],
-                                        style_table={"height": "200px", "overflowY": "auto"},
+                                        style_table={"height": "150px", "overflowY": "auto"},
                                         style_cell={
                                             "textAlign": "center",
                                             "fontSize": "0.8rem",
@@ -523,8 +519,8 @@ def layout():
                                             }
                                         ]
                                     ) if sensor_data else 
-                                    html.P("센서가 없습니다", className="text-muted small text-center", style={"paddingTop": "75px"})
-                                ], style={"height": "200px"}),
+                                    html.P("센서가 없습니다", className="text-muted small text-center", style={"paddingTop": "50px"})
+                                ], style={"height": "150px"}),
                                 html.Div([
                                     dcc.Link(
                                         "센서 데이터 확인",
@@ -546,7 +542,7 @@ def layout():
                             ], className="bg-light p-3 rounded")
                         ], md=4)
                     ])
-                ], className="mb-5 p-4 bg-white rounded shadow-sm border", 
+                ], className="mb-4 p-3 bg-white rounded shadow-sm border", 
                    style={"transition": "all 0.2s ease"})
             )
 
