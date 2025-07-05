@@ -360,7 +360,7 @@ def layout():
                                             {"name": "센서", "id": "sensor_count", "type": "text"},
                                             {"name": "분석", "id": "status", "type": "text"},
                                         ],
-                                        style_table={"height": "150px", "overflowY": "auto"},
+                                        style_table={"height": "180px", "overflowY": "auto"},
                                         style_cell={
                                             "textAlign": "center",
                                             "fontSize": "0.8rem",
@@ -459,7 +459,7 @@ def layout():
                                             {"name": "채널", "id": "channel", "type": "text"},
                                             {"name": "데이터", "id": "status", "type": "text"},
                                         ],
-                                        style_table={"height": "150px", "overflowY": "auto"},
+                                        style_table={"height": "180px", "overflowY": "auto"},
                                         style_cell={
                                             "textAlign": "center",
                                             "fontSize": "0.8rem",
