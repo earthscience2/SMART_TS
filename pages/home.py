@@ -486,7 +486,7 @@ def layout():
                                     dcc.Link(
                                         "센서 확인",
                                         href=f"/sensor?page={proj_pk}",
-                                        className="btn btn-outline-primary btn-sm w-100 mt-2",
+                                        className="btn btn-outline-danger btn-sm mt-2",
                                         style={
                                             "fontSize": "12px",
                                             "fontWeight": "500",
@@ -494,10 +494,11 @@ def layout():
                                             "textAlign": "center",
                                             "display": "flex",
                                             "alignItems": "center",
-                                            "justifyContent": "center"
+                                            "justifyContent": "center",
+                                            "width": "40%"
                                         }
                                     )
-                                ], className="mt-2")
+                                ], className="mt-2 d-flex justify-content-center")
                             ], className="bg-light p-3 rounded")
                         ], md=4)
                     ])
