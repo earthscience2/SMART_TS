@@ -45,4 +45,27 @@
 .user-navbar .dropdown-item:hover {
     background: #ffe066 !important;
     color: #111 !important;
+}
+
+/* 분석결과 드롭다운 초록색 강제 적용 */
+.dropdown-toggle.btn-success,
+.btn-success.dropdown-toggle {
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+    color: white !important;
+}
+
+.dropdown-toggle.btn-success:hover,
+.btn-success.dropdown-toggle:hover {
+    background-color: #218838 !important;
+    border-color: #1e7e34 !important;
+    color: white !important;
+}
+
+.dropdown-toggle.btn-success:focus,
+.btn-success.dropdown-toggle:focus {
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+    color: white !important;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25) !important;
 } 

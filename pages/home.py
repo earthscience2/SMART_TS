@@ -259,53 +259,59 @@ def layout():
                                     "justifyContent": "center"
                                 }
                             ),
-                            dbc.DropdownMenu(
-                                children=[
-                                    dbc.DropdownMenuItem(
-                                        "온도분석", 
-                                        href=f"/temp?page={proj_pk}",
-                                        style={"padding": "8px 12px", "fontSize": "14px", "fontWeight": "500", "textAlign": "center"}
-                                    ),
-                                    dbc.DropdownMenuItem(
-                                        "응력분석", 
-                                        href=f"/stress?page={proj_pk}",
-                                        style={"padding": "8px 12px", "fontSize": "14px", "fontWeight": "500", "textAlign": "center"}
-                                    ),
-                                    dbc.DropdownMenuItem(
-                                        "TCI분석", 
-                                        href=f"/tci?page={proj_pk}",
-                                        style={"padding": "8px 12px", "fontSize": "14px", "fontWeight": "500", "textAlign": "center"}
-                                    ),
-                                    dbc.DropdownMenuItem(
-                                        "강도분석", 
-                                        href=f"/strength?page={proj_pk}",
-                                        style={"padding": "8px 12px", "fontSize": "14px", "fontWeight": "500", "textAlign": "center"}
-                                    ),
-                                ],
-                                nav=True,
-                                in_navbar=True,
-                                label="분석결과",
-                                color="success",
-                                size="sm",
-                                className="me-2 btn-success",
-                                style={
-                                    "boxShadow": "0 4px 6px rgba(0,0,0,0.1)",
-                                    "borderRadius": "8px",
-                                    "border": "1px solid #28a745",
-                                    "backgroundColor": "#28a745 !important",
-                                    "borderColor": "#28a745 !important",
-                                    "minWidth": "140px",
-                                    "padding": "0 2px",
-                                    "fontWeight": "600",
-                                    "fontSize": "14px",
-                                    "display": "flex",
-                                    "alignItems": "center",
-                                    "justifyContent": "center",
-                                    "textAlign": "center"
-                                },
-                                menu_variant="light",
-                                align_end=True
-                            ),
+                            html.Div([
+                                dbc.DropdownMenu(
+                                    children=[
+                                        dbc.DropdownMenuItem(
+                                            "온도분석", 
+                                            href=f"/temp?page={proj_pk}",
+                                            style={"padding": "8px 12px", "fontSize": "14px", "fontWeight": "500", "textAlign": "center"}
+                                        ),
+                                        dbc.DropdownMenuItem(
+                                            "응력분석", 
+                                            href=f"/stress?page={proj_pk}",
+                                            style={"padding": "8px 12px", "fontSize": "14px", "fontWeight": "500", "textAlign": "center"}
+                                        ),
+                                        dbc.DropdownMenuItem(
+                                            "TCI분석", 
+                                            href=f"/tci?page={proj_pk}",
+                                            style={"padding": "8px 12px", "fontSize": "14px", "fontWeight": "500", "textAlign": "center"}
+                                        ),
+                                        dbc.DropdownMenuItem(
+                                            "강도분석", 
+                                            href=f"/strength?page={proj_pk}",
+                                            style={"padding": "8px 12px", "fontSize": "14px", "fontWeight": "500", "textAlign": "center"}
+                                        ),
+                                    ],
+                                    nav=True,
+                                    in_navbar=True,
+                                    label="분석결과",
+                                    color="success",
+                                    size="sm",
+                                    className="me-2 btn-success",
+                                    style={
+                                        "boxShadow": "0 4px 6px rgba(0,0,0,0.1)",
+                                        "borderRadius": "8px",
+                                        "border": "1px solid #28a745",
+                                        "backgroundColor": "#28a745 !important",
+                                        "borderColor": "#28a745 !important",
+                                        "minWidth": "140px",
+                                        "padding": "0 2px",
+                                        "fontWeight": "600",
+                                        "fontSize": "14px",
+                                        "display": "flex",
+                                        "alignItems": "center",
+                                        "justifyContent": "center",
+                                        "textAlign": "center"
+                                    },
+                                    menu_variant="light",
+                                    align_end=True
+                                )
+                            ], style={
+                                "backgroundColor": "#28a745",
+                                "borderRadius": "8px",
+                                "border": "1px solid #28a745"
+                            }),
                             dcc.Link(
                                 "데이터 다운로드 →",
                                 href=f"/download?page={proj_pk}",
