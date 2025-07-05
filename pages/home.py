@@ -232,7 +232,7 @@ def layout():
                             dcc.Link(
                                 "온도분석",
                                 href=f"/temp?page={proj_pk}",
-                                className="btn btn-primary btn-sm me-2 text-center",
+                                className="btn btn-dark btn-sm me-2 text-center",
                                 style={
                                     "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
                                     "borderRadius": "6px",
@@ -247,7 +247,7 @@ def layout():
                             dcc.Link(
                                 "응력분석",
                                 href=f"/stress?page={proj_pk}",
-                                className="btn btn-info btn-sm me-2 text-center",
+                                className="btn btn-dark btn-sm me-2 text-center",
                                 style={
                                     "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
                                     "borderRadius": "6px",
@@ -262,7 +262,7 @@ def layout():
                             dcc.Link(
                                 "TCI분석",
                                 href=f"/tci?page={proj_pk}",
-                                className="btn btn-secondary btn-sm me-2 text-center",
+                                className="btn btn-dark btn-sm me-2 text-center",
                                 style={
                                     "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
                                     "borderRadius": "6px",

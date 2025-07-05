@@ -96,9 +96,39 @@
     font-weight: 600 !important;
     border-radius: 6px !important;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+    text-align: center !important;
+    line-height: 1 !important;
+    vertical-align: middle !important;
 }
 
 .nav-item .text-decoration-none .btn-danger:hover {
     transform: translateY(-1px) !important;
     box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+}
+
+/* 로그아웃 버튼 텍스트 중앙 정렬 강제 적용 */
+.nav-item .text-decoration-none .btn-danger,
+.nav-item .text-decoration-none .btn-danger * {
+    text-align: center !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* 로그아웃 버튼 텍스트 중앙 정렬 최종 강제 */
+.btn-danger.text-center {
+    text-align: center !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-decoration: none !important;
+}
+
+.btn-danger.text-center:hover {
+    text-align: center !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 } 
