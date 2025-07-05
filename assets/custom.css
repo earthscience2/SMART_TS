@@ -57,8 +57,8 @@
 
 .dropdown-toggle.btn-success:hover,
 .btn-success.dropdown-toggle:hover {
-    background-color: #218838 !important;
-    border-color: #1e7e34 !important;
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
     color: white !important;
 }
 
@@ -68,4 +68,19 @@
     border-color: #28a745 !important;
     color: white !important;
     box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25) !important;
+}
+
+/* 로그아웃 버튼 호버 범위 조정 */
+.nav-item .text-decoration-none {
+    display: inline-block !important;
+    text-decoration: none !important;
+}
+
+.nav-item .text-decoration-none:hover {
+    text-decoration: none !important;
+}
+
+.nav-item .text-decoration-none .btn {
+    display: inline-block !important;
+    text-decoration: none !important;
 } 

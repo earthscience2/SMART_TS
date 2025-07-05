@@ -253,7 +253,7 @@ def _build_navbar():
         dbc.NavItem(dcc.Link("Sensor", href="/sensor", className="nav-link", id="nav-sensor")),
         dbc.NavItem(dcc.Link("Download", href="/download", className="nav-link", id="nav-download")),
         dbc.NavItem(html.A("Login", href="/login", className="nav-link", id="nav-login")),
-        dbc.NavItem(html.A(dbc.Button("Logout", color="danger", size="sm"), href="/logout", className="text-decoration-none", id="nav-logout")),
+        dbc.NavItem(dcc.Link(dbc.Button("Logout", color="danger", size="sm"), href="/logout", className="text-decoration-none", id="nav-logout")),
     ]
 
     # 브랜드(좌측) - 사용자 이름 부분을 강조색으로
@@ -295,7 +295,7 @@ def _build_admin_navbar():
         dbc.NavItem(dcc.Link("Projects", href="/admin_projects", className="nav-link", id="admin-nav-projects")),
         dbc.NavItem(dcc.Link("Logs", href="/admin_logs", className="nav-link", id="admin-nav-logs")),
         dbc.NavItem(dcc.Link("Automation", href="/admin_automation", className="nav-link", id="admin-nav-automation")),
-        dbc.NavItem(html.A(dbc.Button("Logout", color="danger", size="sm"), href="/logout", className="text-decoration-none")),
+        dbc.NavItem(dcc.Link(dbc.Button("Logout", color="danger", size="sm"), href="/logout", className="text-decoration-none")),
     ]
 
     # 브랜드(좌측) - 관리자 이름 부분을 강조색으로
