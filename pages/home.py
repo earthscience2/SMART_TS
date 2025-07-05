@@ -251,7 +251,7 @@ def layout():
                                                 "transition": "all 0.2s ease"
                                             }
                                         )
-                                    ], width=3),
+                                    ], width=4),
                                     dbc.Col([
                                         dcc.Link(
                                             html.Div([
@@ -272,7 +272,7 @@ def layout():
                                                 "transition": "all 0.2s ease"
                                             }
                                         )
-                                    ], width=3),
+                                    ], width=4),
                                     dbc.Col([
                                         dcc.Link(
                                             html.Div([
@@ -293,7 +293,7 @@ def layout():
                                                 "transition": "all 0.2s ease"
                                             }
                                         )
-                                    ], width=3),
+                                    ], width=4),
                                     dbc.Col([
                                         dcc.Link(
                                             html.Div([
@@ -314,7 +314,7 @@ def layout():
                                                 "transition": "all 0.2s ease"
                                             }
                                         )
-                                    ], width=3)
+                                    ], width=4)
                                 ], className="g-2")
                             ], className="bg-light p-2 rounded border", style={"borderColor": "#e9ecef"}),
                             dcc.Link(
