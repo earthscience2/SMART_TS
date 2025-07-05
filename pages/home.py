@@ -256,14 +256,14 @@ def layout():
                                         dcc.Link(
                                             html.Div([
                                                 html.Span("🔬", className="me-2", style={"fontSize": "16px"}),
-                                                html.Span("응력분석", style={"fontSize": "12px", "fontWeight": "500"})
+                                                html.Span("응력분석", style={"fontSize": "13px", "fontWeight": "500"})
                                             ]),
                                             href=f"/stress?page={proj_pk}",
                                             className="btn btn-outline-warning btn-sm w-100",
                                             style={
                                                 "textDecoration": "none",
                                                 "borderRadius": "6px",
-                                                "padding": "8px 100px",
+                                                "padding": "8px 18px",
                                                 "height": "40px",
                                                 "display": "flex",
                                                 "alignItems": "center",
@@ -298,14 +298,14 @@ def layout():
                                         dcc.Link(
                                             html.Div([
                                                 html.Span("💪", className="me-2", style={"fontSize": "16px"}),
-                                                html.Span("강도분석", style={"fontSize": "12px", "fontWeight": "500"})
+                                                html.Span("강도분석", style={"fontSize": "13px", "fontWeight": "500"})
                                             ]),
                                             href=f"/strength?page={proj_pk}",
                                             className="btn btn-outline-success btn-sm w-100",
                                             style={
                                                 "textDecoration": "none",
                                                 "borderRadius": "6px",
-                                                "padding": "8px 100px",
+                                                "padding": "8px 18px",
                                                 "height": "40px",
                                                 "display": "flex",
                                                 "alignItems": "center",
