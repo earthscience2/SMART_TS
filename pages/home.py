@@ -269,7 +269,10 @@ def layout():
                                                 "alignItems": "center",
                                                 "justifyContent": "center",
                                                 "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
-                                                "transition": "all 0.2s ease"
+                                                "transition": "all 0.2s ease",
+                                                "whiteSpace": "nowrap",
+                                                "overflow": "hidden",
+                                                "textOverflow": "ellipsis"
                                             }
                                         )
                                     ], width=3),
@@ -311,7 +314,10 @@ def layout():
                                                 "alignItems": "center",
                                                 "justifyContent": "center",
                                                 "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
-                                                "transition": "all 0.2s ease"
+                                                "transition": "all 0.2s ease",
+                                                "whiteSpace": "nowrap",
+                                                "overflow": "hidden",
+                                                "textOverflow": "ellipsis"
                                             }
                                         )
                                     ], width=3)
