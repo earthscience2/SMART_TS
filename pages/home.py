@@ -410,7 +410,8 @@ def layout():
                                             "display": "flex",
                                             "alignItems": "center",
                                             "justifyContent": "center",
-                                            "width": "40%"
+                                            "width": "auto",
+                                            "minWidth": "fit-content"
                                         }
                                     ),
                                     dcc.Link(
@@ -425,10 +426,11 @@ def layout():
                                             "display": "flex",
                                             "alignItems": "center",
                                             "justifyContent": "center",
-                                            "width": "40%"
+                                            "width": "auto",
+                                            "minWidth": "fit-content"
                                         }
                                     )
-                                ], className="mt-2 d-flex justify-content-center")
+                                ], className="mt-2 d-flex justify-content-start")
                             ], className="bg-light p-3 rounded")
                         ], md=8),
                         
@@ -527,10 +529,11 @@ def layout():
                                             "display": "flex",
                                             "alignItems": "center",
                                             "justifyContent": "center",
-                                            "width": "40%"
+                                            "width": "auto",
+                                            "minWidth": "fit-content"
                                         }
                                     )
-                                ], className="mt-2 d-flex justify-content-center")
+                                ], className="mt-2 d-flex justify-content-start")
                             ], className="bg-light p-3 rounded")
                         ], md=4)
                     ])
