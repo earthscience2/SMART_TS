@@ -401,7 +401,22 @@ def layout():
                                     dcc.Link(
                                         "콘크리트 모델링 설정",
                                         href=f"/concrete?page={proj_pk}",
-                                        className="btn btn-outline-secondary btn-sm mt-2",
+                                        className="btn btn-outline-secondary btn-sm mt-2 me-2",
+                                        style={
+                                            "fontSize": "12px",
+                                            "fontWeight": "500",
+                                            "textDecoration": "none",
+                                            "textAlign": "center",
+                                            "display": "flex",
+                                            "alignItems": "center",
+                                            "justifyContent": "center",
+                                            "width": "40%"
+                                        }
+                                    ),
+                                    dcc.Link(
+                                        "센서 위치 설정",
+                                        href=f"/sensor?page={proj_pk}",
+                                        className="btn btn-outline-info btn-sm mt-2",
                                         style={
                                             "fontSize": "12px",
                                             "fontWeight": "500",
