@@ -335,7 +335,10 @@ def layout():
                                     "textAlign": "center !important",
                                     "display": "flex",
                                     "alignItems": "center",
-                                    "justifyContent": "center"
+                                    "justifyContent": "center",
+                                    "padding": "8px 18px",
+                                    "height": "40px",
+                                    "fontSize": "13px"
                                 }
                             )
                         ], className="d-flex flex-wrap gap-1")
