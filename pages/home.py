@@ -229,36 +229,6 @@ def layout():
                         ], className="d-flex flex-column"),
                         html.Div([
                             # 분석 결과 드롭다운
-                            dcc.Link(
-                                "콘크리트 모델링 →",
-                                href=f"/concrete?page={proj_pk}",
-                                className="btn btn-secondary btn-sm me-2 text-center",
-                                style={
-                                    "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
-                                    "borderRadius": "6px",
-                                    "fontWeight": "500",
-                                    "textDecoration": "none",
-                                    "textAlign": "center !important",
-                                    "display": "flex",
-                                    "alignItems": "center",
-                                    "justifyContent": "center"
-                                }
-                            ),
-                            dcc.Link(
-                                "센서 위치 설정 →",
-                                href=f"/sensor?page={proj_pk}",
-                                className="btn btn-info btn-sm me-2 text-center",
-                                style={
-                                    "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
-                                    "borderRadius": "6px",
-                                    "fontWeight": "500",
-                                    "textDecoration": "none",
-                                    "textAlign": "center !important",
-                                    "display": "flex",
-                                    "alignItems": "center",
-                                    "justifyContent": "center"
-                                }
-                            ),
                             html.Div([
                                 dbc.DropdownMenu(
                                     children=[
@@ -401,7 +371,7 @@ def layout():
                                     dcc.Link(
                                         "콘크리트 모델링 설정",
                                         href=f"/concrete?page={proj_pk}",
-                                        className="btn btn-outline-secondary btn-sm mt-2 me-2",
+                                        className="btn btn-secondary btn-sm mt-2 me-2",
                                         style={
                                             "fontSize": "12px",
                                             "fontWeight": "500",
@@ -417,7 +387,7 @@ def layout():
                                     dcc.Link(
                                         "센서 위치 설정",
                                         href=f"/sensor?page={proj_pk}",
-                                        className="btn btn-outline-info btn-sm mt-2",
+                                        className="btn btn-info btn-sm mt-2",
                                         style={
                                             "fontSize": "12px",
                                             "fontWeight": "500",
@@ -430,7 +400,7 @@ def layout():
                                             "minWidth": "fit-content"
                                         }
                                     )
-                                ], className="mt-2 d-flex justify-content-start")
+                                ], className="mt-2 d-flex justify-content-end")
                             ], className="bg-light p-3 rounded")
                         ], md=8),
                         
@@ -520,7 +490,7 @@ def layout():
                                     dcc.Link(
                                         "센서 확인",
                                         href=f"/sensor?page={proj_pk}",
-                                        className="btn btn-outline-danger btn-sm mt-2",
+                                        className="btn btn-danger btn-sm mt-2",
                                         style={
                                             "fontSize": "12px",
                                             "fontWeight": "500",
@@ -533,7 +503,7 @@ def layout():
                                             "minWidth": "fit-content"
                                         }
                                     )
-                                ], className="mt-2 d-flex justify-content-start")
+                                ], className="mt-2 d-flex justify-content-end")
                             ], className="bg-light p-3 rounded")
                         ], md=4)
                     ])
