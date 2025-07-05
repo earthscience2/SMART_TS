@@ -229,62 +229,68 @@ def layout():
                         ], className="d-flex flex-column"),
                         html.Div([
                             # 분석 결과 드롭다운
-                            html.Div([
-                                dbc.DropdownMenu(
-                                    children=[
-                                        dbc.DropdownMenuItem(
-                                            "온도분석", 
-                                            href=f"/temp?page={proj_pk}",
-                                            style={"padding": "8px 12px", "fontSize": "14px", "fontWeight": "500", "textAlign": "center"}
-                                        ),
-                                        dbc.DropdownMenuItem(
-                                            "응력분석", 
-                                            href=f"/stress?page={proj_pk}",
-                                            style={"padding": "8px 12px", "fontSize": "14px", "fontWeight": "500", "textAlign": "center"}
-                                        ),
-                                        dbc.DropdownMenuItem(
-                                            "TCI분석", 
-                                            href=f"/tci?page={proj_pk}",
-                                            style={"padding": "8px 12px", "fontSize": "14px", "fontWeight": "500", "textAlign": "center"}
-                                        ),
-                                        dbc.DropdownMenuItem(
-                                            "강도분석", 
-                                            href=f"/strength?page={proj_pk}",
-                                            style={"padding": "8px 12px", "fontSize": "14px", "fontWeight": "500", "textAlign": "center"}
-                                        ),
-                                    ],
-                                    nav=True,
-                                    in_navbar=True,
-                                    label="분석결과",
-                                    color="success",
-                                    size="sm",
-                                    className="me-2 btn-success",
-                                    style={
-                                        "boxShadow": "0 4px 6px rgba(0,0,0,0.1)",
-                                        "borderRadius": "8px",
-                                        "border": "1px solid #28a745",
-                                        "backgroundColor": "#28a745 !important",
-                                        "borderColor": "#28a745 !important",
-                                        "minWidth": "112px",
-                                        "width": "80%",
-                                        "padding": "0 2px",
-                                        "fontWeight": "600",
-                                        "fontSize": "14px",
-                                        "display": "flex",
-                                        "alignItems": "center",
-                                        "justifyContent": "center",
-                                        "textAlign": "center"
-                                    },
-                                    menu_variant="light",
-                                    align_end=True
-                                )
-                            ], style={
-                                "backgroundColor": "#28a745",
-                                "borderRadius": "8px",
-                                "border": "1px solid #28a745"
-                            }),
                             dcc.Link(
-                                "데이터 다운로드 →",
+                                "온도분석",
+                                href=f"/temp?page={proj_pk}",
+                                className="btn btn-success btn-sm me-2 text-center",
+                                style={
+                                    "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
+                                    "borderRadius": "6px",
+                                    "fontWeight": "500",
+                                    "textDecoration": "none",
+                                    "textAlign": "center !important",
+                                    "display": "flex",
+                                    "alignItems": "center",
+                                    "justifyContent": "center"
+                                }
+                            ),
+                            dcc.Link(
+                                "응력분석",
+                                href=f"/stress?page={proj_pk}",
+                                className="btn btn-warning btn-sm me-2 text-center",
+                                style={
+                                    "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
+                                    "borderRadius": "6px",
+                                    "fontWeight": "500",
+                                    "textDecoration": "none",
+                                    "textAlign": "center !important",
+                                    "display": "flex",
+                                    "alignItems": "center",
+                                    "justifyContent": "center"
+                                }
+                            ),
+                            dcc.Link(
+                                "TCI분석",
+                                href=f"/tci?page={proj_pk}",
+                                className="btn btn-danger btn-sm me-2 text-center",
+                                style={
+                                    "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
+                                    "borderRadius": "6px",
+                                    "fontWeight": "500",
+                                    "textDecoration": "none",
+                                    "textAlign": "center !important",
+                                    "display": "flex",
+                                    "alignItems": "center",
+                                    "justifyContent": "center"
+                                }
+                            ),
+                            dcc.Link(
+                                "강도분석",
+                                href=f"/strength?page={proj_pk}",
+                                className="btn btn-primary btn-sm me-2 text-center",
+                                style={
+                                    "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
+                                    "borderRadius": "6px",
+                                    "fontWeight": "500",
+                                    "textDecoration": "none",
+                                    "textAlign": "center !important",
+                                    "display": "flex",
+                                    "alignItems": "center",
+                                    "justifyContent": "center"
+                                }
+                            ),
+                            dcc.Link(
+                                "데이터 다운로드",
                                 href=f"/download?page={proj_pk}",
                                 className="btn btn-warning btn-sm text-center",
                                 style={
@@ -369,7 +375,7 @@ def layout():
                                 ], style={"height": "200px"}),
                                 html.Div([
                                     dcc.Link(
-                                        "콘크리트 모델링 설정",
+                                        "콘크리트 모델링 추가/수정",
                                         href=f"/concrete?page={proj_pk}",
                                         className="btn btn-secondary btn-sm mt-2 me-2",
                                         style={
@@ -385,7 +391,7 @@ def layout():
                                         }
                                     ),
                                     dcc.Link(
-                                        "센서 위치 설정",
+                                        "센서 위치 추가/수정",
                                         href=f"/sensor?page={proj_pk}",
                                         className="btn btn-info btn-sm mt-2",
                                         style={
