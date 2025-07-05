@@ -242,17 +242,140 @@ app.index_string = '''
 </html>
 '''
 
-def _build_navbar():
+def _build_home_navbar():
+    """홈 화면용 네비게이션 바 (로그아웃 버튼만 표시)"""
     user_id = flask_request.cookies.get("login_user")
     admin_user = flask_request.cookies.get("admin_user")
 
-    # 모든 네비게이션 링크를 정의 (홈화면에서는 숨겨질 것임)
     nav_links = [
-        dbc.NavItem(dcc.Link("Home", href="/", className="nav-link", id="nav-home")),
-        dbc.NavItem(dcc.Link("Concrete", href="/concrete", className="nav-link", id="nav-concrete")),
-        dbc.NavItem(dcc.Link("Sensor", href="/sensor", className="nav-link", id="nav-sensor")),
-        dbc.NavItem(dcc.Link("Download", href="/download", className="nav-link", id="nav-download")),
-        dbc.NavItem(html.A("Login", href="/login", className="nav-link", id="nav-login")),
+        dbc.NavItem(dcc.Link(dbc.Button("Logout", color="danger", size="sm"), href="/logout", className="text-decoration-none", id="nav-logout")),
+    ]
+
+    # 브랜드(좌측) - 사용자 이름 부분을 강조색으로
+    if admin_user:
+        brand = html.Span([
+            "Concrete MONITOR | ",
+            html.Span(admin_user, className="text-warning"),
+            " (admin)"
+        ])
+    elif user_id:
+        brand = html.Span([
+            "Concrete MONITOR | ",
+            html.Span(user_id, className="text-warning")
+        ])
+    else:
+        brand = "Concrete MONITOR"
+
+    return dbc.Navbar(
+        dbc.Container([
+            dbc.NavbarBrand(brand, href="/", className="fw-bold text-white"),
+            dbc.Nav(nav_links, navbar=True, className="ms-auto"),
+        ], fluid=True),
+        color="dark",
+        dark=True,
+        className="mb-4",
+        style={
+            "backgroundColor": "#2c3e50",
+            "borderBottom": "2px solid #34495e",
+            "padding": "0.5rem 1rem"
+        }
+    )
+
+def _build_concrete_sensor_navbar():
+    """콘크리트, 센서 페이지용 네비게이션 바"""
+    user_id = flask_request.cookies.get("login_user")
+    admin_user = flask_request.cookies.get("admin_user")
+
+    nav_links = [
+        dbc.NavItem(dcc.Link("대시보드", href="/", className="nav-link", id="nav-dashboard")),
+        dbc.NavItem(dcc.Link("콘크리트 모델링", href="/concrete", className="nav-link", id="nav-concrete")),
+        dbc.NavItem(dcc.Link("센서 위치", href="/sensor", className="nav-link", id="nav-sensor")),
+        dbc.NavItem(dcc.Link(dbc.Button("Logout", color="danger", size="sm"), href="/logout", className="text-decoration-none", id="nav-logout")),
+    ]
+
+    # 브랜드(좌측) - 사용자 이름 부분을 강조색으로
+    if admin_user:
+        brand = html.Span([
+            "Concrete MONITOR | ",
+            html.Span(admin_user, className="text-warning"),
+            " (admin)"
+        ])
+    elif user_id:
+        brand = html.Span([
+            "Concrete MONITOR | ",
+            html.Span(user_id, className="text-warning")
+        ])
+    else:
+        brand = "Concrete MONITOR"
+
+    return dbc.Navbar(
+        dbc.Container([
+            dbc.NavbarBrand(brand, href="/", className="fw-bold text-white"),
+            dbc.Nav(nav_links, navbar=True, className="ms-auto"),
+        ], fluid=True),
+        color="dark",
+        dark=True,
+        className="mb-4",
+        style={
+            "backgroundColor": "#2c3e50",
+            "borderBottom": "2px solid #34495e",
+            "padding": "0.5rem 1rem"
+        }
+    )
+
+def _build_analysis_navbar():
+    """분석 페이지용 네비게이션 바"""
+    user_id = flask_request.cookies.get("login_user")
+    admin_user = flask_request.cookies.get("admin_user")
+
+    nav_links = [
+        dbc.NavItem(dcc.Link("대시보드", href="/", className="nav-link", id="nav-dashboard")),
+        dbc.NavItem(dcc.Link("온도분석", href="/temp", className="nav-link", id="nav-temp")),
+        dbc.NavItem(dcc.Link("응력분석", href="/stress", className="nav-link", id="nav-stress")),
+        dbc.NavItem(dcc.Link("TCI분석", href="/tci", className="nav-link", id="nav-tci")),
+        dbc.NavItem(dcc.Link("강도분석", href="/strength", className="nav-link", id="nav-strength")),
+        dbc.NavItem(dcc.Link("파일 다운로드", href="/download", className="nav-link", id="nav-download")),
+        dbc.NavItem(dcc.Link(dbc.Button("Logout", color="danger", size="sm"), href="/logout", className="text-decoration-none", id="nav-logout")),
+    ]
+
+    # 브랜드(좌측) - 사용자 이름 부분을 강조색으로
+    if admin_user:
+        brand = html.Span([
+            "Concrete MONITOR | ",
+            html.Span(admin_user, className="text-warning"),
+            " (admin)"
+        ])
+    elif user_id:
+        brand = html.Span([
+            "Concrete MONITOR | ",
+            html.Span(user_id, className="text-warning")
+        ])
+    else:
+        brand = "Concrete MONITOR"
+
+    return dbc.Navbar(
+        dbc.Container([
+            dbc.NavbarBrand(brand, href="/", className="fw-bold text-white"),
+            dbc.Nav(nav_links, navbar=True, className="ms-auto"),
+        ], fluid=True),
+        color="dark",
+        dark=True,
+        className="mb-4",
+        style={
+            "backgroundColor": "#2c3e50",
+            "borderBottom": "2px solid #34495e",
+            "padding": "0.5rem 1rem"
+        }
+    )
+
+def _build_sensor_data_navbar():
+    """센서 데이터 확인 페이지용 네비게이션 바"""
+    user_id = flask_request.cookies.get("login_user")
+    admin_user = flask_request.cookies.get("admin_user")
+
+    nav_links = [
+        dbc.NavItem(dcc.Link("대시보드", href="/", className="nav-link", id="nav-dashboard")),
+        dbc.NavItem(dcc.Link("센서 데이터", href="/sensor_data", className="nav-link", id="nav-sensor-data")),
         dbc.NavItem(dcc.Link(dbc.Button("Logout", color="danger", size="sm"), href="/logout", className="text-decoration-none", id="nav-logout")),
     ]
 
@@ -379,66 +502,63 @@ def update_navbar(pathname):
     if not flask_request.cookies.get("login_user"):
         return html.Div()  # 빈 div 반환
     
-    return _build_navbar()
+    # 페이지별 네비게이션 바 선택
+    if pathname == "/":
+        # 홈 화면: 로그아웃 버튼만
+        return _build_home_navbar()
+    elif pathname.startswith("/concrete") or pathname.startswith("/sensor"):
+        # 콘크리트, 센서 페이지: 대시보드, 콘크리트 모델링, 센서 위치
+        return _build_concrete_sensor_navbar()
+    elif pathname.startswith("/temp") or pathname.startswith("/stress") or pathname.startswith("/tci") or pathname.startswith("/strength") or pathname.startswith("/download"):
+        # 분석 페이지: 대시보드, 온도분석, 응력분석, TCI분석, 강도분석, 파일 다운로드
+        return _build_analysis_navbar()
+    elif pathname.startswith("/sensor_data"):
+        # 센서 데이터 확인 페이지: 대시보드, 센서 데이터
+        return _build_sensor_data_navbar()
+    else:
+        # 기본값: 홈 네비게이션 바
+        return _build_home_navbar()
 
-# 네비게이션 바 active 클래스 동적 적용 콜백
+# 네비게이션 바 active 클래스 동적 적용 콜백 (간소화)
 @app.callback(
-    [Output("nav-home", "className"),
+    [Output("nav-dashboard", "className"),
      Output("nav-concrete", "className"),
      Output("nav-sensor", "className"),
+     Output("nav-temp", "className"),
+     Output("nav-stress", "className"),
+     Output("nav-tci", "className"),
+     Output("nav-strength", "className"),
      Output("nav-download", "className"),
-     Output("nav-login", "className"),
-     Output("nav-logout", "className")],
-    [Input("url", "pathname"),
-     Input("url", "search")]
+     Output("nav-sensor-data", "className")],
+    [Input("url", "pathname")]
 )
-def update_nav_active(pathname, search):
-    # 프로젝트 ID 추출
-    project_pk = None
-    if search:
-        try:
-            from urllib.parse import parse_qs
-            params = parse_qs(search.lstrip('?'))
-            project_pk = params.get('page', [None])[0]
-        except Exception:
-            pass
-    
-    is_home = pathname == "/"
+def update_nav_active(pathname):
+    """현재 페이지에 따라 네비게이션 링크의 active 상태를 업데이트합니다."""
     
     # 기본 클래스 설정
-    if is_home:
-        # 홈에서는 홈, 콘크리트, 센서, 다운로드, 로그인 링크 숨김
-        base_classes = ["nav-link d-none", "nav-link d-none", "nav-link d-none", "nav-link d-none"]
-        login_logout_classes = ["nav-link d-none", "nav-link text-danger"]
-    else:
-        base_classes = ["nav-link"] * 4
-        login_logout_classes = ["nav-link", "nav-link text-danger"]
+    base_classes = ["nav-link"] * 9
+    
     # Active 클래스 추가
     if pathname == "/":
-        base_classes[0] += " active"
+        base_classes[0] += " active"  # 대시보드
     elif pathname.startswith("/concrete"):
-        base_classes[1] += " active"
-    elif pathname.startswith("/sensor"):
-        base_classes[2] += " active"
+        base_classes[1] += " active"  # 콘크리트 모델링
+    elif pathname.startswith("/sensor") and not pathname.startswith("/sensor_data"):
+        base_classes[2] += " active"  # 센서 위치
+    elif pathname.startswith("/temp"):
+        base_classes[3] += " active"  # 온도분석
+    elif pathname.startswith("/stress"):
+        base_classes[4] += " active"  # 응력분석
+    elif pathname.startswith("/tci"):
+        base_classes[5] += " active"  # TCI분석
+    elif pathname.startswith("/strength"):
+        base_classes[6] += " active"  # 강도분석
     elif pathname.startswith("/download"):
-        base_classes[3] += " active"
-    elif pathname.startswith("/login"):
-        login_logout_classes[0] += " active"
-    # 네비게이션 링크 텍스트 및 아이콘 설정
-    if project_pk and not is_home:
-        nav_texts = [
-            [html.Span("🏠", className="me-2"), "대쉬보드"],
-            [html.Span("🧱", className="me-2"), "콘크리트 모델링"],
-            [html.Span("📡", className="me-2"), "센서 위치 설정"],
-            [html.Span("📊", className="me-2"), "분석결과"],
-            [html.Span("💾", className="me-2"), "다운로드"]
-        ]
-    else:
-        nav_texts = [""] * 5
-    return (
-        base_classes[0], base_classes[1], base_classes[2], base_classes[3],
-        login_logout_classes[0], login_logout_classes[1]
-    )
+        base_classes[7] += " active"  # 파일 다운로드
+    elif pathname.startswith("/sensor_data"):
+        base_classes[8] += " active"  # 센서 데이터
+    
+    return tuple(base_classes)
 
 # 관리자 네비게이션 바 active 클래스 동적 적용 콜백
 @app.callback(

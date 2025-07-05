@@ -290,7 +290,7 @@ def layout():
                                 }
                             ),
                             dcc.Link(
-                                "데이터 다운로드",
+                                "해석 파일 다운로드",
                                 href=f"/download?page={proj_pk}",
                                 className="btn btn-warning btn-sm text-center",
                                 style={
@@ -494,7 +494,7 @@ def layout():
                                 ], style={"height": "200px"}),
                                 html.Div([
                                     dcc.Link(
-                                        "센서 확인",
+                                        "센서 데이터 확인",
                                         href=f"/sensor?page={proj_pk}",
                                         className="btn btn-danger btn-sm mt-2",
                                         style={
