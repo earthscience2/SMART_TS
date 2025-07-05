@@ -230,7 +230,6 @@ def layout():
                         html.Div([
                             # 분석 결과 드롭다운
                             html.Div([
-                                html.H6("📊 분석 결과", className="mb-2 text-secondary fw-bold text-center"),
                                 dbc.Row([
                                     dbc.Col([
                                         dcc.Link(
@@ -243,7 +242,7 @@ def layout():
                                             style={
                                                 "textDecoration": "none",
                                                 "borderRadius": "6px",
-                                                "padding": "8px 12px",
+                                                "padding": "8px 16px",
                                                 "height": "40px",
                                                 "display": "flex",
                                                 "alignItems": "center",
@@ -264,7 +263,7 @@ def layout():
                                             style={
                                                 "textDecoration": "none",
                                                 "borderRadius": "6px",
-                                                "padding": "8px 12px",
+                                                "padding": "8px 16px",
                                                 "height": "40px",
                                                 "display": "flex",
                                                 "alignItems": "center",
@@ -285,7 +284,7 @@ def layout():
                                             style={
                                                 "textDecoration": "none",
                                                 "borderRadius": "6px",
-                                                "padding": "8px 12px",
+                                                "padding": "8px 16px",
                                                 "height": "40px",
                                                 "display": "flex",
                                                 "alignItems": "center",
@@ -306,7 +305,7 @@ def layout():
                                             style={
                                                 "textDecoration": "none",
                                                 "borderRadius": "6px",
-                                                "padding": "8px 12px",
+                                                "padding": "8px 16px",
                                                 "height": "40px",
                                                 "display": "flex",
                                                 "alignItems": "center",
