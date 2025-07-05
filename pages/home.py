@@ -255,7 +255,7 @@ def layout():
                                     dbc.Col([
                                         dcc.Link(
                                             html.Div([
-                                                html.Span("🔬", className="me-2", style={"fontSize": "16px"}),
+                                                html.Span("🔬", className="me-1", style={"fontSize": "16px"}),
                                                 html.Span("응력분석", style={"fontSize": "13px", "fontWeight": "500"})
                                             ]),
                                             href=f"/stress?page={proj_pk}",
@@ -297,7 +297,7 @@ def layout():
                                     dbc.Col([
                                         dcc.Link(
                                             html.Div([
-                                                html.Span("💪", className="me-2", style={"fontSize": "16px"}),
+                                                html.Span("💪", className="me-1", style={"fontSize": "16px"}),
                                                 html.Span("강도분석", style={"fontSize": "13px", "fontWeight": "500"})
                                             ]),
                                             href=f"/strength?page={proj_pk}",
