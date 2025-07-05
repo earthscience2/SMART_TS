@@ -224,7 +224,7 @@ def layout():
                     # 프로젝트 헤더
                     html.Div([
                         html.Div([
-                            html.H4(f"📁 {row['name']}", className="mb-1 text-dark"),
+                            html.H4(f"{row['name']}", className="mb-1 text-dark"),
                             html.P(f"생성일: {format_date(row['created_at'])}", className="text-muted mb-0")
                         ], className="d-flex flex-column"),
                         html.Div([
@@ -254,30 +254,30 @@ def layout():
                             dbc.DropdownMenu(
                                 children=[
                                     dbc.DropdownMenuItem(
-                                        "🌡️ 온도분석", 
+                                        "온도분석", 
                                         href=f"/temp?page={proj_pk}",
                                         style={"padding": "8px 12px", "fontSize": "14px", "fontWeight": "500", "textAlign": "center"}
                                     ),
                                     dbc.DropdownMenuItem(
-                                        "🔬 응력분석", 
+                                        "응력분석", 
                                         href=f"/stress?page={proj_pk}",
                                         style={"padding": "8px 12px", "fontSize": "14px", "fontWeight": "500", "textAlign": "center"}
                                     ),
                                     dbc.DropdownMenuItem(
-                                        "⚠️ TCI분석", 
+                                        "TCI분석", 
                                         href=f"/tci?page={proj_pk}",
                                         style={"padding": "8px 12px", "fontSize": "14px", "fontWeight": "500", "textAlign": "center"}
                                     ),
                                     dbc.DropdownMenuItem(
-                                        "💪 강도분석", 
+                                        "강도분석", 
                                         href=f"/strength?page={proj_pk}",
                                         style={"padding": "8px 12px", "fontSize": "14px", "fontWeight": "500", "textAlign": "center"}
                                     ),
                                 ],
                                 nav=True,
                                 in_navbar=True,
-                                label="📊 분석결과",
-                                color="primary",
+                                label="분석결과",
+                                color="success",
                                 size="sm",
                                 className="me-2",
                                 style={
@@ -315,7 +315,7 @@ def layout():
                         # 콘크리트 섹션
                         dbc.Col([
                             html.Div([
-                                html.H6("🧱 콘크리트", className="mb-3 text-secondary fw-bold"),
+                                html.H6("콘크리트", className="mb-3 text-secondary fw-bold"),
                                 html.Div([
                                     dash_table.DataTable(
                                         data=concrete_data,
@@ -382,7 +382,7 @@ def layout():
                         # 센서 섹션
                         dbc.Col([
                             html.Div([
-                                html.H6("📡 ITS 센서", className="mb-3 text-secondary fw-bold"),
+                                html.H6("ITS 센서", className="mb-3 text-secondary fw-bold"),
                                 html.Div([
                                     dash_table.DataTable(
                                         data=sensor_data,
@@ -474,14 +474,14 @@ def layout():
             dbc.Container([
                 # 헤더
                 html.Div([
-                    html.H2("📋 프로젝트 대시보드", className="mb-2"),
+                    html.H2("프로젝트 대시보드", className="mb-2"),
                     html.P(f"안녕하세요, {user_id}님!", className="text-muted mb-4")
                 ], className="mb-5"),
                 
                 # 빈 상태
                 html.Div([
                     html.Div([
-                        html.H4("🏗️", className="mb-3", style={"fontSize": "3rem"}),
+                        html.H4("", className="mb-3", style={"fontSize": "3rem"}),
                         html.H5("접근 가능한 프로젝트가 없습니다", className="text-muted mb-3"),
                         html.P("현재 권한으로 접근할 수 있는 프로젝트가 없습니다.", className="text-muted"),
                         html.P("관리자에게 문의하시기 바랍니다.", className="text-muted")
@@ -495,7 +495,7 @@ def layout():
         dbc.Container([
             # 헤더
             html.Div([
-                html.H2("📋 프로젝트 대시보드", className="mb-2"),
+                html.H2("프로젝트 대시보드", className="mb-2"),
                 html.P(f"안녕하세요, {user_id}님! 총 {len(projects)}개의 프로젝트에 접근할 수 있습니다.", 
                        className="text-muted mb-4")
             ], className="mb-5"),
