@@ -481,7 +481,23 @@ def layout():
                                         ]
                                     ) if sensor_data else 
                                     html.P("센서가 없습니다", className="text-muted small text-center", style={"paddingTop": "75px"})
-                                ], style={"height": "200px"})
+                                ], style={"height": "200px"}),
+                                html.Div([
+                                    dcc.Link(
+                                        "센서 확인",
+                                        href=f"/sensor?page={proj_pk}",
+                                        className="btn btn-outline-primary btn-sm w-100 mt-2",
+                                        style={
+                                            "fontSize": "12px",
+                                            "fontWeight": "500",
+                                            "textDecoration": "none",
+                                            "textAlign": "center",
+                                            "display": "flex",
+                                            "alignItems": "center",
+                                            "justifyContent": "center"
+                                        }
+                                    )
+                                ], className="mt-2")
                             ], className="bg-light p-3 rounded")
                         ], md=4)
                     ])
