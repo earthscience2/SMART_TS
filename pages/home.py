@@ -341,7 +341,7 @@ def layout():
                                     "fontSize": "13px"
                                 }
                             )
-                        ], className="d-flex flex-wrap gap-1")
+                        ], className="d-flex flex-wrap gap-1 align-items-center")
                     ], className="d-flex justify-content-between align-items-center mb-3"),
                     
                     # 콘텐츠 그리드
