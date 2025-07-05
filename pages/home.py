@@ -232,25 +232,31 @@ def layout():
                             dcc.Link(
                                 "콘크리트 모델링 →",
                                 href=f"/concrete?page={proj_pk}",
-                                className="btn btn-secondary btn-sm me-2",
+                                className="btn btn-secondary btn-sm me-2 text-center",
                                 style={
                                     "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
                                     "borderRadius": "6px",
                                     "fontWeight": "500",
                                     "textDecoration": "none",
-                                    "textAlign": "center"
+                                    "textAlign": "center !important",
+                                    "display": "flex",
+                                    "alignItems": "center",
+                                    "justifyContent": "center"
                                 }
                             ),
                             dcc.Link(
                                 "센서 위치 설정 →",
                                 href=f"/sensor?page={proj_pk}",
-                                className="btn btn-info btn-sm me-2",
+                                className="btn btn-info btn-sm me-2 text-center",
                                 style={
                                     "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
                                     "borderRadius": "6px",
                                     "fontWeight": "500",
                                     "textDecoration": "none",
-                                    "textAlign": "center"
+                                    "textAlign": "center !important",
+                                    "display": "flex",
+                                    "alignItems": "center",
+                                    "justifyContent": "center"
                                 }
                             ),
                             dbc.DropdownMenu(
@@ -281,11 +287,13 @@ def layout():
                                 label="분석결과",
                                 color="success",
                                 size="sm",
-                                className="me-2",
+                                className="me-2 btn-success",
                                 style={
                                     "boxShadow": "0 4px 6px rgba(0,0,0,0.1)",
                                     "borderRadius": "8px",
-                                    "border": "1px solid #e5e7eb",
+                                    "border": "1px solid #28a745",
+                                    "backgroundColor": "#28a745 !important",
+                                    "borderColor": "#28a745 !important",
                                     "minWidth": "140px",
                                     "padding": "0 2px",
                                     "fontWeight": "600",
@@ -301,13 +309,16 @@ def layout():
                             dcc.Link(
                                 "데이터 다운로드 →",
                                 href=f"/download?page={proj_pk}",
-                                className="btn btn-warning btn-sm",
+                                className="btn btn-warning btn-sm text-center",
                                 style={
                                     "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
                                     "borderRadius": "6px",
                                     "fontWeight": "500",
                                     "textDecoration": "none",
-                                    "textAlign": "center"
+                                    "textAlign": "center !important",
+                                    "display": "flex",
+                                    "alignItems": "center",
+                                    "justifyContent": "center"
                                 }
                             )
                         ], className="d-flex flex-wrap gap-1")
