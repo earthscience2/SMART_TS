@@ -263,7 +263,7 @@ def layout():
                                             style={
                                                 "textDecoration": "none",
                                                 "borderRadius": "6px",
-                                                "padding": "8px 18px",
+                                                "padding": "8px 100px",
                                                 "height": "40px",
                                                 "display": "flex",
                                                 "alignItems": "center",
@@ -305,7 +305,7 @@ def layout():
                                             style={
                                                 "textDecoration": "none",
                                                 "borderRadius": "6px",
-                                                "padding": "8px 18px",
+                                                "padding": "8px 100px",
                                                 "height": "40px",
                                                 "display": "flex",
                                                 "alignItems": "center",
