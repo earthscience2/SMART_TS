@@ -396,7 +396,24 @@ def layout():
                                         ]
                                     ) if concrete_data else 
                                     html.P("콘크리트가 없습니다", className="text-muted small text-center", style={"paddingTop": "75px"})
-                                ], style={"height": "200px"})
+                                ], style={"height": "200px"}),
+                                html.Div([
+                                    dcc.Link(
+                                        "콘크리트 모델링 설정",
+                                        href=f"/concrete?page={proj_pk}",
+                                        className="btn btn-outline-secondary btn-sm mt-2",
+                                        style={
+                                            "fontSize": "12px",
+                                            "fontWeight": "500",
+                                            "textDecoration": "none",
+                                            "textAlign": "center",
+                                            "display": "flex",
+                                            "alignItems": "center",
+                                            "justifyContent": "center",
+                                            "width": "40%"
+                                        }
+                                    )
+                                ], className="mt-2 d-flex justify-content-center")
                             ], className="bg-light p-3 rounded")
                         ], md=8),
                         
