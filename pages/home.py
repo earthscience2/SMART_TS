@@ -360,7 +360,7 @@ def layout():
                                             {"name": "센서", "id": "sensor_count", "type": "text"},
                                             {"name": "분석", "id": "status", "type": "text"},
                                         ],
-                                        style_table={"height": "180px", "overflowY": "auto"},
+                                        style_table={"height": "200px", "overflowY": "auto"},
                                         style_cell={
                                             "textAlign": "center",
                                             "fontSize": "0.8rem",
@@ -408,8 +408,8 @@ def layout():
                                             }
                                         ]
                                     ) if concrete_data else 
-                                    html.P("콘크리트가 없습니다", className="text-muted small text-center", style={"paddingTop": "50px"})
-                                ], style={"height": "150px"}),
+                                    html.P("콘크리트가 없습니다", className="text-muted small text-center", style={"paddingTop": "75px"})
+                                ], style={"height": "200px"}),
                                 html.Div([
                                     dcc.Link(
                                         "콘크리트 모델링 추가/수정",
@@ -459,7 +459,7 @@ def layout():
                                             {"name": "채널", "id": "channel", "type": "text"},
                                             {"name": "데이터", "id": "status", "type": "text"},
                                         ],
-                                        style_table={"height": "180px", "overflowY": "auto"},
+                                        style_table={"height": "200px", "overflowY": "auto"},
                                         style_cell={
                                             "textAlign": "center",
                                             "fontSize": "0.8rem",
@@ -527,8 +527,8 @@ def layout():
                                             }
                                         ]
                                     ) if sensor_data else 
-                                    html.P("센서가 없습니다", className="text-muted small text-center", style={"paddingTop": "50px"})
-                                ], style={"height": "150px"}),
+                                    html.P("센서가 없습니다", className="text-muted small text-center", style={"paddingTop": "75px"})
+                                ], style={"height": "200px"}),
                                 html.Div([
                                     dcc.Link(
                                         "센서 데이터 확인",
