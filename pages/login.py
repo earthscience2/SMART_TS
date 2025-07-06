@@ -18,20 +18,29 @@ def layout(error: str | None = None, **kwargs):
             fluid=True,
             className="d-flex justify-content-center align-items-center",
             style={"height": "80vh"},
-            children=[
-                html.H3("Concrete MONITOR", className="mb-2 text-center text-primary fw-bold"),
-                html.H4("로그인", className="mb-4 text-center"),
-                html.Form(
-                    action="/do_login",
-                    method="post",
-                    children=[
-                        dbc.Input(name="user_id", placeholder="아이디", className="mb-3"),
-                        dbc.Input(name="user_pw", placeholder="비밀번호", type="password", className="mb-4"),
-                        dbc.Button("로그인", type="submit", color="primary", className="w-100"),
-                    ],
-                ),
-                html.Div(id="error-alert")
-            ],
+            children=dbc.Card(
+                style={"width": "360px", "padding": "20px"},
+                children=[
+                    html.H3("Concrete MONITOR", className="mb-2 text-center text-primary fw-bold"),
+                    html.H4("로그인", className="mb-4 text-center"),
+                    html.Form(
+                        action="/do_login",
+                        method="post",
+                        children=[
+                            dbc.Input(name="user_id", placeholder="아이디", className="mb-3"),
+                            dbc.Input(name="user_pw", placeholder="비밀번호", type="password", className="mb-4"),
+                            dbc.Button("로그인", type="submit", color="primary", className="w-100"),
+                        ],
+                    ),
+                    html.Div(id="error-alert"),
+                    html.Hr(className="mt-4 mb-3"),
+                    html.Div([
+                        html.Small("관리자는 ", className="text-muted"),
+                        dcc.Link("여기", href="/admin", className="text-danger"),
+                        html.Small("를 클릭하세요", className="text-muted")
+                    ], className="text-center")
+                ],
+            ),
         ),
     ])
 
