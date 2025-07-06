@@ -426,7 +426,7 @@ layout = dbc.Container(
                                     row_selectable="single",
                                     sort_action="native",
                                     sort_mode="multi",
-                                    style_table={"overflowY": "auto", "height": "calc(40vh - 50px)"},
+                                    style_table={"overflowY": "auto", "height": "calc(100vh - 200px)"},
                                     style_cell={
                                         "whiteSpace": "nowrap", 
                                         "textAlign": "center",
@@ -543,33 +543,9 @@ layout = dbc.Container(
                             
                             # 액션 버튼들
                             html.Div([
-                                dbc.ButtonGroup([
-                                    dbc.Button(
-                                        [html.I(className="fas fa-play me-2"), "분석 시작"],
-                                        id="btn-concrete-analyze",
-                                        color="success",
-                                        disabled=True,
-                                        size="sm",
-                                        style={
-                                            "borderRadius": "6px",
-                                            "fontWeight": "500",
-                                            "boxShadow": "0 1px 2px rgba(0,0,0,0.1)"
-                                        }
-                                    ),
-                                    dbc.Button(
-                                        [html.I(className="fas fa-trash me-2"), "삭제"],
-                                        id="btn-concrete-del",
-                                        color="danger",
-                                        disabled=True,
-                                        size="sm",
-                                        style={
-                                            "borderRadius": "6px",
-                                            "fontWeight": "500",
-                                            "boxShadow": "0 1px 2px rgba(0,0,0,0.1)"
-                                        }
-                                    ),
-                                ], className="w-100")
-                            ], className="mt-3"),
+                                dbc.Button("분석 시작", id="btn-concrete-analyze", color="success", size="sm", className="px-3", disabled=True),
+                                dbc.Button("삭제", id="btn-concrete-del", color="danger", size="sm", className="px-3", disabled=True),
+                            ], className="d-flex justify-content-center gap-2 mt-2"),
                         ])
                     ])
                 ], style={
