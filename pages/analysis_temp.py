@@ -1553,7 +1553,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         "margin": "0",
                         "lineHeight": "1.5"
                     }),
-                    html.P("3D 뷰, 단면도, 온도 변화 분석을 확인할 수 있습니다.", style={
+                    html.P("분석 결과를 확인할 수 있습니다.", style={
                         "color": "#6b7280",
                         "fontSize": "14px",
                         "margin": "0",
@@ -3794,8 +3794,6 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
     prevent_initial_call=True,
 )
 def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
-    if dash.callback_context.triggered and n_clicks:
-        return dash.no_update, [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."], True
     if not n_clicks or not figure:
         raise PreventUpdate
     
@@ -3853,8 +3851,6 @@ def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
     prevent_initial_call=True,
 )
 def save_section_image(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl_data, time_value):
-    if dash.callback_context.triggered and n_clicks:
-        return dash.no_update, [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."], True
     if not n_clicks:
         raise PreventUpdate
     
@@ -3941,8 +3937,6 @@ def save_section_image(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl
     prevent_initial_call=True,
 )
 def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z):
-    if dash.callback_context.triggered and n_clicks:
-        return dash.no_update, [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."], True
     if not n_clicks or not fig_3d:
         raise PreventUpdate
     
@@ -4008,8 +4002,6 @@ def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z
     prevent_initial_call=True,
 )
 def save_current_inp(n_clicks, selected_rows, tbl_data, time_value):
-    if dash.callback_context.triggered and n_clicks:
-        return dash.no_update, [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."], True
     if not n_clicks or not selected_rows or not tbl_data:
         raise PreventUpdate
     
@@ -4053,8 +4045,6 @@ def save_current_inp(n_clicks, selected_rows, tbl_data, time_value):
     prevent_initial_call=True,
 )
 def save_section_inp(n_clicks, selected_rows, tbl_data, time_value):
-    if dash.callback_context.triggered and n_clicks:
-        return dash.no_update, [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."], True
     if not n_clicks or not selected_rows or not tbl_data:
         raise PreventUpdate
     
@@ -4100,8 +4090,6 @@ def save_section_inp(n_clicks, selected_rows, tbl_data, time_value):
     prevent_initial_call=True,
 )
 def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
-    if dash.callback_context.triggered and n_clicks:
-        return dash.no_update, [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."], True
     if not n_clicks or not selected_rows or not tbl_data:
         raise PreventUpdate
     
