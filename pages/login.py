@@ -32,13 +32,7 @@ def layout(error: str | None = None, **kwargs):
                             dbc.Button("로그인", type="submit", color="primary", className="w-100"),
                         ],
                     ),
-                    html.Div(id="error-alert"),
-                    html.Hr(className="mt-4 mb-3"),
-                    html.Div([
-                        html.Small("관리자는 ", className="text-muted"),
-                        dcc.Link("여기", href="/admin", className="text-danger"),
-                        html.Small("를 클릭하세요", className="text-muted")
-                    ], className="text-center")
+                    html.Div(id="error-alert")
                 ],
             ),
         ),
