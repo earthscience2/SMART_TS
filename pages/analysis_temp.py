@@ -1657,6 +1657,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                             id="btn-save-3d-image",
                             color="primary",
                             size="lg",
+                            loading_state={"is_loading": False, "component_name": "btn-save-3d-image"},
                             style={
                                 "borderRadius": "8px",
                                 "fontWeight": "600",
@@ -1672,6 +1673,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                             id="btn-save-current-inp",
                             color="success",
                             size="lg",
+                            loading_state={"is_loading": False, "component_name": "btn-save-current-inp"},
                             style={
                                 "borderRadius": "8px",
                                 "fontWeight": "600",
@@ -1690,7 +1692,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
             # 3D 뷰어 (노션 스타일)
             html.Div([
                 html.Div([
-                    html.H6("🎯 3D 히트맵 뷰어", style={
+                    html.H6("🎯 입체 Viewer", style={
                         "fontWeight": "600",
                         "color": "#374151",
                         "marginBottom": "16px",
@@ -1884,6 +1886,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                             id="btn-save-section-image",
                             color="primary",
                             size="lg",
+                            loading_state={"is_loading": False, "component_name": "btn-save-section-image"},
                             style={
                                 "borderRadius": "8px",
                                 "fontWeight": "600",
@@ -1899,6 +1902,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                             id="btn-save-section-inp",
                             color="success",
                             size="lg",
+                            loading_state={"is_loading": False, "component_name": "btn-save-section-inp"},
                             style={
                                 "borderRadius": "8px",
                                 "fontWeight": "600",
@@ -2264,6 +2268,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                             id="btn-save-temp-image",
                             color="primary",
                             size="lg",
+                            loading_state={"is_loading": False, "component_name": "btn-save-temp-image"},
                             style={
                                 "borderRadius": "8px",
                                 "fontWeight": "600",
@@ -2279,6 +2284,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                             id="btn-save-temp-data",
                             color="success",
                             size="lg",
+                            loading_state={"is_loading": False, "component_name": "btn-save-temp-data"},
                             style={
                                 "borderRadius": "8px",
                                 "fontWeight": "600",
@@ -3482,8 +3488,7 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
 # 3D 이미지 저장 콜백
 @callback(
     Output("download-3d-image", "data"),
-    Output("btn-save-3d-image", "children"),
-    Output("btn-save-3d-image", "disabled"),
+    Output("btn-save-3d-image", "loading_state"),
     Input("btn-save-3d-image", "n_clicks"),
     State("viewer-3d-display", "figure"),
     State("tbl-concrete", "selected_rows"),
@@ -3494,9 +3499,6 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
 def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
     if not n_clicks or not figure:
         raise PreventUpdate
-    
-    # 즉시 로딩 상태로 변경
-    loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
     
     try:
         # 파일명 생성
@@ -3521,23 +3523,18 @@ def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
         try:
             import plotly.io as pio
             img_bytes = pio.to_image(figure, format="png", width=1200, height=800, scale=2, engine="kaleido")
-            default_btn = [html.I(className="fas fa-camera me-1"), "이미지 저장"]
-            return dcc.send_bytes(img_bytes, filename=filename), default_btn, False
+            return dcc.send_bytes(img_bytes, filename=filename), {"is_loading": False, "component_name": "btn-save-3d-image"}
         except ImportError:
-            error_btn = [html.I(className="fas fa-times me-1"), "오류"]
-            return dash.no_update, error_btn, False
+            return dash.no_update, {"is_loading": False, "component_name": "btn-save-3d-image"}
         except Exception as pio_error:
-            error_btn = [html.I(className="fas fa-times me-1"), "오류"]
-            return dash.no_update, error_btn, False
+            return dash.no_update, {"is_loading": False, "component_name": "btn-save-3d-image"}
     except Exception as e:
-        error_btn = [html.I(className="fas fa-times me-1"), "오류"]
-        return dash.no_update, error_btn, False
+        return dash.no_update, {"is_loading": False, "component_name": "btn-save-3d-image"}
 
 # 단면도 이미지 저장 콜백
 @callback(
     Output("download-section-image", "data"),
-    Output("btn-save-section-image", "children"),
-    Output("btn-save-section-image", "disabled"),
+    Output("btn-save-section-image", "loading_state"),
     Input("btn-save-section-image", "n_clicks"),
     State("viewer-3d-section", "figure"),
     State("viewer-section-x", "figure"),
@@ -3551,9 +3548,6 @@ def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
 def save_section_image(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl_data, time_value):
     if not n_clicks:
         raise PreventUpdate
-    
-    # 즉시 로딩 상태로 변경
-    loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
     
     try:
         # 파일명 생성
@@ -3610,20 +3604,16 @@ def save_section_image(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl
             fig_combined.update_yaxes(title_text="Y (m)", row=2, col=2)
             import plotly.io as pio
             img_bytes = pio.to_image(fig_combined, format="png", width=1200, height=800, scale=2, engine="kaleido")
-            default_btn = [html.I(className="fas fa-camera me-1"), "이미지 저장"]
-            return dcc.send_bytes(img_bytes, filename=filename), default_btn, False
+            return dcc.send_bytes(img_bytes, filename=filename), {"is_loading": False, "component_name": "btn-save-section-image"}
         except Exception as e:
-            error_btn = [html.I(className="fas fa-times me-1"), "오류"]
-            return dash.no_update, error_btn, False
+            return dash.no_update, {"is_loading": False, "component_name": "btn-save-section-image"}
     except Exception as e:
-        error_btn = [html.I(className="fas fa-times me-1"), "오류"]
-        return dash.no_update, error_btn, False
+        return dash.no_update, {"is_loading": False, "component_name": "btn-save-section-image"}
 
 # 온도 변화 이미지 저장 콜백
 @callback(
     Output("download-temp-image", "data"),
-    Output("btn-save-temp-image", "children"),
-    Output("btn-save-temp-image", "disabled"),
+    Output("btn-save-temp-image", "loading_state"),
     Input("btn-save-temp-image", "n_clicks"),
     State("temp-viewer-3d", "figure"),
     State("temp-time-graph", "figure"),
@@ -3637,9 +3627,6 @@ def save_section_image(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl
 def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z):
     if not n_clicks or not fig_3d:
         raise PreventUpdate
-    
-    # 즉시 로딩 상태로 변경
-    loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
     
     try:
         if selected_rows and tbl_data:
@@ -3679,20 +3666,16 @@ def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z
             fig_combined.update_yaxes(title_text="온도(°C)", row=1, col=2)
             import plotly.io as pio
             img_bytes = pio.to_image(fig_combined, format="png", width=1400, height=600, scale=2, engine="kaleido")
-            default_btn = [html.I(className="fas fa-camera me-1"), "이미지 저장"]
-            return dcc.send_bytes(img_bytes, filename=filename), default_btn, False
+            return dcc.send_bytes(img_bytes, filename=filename), {"is_loading": False, "component_name": "btn-save-temp-image"}
         except Exception as e:
-            error_btn = [html.I(className="fas fa-times me-1"), "오류"]
-            return dash.no_update, error_btn, False
+            return dash.no_update, {"is_loading": False, "component_name": "btn-save-temp-image"}
     except Exception as e:
-        error_btn = [html.I(className="fas fa-times me-1"), "오류"]
-        return dash.no_update, error_btn, False
+        return dash.no_update, {"is_loading": False, "component_name": "btn-save-temp-image"}
 
 # INP 저장 콜백
 @callback(
     Output("download-current-inp", "data"),
-    Output("btn-save-current-inp", "children"),
-    Output("btn-save-current-inp", "disabled"),
+    Output("btn-save-current-inp", "loading_state"),
     Input("btn-save-current-inp", "n_clicks"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
@@ -3703,9 +3686,6 @@ def save_current_inp(n_clicks, selected_rows, tbl_data, time_value):
     if not n_clicks or not selected_rows or not tbl_data:
         raise PreventUpdate
     
-    # 즉시 로딩 상태로 변경
-    loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
-    
     try:
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
         concrete_pk = row["concrete_pk"]
@@ -3725,17 +3705,14 @@ def save_current_inp(n_clicks, selected_rows, tbl_data, time_value):
         filename = f"{concrete_name}_{time_str}.inp"
         with open(current_file, 'r', encoding='utf-8') as f:
             file_content = f.read()
-        default_btn = [html.I(className="fas fa-file-download me-1"), "INP 파일 저장"]
-        return dict(content=file_content, filename=filename), default_btn, False
+        return dict(content=file_content, filename=filename), {"is_loading": False, "component_name": "btn-save-current-inp"}
     except Exception as e:
-        error_btn = [html.I(className="fas fa-times me-1"), "오류"]
-        return dash.no_update, error_btn, False
+        return dash.no_update, {"is_loading": False, "component_name": "btn-save-current-inp"}
 
 # 단면도 INP 저장 콜백
 @callback(
     Output("download-section-inp", "data"),
-    Output("btn-save-section-inp", "children"),
-    Output("btn-save-section-inp", "disabled"),
+    Output("btn-save-section-inp", "loading_state"),
     Input("btn-save-section-inp", "n_clicks"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
@@ -3746,9 +3723,6 @@ def save_section_inp(n_clicks, selected_rows, tbl_data, time_value):
     if not n_clicks or not selected_rows or not tbl_data:
         raise PreventUpdate
     
-    # 즉시 로딩 상태로 변경
-    loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
-    
     try:
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
         concrete_pk = row["concrete_pk"]
@@ -3768,17 +3742,14 @@ def save_section_inp(n_clicks, selected_rows, tbl_data, time_value):
         filename = f"{concrete_name}_{time_str}.inp"
         with open(current_file, 'r', encoding='utf-8') as f:
             file_content = f.read()
-        default_btn = [html.I(className="fas fa-file-download me-1"), "INP 파일 저장"]
-        return dict(content=file_content, filename=filename), default_btn, False
+        return dict(content=file_content, filename=filename), {"is_loading": False, "component_name": "btn-save-section-inp"}
     except Exception as e:
-        error_btn = [html.I(className="fas fa-times me-1"), "오류"]
-        return dash.no_update, error_btn, False
+        return dash.no_update, {"is_loading": False, "component_name": "btn-save-section-inp"}
 
 # 온도 변화 데이터 저장 콜백
 @callback(
     Output("download-temp-data", "data"),
-    Output("btn-save-temp-data", "children"),
-    Output("btn-save-temp-data", "disabled"),
+    Output("btn-save-temp-data", "loading_state"),
     Input("btn-save-temp-data", "n_clicks"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
@@ -3790,9 +3761,6 @@ def save_section_inp(n_clicks, selected_rows, tbl_data, time_value):
 def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
     if not n_clicks or not selected_rows or not tbl_data:
         raise PreventUpdate
-    
-    # 즉시 로딩 상태로 변경
-    loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
     
     try:
         import pandas as pd
@@ -3881,12 +3849,10 @@ def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
         z_pos = round(z, 1) if z is not None else 0.0
         filename = f"온도분석_{concrete_name}_위치({x_pos}_{y_pos}_{z_pos}).csv"
         
-        default_btn = [html.I(className="fas fa-file-csv me-1"), "데이터 저장"]
-        return dict(content=csv_content, filename=filename), default_btn, False
+        return dict(content=csv_content, filename=filename), {"is_loading": False, "component_name": "btn-save-temp-data"}
         
     except Exception as e:
-        error_btn = [html.I(className="fas fa-times me-1"), "오류"]
-        return dash.no_update, error_btn, False
+        return dash.no_update, {"is_loading": False, "component_name": "btn-save-temp-data"}
 
 # ───────────── TCI 인장강도 계산식 입력창 동적 표시 콜백 ─────────────
 @callback(
