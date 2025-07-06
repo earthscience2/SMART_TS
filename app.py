@@ -355,11 +355,27 @@ def _build_concrete_sensor_navbar():
     project_pk = None
     if query:
         project_pk = parse_project_key_from_url(f"?{query}")
+    
+    # 현재 페이지 확인
+    current_path = request.path
+
+    # 기본 클래스 설정
+    dashboard_class = "nav-link"
+    concrete_class = "nav-link"
+    sensor_class = "nav-link"
+    
+    # 현재 페이지에 active 클래스 추가
+    if current_path == "/":
+        dashboard_class += " active"
+    elif current_path.startswith("/concrete"):
+        concrete_class += " active"
+    elif current_path.startswith("/sensor"):
+        sensor_class += " active"
 
     main_nav_links = [
-        dbc.NavItem(dcc.Link("대시보드", href=create_project_url("/", project_pk), className="nav-link", id="nav-dashboard")),
-        dbc.NavItem(dcc.Link("콘크리트 모델링", href=create_project_url("/concrete", project_pk), className="nav-link", id="nav-concrete")),
-        dbc.NavItem(dcc.Link("센서 위치", href=create_project_url("/sensor", project_pk), className="nav-link", id="nav-sensor")),
+        dbc.NavItem(dcc.Link("대시보드", href=create_project_url("/", project_pk), className=dashboard_class, id="nav-dashboard")),
+        dbc.NavItem(dcc.Link("콘크리트 모델링", href=create_project_url("/concrete", project_pk), className=concrete_class, id="nav-concrete")),
+        dbc.NavItem(dcc.Link("센서 위치", href=create_project_url("/sensor", project_pk), className=sensor_class, id="nav-sensor")),
     ]
     
     logout_nav = [
@@ -407,14 +423,39 @@ def _build_analysis_navbar():
     project_pk = None
     if query:
         project_pk = parse_project_key_from_url(f"?{query}")
+    
+    # 현재 페이지 확인
+    current_path = request.path
+
+    # 기본 클래스 설정
+    dashboard_class = "nav-link"
+    temp_class = "nav-link"
+    stress_class = "nav-link"
+    tci_class = "nav-link"
+    strength_class = "nav-link"
+    download_class = "nav-link"
+    
+    # 현재 페이지에 active 클래스 추가
+    if current_path == "/":
+        dashboard_class += " active"
+    elif current_path.startswith("/temp"):
+        temp_class += " active"
+    elif current_path.startswith("/stress"):
+        stress_class += " active"
+    elif current_path.startswith("/tci"):
+        tci_class += " active"
+    elif current_path.startswith("/strength"):
+        strength_class += " active"
+    elif current_path.startswith("/download"):
+        download_class += " active"
 
     main_nav_links = [
-        dbc.NavItem(dcc.Link("대시보드", href=create_project_url("/", project_pk), className="nav-link", id="nav-dashboard")),
-        dbc.NavItem(dcc.Link("온도", href=create_project_url("/temp", project_pk), className="nav-link", id="nav-temp")),
-        dbc.NavItem(dcc.Link("응력", href=create_project_url("/stress", project_pk), className="nav-link", id="nav-stress")),
-        dbc.NavItem(dcc.Link("TCI", href=create_project_url("/tci", project_pk), className="nav-link", id="nav-tci")),
-        dbc.NavItem(dcc.Link("강도", href=create_project_url("/strength", project_pk), className="nav-link", id="nav-strength")),
-        dbc.NavItem(dcc.Link("다운로드", href=create_project_url("/download", project_pk), className="nav-link", id="nav-download")),
+        dbc.NavItem(dcc.Link("대시보드", href=create_project_url("/", project_pk), className=dashboard_class, id="nav-dashboard")),
+        dbc.NavItem(dcc.Link("온도", href=create_project_url("/temp", project_pk), className=temp_class, id="nav-temp")),
+        dbc.NavItem(dcc.Link("응력", href=create_project_url("/stress", project_pk), className=stress_class, id="nav-stress")),
+        dbc.NavItem(dcc.Link("TCI", href=create_project_url("/tci", project_pk), className=tci_class, id="nav-tci")),
+        dbc.NavItem(dcc.Link("강도", href=create_project_url("/strength", project_pk), className=strength_class, id="nav-strength")),
+        dbc.NavItem(dcc.Link("다운로드", href=create_project_url("/download", project_pk), className=download_class, id="nav-download")),
     ]
     
     logout_nav = [
@@ -462,10 +503,23 @@ def _build_sensor_data_navbar():
     project_pk = None
     if query:
         project_pk = parse_project_key_from_url(f"?{query}")
+    
+    # 현재 페이지 확인
+    current_path = request.path
+
+    # 기본 클래스 설정
+    dashboard_class = "nav-link"
+    sensor_data_class = "nav-link"
+    
+    # 현재 페이지에 active 클래스 추가
+    if current_path == "/":
+        dashboard_class += " active"
+    elif current_path.startswith("/sensor_data"):
+        sensor_data_class += " active"
 
     main_nav_links = [
-        dbc.NavItem(dcc.Link("대시보드", href=create_project_url("/", project_pk), className="nav-link", id="nav-dashboard")),
-        dbc.NavItem(dcc.Link("센서 데이터", href=create_project_url("/sensor_data", project_pk), className="nav-link", id="nav-sensor-data")),
+        dbc.NavItem(dcc.Link("대시보드", href=create_project_url("/", project_pk), className=dashboard_class, id="nav-dashboard")),
+        dbc.NavItem(dcc.Link("센서 데이터", href=create_project_url("/sensor_data", project_pk), className=sensor_data_class, id="nav-sensor-data")),
     ]
     
     logout_nav = [
@@ -578,9 +632,10 @@ def handle_url_redirects(pathname):
 # 통합된 네비게이션 바 콜백
 @app.callback(
     Output("navbar-container", "children"),
-    Input("url", "pathname")
+    [Input("url", "pathname"),
+     Input("url", "search")]
 )
-def update_navbar(pathname):
+def update_navbar(pathname, search):
     """URL에 따라 적절한 네비게이션 바를 반환합니다."""
     # 로그인 페이지에서는 네비게이션 바 숨김
     if pathname and pathname.startswith("/login"):

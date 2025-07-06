@@ -131,4 +131,24 @@
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+}
+
+/* 네비게이션 바 active 클래스 스타일 */
+.navbar .nav-link.active {
+    background-color: #3b82f6 !important;
+    color: white !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3) !important;
+}
+
+.navbar .nav-link.active:hover {
+    background-color: #2563eb !important;
+    color: white !important;
+}
+
+.navbar .nav-link:not(.active):hover {
+    background-color: rgba(59, 130, 246, 0.1) !important;
+    color: #3b82f6 !important;
+    border-radius: 6px !important;
 } 
