@@ -747,13 +747,13 @@ def load_concrete_data(search, pathname):
             pass
     
     if not project_pk:
-        return [], [], [], [], True, True, 0, 5, 0, {}, None
+        return [], [], [], [], True, True, 0, 5, 0, {0: "시작", 5: "끝"}, None
     
     try:
         # 프로젝트 정보 로드
         df_proj = api_db.get_project_data(project_pk=project_pk)
         if df_proj.empty:
-            return [], [], [], [], True, True, 0, 5, 0, {}, None
+            return [], [], [], [], True, True, 0, 5, 0, {0: "시작", 5: "끝"}, None
             
         proj_row = df_proj.iloc[0]
         proj_name = proj_row["name"]
@@ -761,11 +761,11 @@ def load_concrete_data(search, pathname):
         # 해당 프로젝트의 콘크리트 데이터 로드
         df_conc = api_db.get_concrete_data(project_pk=project_pk)
         if df_conc.empty:
-            return [], [], [], [], True, True, 0, 5, 0, {}, None
+            return [], [], [], [], True, True, 0, 5, 0, {0: "시작", 5: "끝"}, None
         
     except Exception as e:
         print(f"프로젝트 로딩 오류: {e}")
-        return [], [], [], [], True, True, 0, 5, 0, {}, None
+        return [], [], [], [], True, True, 0, 5, 0, {0: "시작", 5: "끝"}, None
     table_data = []
     for _, row in df_conc.iterrows():
         try:
@@ -894,7 +894,7 @@ def load_concrete_data(search, pathname):
     if table_data:
         table_data = sorted(table_data, key=lambda x: x.get('status_sort', 999))
     
-    return table_data, columns, [], style_data_conditional, True, True, 0, 5, 0, {}, None
+    return table_data, columns, [], style_data_conditional, True, True, 0, 5, 0, {0: "시작", 5: "끝"}, None
 
 # ───────────────────── ③ 콘크리트 선택 콜백 ────────────────────
 @callback(
@@ -911,7 +911,7 @@ def load_concrete_data(search, pathname):
 )
 def on_concrete_select(selected_rows, tbl_data):
     if not selected_rows or not tbl_data:
-        return True, True, "", 0, 5, 0, {}
+        return True, True, "", 0, 5, 0, {0: "시작", 5: "끝"}
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     is_active = row["activate"] == "활성"
@@ -1013,6 +1013,10 @@ def on_concrete_select(selected_rows, tbl_data):
                     print(f"온도 데이터 파싱 오류: {e}")
                     current_file_title = f"{os.path.basename(latest_file)}"
             
+    # marks가 딕셔너리가 아니면 기본값으로 변경
+    if not isinstance(slider_marks, dict):
+        slider_marks = {0: "시작", slider_max: "끝"}
+    
     return analyze_disabled, delete_disabled, current_file_title, slider_min, slider_max, slider_value, slider_marks
 
 # ───────────────────── 3D 뷰 클릭 → 단면 위치 저장 ────────────────────
