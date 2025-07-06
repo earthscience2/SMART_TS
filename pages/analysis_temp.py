@@ -1971,6 +1971,37 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         "marginBottom": "12px",
                         "fontSize": "14px"
                     }),
+                    # 단면도 온도바 통일 토글 스위치
+                    html.Div([
+                        html.Label("단면도 온도바 통일", style={
+                            "fontWeight": "500",
+                            "color": "#374151",
+                            "marginBottom": "8px",
+                            "fontSize": "13px",
+                            "display": "inline-block",
+                            "marginRight": "8px"
+                        }),
+                        dbc.Switch(
+                            id="btn-unified-colorbar-section",
+                            label="",
+                            value=False,
+                            className="mb-0",
+                            style={
+                                "display": "inline-block",
+                                "marginBottom": "12px",
+                                "marginTop": "-5px"
+                            }
+                        ),
+                        dbc.Tooltip(
+                            "단면도 그래프들의 온도바 범위를 통일합니다",
+                            target="btn-unified-colorbar-section",
+                            placement="top"
+                        )
+                    ], style={
+                        "display": "flex",
+                        "alignItems": "center",
+                        "marginBottom": "12px"
+                    }),
                     dcc.Slider(
                         id="time-slider-section",
                         min=slider_min if slider_min is not None else 0,
@@ -2060,6 +2091,8 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     dcc.Store(id="play-state-section", data={"playing": False}),
                     # 배속 상태 표시용 Store (단면도용)
                     dcc.Store(id="speed-state-section", data={"speed": 1}),
+                    # 단면도 온도바 통일 상태 Store
+                    dcc.Store(id="unified-colorbar-section-state", data=False),
                     # 자동 재생용 Interval (단면도용)
                     dcc.Interval(
                         id="play-interval-section",
@@ -2732,7 +2765,7 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
     Input("section-z-input", "value"),
-    Input("unified-colorbar-state", "data"),
+    Input("unified-colorbar-section-state", "data"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
@@ -4165,6 +4198,18 @@ def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
 )
 def toggle_unified_colorbar(switch_value):
     """온도바 통일 토글 스위치 기능"""
+    if switch_value is None:
+        raise PreventUpdate
+    
+    return switch_value
+
+@callback(
+    Output("unified-colorbar-section-state", "data"),
+    Input("btn-unified-colorbar-section", "value"),
+    prevent_initial_call=True,
+)
+def toggle_unified_colorbar_section(switch_value):
+    """단면도 온도바 통일 토글 스위치 기능"""
     if switch_value is None:
         raise PreventUpdate
     
