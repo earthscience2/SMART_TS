@@ -3371,7 +3371,7 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
 )
 def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
     """3D 뷰어의 현재 이미지를 PNG 파일로 저장"""
-    if not n_clicks or not fig_3d:
+    if not n_clicks or not figure:
         raise PreventUpdate
     
     try:
