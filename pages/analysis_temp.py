@@ -1096,9 +1096,7 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
         if not isinstance(marks, dict):
             marks = {0: "시작", max_idx: "끝"}
         
-        print(f"Debug - marks: {marks}, type: {type(marks)}")
-        print(f"Debug - value: {value}, type: {type(value)}")
-        print(f"Debug - max_idx: {max_idx}, type: {type(max_idx)}")
+        # 디버깅 로그 제거
         import math
         if time_idx is None or (isinstance(time_idx, float) and math.isnan(time_idx)) or (isinstance(time_idx, str) and not time_idx.isdigit()):
             value = max(0, max_idx)
@@ -1345,11 +1343,7 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
         slider_marks = marks if isinstance(marks, dict) else {0: "시작", slider_max: "끝"}
         slider_value = int(value) if value is not None else 0
         
-        print(f"Debug - Final return values:")
-        print(f"  slider_min: {slider_min}, type: {type(slider_min)}")
-        print(f"  slider_max: {slider_max}, type: {type(slider_max)}")
-        print(f"  slider_marks: {slider_marks}, type: {type(slider_marks)}")
-        print(f"  slider_value: {slider_value}, type: {type(slider_value)}")
+        # 디버깅 로그 제거
         
         return fig_3d, current_time, viewer_data, slider_min, slider_max, slider_marks, slider_value, current_file_title
     except Exception as e:
@@ -3347,13 +3341,22 @@ def sync_main_slider_to_display(main_value, main_min, main_max, main_marks):
         # value가 None이거나 숫자가 아니면 기본값 사용
         if main_value is None:
             main_value = 0
+        elif not isinstance(main_value, (int, float)):
+            main_value = 0
         
         # min, max가 None이거나 숫자가 아니면 기본값 사용
         if main_min is None:
             main_min = 0
+        elif not isinstance(main_min, (int, float)):
+            main_min = 0
+            
         if main_max is None:
             main_max = 5
+        elif not isinstance(main_max, (int, float)):
+            main_max = 5
             
+        print(f"sync_main_slider_to_display - value: {main_value} ({type(main_value)}), min: {main_min} ({type(main_min)}), max: {main_max} ({type(main_max)}), marks: {main_marks} ({type(main_marks)})")
+        
         return main_value, main_min, main_max, main_marks
     except Exception as e:
         print(f"sync_main_slider_to_display 오류: {e}")
