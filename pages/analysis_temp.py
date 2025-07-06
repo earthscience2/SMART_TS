@@ -423,20 +423,7 @@ layout = dbc.Container(
             dbc.Col([
                 html.Div([
                     # 프로젝트 안내 박스
-                    html.Div([
-                        html.Div([
-                            html.H6("📋 현재 프로젝트", className="mb-0 text-secondary fw-bold"),
-                        ], className="d-flex justify-content-between align-items-center mb-2"),
-                        html.Div(id="project-info-display", children=[
-                            html.P("프로젝트를 선택해주세요", className="text-muted mb-0")
-                        ])
-                    ], style={
-                        "backgroundColor": "#f8fafc",
-                        "padding": "12px 16px",
-                        "borderRadius": "8px",
-                        "border": "1px solid #e2e8f0",
-                        "marginBottom": "16px"
-                    }),
+                    dbc.Alert(id="current-project-info", color="info", className="mb-3 py-2"),
                     
                     # 콘크리트 목록 섹션
                     html.Div([
@@ -945,22 +932,19 @@ def load_concrete_data(search, pathname):
 
 # ───────────────────── ② 프로젝트 정보 표시 콜백 ────────────────────
 @callback(
-    Output("project-info-display", "children"),
+    Output("current-project-info", "children"),
     Input("project-info-store", "data"),
     prevent_initial_call=True,
 )
 def update_project_info(project_info):
     if not project_info:
-        return html.P("프로젝트를 선택해주세요", className="text-muted mb-0")
+        return [
+            "프로젝트가 선택되지 않았습니다. ",
+            html.A("홈으로 돌아가기", href="/", className="alert-link")
+        ]
     
-    return html.Div([
-        html.H6(project_info.get("name", "알 수 없는 프로젝트"), 
-                className="mb-1 fw-bold", 
-                style={"color": "#1f2937", "fontSize": "14px"}),
-        html.Small(f"프로젝트 ID: {project_info.get('pk', 'N/A')}", 
-                  className="text-muted", 
-                  style={"fontSize": "12px"})
-    ])
+    project_name = project_info.get("name", "알 수 없는 프로젝트")
+    return f"📁 현재 프로젝트: {project_name}"
 
 # ───────────────────── ③ 콘크리트 선택 콜백 ────────────────────
 @callback(
