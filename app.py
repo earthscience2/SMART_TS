@@ -612,11 +612,34 @@ def update_navbar(pathname):
         # 기본값: 홈 네비게이션 바
         return _build_home_navbar()
 
-# 네비게이션 바 링크 URL 동적 업데이트 콜백
+# 네비게이션 바 링크 URL 동적 업데이트 콜백 (콘크리트/센서 페이지용)
 @app.callback(
     [Output("nav-concrete", "href"),
-     Output("nav-sensor", "href"),
-     Output("nav-temp", "href"),
+     Output("nav-sensor", "href")],
+    [Input("url", "pathname"),
+     Input("url", "search")]
+)
+def update_concrete_sensor_nav_links(pathname, search):
+    """콘크리트/센서 페이지용 네비게이션 바 링크들이 현재 URL의 쿼리 파라미터를 유지하도록 업데이트합니다."""
+    
+    # 콘크리트/센서 페이지가 아닌 경우 업데이트하지 않음
+    if not (pathname.startswith("/concrete") or pathname.startswith("/sensor")):
+        raise dash.exceptions.PreventUpdate
+    
+    # 기본 URL 설정
+    concrete_url = "/concrete"
+    sensor_url = "/sensor"
+    
+    # 쿼리 파라미터가 있으면 추가
+    if search:
+        concrete_url += search
+        sensor_url += search
+    
+    return concrete_url, sensor_url
+
+# 네비게이션 바 링크 URL 동적 업데이트 콜백 (분석 페이지용)
+@app.callback(
+    [Output("nav-temp", "href"),
      Output("nav-stress", "href"),
      Output("nav-tci", "href"),
      Output("nav-strength", "href"),
@@ -624,12 +647,16 @@ def update_navbar(pathname):
     [Input("url", "pathname"),
      Input("url", "search")]
 )
-def update_nav_links(pathname, search):
-    """네비게이션 바 링크들이 현재 URL의 쿼리 파라미터를 유지하도록 업데이트합니다."""
+def update_analysis_nav_links(pathname, search):
+    """분석 페이지용 네비게이션 바 링크들이 현재 URL의 쿼리 파라미터를 유지하도록 업데이트합니다."""
+    
+    # 분석 페이지가 아닌 경우 업데이트하지 않음
+    if not (pathname.startswith("/temp") or pathname.startswith("/stress") or 
+            pathname.startswith("/tci") or pathname.startswith("/strength") or 
+            pathname.startswith("/download")):
+        raise dash.exceptions.PreventUpdate
     
     # 기본 URL 설정
-    concrete_url = "/concrete"
-    sensor_url = "/sensor"
     temp_url = "/temp"
     stress_url = "/stress"
     tci_url = "/tci"
@@ -638,15 +665,13 @@ def update_nav_links(pathname, search):
     
     # 쿼리 파라미터가 있으면 추가
     if search:
-        concrete_url += search
-        sensor_url += search
         temp_url += search
         stress_url += search
         tci_url += search
         strength_url += search
         download_url += search
     
-    return concrete_url, sensor_url, temp_url, stress_url, tci_url, strength_url, download_url
+    return temp_url, stress_url, tci_url, strength_url, download_url
 
 # 네비게이션 바 active 클래스 동적 적용 콜백 (간소화)
 @app.callback(
