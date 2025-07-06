@@ -1046,13 +1046,22 @@ def store_section_coord(clickData):
     prevent_initial_call=True,
 )
 def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl_data, current_time):
-    if not selected_rows or not tbl_data:
-        raise PreventUpdate
-    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-    concrete_pk = row["concrete_pk"]
-    inp_dir = f"inp/{concrete_pk}"
-    inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
-    if not inp_files:
+    try:
+        if not selected_rows or not tbl_data:
+            raise PreventUpdate
+        
+        if len(selected_rows) == 0:
+            raise PreventUpdate
+            
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+        concrete_pk = row["concrete_pk"]
+        inp_dir = f"inp/{concrete_pk}"
+        inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+        
+        if not inp_files:
+            raise PreventUpdate
+    except (IndexError, KeyError, TypeError) as e:
+        print(f"데이터 접근 오류: {e}")
         raise PreventUpdate
 
     # 초기값 설정
@@ -1086,13 +1095,46 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
     else:
         value = min(int(time_idx), max_idx)
 
+    # 시간 슬라이더: 1시간 단위로 표시
+    current_file = inp_files[value]
+    
     # 온도바 통일 여부에 따른 온도 범위 계산
     if unified_colorbar:
         # 전체 파일의 온도 min/max 계산 (통일 모드)
         all_temps = []
         for f in inp_files:
-            with open(f, 'r') as file:
-                lines = file.readlines()
+            try:
+                with open(f, 'r') as file:
+                    lines = file.readlines()
+                temp_section = False
+                for line in lines:
+                    if line.startswith('*TEMPERATURE'):
+                        temp_section = True
+                        continue
+                    elif line.startswith('*'):
+                        temp_section = False
+                        continue
+                    if temp_section and ',' in line:
+                        parts = line.strip().split(',')
+                        if len(parts) >= 2:
+                            try:
+                                temp = float(parts[1])
+                                all_temps.append(temp)
+                            except (ValueError, TypeError):
+                                continue
+            except (IOError, OSError) as e:
+                print(f"파일 읽기 오류 {f}: {e}")
+                continue
+        if all_temps:
+            tmin, tmax = float(np.nanmin(all_temps)), float(np.nanmax(all_temps))
+        else:
+            tmin, tmax = 0, 100
+    else:
+        # 현재 파일의 온도 min/max 계산 (개별 모드)
+        current_temps = []
+        try:
+            with open(current_file, 'r') as f:
+                lines = f.readlines()
             temp_section = False
             for line in lines:
                 if line.startswith('*TEMPERATURE'):
@@ -1106,16 +1148,29 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
                     if len(parts) >= 2:
                         try:
                             temp = float(parts[1])
-                            all_temps.append(temp)
-                        except:
+                            current_temps.append(temp)
+                        except (ValueError, TypeError):
                             continue
-        if all_temps:
-            tmin, tmax = float(np.nanmin(all_temps)), float(np.nanmax(all_temps))
+        except (IOError, OSError) as e:
+            print(f"현재 파일 읽기 오류 {current_file}: {e}")
+            current_temps = []
+        
+        if current_temps:
+            tmin, tmax = float(np.nanmin(current_temps)), float(np.nanmax(current_temps))
         else:
             tmin, tmax = 0, 100
-    else:
-        # 현재 파일의 온도 min/max 계산 (개별 모드)
-        current_temps = []
+    current_time = os.path.basename(current_file).split(".")[0]
+    
+    # 시간 형식을 읽기 쉽게 변환
+    try:
+        dt = datetime.strptime(current_time, "%Y%m%d%H")
+        formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
+    except:
+        formatted_time = current_time
+    
+    # 현재 파일의 온도 통계 계산
+    current_temps = []
+    try:
         with open(current_file, 'r') as f:
             lines = f.readlines()
         temp_section = False
@@ -1132,47 +1187,15 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
                     try:
                         temp = float(parts[1])
                         current_temps.append(temp)
-                    except:
+                    except (ValueError, TypeError):
                         continue
-        if current_temps:
-            tmin, tmax = float(np.nanmin(current_temps)), float(np.nanmax(current_temps))
-        else:
-            tmin, tmax = 0, 100
-
-    # 시간 슬라이더: 1시간 단위로 표시
-    current_file = inp_files[value]
-    current_time = os.path.basename(current_file).split(".")[0]
-    
-    # 시간 형식을 읽기 쉽게 변환
-    try:
-        dt = datetime.strptime(current_time, "%Y%m%d%H")
-        formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
-    except:
-        formatted_time = current_time
-    
-    # 현재 파일의 온도 통계 계산
-    current_temps = []
-    with open(current_file, 'r') as f:
-        lines = f.readlines()
-    temp_section = False
-    for line in lines:
-        if line.startswith('*TEMPERATURE'):
-            temp_section = True
-            continue
-        elif line.startswith('*'):
-            temp_section = False
-            continue
-        if temp_section and ',' in line:
-            parts = line.strip().split(',')
-            if len(parts) >= 2:
-                try:
-                    temp = float(parts[1])
-                    current_temps.append(temp)
-                except:
-                    continue
-    
-    # INP 파일에서 물성치 정보 추출
-    material_info = parse_material_info_from_inp(lines)
+        
+        # INP 파일에서 물성치 정보 추출
+        material_info = parse_material_info_from_inp(lines)
+    except (IOError, OSError) as e:
+        print(f"현재 파일 읽기 오류 {current_file}: {e}")
+        current_temps = []
+        material_info = ""
 
     if current_temps:
         current_min = float(np.nanmin(current_temps))
@@ -1183,44 +1206,77 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
         current_file_title = f"{formatted_time}\n{material_info}"
 
     # inp 파일 파싱 (노드, 온도)
-    with open(current_file, 'r') as f:
-        lines = f.readlines()
     nodes = {}
-    node_section = False
-    for line in lines:
-        if line.startswith('*NODE'):
-            node_section = True
-            continue
-        elif line.startswith('*'):
-            node_section = False
-            continue
-        if node_section and ',' in line:
-            parts = line.strip().split(',')
-            if len(parts) >= 4:
-                node_id = int(parts[0])
-                x = float(parts[1])
-                y = float(parts[2])
-                z = float(parts[3])
-                nodes[node_id] = {'x': x, 'y': y, 'z': z}
     temperatures = {}
-    temp_section = False
-    for line in lines:
-        if line.startswith('*TEMPERATURE'):
-            temp_section = True
-            continue
-        elif line.startswith('*'):
-            temp_section = False
-            continue
-        if temp_section and ',' in line:
-            parts = line.strip().split(',')
-            if len(parts) >= 2:
-                node_id = int(parts[0])
-                temp = float(parts[1])
-                temperatures[node_id] = temp
-    x_coords = np.array([n['x'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
-    y_coords = np.array([n['y'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
-    z_coords = np.array([n['z'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
-    temps = np.array([temperatures[k] for k in nodes.keys() if k in temperatures])
+    try:
+        with open(current_file, 'r') as f:
+            lines = f.readlines()
+        
+        # 노드 정보 파싱
+        node_section = False
+        for line in lines:
+            if line.startswith('*NODE'):
+                node_section = True
+                continue
+            elif line.startswith('*'):
+                node_section = False
+                continue
+            if node_section and ',' in line:
+                parts = line.strip().split(',')
+                if len(parts) >= 4:
+                    try:
+                        node_id = int(parts[0])
+                        x = float(parts[1])
+                        y = float(parts[2])
+                        z = float(parts[3])
+                        nodes[node_id] = {'x': x, 'y': y, 'z': z}
+                    except (ValueError, TypeError):
+                        continue
+        
+        # 온도 정보 파싱
+        temp_section = False
+        for line in lines:
+            if line.startswith('*TEMPERATURE'):
+                temp_section = True
+                continue
+            elif line.startswith('*'):
+                temp_section = False
+                continue
+            if temp_section and ',' in line:
+                parts = line.strip().split(',')
+                if len(parts) >= 2:
+                    try:
+                        node_id = int(parts[0])
+                        temp = float(parts[1])
+                        temperatures[node_id] = temp
+                    except (ValueError, TypeError):
+                        continue
+    except (IOError, OSError) as e:
+        print(f"INP 파일 파싱 오류 {current_file}: {e}")
+        nodes = {}
+        temperatures = {}
+    
+    # 좌표와 온도 데이터 준비
+    coords_list = []
+    temps_list = []
+    
+    for node_id, node_data in nodes.items():
+        if node_id in temperatures and node_data:
+            try:
+                coords_list.append([node_data['x'], node_data['y'], node_data['z']])
+                temps_list.append(temperatures[node_id])
+            except (KeyError, TypeError):
+                continue
+    
+    if not coords_list or not temps_list:
+        # 데이터가 없으면 기본값 반환
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0, ""
+    
+    coords = np.array(coords_list)
+    temps = np.array(temps_list)
+    x_coords = coords[:, 0]
+    y_coords = coords[:, 1]
+    z_coords = coords[:, 2]
 
     # 콘크리트 dims 파싱 (꼭짓점, 높이)
     try:
@@ -1232,8 +1288,6 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
         poly_h = None
 
     # 1. 3D 볼륨 렌더링 (노드 기반, 원래 방식)
-    coords = np.array([[x, y, z] for x, y, z in zip(x_coords, y_coords, z_coords)])
-    temps = np.array(temps)
     fig_3d = go.Figure(data=go.Volume(
         x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
         opacity=0.1, surface_count=15, 
@@ -1312,6 +1366,11 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
     }
     
     return fig_3d, current_time, viewer_data, 0, max_idx, marks, value, current_file_title
+    
+    except Exception as e:
+        print(f"update_heatmap 함수 오류: {e}")
+        # 오류 발생 시 기본값 반환
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0, ""
 
 # 탭 콘텐츠 처리 콜백 (수정)
 @callback(
