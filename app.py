@@ -657,7 +657,7 @@ def update_analysis_nav_links(pathname, search):
     
     return temp_url, stress_url, tci_url, strength_url, download_url
 
-# 네비게이션 바 active 클래스 동적 적용 콜백 (간소화)
+# 네비게이션 바 active 클래스 동적 적용 콜백 (콘크리트/센서 페이지용)
 @app.callback(
     [Output("nav-dashboard", "className"),
      Output("nav-concrete", "className"),
@@ -665,7 +665,11 @@ def update_analysis_nav_links(pathname, search):
     [Input("url", "pathname")]
 )
 def update_nav_active(pathname):
-    """현재 페이지에 따라 네비게이션 링크의 active 상태를 업데이트합니다."""
+    """콘크리트/센서 페이지용 네비게이션 링크의 active 상태를 업데이트합니다."""
+    
+    # 콘크리트/센서 페이지가 아닌 경우 업데이트하지 않음
+    if not (pathname.startswith("/concrete") or pathname.startswith("/sensor")):
+        raise dash.exceptions.PreventUpdate
     
     # 기본 클래스 설정
     base_classes = ["nav-link"] * 3
@@ -677,6 +681,45 @@ def update_nav_active(pathname):
         base_classes[1] += " active"  # 콘크리트 모델링
     elif pathname.startswith("/sensor") and not pathname.startswith("/sensor_data"):
         base_classes[2] += " active"  # 센서 위치
+    
+    return tuple(base_classes)
+
+# 분석 페이지용 네비게이션 바 active 클래스 동적 적용 콜백
+@app.callback(
+    [Output("nav-dashboard", "className", allow_duplicate=True),
+     Output("nav-temp", "className"),
+     Output("nav-stress", "className"),
+     Output("nav-tci", "className"),
+     Output("nav-strength", "className"),
+     Output("nav-download", "className")],
+    [Input("url", "pathname")],
+    prevent_initial_call=True
+)
+def update_analysis_nav_active(pathname):
+    """분석 페이지용 네비게이션 링크의 active 상태를 업데이트합니다."""
+    
+    # 분석 페이지가 아닌 경우 업데이트하지 않음
+    if not (pathname.startswith("/temp") or pathname.startswith("/stress") or 
+            pathname.startswith("/tci") or pathname.startswith("/strength") or 
+            pathname.startswith("/download")):
+        raise dash.exceptions.PreventUpdate
+    
+    # 기본 클래스 설정
+    base_classes = ["nav-link"] * 6
+    
+    # Active 클래스 추가
+    if pathname == "/":
+        base_classes[0] += " active"  # 대시보드
+    elif pathname.startswith("/temp"):
+        base_classes[1] += " active"  # 온도분석
+    elif pathname.startswith("/stress"):
+        base_classes[2] += " active"  # 응력분석
+    elif pathname.startswith("/tci"):
+        base_classes[3] += " active"  # TCI분석
+    elif pathname.startswith("/strength"):
+        base_classes[4] += " active"  # 강도분석
+    elif pathname.startswith("/download"):
+        base_classes[5] += " active"  # 파일 다운로드
     
     return tuple(base_classes)
 
