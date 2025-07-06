@@ -36,6 +36,7 @@ from dash import html
 import dash_vtk
 
 import api_db
+from utils.encryption import parse_project_key_from_url
 
 register_page(__name__, path="/temp", title="온도 분석")
 
@@ -654,12 +655,16 @@ layout = dbc.Container(
     prevent_initial_call=False,
 )
 def load_concrete_data(search, pathname):
-    # URL에서 프로젝트 정보 추출
+    # URL에서 프로젝트 정보 추출 (암호화된 URL 지원)
     project_pk = None
     if search:
         try:
-            qs = parse_qs(search.lstrip('?'))
-            project_pk = qs.get('page', [None])[0]
+            # 먼저 암호화된 URL 파라미터 시도
+            project_pk = parse_project_key_from_url(search)
+            if not project_pk:
+                # 기존 방식으로 fallback
+                qs = parse_qs(search.lstrip('?'))
+                project_pk = qs.get('page', [None])[0]
         except Exception:
             pass
     
