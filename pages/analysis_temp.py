@@ -1133,11 +1133,11 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
         print(f"  current_time: {current_time} ({type(current_time)})")
         
         if not selected_rows or not tbl_data:
-            print("update_heatmap - selected_rows 또는 tbl_data가 없음")
+            # 콘크리트가 선택되지 않은 상태는 정상적인 동작
             raise PreventUpdate
         
         if len(selected_rows) == 0:
-            print("update_heatmap - selected_rows가 비어있음")
+            # 콘크리트가 선택되지 않은 상태는 정상적인 동작
             raise PreventUpdate
             
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
@@ -1148,7 +1148,7 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
         print(f"update_heatmap - concrete_pk: {concrete_pk}, inp_dir: {inp_dir}, inp_files 개수: {len(inp_files)}")
         
         if not inp_files:
-            print(f"update_heatmap - inp_files가 없음: {inp_dir}")
+            # INP 파일이 없는 상태는 정상적인 동작
             raise PreventUpdate
         # 초기값 설정
         current_file_title = ""
@@ -1163,7 +1163,7 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
             except:
                 continue
         if not times:
-            print("update_heatmap - times가 비어있음")
+            # 시간 데이터가 없는 상태는 정상적인 동작
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0
         # 슬라이더 마크: 모든 시간을 일 단위로 표시
         max_idx = max(0, len(times) - 1)
@@ -1341,7 +1341,7 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
                 except (KeyError, TypeError):
                     continue
         if not coords_list or not temps_list:
-            print(f"update_heatmap - coords_list: {len(coords_list)}, temps_list: {len(temps_list)}")
+            # 좌표 또는 온도 데이터가 없는 상태는 정상적인 동작
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0, ""
         coords = np.array(coords_list)
         temps = np.array(temps_list)
@@ -1450,8 +1450,10 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
         return fig_3d, current_time, viewer_data, slider_min, slider_max, slider_marks, slider_value, current_file_title
     except Exception as e:
         import traceback
-        print(f"update_heatmap 함수 오류: {e}")
-        print(f"오류 상세: {traceback.format_exc()}")
+        # PreventUpdate는 정상적인 동작이므로 로그에서 제외
+        if not isinstance(e, dash.exceptions.PreventUpdate):
+            print(f"update_heatmap 함수 오류: {e}")
+            print(f"오류 상세: {traceback.format_exc()}")
         # 타입 검증 및 안전한 값 설정
         slider_min = 0
         slider_max = 5
@@ -1874,7 +1876,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     }),
                     # 온도바 통일 토글 스위치
                     html.Div([
-                        html.Label("온도바 통일", style={
+                        html.Label("전체 온도바 통일", style={
                             "fontWeight": "500",
                             "color": "#374151",
                             "marginBottom": "8px",
@@ -3509,8 +3511,10 @@ def sync_main_slider_to_display(main_value, main_min, main_max, main_marks):
         return value, min_val, max_val, marks
     except Exception as e:
         import traceback
-        print(f"sync_main_slider_to_display 오류: {e}")
-        print(f"오류 상세: {traceback.format_exc()}")
+        # PreventUpdate는 정상적인 동작이므로 로그에서 제외
+        if not isinstance(e, dash.exceptions.PreventUpdate):
+            print(f"sync_main_slider_to_display 오류: {e}")
+            print(f"오류 상세: {traceback.format_exc()}")
         return 0, 0, 5, {0: "시작", 5: "끝"}
 
 # 3D 뷰어 동기화 콜백 (display용 뷰어와 실제 뷰어)
