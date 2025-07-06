@@ -163,7 +163,7 @@ layout = html.Div([
                                     },
                                     {
                                         'if': {
-                                            'filter_query': '{status} = 수정가능',
+                                            'filter_query': '{status} = 설정중',
                                             'column_id': 'status'
                                         },
                                         'backgroundColor': '#f3f4f6',
@@ -736,7 +736,7 @@ def refresh_table(n, project_pk, _data_ts):
     
     # 상태 정보와 타설 날짜 추가
     if not df.empty:
-        df["status"] = df["activate"].apply(lambda x: "분석중" if x == 0 else "수정가능")
+        df["status"] = df["activate"].apply(lambda x: "분석중" if x == 0 else "설정중")
         
         # 타설 날짜를 YY.MM.DD 형식으로 변환 및 정렬용 데이터 생성
         def format_date_display(con_t):
@@ -871,7 +871,7 @@ def show_selected(sel, data):
     is_active = row.get("activate", 1) == 1
     
     # 상태 정보 준비
-    status_text = "분석중" if not is_active else "수정가능"
+    status_text = "분석중" if not is_active else "설정중"
     status_color = "success" if not is_active else "secondary"
     
     # 상세 정보 카드 생성
