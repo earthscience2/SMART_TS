@@ -811,13 +811,17 @@ def load_concrete_data(search, pathname):
             except Exception:
                 elapsed_days = "N/A"
         
+        # 타설일과 경과일을 하나의 컬럼으로 합치기
+        pour_date_with_elapsed = pour_date
+        if pour_date != "N/A" and elapsed_days != "N/A":
+            pour_date_with_elapsed = f"{pour_date} ({elapsed_days})"
+        
         table_data.append({
             "concrete_pk": row["concrete_pk"],
             "name": row["name"],
             "status": status,
             "status_sort": status_sort,  # 정렬용 숨겨진 필드
-            "pour_date": pour_date,
-            "elapsed_days": elapsed_days,
+            "pour_date": pour_date_with_elapsed,
             "shape": shape_info,
             "dims": row["dims"],
             "activate": "활성" if row["activate"] == 1 else "비활성",
@@ -827,9 +831,8 @@ def load_concrete_data(search, pathname):
     # 3) 테이블 컬럼 정의
     columns = [
         {"name": "이름", "id": "name", "type": "text"},
+        {"name": "타설일(경과일)", "id": "pour_date", "type": "text"},
         {"name": "상태", "id": "status", "type": "text"},
-        {"name": "타설일", "id": "pour_date", "type": "text"},
-        {"name": "경과일", "id": "elapsed_days", "type": "numeric"},
     ]
     
     # 테이블 스타일 설정 (문자열 비교 기반 색상)
@@ -866,17 +869,12 @@ def load_concrete_data(search, pathname):
         }
     ]
     
-    # 날짜 및 경과일 컬럼 스타일 추가
+    # 타설일(경과일) 컬럼 스타일 추가
     style_data_conditional.extend([
         {
             'if': {'column_id': 'pour_date'},
             'fontSize': '0.85rem',
-            'color': '#6c757d'
-        },
-        {
-            'if': {'column_id': 'elapsed_days'},
-            'fontSize': '0.85rem',
-            'color': '#495057',
+            'color': '#6c757d',
             'fontWeight': '500'
         }
     ])
