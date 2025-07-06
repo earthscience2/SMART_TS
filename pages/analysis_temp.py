@@ -1087,6 +1087,14 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
         # marks가 비어있으면 기본값 제공
         if not marks:
             marks = {0: "시작", max_idx: "끝"}
+        
+        # marks가 딕셔너리가 아니면 기본값으로 변경
+        if not isinstance(marks, dict):
+            marks = {0: "시작", max_idx: "끝"}
+        
+        print(f"Debug - marks: {marks}, type: {type(marks)}")
+        print(f"Debug - value: {value}, type: {type(value)}")
+        print(f"Debug - max_idx: {max_idx}, type: {type(max_idx)}")
         import math
         if time_idx is None or (isinstance(time_idx, float) and math.isnan(time_idx)) or (isinstance(time_idx, str) and not time_idx.isdigit()):
             value = max(0, max_idx)
@@ -1327,10 +1335,22 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
                 'value': value
             }
         }
-        return fig_3d, current_time, viewer_data, 0, max_idx, marks, value, current_file_title
+        # return 전에 값들의 타입 확인 및 수정
+        slider_min = 0
+        slider_max = int(max_idx) if max_idx is not None else 5
+        slider_marks = marks if isinstance(marks, dict) else {0: "시작", slider_max: "끝"}
+        slider_value = int(value) if value is not None else 0
+        
+        print(f"Debug - Final return values:")
+        print(f"  slider_min: {slider_min}, type: {type(slider_min)}")
+        print(f"  slider_max: {slider_max}, type: {type(slider_max)}")
+        print(f"  slider_marks: {slider_marks}, type: {type(slider_marks)}")
+        print(f"  slider_value: {slider_value}, type: {type(slider_value)}")
+        
+        return fig_3d, current_time, viewer_data, slider_min, slider_max, slider_marks, slider_value, current_file_title
     except Exception as e:
         print(f"update_heatmap 함수 오류: {e}")
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {0: "시작", 5: "끝"}, 0
 
 # 탭 콘텐츠 처리 콜백 (수정)
 @callback(
@@ -3315,7 +3335,25 @@ def sync_display_slider_to_main(display_value):
     prevent_initial_call=True,
 )
 def sync_main_slider_to_display(main_value, main_min, main_max, main_marks):
-    return main_value, main_min, main_max, main_marks
+    try:
+        # marks가 None이거나 딕셔너리가 아니면 기본값 사용
+        if main_marks is None or not isinstance(main_marks, dict):
+            main_marks = {0: "시작", 5: "끝"}
+        
+        # value가 None이거나 숫자가 아니면 기본값 사용
+        if main_value is None:
+            main_value = 0
+        
+        # min, max가 None이거나 숫자가 아니면 기본값 사용
+        if main_min is None:
+            main_min = 0
+        if main_max is None:
+            main_max = 5
+            
+        return main_value, main_min, main_max, main_marks
+    except Exception as e:
+        print(f"sync_main_slider_to_display 오류: {e}")
+        return 0, 0, 5, {0: "시작", 5: "끝"}
 
 # 3D 뷰어 동기화 콜백 (display용 뷰어와 실제 뷰어)
 @callback(
