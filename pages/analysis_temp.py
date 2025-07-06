@@ -1569,6 +1569,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     ], style={
                         "display": "flex",
                         "alignItems": "center",
+                        "justifyContent": "center",
                         "marginTop": "12px"
                     }),
                     # 재생 상태 표시용 Store
@@ -1803,6 +1804,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     ], style={
                         "display": "flex",
                         "alignItems": "center",
+                        "justifyContent": "center",
                         "marginTop": "12px"
                     }),
                     # 재생 상태 표시용 Store (단면도용)
@@ -4352,10 +4354,15 @@ def stop_playback(n_clicks, play_state):
     State("speed-state-3d", "data"),
     State("time-slider-display", "value"),
     State("time-slider-display", "max"),
+    State("tabs-main", "active_tab"),
     prevent_initial_call=True,
 )
-def auto_play_slider(n_intervals, play_state, speed_state, current_value, max_value):
+def auto_play_slider(n_intervals, play_state, speed_state, current_value, max_value, active_tab):
     """자동 재생 시 슬라이더 값 자동 증가 (배속에 따라 건너뛰기)"""
+    # 3D 탭에서만 실행
+    if active_tab != "tab-3d":
+        raise PreventUpdate
+    
     if not play_state or not play_state.get("playing", False):
         raise PreventUpdate
     
@@ -4431,10 +4438,15 @@ def stop_section_playback(n_clicks, play_state):
     State("speed-state-section", "data"),
     State("time-slider-section", "value"),
     State("time-slider-section", "max"),
+    State("tabs-main", "active_tab"),
     prevent_initial_call=True,
 )
-def auto_play_section_slider(n_intervals, play_state, speed_state, current_value, max_value):
+def auto_play_section_slider(n_intervals, play_state, speed_state, current_value, max_value, active_tab):
     """단면도 자동 재생 시 슬라이더 값 자동 증가 (배속에 따라 건너뛰기)"""
+    # 단면도 탭에서만 실행
+    if active_tab != "tab-section":
+        raise PreventUpdate
+    
     if not play_state or not play_state.get("playing", False):
         raise PreventUpdate
     
@@ -4533,4 +4545,10 @@ def set_speed_section(speed_1x, speed_2x, speed_4x, speed_8x):
 )
 def reset_speed_on_tab_change(active_tab):
     """탭 변경 시 배속 상태 초기화"""
-    return {"speed": 1}, {"speed": 1}
+    # 현재 활성 탭에 따라 해당 탭의 배속만 초기화
+    if active_tab == "tab-3d":
+        return {"speed": 1}, dash.no_update
+    elif active_tab == "tab-section":
+        return dash.no_update, {"speed": 1}
+    else:
+        return dash.no_update, dash.no_update
