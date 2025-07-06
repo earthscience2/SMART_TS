@@ -1326,7 +1326,7 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
         return fig_3d, current_time, viewer_data, 0, max_idx, marks, value, current_file_title
     except Exception as e:
         print(f"update_heatmap 함수 오류: {e}")
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0, ""
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0
 
 # 탭 콘텐츠 처리 콜백 (수정)
 @callback(
