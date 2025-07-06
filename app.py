@@ -206,42 +206,74 @@ app.index_string = '''
         {%favicon%}
         {%css%}
         <style>
+            .navbar .container {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+            }
+            
+            .navbar .navbar-nav.mx-auto {
+                position: absolute !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                display: flex !important;
+                align-items: center !important;
+            }
+            
             .nav-link {
-                padding: 8px 15px !important;
-                margin: 0 5px;
-                border-radius: 4px;
-                transition: all 0.2s ease;
-                font-weight: 500;
+                padding: 10px 20px !important;
+                margin: 0 8px !important;
+                border-radius: 6px !important;
+                transition: all 0.3s ease !important;
+                font-weight: 500 !important;
                 color: #ffffff !important;
-                position: relative;
+                position: relative !important;
+                text-decoration: none !important;
+                border: 2px solid transparent !important;
             }
             
             .nav-link:hover {
-                background-color: #495057;
+                background-color: #495057 !important;
                 color: #ffffff !important;
+                transform: translateY(-1px) !important;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
             }
             
             .nav-link.active {
-                background-color: #ffc107;
+                background-color: #ffc107 !important;
                 color: #000000 !important;
-                font-weight: 600;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                font-weight: 700 !important;
+                box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4) !important;
+                border: 2px solid #ffc107 !important;
+                transform: translateY(-2px) !important;
+            }
+            
+            .nav-link.active::before {
+                content: '📍' !important;
+                margin-right: 6px !important;
+                font-size: 14px !important;
             }
             
             .nav-link.active::after {
-                content: '';
-                position: absolute;
-                bottom: -2px;
-                left: 50%;
-                transform: translateX(-50%);
-                width: 20px;
-                height: 3px;
-                background-color: #ffc107;
-                border-radius: 2px;
+                content: '' !important;
+                position: absolute !important;
+                bottom: -4px !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                width: 30px !important;
+                height: 4px !important;
+                background-color: #ffc107 !important;
+                border-radius: 2px !important;
+                box-shadow: 0 2px 4px rgba(255, 193, 7, 0.6) !important;
             }
             
             .navbar-brand {
-                font-size: 1.25rem;
+                font-size: 1.25rem !important;
+                z-index: 10 !important;
+            }
+            
+            .navbar-nav.ms-auto {
+                z-index: 10 !important;
             }
         </style>
     </head>
@@ -339,7 +371,8 @@ def _build_concrete_sensor_navbar():
         style={
             "backgroundColor": "#2c3e50",
             "borderBottom": "2px solid #34495e",
-            "padding": "0.5rem 1rem"
+            "padding": "0.5rem 1rem",
+            "position": "relative"
         }
     )
 
