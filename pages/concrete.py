@@ -298,8 +298,9 @@ layout = html.Div([
                     
                     # 오른쪽 칼럼: 콘크리트 물성치
                     dbc.Col([
+                        # CEB-FIB Model 상수 박스
                         html.Div([
-                            html.H6("🔬 타설 콘크리트 탄성계수 (CEB-FIB Model)[Pa]", className="mb-3 text-secondary fw-bold"),
+                            html.H6("🔬 타설 콘크리트 탄성계수 (CEB-FIB Model)", className="mb-3 text-secondary fw-bold"),
                             
                             # 베타, N, E28 상수들을 박스로 묶기
                             html.Div([
@@ -337,7 +338,11 @@ layout = html.Div([
                                     dbc.Button("재령분석", id="add-age-analysis", color="warning", className="px-3", size="sm"),
                                 ], className="text-start"),
                             ], className="bg-light p-3 rounded border mb-3"),
-                            
+                        ], className="bg-white p-3 rounded shadow-sm border mb-3"),
+                        
+                        # 기타 물성치 정보 박스
+                        html.Div([
+                            html.H6("⚙️ 기타 물성치 정보", className="mb-3 text-secondary fw-bold"),
                             dbc.Row([
                                 dbc.Col([
                                     dbc.Label("타설 날짜", className="form-label fw-semibold"),
@@ -377,7 +382,7 @@ layout = html.Div([
                                     dbc.Input(id="add-d", type="number", step=10, placeholder="밀도(con_d)", className="form-control")
                                 ], width=12),
                             ], className="mb-3"),
-                        ], className="bg-light p-3 rounded", style={"height": "fit-content"}),
+                        ], className="bg-white p-3 rounded shadow-sm border"),
                     ], md=6),
                 ], className="g-3"),
                 
@@ -447,8 +452,9 @@ layout = html.Div([
                     
                     # 오른쪽 칼럼: 콘크리트 물성치
                     dbc.Col([
+                        # CEB-FIB Model 상수 박스
                         html.Div([
-                            html.H6("🔬 타설 콘크리트 탄성계수 (CEB-FIB Model)[Pa]", className="mb-3 text-secondary fw-bold"),
+                            html.H6("🔬 타설 콘크리트 탄성계수 (CEB-FIB Model)", className="mb-3 text-secondary fw-bold"),
                             
                             # 베타, N, E28 상수들을 박스로 묶기
                             html.Div([
@@ -486,7 +492,11 @@ layout = html.Div([
                                     dbc.Button("재령분석", id="edit-age-analysis", color="warning", className="px-3", size="sm"),
                                 ], className="text-start"),
                             ], className="bg-light p-3 rounded border mb-3"),
-                            
+                        ], className="bg-white p-3 rounded shadow-sm border mb-3"),
+                        
+                        # 기타 물성치 정보 박스
+                        html.Div([
+                            html.H6("⚙️ 기타 물성치 정보", className="mb-3 text-secondary fw-bold"),
                             dbc.Row([
                                 dbc.Col([
                                     dbc.Label("타설 날짜", className="form-label fw-semibold"),
@@ -526,7 +536,7 @@ layout = html.Div([
                                     dbc.Input(id="edit-d", type="number", step=10, placeholder="밀도(con_d)", className="form-control")
                                 ], width=12),
                             ], className="mb-3"),
-                        ], className="bg-light p-3 rounded", style={"height": "fit-content"}),
+                        ], className="bg-white p-3 rounded shadow-sm border"),
                     ], md=6),
                 ], className="g-3"),
                 
