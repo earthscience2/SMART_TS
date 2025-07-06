@@ -348,7 +348,7 @@ def _build_concrete_sensor_navbar():
     main_nav_links = [
         dbc.NavItem(dcc.Link("대시보드", href="/", className="nav-link", id="nav-dashboard")),
         dbc.NavItem(dcc.Link("콘크리트 모델링", href=f"/concrete{query_str}" if page_param else "/concrete", className="nav-link", id="nav-concrete")),
-        dbc.NavItem(dcc.Link("센서 위치", href=f"/sensor{query_str}" if page_param else "/sensor", className="nav-link", id="nav-sensor")),
+        dbc.NavItem(dcc.Link("센서 위치", href=f"/sensor{query_str}", className="nav-link", id="nav-sensor")),
     ]
     
     logout_nav = [

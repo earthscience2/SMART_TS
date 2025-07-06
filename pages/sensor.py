@@ -641,14 +641,14 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
             "분석중인 콘크리트에 속한 센서는 수정할 수 없습니다."
         ], color="danger", className="py-2 mb-0", style={"fontSize": "0.75rem"})
     
-    # activate가 0이면 수정/삭제 버튼만 비활성화 (추가 버튼은 항상 활성화)
+    # activate가 0이면 모든 버튼 비활성화 (분석중일 때는 추가도 불가)
     if activate == 0:
-        return fig, table_data, columns, selected_indices, True, True, False, warning_message
+        return fig, table_data, columns, selected_indices, True, True, True, warning_message
     
     # activate가 1이면 센서 선택 여부에 따라 버튼 활성화/비활성화
     edit_disabled = not bool(selected_indices)
     del_disabled = not bool(selected_indices)
-    add_disabled = False  # 추가 버튼은 항상 활성화
+    add_disabled = False  # 추가 버튼은 활성화 (설정중일 때만)
 
     return fig, table_data, columns, selected_indices, edit_disabled, del_disabled, add_disabled, warning_message
 
@@ -729,7 +729,19 @@ def on_sensor_select(selected_rows, tbl_data, current_fig, cam_store, selected_c
 
 
 # ───────────────────── ④ 카메라 정보 저장 콜백 ────────────────────
-# ───────────────────── ④ 카메라 정보 저장 콜백 (알림 비활성화 버전) ────────────────────
+# ───────────────────── ④ 네비게이션 바 센서 위치 링크 수정 콜백 ────────────────────
+@callback(
+    Output("nav-sensor", "href"),
+    Input("sensor-url", "search"),
+    prevent_initial_call=True,
+)
+def update_sensor_nav_link(search):
+    """센서 페이지에서 네비게이션 바의 센서 위치 링크가 현재 URL을 유지하도록 수정"""
+    if search:
+        return f"/sensor{search}"
+    return "/sensor"
+
+# ───────────────────── ⑤ 카메라 정보 저장 콜백 (알림 비활성화 버전) ────────────────────
 @callback(
     Output("camera-store", "data"),
     Input("viewer-sensor", "relayoutData"),
