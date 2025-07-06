@@ -4536,19 +4536,26 @@ def set_speed_section(speed_1x, speed_2x, speed_4x, speed_8x):
     
     raise PreventUpdate
 
-# 탭 변경 시 배속 상태 초기화
+# 탭 변경 시 배속 상태 초기화 (3D 탭용)
 @callback(
     Output("speed-state-3d", "data", allow_duplicate=True),
+    Input("tabs-main", "active_tab"),
+    prevent_initial_call=True,
+)
+def reset_speed_3d_on_tab_change(active_tab):
+    """탭 변경 시 3D 탭 배속 상태 초기화"""
+    if active_tab == "tab-3d":
+        return {"speed": 1}
+    raise PreventUpdate
+
+# 탭 변경 시 배속 상태 초기화 (단면도 탭용)
+@callback(
     Output("speed-state-section", "data", allow_duplicate=True),
     Input("tabs-main", "active_tab"),
     prevent_initial_call=True,
 )
-def reset_speed_on_tab_change(active_tab):
-    """탭 변경 시 배속 상태 초기화"""
-    # 현재 활성 탭에 따라 해당 탭의 배속만 초기화
-    if active_tab == "tab-3d":
-        return {"speed": 1}, dash.no_update
-    elif active_tab == "tab-section":
-        return dash.no_update, {"speed": 1}
-    else:
-        return dash.no_update, dash.no_update
+def reset_speed_section_on_tab_change(active_tab):
+    """탭 변경 시 단면도 탭 배속 상태 초기화"""
+    if active_tab == "tab-section":
+        return {"speed": 1}
+    raise PreventUpdate
