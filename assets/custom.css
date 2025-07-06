@@ -167,9 +167,9 @@
 .nav-tabs .nav-link.active {
     color: #1f2937 !important;
     font-weight: 600 !important;
-    background-color: white !important;
+    background-color: #ffc107 !important;
     border: 1px solid #e2e8f0 !important;
-    border-bottom: 1px solid white !important;
+    border-bottom: 1px solid #ffc107 !important;
 }
 
 .nav-tabs .nav-link:hover {
