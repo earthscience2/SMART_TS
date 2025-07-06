@@ -707,7 +707,6 @@ layout = dbc.Container(
     Output("tbl-concrete", "selected_rows"),
     Output("tbl-concrete", "style_data_conditional"),
     Output("btn-concrete-analyze", "disabled"),
-    Output("concrete-title", "children"),
     Output("time-slider", "min"),
     Output("time-slider", "max"),
     Output("time-slider", "value"),
@@ -727,7 +726,7 @@ def load_concrete_data(search, pathname):
             pass
     
     if not project_pk:
-        return [], [], [], [], True, "프로젝트를 선택하세요", 0, 5, 0, {}, None
+        return [], [], [], [], True, 0, 5, 0, {}, None
     
     try:
         # 프로젝트 정보 로드
@@ -741,11 +740,11 @@ def load_concrete_data(search, pathname):
         # 해당 프로젝트의 콘크리트 데이터 로드
         df_conc = api_db.get_concrete_data(project_pk=project_pk)
         if df_conc.empty:
-            return [], [], [], [], True, f"{proj_name} · 콘크리트 목록 (0개)", 0, 5, 0, {}, None
+            return [], [], [], [], True, 0, 5, 0, {}, None
         
     except Exception as e:
         print(f"프로젝트 로딩 오류: {e}")
-        return [], [], [], [], True, "프로젝트 정보를 불러올 수 없음", 0, 5, 0, {}, None
+        return [], [], [], [], True, 0, 5, 0, {}, None
     table_data = []
     for _, row in df_conc.iterrows():
         try:
@@ -832,8 +831,6 @@ def load_concrete_data(search, pathname):
         {"name": "타설일", "id": "pour_date", "type": "text"},
         {"name": "경과일", "id": "elapsed_days", "type": "numeric"},
     ]
-
-    title = f"{proj_name} · 콘크리트 목록"
     
     # 테이블 스타일 설정 (문자열 비교 기반 색상)
     style_data_conditional = [
@@ -888,12 +885,11 @@ def load_concrete_data(search, pathname):
     if table_data:
         table_data = sorted(table_data, key=lambda x: x.get('status_sort', 999))
     
-    return table_data, columns, [], style_data_conditional, True, title, 0, 5, 0, {}, None
+    return table_data, columns, [], style_data_conditional, True, 0, 5, 0, {}, None
 
 # ───────────────────── ③ 콘크리트 선택 콜백 ────────────────────
 @callback(
     Output("btn-concrete-analyze", "disabled", allow_duplicate=True),
-    Output("concrete-title", "children", allow_duplicate=True),
     Output("current-file-title-store", "data", allow_duplicate=True),
     Output("time-slider", "min", allow_duplicate=True),
     Output("time-slider", "max", allow_duplicate=True),
@@ -905,7 +901,7 @@ def load_concrete_data(search, pathname):
 )
 def on_concrete_select(selected_rows, tbl_data):
     if not selected_rows or not tbl_data:
-        return True, "", "", 0, 5, 0, {}
+        return True, "", 0, 5, 0, {}
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     is_active = row["activate"] == "활성"
@@ -926,17 +922,17 @@ def on_concrete_select(selected_rows, tbl_data):
     
     # 안내 메시지 생성
     if can_analyze:
-        title = "⚠️ 분석을 시작하려면 왼쪽의 '분석 시작' 버튼을 클릭하세요."
+        pass  # title 변수 제거됨
     elif is_active and not has_sensors:
-        title = "⚠️ 센서가 부족합니다. 센서를 추가한 후 분석을 시작하세요."
+        pass  # title 변수 제거됨
     else:
         # 비활성 상태일 때 데이터 존재 여부 확인 및 초기 파일 정보 로드
         inp_dir = f"inp/{concrete_pk}"
         inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
         if not inp_files:
-            title = "⏳ 아직 수집된 데이터가 없습니다. 잠시 후 다시 확인해주세요."
+            pass  # title 변수 제거됨
         else:
-            title = ""
+            pass  # title 변수 제거됨
             
             # 시간 파싱 및 슬라이더 설정
             times = []
@@ -1000,7 +996,7 @@ def on_concrete_select(selected_rows, tbl_data):
                     print(f"온도 데이터 파싱 오류: {e}")
                     current_file_title = f"{os.path.basename(latest_file)}"
             
-    return delete_disabled, title, current_file_title, slider_min, slider_max, slider_value, slider_marks
+    return delete_disabled, current_file_title, slider_min, slider_max, slider_value, slider_marks
 
 # ───────────────────── 3D 뷰 클릭 → 단면 위치 저장 ────────────────────
 @callback(
