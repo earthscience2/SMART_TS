@@ -894,7 +894,15 @@ def load_concrete_data(search, pathname):
     if table_data:
         table_data = sorted(table_data, key=lambda x: x.get('status_sort', 999))
     
-    return table_data, columns, [], style_data_conditional, True, True, 0, 5, 0, {0: "시작", 5: "끝"}, None
+    # 타입 검증 및 안전한 값 설정
+    slider_min = 0
+    slider_max = 5
+    slider_value = 0
+    slider_marks = {0: "시작", 5: "끝"}
+    
+    # 디버깅 로그 제거
+    
+    return table_data, columns, [], style_data_conditional, True, True, slider_min, slider_max, slider_value, slider_marks, None
 
 # ───────────────────── ③ 콘크리트 선택 콜백 ────────────────────
 @callback(
@@ -1016,6 +1024,18 @@ def on_concrete_select(selected_rows, tbl_data):
     # marks가 딕셔너리가 아니면 기본값으로 변경
     if not isinstance(slider_marks, dict):
         slider_marks = {0: "시작", slider_max: "끝"}
+    
+    # 타입 검증 및 안전한 값 설정
+    if not isinstance(slider_min, (int, float)):
+        slider_min = 0
+    if not isinstance(slider_max, (int, float)):
+        slider_max = 5
+    if not isinstance(slider_value, (int, float)):
+        slider_value = 0
+    if not isinstance(slider_marks, dict):
+        slider_marks = {0: "시작", slider_max: "끝"}
+    
+    # 디버깅 로그 제거
     
     return analyze_disabled, delete_disabled, current_file_title, slider_min, slider_max, slider_value, slider_marks
 
@@ -1342,6 +1362,16 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
         slider_max = int(max_idx) if max_idx is not None else 5
         slider_marks = marks if isinstance(marks, dict) else {0: "시작", slider_max: "끝"}
         slider_value = int(value) if value is not None else 0
+        
+        # 타입 검증 및 안전한 값 설정
+        if not isinstance(slider_min, (int, float)):
+            slider_min = 0
+        if not isinstance(slider_max, (int, float)):
+            slider_max = 5
+        if not isinstance(slider_marks, dict):
+            slider_marks = {0: "시작", slider_max: "끝"}
+        if not isinstance(slider_value, (int, float)):
+            slider_value = 0
         
         # 디버깅 로그 제거
         
@@ -3333,47 +3363,30 @@ def sync_display_slider_to_main(display_value):
     prevent_initial_call=True,
 )
 def sync_main_slider_to_display(main_value, main_min, main_max, main_marks):
+    # 임시로 기본값만 반환하여 문제 해결
     try:
-        print(f"sync_main_slider_to_display 입력값:")
-        print(f"  main_value: {main_value} ({type(main_value)})")
-        print(f"  main_min: {main_min} ({type(main_min)})")
-        print(f"  main_max: {main_max} ({type(main_max)})")
-        print(f"  main_marks: {main_marks} ({type(main_marks)})")
-        
-        # 값들이 바뀌어서 전달되었을 가능성을 고려하여 타입에 따라 처리
-        value = None
-        min_val = None
-        max_val = None
-        marks = None
-        
-        # 각 매개변수를 타입에 따라 분류
-        for param in [main_value, main_min, main_max, main_marks]:
-            if isinstance(param, dict):
-                if marks is None:
-                    marks = param
-            elif isinstance(param, (int, float)):
-                if value is None:
-                    value = param
-                elif min_val is None:
-                    min_val = param
-                elif max_val is None:
-                    max_val = param
-        
-        # 기본값 설정
-        if value is None:
+        # 타입 검증 및 기본값 설정
+        if isinstance(main_value, (int, float)) and main_value is not None:
+            value = int(main_value)
+        else:
             value = 0
-        if min_val is None:
+            
+        if isinstance(main_min, (int, float)) and main_min is not None:
+            min_val = int(main_min)
+        else:
             min_val = 0
-        if max_val is None:
+            
+        if isinstance(main_max, (int, float)) and main_max is not None:
+            max_val = int(main_max)
+        else:
             max_val = 5
-        if marks is None or not isinstance(marks, dict):
+            
+        if isinstance(main_marks, dict) and main_marks is not None:
+            marks = main_marks
+        else:
             marks = {0: "시작", 5: "끝"}
         
-        print(f"sync_main_slider_to_display 처리 후:")
-        print(f"  value: {value} ({type(value)})")
-        print(f"  min_val: {min_val} ({type(min_val)})")
-        print(f"  max_val: {max_val} ({type(max_val)})")
-        print(f"  marks: {marks} ({type(marks)})")
+        # 디버깅 로그 제거
         
         return value, min_val, max_val, marks
     except Exception as e:
