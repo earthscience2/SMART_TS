@@ -300,33 +300,44 @@ layout = html.Div([
                     dbc.Col([
                         html.Div([
                             html.H6("🔬 타설 콘크리트 탄성계수 (CEB-FIB Model)[Pa]", className="mb-3 text-secondary fw-bold"),
-                            dbc.Row([
-                                dbc.Col([
-                                    dbc.Label([
-                                        "베타 상수 ",
-                                        html.Small("(0.1~1.0)", className="text-muted", style={"fontSize": "0.7rem"})
-                                    ], className="form-label fw-semibold"),
-                                    dbc.Input(id="add-b", type="number", step=0.1, placeholder="베타 상수(con_b)", className="form-control")
-                                ], width=12),
-                            ], className="mb-3"),
-                            dbc.Row([
-                                dbc.Col([
-                                    dbc.Label([
-                                        "N 상수 ",
-                                        html.Small("(0.5~0.7)", className="text-muted", style={"fontSize": "0.7rem"})
-                                    ], className="form-label fw-semibold"),
-                                    dbc.Input(id="add-n", type="number", step=0.1, placeholder="N 상수(con_n)", className="form-control")
-                                ], width=12),
-                            ], className="mb-3"),
-                            dbc.Row([
-                                dbc.Col([
-                                    dbc.Label([
-                                        "E28(재령 28일 압축 탄성계수) [GPa] ",
-                                        html.Small("(1~100)", className="text-muted", style={"fontSize": "0.7rem"})
-                                    ], className="form-label fw-semibold"),
-                                    dbc.Input(id="add-e", type="number", step=0.1, placeholder="탄성계수(con_e)", className="form-control")
-                                ], width=12),
-                            ], className="mb-3"),
+                            
+                            # 베타, N, E28 상수들을 박스로 묶기
+                            html.Div([
+                                html.H6("📊 CEB-FIB Model 상수", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                                dbc.Row([
+                                    dbc.Col([
+                                        dbc.Label([
+                                            "베타 상수 ",
+                                            html.Small("(0.1~1.0)", className="text-muted", style={"fontSize": "0.7rem"})
+                                        ], className="form-label fw-semibold"),
+                                        dbc.Input(id="add-b", type="number", step=0.1, placeholder="베타 상수(con_b)", className="form-control")
+                                    ], width=12),
+                                ], className="mb-3"),
+                                dbc.Row([
+                                    dbc.Col([
+                                        dbc.Label([
+                                            "N 상수 ",
+                                            html.Small("(0.5~0.7)", className="text-muted", style={"fontSize": "0.7rem"})
+                                        ], className="form-label fw-semibold"),
+                                        dbc.Input(id="add-n", type="number", step=0.1, placeholder="N 상수(con_n)", className="form-control")
+                                    ], width=12),
+                                ], className="mb-3"),
+                                dbc.Row([
+                                    dbc.Col([
+                                        dbc.Label([
+                                            "E28(재령 28일 압축 탄성계수) [GPa] ",
+                                            html.Small("(1~100)", className="text-muted", style={"fontSize": "0.7rem"})
+                                        ], className="form-label fw-semibold"),
+                                        dbc.Input(id="add-e", type="number", step=0.1, placeholder="탄성계수(con_e)", className="form-control")
+                                    ], width=12),
+                                ], className="mb-2"),
+                                
+                                # 재령분석 버튼을 박스 내부 하단에 배치
+                                html.Div([
+                                    dbc.Button("재령분석", id="add-age-analysis", color="warning", className="px-3", size="sm"),
+                                ], className="text-start"),
+                            ], className="bg-light p-3 rounded border mb-3"),
+                            
                             dbc.Row([
                                 dbc.Col([
                                     dbc.Label("타설 날짜", className="form-label fw-semibold"),
@@ -378,7 +389,6 @@ layout = html.Div([
             dbc.ModalFooter([
                 dbc.Button("📥 불러오기", id="add-load-btn", color="outline-primary", className="px-3", size="sm"),
                 dbc.Button("3D 미리보기", id="add-build", color="info", className="px-3", size="sm"),
-                dbc.Button("재령분석", id="add-age-analysis", color="warning", className="px-3", size="sm"),
                 dbc.Button("저장", id="add-save", color="success", className="px-3 fw-semibold ms-auto", size="sm"),
                 dbc.Button("닫기", id="add-close", color="secondary", className="px-3", size="sm"),
             ], className="border-0 pt-2"),
@@ -439,33 +449,44 @@ layout = html.Div([
                     dbc.Col([
                         html.Div([
                             html.H6("🔬 타설 콘크리트 탄성계수 (CEB-FIB Model)[Pa]", className="mb-3 text-secondary fw-bold"),
-                            dbc.Row([
-                                dbc.Col([
-                                    dbc.Label([
-                                        "베타 상수 ",
-                                        html.Small("(0.1~1.0)", className="text-muted", style={"fontSize": "0.7rem"})
-                                    ], className="form-label fw-semibold"),
-                                    dbc.Input(id="edit-b", type="number", step=0.1, placeholder="베타 상수(con_b)", className="form-control")
-                                ], width=12),
-                            ], className="mb-3"),
-                            dbc.Row([
-                                dbc.Col([
-                                    dbc.Label([
-                                        "N 상수 ",
-                                        html.Small("(0.5~0.7)", className="text-muted", style={"fontSize": "0.7rem"})
-                                    ], className="form-label fw-semibold"),
-                                    dbc.Input(id="edit-n", type="number", step=0.1, placeholder="N 상수(con_n)", className="form-control")
-                                ], width=12),
-                            ], className="mb-3"),
-                            dbc.Row([
-                                dbc.Col([
-                                    dbc.Label([
-                                        "E28(재령 28일 압축 탄성계수) [GPa] ",
-                                        html.Small("(1~100)", className="text-muted", style={"fontSize": "0.7rem"})
-                                    ], className="form-label fw-semibold"),
-                                    dbc.Input(id="edit-e", type="number", step=0.1, placeholder="탄성계수(con_e)", className="form-control")
-                                ], width=12),
-                            ], className="mb-3"),
+                            
+                            # 베타, N, E28 상수들을 박스로 묶기
+                            html.Div([
+                                html.H6("📊 CEB-FIB Model 상수", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                                dbc.Row([
+                                    dbc.Col([
+                                        dbc.Label([
+                                            "베타 상수 ",
+                                            html.Small("(0.1~1.0)", className="text-muted", style={"fontSize": "0.7rem"})
+                                        ], className="form-label fw-semibold"),
+                                        dbc.Input(id="edit-b", type="number", step=0.1, placeholder="베타 상수(con_b)", className="form-control")
+                                    ], width=12),
+                                ], className="mb-3"),
+                                dbc.Row([
+                                    dbc.Col([
+                                        dbc.Label([
+                                            "N 상수 ",
+                                            html.Small("(0.5~0.7)", className="text-muted", style={"fontSize": "0.7rem"})
+                                        ], className="form-label fw-semibold"),
+                                        dbc.Input(id="edit-n", type="number", step=0.1, placeholder="N 상수(con_n)", className="form-control")
+                                    ], width=12),
+                                ], className="mb-3"),
+                                dbc.Row([
+                                    dbc.Col([
+                                        dbc.Label([
+                                            "E28(재령 28일 압축 탄성계수) [GPa] ",
+                                            html.Small("(1~100)", className="text-muted", style={"fontSize": "0.7rem"})
+                                        ], className="form-label fw-semibold"),
+                                        dbc.Input(id="edit-e", type="number", step=0.1, placeholder="탄성계수(con_e)", className="form-control")
+                                    ], width=12),
+                                ], className="mb-2"),
+                                
+                                # 재령분석 버튼을 박스 내부 하단에 배치
+                                html.Div([
+                                    dbc.Button("재령분석", id="edit-age-analysis", color="warning", className="px-3", size="sm"),
+                                ], className="text-start"),
+                            ], className="bg-light p-3 rounded border mb-3"),
+                            
                             dbc.Row([
                                 dbc.Col([
                                     dbc.Label("타설 날짜", className="form-label fw-semibold"),
@@ -516,7 +537,6 @@ layout = html.Div([
             ]),
             dbc.ModalFooter([
                 dbc.Button("3D 미리보기", id="edit-build", color="info", className="px-3", size="sm"),
-                dbc.Button("재령분석", id="edit-age-analysis", color="warning", className="px-3", size="sm"),
                 dbc.Button("저장", id="edit-save", color="success", className="px-3 fw-semibold ms-auto", size="sm"),
                 dbc.Button("닫기", id="edit-close", color="secondary", className="px-3", size="sm"),
             ], className="border-0 pt-2"),
