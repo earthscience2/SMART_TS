@@ -357,7 +357,7 @@ layout = html.Div([
                             "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
                         })
                     ])
-                ], md=8),
+                ]),
             ], md=9),
         ], className="g-3"),
     ], className="py-3")
