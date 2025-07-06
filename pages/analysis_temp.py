@@ -4000,9 +4000,10 @@ def save_section_image(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl
     State("temp-x-input", "value"),
     State("temp-y-input", "value"),
     State("temp-z-input", "value"),
+    State("temp-range-filter", "value"),
     prevent_initial_call=True,
 )
-def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z):
+def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z, range_filter):
     if not n_clicks or not fig_3d:
         raise PreventUpdate
     
@@ -4017,7 +4018,13 @@ def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z
             x_pos = round(x, 1) if x is not None else 0.0
             y_pos = round(y, 1) if y is not None else 0.0
             z_pos = round(z, 1) if z is not None else 0.0
-            filename = f"온도분석_{concrete_name}_위치({x_pos}_{y_pos}_{z_pos}).png"
+            
+            # 기간 정보 추가
+            period_info = ""
+            if range_filter and range_filter != "all":
+                period_info = f"_최근{range_filter}일"
+            
+            filename = f"온도분석_{concrete_name}_위치({x_pos}_{y_pos}_{z_pos}){period_info}.png"
         else:
             from datetime import datetime
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -4153,9 +4160,10 @@ def save_section_inp(n_clicks, selected_rows, tbl_data, time_value):
     State("temp-x-input", "value"),
     State("temp-y-input", "value"),
     State("temp-z-input", "value"),
+    State("temp-range-filter", "value"),
     prevent_initial_call=True,
 )
-def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
+def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z, range_filter):
     if not n_clicks or not selected_rows or not tbl_data:
         raise PreventUpdate
     
@@ -4179,10 +4187,29 @@ def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
         
         # 온도 데이터 수집
         temp_data = []
+        
+        # 기간 필터 적용
+        if range_filter and range_filter != "all":
+            try:
+                # 현재 시간에서 지정된 일수만큼 이전 시간 계산
+                from datetime import timedelta
+                current_time = dt_import.now()
+                filter_days = int(range_filter)
+                cutoff_time = current_time - timedelta(days=filter_days)
+            except:
+                cutoff_time = None
+        else:
+            cutoff_time = None
+        
         for f in inp_files:
             try:
                 time_str = os.path.basename(f).split(".")[0]
                 dt = dt_import.strptime(time_str, "%Y%m%d%H")
+                
+                # 기간 필터 적용
+                if cutoff_time and dt < cutoff_time:
+                    continue
+                    
             except:
                 continue
             
@@ -4247,7 +4274,13 @@ def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
         x_pos = round(x, 1) if x is not None else 0.0
         y_pos = round(y, 1) if y is not None else 0.0
         z_pos = round(z, 1) if z is not None else 0.0
-        filename = f"온도분석_{concrete_name}_위치({x_pos}_{y_pos}_{z_pos}).csv"
+        
+        # 기간 정보 추가
+        period_info = ""
+        if range_filter and range_filter != "all":
+            period_info = f"_최근{range_filter}일"
+        
+        filename = f"온도분석_{concrete_name}_위치({x_pos}_{y_pos}_{z_pos}){period_info}.csv"
         
         default_btn = [html.I(className="fas fa-file-csv me-1"), "데이터 저장"]
         return dict(content=csv_content, filename=filename), default_btn, False
