@@ -347,8 +347,8 @@ def _build_concrete_sensor_navbar():
 
     main_nav_links = [
         dbc.NavItem(dcc.Link("대시보드", href="/", className="nav-link", id="nav-dashboard")),
-        dbc.NavItem(dcc.Link("콘크리트 모델링", href=f"/concrete{query_str}" if page_param else "/concrete", className="nav-link", id="nav-concrete")),
-        dbc.NavItem(dcc.Link("센서 위치", href=f"/sensor{query_str}", className="nav-link", id="nav-sensor")),
+        dbc.NavItem(dcc.Link("콘크리트 모델링", href="/concrete", className="nav-link", id="nav-concrete")),
+        dbc.NavItem(dcc.Link("센서 위치", href="/sensor", className="nav-link", id="nav-sensor")),
     ]
     
     logout_nav = [
@@ -404,11 +404,11 @@ def _build_analysis_navbar():
 
     main_nav_links = [
         dbc.NavItem(dcc.Link("대시보드", href="/", className="nav-link", id="nav-dashboard")),
-        dbc.NavItem(dcc.Link("온도분석", href=f"/temp{query_str}" if page_param else "/temp", className="nav-link", id="nav-temp")),
-        dbc.NavItem(dcc.Link("응력분석", href=f"/stress{query_str}" if page_param else "/stress", className="nav-link", id="nav-stress")),
-        dbc.NavItem(dcc.Link("TCI분석", href=f"/tci{query_str}" if page_param else "/tci", className="nav-link", id="nav-tci")),
-        dbc.NavItem(dcc.Link("강도분석", href=f"/strength{query_str}" if page_param else "/strength", className="nav-link", id="nav-strength")),
-        dbc.NavItem(dcc.Link("파일 다운로드", href=f"/download{query_str}" if page_param else "/download", className="nav-link", id="nav-download")),
+        dbc.NavItem(dcc.Link("온도분석", href="/temp", className="nav-link", id="nav-temp")),
+        dbc.NavItem(dcc.Link("응력분석", href="/stress", className="nav-link", id="nav-stress")),
+        dbc.NavItem(dcc.Link("TCI분석", href="/tci", className="nav-link", id="nav-tci")),
+        dbc.NavItem(dcc.Link("강도분석", href="/strength", className="nav-link", id="nav-strength")),
+        dbc.NavItem(dcc.Link("파일 다운로드", href="/download", className="nav-link", id="nav-download")),
     ]
     
     logout_nav = [
@@ -611,6 +611,42 @@ def update_navbar(pathname):
     else:
         # 기본값: 홈 네비게이션 바
         return _build_home_navbar()
+
+# 네비게이션 바 링크 URL 동적 업데이트 콜백
+@app.callback(
+    [Output("nav-concrete", "href"),
+     Output("nav-sensor", "href"),
+     Output("nav-temp", "href"),
+     Output("nav-stress", "href"),
+     Output("nav-tci", "href"),
+     Output("nav-strength", "href"),
+     Output("nav-download", "href")],
+    [Input("url", "pathname"),
+     Input("url", "search")]
+)
+def update_nav_links(pathname, search):
+    """네비게이션 바 링크들이 현재 URL의 쿼리 파라미터를 유지하도록 업데이트합니다."""
+    
+    # 기본 URL 설정
+    concrete_url = "/concrete"
+    sensor_url = "/sensor"
+    temp_url = "/temp"
+    stress_url = "/stress"
+    tci_url = "/tci"
+    strength_url = "/strength"
+    download_url = "/download"
+    
+    # 쿼리 파라미터가 있으면 추가
+    if search:
+        concrete_url += search
+        sensor_url += search
+        temp_url += search
+        stress_url += search
+        tci_url += search
+        strength_url += search
+        download_url += search
+    
+    return concrete_url, sensor_url, temp_url, stress_url, tci_url, strength_url, download_url
 
 # 네비게이션 바 active 클래스 동적 적용 콜백 (간소화)
 @app.callback(

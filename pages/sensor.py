@@ -729,19 +729,7 @@ def on_sensor_select(selected_rows, tbl_data, current_fig, cam_store, selected_c
 
 
 # ───────────────────── ④ 카메라 정보 저장 콜백 ────────────────────
-# ───────────────────── ④ 네비게이션 바 센서 위치 링크 수정 콜백 ────────────────────
-@callback(
-    Output("nav-sensor", "href"),
-    Input("sensor-url", "search"),
-    prevent_initial_call=True,
-)
-def update_sensor_nav_link(search):
-    """센서 페이지에서 네비게이션 바의 센서 위치 링크가 현재 URL을 유지하도록 수정"""
-    if search:
-        return f"/sensor{search}"
-    return "/sensor"
-
-# ───────────────────── ⑤ 카메라 정보 저장 콜백 (알림 비활성화 버전) ────────────────────
+# ───────────────────── ④ 카메라 정보 저장 콜백 (알림 비활성화 버전) ────────────────────
 @callback(
     Output("camera-store", "data"),
     Input("viewer-sensor", "relayoutData"),
