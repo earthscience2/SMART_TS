@@ -677,8 +677,8 @@ layout = html.Div([
 
 # ───────────────────── ① URL에서 프로젝트 정보 읽기
 @callback(
-    Output("selected-project-store", "data"),
-    Output("current-project-info", "children"),
+    Output("selected-project-store", "data", allow_duplicate=True),
+    Output("current-project-info", "children", allow_duplicate=True),
     Input("concrete-url", "search"),
     prevent_initial_call=False
 )

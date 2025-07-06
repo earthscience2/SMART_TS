@@ -412,8 +412,8 @@ layout = html.Div([
 
 # ───────────────────── ① URL 파라미터 파싱 ─────────────────────
 @callback(
-    Output("selected-project-store", "data"),
-    Output("current-project-info", "children"),
+    Output("selected-project-store", "data", allow_duplicate=True),
+    Output("current-project-info", "children", allow_duplicate=True),
     Input("sensor-url", "search"),
     prevent_initial_call=False
 )
