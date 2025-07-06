@@ -30,7 +30,7 @@ import json
 import auto_sensor
 import auto_inp
 import time
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import urlparse
 from dash.dependencies import ALL
 from dash import html
 import dash_vtk
@@ -741,12 +741,7 @@ def load_concrete_data(search, pathname):
     project_pk = None
     if search:
         try:
-            # 먼저 암호화된 URL 파라미터 시도
             project_pk = parse_project_key_from_url(search)
-            if not project_pk:
-                # 기존 방식으로 fallback
-                qs = parse_qs(search.lstrip('?'))
-                project_pk = qs.get('page', [None])[0]
         except Exception:
             pass
     

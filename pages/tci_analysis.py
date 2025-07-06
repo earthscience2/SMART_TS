@@ -16,6 +16,7 @@ from dash import (
 import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
 import api_db
+from utils.encryption import parse_project_key_from_url
 
 register_page(__name__, path="/tci-analysis", title="TCI 분석")
 
@@ -96,13 +97,10 @@ layout = dbc.Container(
 )
 def load_concrete_options(search):
     """URL에서 프로젝트 정보를 추출하고 해당 프로젝트의 콘크리트 목록을 로드합니다."""
-    from urllib.parse import parse_qs
-    
     project_pk = None
     if search:
         try:
-            qs = parse_qs(search.lstrip('?'))
-            project_pk = qs.get('page', [None])[0]
+            project_pk = parse_project_key_from_url(search)
         except Exception:
             pass
     
