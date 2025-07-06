@@ -134,10 +134,6 @@ layout = html.Div([
     dcc.Store(id="selected-project-store"),
     dbc.Container(
         children=[
-            # 프로젝트 정보 표시
-            html.Div([
-                dbc.Alert(id="current-project-info", color="info", className="mb-0 py-2"),
-            ], className="mb-2"),
             # ── (★) 카메라 정보를 저장하기 위한 Store
             dcc.Store(id="camera-store", data=None),
 
@@ -156,8 +152,13 @@ layout = html.Div([
             ),
 
             dbc.Row([
-                # 좌측: 콘크리트 선택 + 센서 목록
+                # 좌측: 프로젝트 정보 + 콘크리트 선택 + 센서 목록
                 dbc.Col([
+                    # 프로젝트 정보 카드
+                    html.Div([
+                        dbc.Alert(id="current-project-info", color="info", className="mb-0 py-2"),
+                    ], className="mb-2"),
+                    
                     # 콘크리트 선택 카드
                     html.Div([
                         html.Div([
