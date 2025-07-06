@@ -436,47 +436,129 @@ layout = dbc.Container(
                         html.Div([
                             dash_table.DataTable(
                                 id="tbl-concrete",
-                                page_size=10,
+                                page_size=5,
                                 row_selectable="single",
                                 sort_action="native",
-                                sort_mode="single",
-                                style_table={
-                                    "overflowY": "auto", 
-                                    "height": "500px",
-                                    "borderRadius": "8px",
-                                    "border": "1px solid #e2e8f0"
-                                },
+                                sort_mode="multi",
+                                style_table={"overflowY": "auto", "height": "40vh"},
                                 style_cell={
                                     "whiteSpace": "nowrap", 
                                     "textAlign": "center",
-                                    "padding": "12px 8px",
-                                    "fontSize": "13px",
-                                    "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui",
-                                    "border": "1px solid #f1f5f9"
+                                    "fontSize": "0.9rem",
+                                    "padding": "14px 12px",
+                                    "border": "none",
+                                    "borderBottom": "1px solid #f1f1f0",
+                                    "fontFamily": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
                                 },
                                 style_header={
-                                    "backgroundColor": "#f8fafc", 
-                                    "fontWeight": "600",
-                                    "color": "#475569",
-                                    "border": "1px solid #e2e8f0",
-                                    "textAlign": "center"
+                                    "backgroundColor": "#fafafa", 
+                                    "fontWeight": 600,
+                                    "color": "#37352f",
+                                    "border": "none",
+                                    "borderBottom": "1px solid #e9e9e7",
+                                    "fontSize": "0.8rem",
+                                    "textTransform": "uppercase",
+                                    "letterSpacing": "0.5px"
+                                },
+                                style_data={
+                                    "backgroundColor": "white",
+                                    "border": "none",
+                                    "color": "#37352f"
                                 },
                                 style_data_conditional=[
                                     {
                                         'if': {'row_index': 'odd'},
-                                        'backgroundColor': '#fafbfc'
+                                        'backgroundColor': '#fbfbfa'
                                     },
                                     {
                                         'if': {'state': 'selected'},
-                                        'backgroundColor': '#e6f3ff',
-                                        'border': '1px solid #3182ce'
+                                        'backgroundColor': '#e8f4fd',
+                                        'border': '1px solid #579ddb',
+                                        'borderRadius': '6px',
+                                        'boxShadow': '0 0 0 1px rgba(87, 157, 219, 0.3)',
+                                        'color': '#1d4ed8'
+                                    },
+                                    {
+                                        'if': {
+                                            'filter_query': '{status} = 분석중',
+                                            'column_id': 'status'
+                                        },
+                                        'backgroundColor': '#dcfce7',
+                                        'color': '#166534',
+                                        'fontWeight': '600',
+                                        'borderRadius': '4px',
+                                        'textAlign': 'center'
+                                    },
+                                    {
+                                        'if': {
+                                            'filter_query': '{status} = 분석 가능',
+                                            'column_id': 'status'
+                                        },
+                                        'backgroundColor': '#dbeafe',
+                                        'color': '#1e40af',
+                                        'fontWeight': '600',
+                                        'borderRadius': '4px',
+                                        'textAlign': 'center'
+                                    },
+                                    {
+                                        'if': {
+                                            'filter_query': '{status} = 센서 부족',
+                                            'column_id': 'status'
+                                        },
+                                        'backgroundColor': '#fef3c7',
+                                        'color': '#d97706',
+                                        'fontWeight': '600',
+                                        'borderRadius': '4px',
+                                        'textAlign': 'center'
+                                    },
+                                    {
+                                        'if': {'column_id': 'pour_date'},
+                                        'fontSize': '0.85rem',
+                                        'color': '#6b7280',
+                                        'fontWeight': '500'
+                                    },
+                                    {
+                                        'if': {'column_id': 'elapsed_days'},
+                                        'fontSize': '0.85rem',
+                                        'color': '#495057',
+                                        'fontWeight': '500'
+                                    },
+                                    {
+                                        'if': {'column_id': 'name'},
+                                        'fontWeight': '600',
+                                        'color': '#111827',
+                                        'textAlign': 'left',
+                                        'paddingLeft': '16px'
+                                    }
+                                ],
+                                css=[
+                                    {
+                                        'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner table',
+                                        'rule': 'border-collapse: separate; border-spacing: 0;'
+                                    },
+                                    {
+                                        'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr:hover',
+                                        'rule': 'background-color: #f8fafc !important; transition: background-color 0.15s ease;'
+                                    },
+                                    {
+                                        'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr.row-selected',
+                                        'rule': '''
+                                            background-color: #eff6ff !important;
+                                            box-shadow: inset 3px 0 0 #3b82f6;
+                                            border-left: 3px solid #3b82f6;
+                                        '''
+                                    },
+                                    {
+                                        'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner td',
+                                        'rule': 'cursor: pointer; transition: all 0.15s ease;'
                                     }
                                 ]
                             ),
                         ], style={
-                            "backgroundColor": "white",
-                            "borderRadius": "8px",
-                            "overflow": "hidden"
+                            "borderRadius": "12px", 
+                            "overflow": "hidden", 
+                            "border": "1px solid #e5e5e4",
+                            "boxShadow": "0 1px 3px rgba(0, 0, 0, 0.05)"
                         }),
                         
                         # 액션 버튼들
