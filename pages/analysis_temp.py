@@ -1878,38 +1878,30 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                             "fontWeight": "500",
                             "color": "#374151",
                             "marginBottom": "8px",
-                            "fontSize": "13px"
+                            "fontSize": "13px",
+                            "display": "inline-block",
+                            "marginRight": "8px"
                         }),
+                        dbc.Switch(
+                            id="btn-unified-colorbar",
+                            label="",
+                            value=False,
+                            className="mb-0",
+                            style={
+                                "display": "inline-block",
+                                "marginBottom": "12px"
+                            }
+                        ),
                         dbc.Tooltip(
                             "모든 그래프의 온도바 범위를 통일합니다",
                             target="btn-unified-colorbar",
                             placement="top"
-                        ),
-                        html.Div([
-                            dbc.Switch(
-                                id="btn-unified-colorbar",
-                                label="",
-                                value=False,
-                                className="mb-0",
-                                style={
-                                    "marginBottom": "12px"
-                                }
-                            ),
-                            html.Span("개별", id="toggle-label", style={
-                                "marginLeft": "8px",
-                                "fontSize": "12px",
-                                "fontWeight": "500",
-                                "color": "#6b7280"
-                            })
-                        ], style={
-                            "display": "flex",
-                            "alignItems": "center",
-                            "padding": "8px 12px",
-                            "backgroundColor": "#f9fafb",
-                            "borderRadius": "8px",
-                            "border": "1px solid #e5e7eb"
-                        })
-                    ]),
+                        )
+                    ], style={
+                        "display": "flex",
+                        "alignItems": "center",
+                        "marginBottom": "12px"
+                    }),
                     dcc.Graph(
                         id="viewer-3d-display",
                         style={
@@ -4163,8 +4155,6 @@ def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
 # ───────────── 온도바 통일 기능 콜백 ─────────────
 @callback(
     Output("unified-colorbar-state", "data"),
-    Output("toggle-label", "children"),
-    Output("toggle-label", "style"),
     Input("btn-unified-colorbar", "value"),
     prevent_initial_call=True,
 )
@@ -4173,26 +4163,7 @@ def toggle_unified_colorbar(switch_value):
     if switch_value is None:
         raise PreventUpdate
     
-    if switch_value:
-        # 통일 모드 활성화 (ON)
-        label_text = "통일"
-        label_style = {
-            "marginLeft": "8px",
-            "fontSize": "12px",
-            "fontWeight": "600",
-            "color": "#28a745"
-        }
-    else:
-        # 개별 모드 활성화 (OFF)
-        label_text = "개별"
-        label_style = {
-            "marginLeft": "8px",
-            "fontSize": "12px",
-            "fontWeight": "500",
-            "color": "#6b7280"
-        }
-    
-    return switch_value, label_text, label_style
+    return switch_value
 
 # ───────────── TCI 인장강도 계산식 입력창 동적 표시 콜백 ─────────────
 @callback(
