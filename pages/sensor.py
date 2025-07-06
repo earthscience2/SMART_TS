@@ -464,8 +464,8 @@ def init_dropdown(selected_value, project_pk):
     options = []
     for _, row in df_conc.iterrows():
         # activate 상태에 따라 상태 텍스트 결정
-        status = "수정가능" if row.get("activate", 1) == 1 else "분석중"
-        status_icon = "🟢" if row.get("activate", 1) == 1 else "🟡"
+        status = "설정중" if row.get("activate", 1) == 1 else "분석중"
+        status_icon = "⚪" if row.get("activate", 1) == 1 else "🟢"
         
         label = f"{status_icon} {row['name']} [{status}]"
         options.append({"label": label, "value": row["concrete_pk"]})
@@ -625,14 +625,14 @@ def on_concrete_change(selected_conc, show_lines, tbl_timestamp, cam_store):
             "분석중인 콘크리트에 속한 센서는 수정할 수 없습니다."
         ], color="danger", className="py-2 mb-0", style={"fontSize": "0.75rem"})
     
-    # activate가 0이면 모든 버튼 비활성화
+    # activate가 0이면 수정/삭제 버튼만 비활성화 (추가 버튼은 항상 활성화)
     if activate == 0:
-        return fig, table_data, columns, selected_indices, True, True, True, warning_message
+        return fig, table_data, columns, selected_indices, True, True, False, warning_message
     
     # activate가 1이면 센서 선택 여부에 따라 버튼 활성화/비활성화
     edit_disabled = not bool(selected_indices)
     del_disabled = not bool(selected_indices)
-    add_disabled = False  # 추가 버튼은 항상 활성화 (activate=1일 때)
+    add_disabled = False  # 추가 버튼은 항상 활성화
 
     return fig, table_data, columns, selected_indices, edit_disabled, del_disabled, add_disabled, warning_message
 
