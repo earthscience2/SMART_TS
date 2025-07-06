@@ -191,7 +191,7 @@ def layout():
                     concrete_sensors = df_sensors[df_sensors["concrete_pk"] == concrete_pk]
                     sensor_count = len(concrete_sensors)
                     
-                    analysis_status = "분석중" if concrete["activate"] == 0 else "미분석"
+                    analysis_status = "분석중" if concrete["activate"] == 0 else "설정중"
                     
                     concrete_data.append({
                         "name": concrete["name"],
@@ -268,7 +268,7 @@ def layout():
                         # 콘크리트 섹션
                         dbc.Col([
                             html.Div([
-                                html.H6("콘크리트", className="mb-3 text-secondary fw-bold text-center"),
+                                html.H6("콘크리트", className="mb-3 text-secondary fw-bold"),
                                 html.Div([
                                     dash_table.DataTable(
                                         data=concrete_data,
@@ -317,7 +317,7 @@ def layout():
                                             },
                                             {
                                                 'if': {
-                                                    'filter_query': '{status} = 미분석',
+                                                    'filter_query': '{status} = 설정중',
                                                     'column_id': 'status'
                                                 },
                                                 'backgroundColor': '#f3f4f6',
@@ -369,7 +369,7 @@ def layout():
                         # 센서 섹션
                         dbc.Col([
                             html.Div([
-                                html.H6("ITS 센서", className="mb-3 text-secondary fw-bold text-center"),
+                                html.H6("ITS 센서", className="mb-3 text-secondary fw-bold"),
                                 html.Div([
                                     dash_table.DataTable(
                                         data=sensor_data,
