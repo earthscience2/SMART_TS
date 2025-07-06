@@ -134,6 +134,10 @@ layout = html.Div([
     dcc.Store(id="selected-project-store"),
     dbc.Container(
         children=[
+            # 프로젝트 정보 표시
+            html.Div([
+                dbc.Alert(id="current-project-info", color="info", className="mb-0 py-2"),
+            ], className="mb-2"),
             # ── (★) 카메라 정보를 저장하기 위한 Store
             dcc.Store(id="camera-store", data=None),
 
@@ -1123,7 +1127,7 @@ def toggle_edit_modal(b_open, b_close, b_save, sel, tbl_data, conc_pk):
     return False, dash.no_update, dash.no_update
 
 
-# ───────────────────── ⑩ 수정 모달 필드 채우기 콜백 ─────────────────────
+# ───────────────────── ⑩ 수정 모달 필드 채우기 콜백 ────────────────────
 @callback(
     Output("edit-sensor-coords", "value"),
     Output("edit-sensor-preview", "figure"),
@@ -1195,7 +1199,7 @@ def fill_edit_sensor(opened, conc_pk, sensor_pk):
                 hoverinfo="skip",
                 showlegend=False,
             ))
-            # ② XY 평면 X축 투영
+            # ② XY 평면 X축 투영 (y=y_s, z=0)
             x_ints = get_polygon_intersections_x(y_s, conc_nodes)
             if x_ints:
                 left_candidates = [xi for xi in x_ints if xi < x_s]
@@ -1217,19 +1221,14 @@ def fill_edit_sensor(opened, conc_pk, sensor_pk):
                     hoverinfo="skip",
                     showlegend=False,
                 ))
-            # ③ XY 평면 Y축 투영
+
+            # ③ XY 평면 Y축 투영 (x=x_s, z=0)
             y_ints = get_polygon_intersections_y(x_s, conc_nodes)
             if y_ints:
                 down_candidates = [yi for yi in y_ints if yi < y_s]
                 up_candidates = [yi for yi in y_ints if yi > y_s]
-                if down_candidates:
-                    y_min_bound = max(down_candidates)
-                else:
-                    y_min_bound = y_s
-                if up_candidates:
-                    y_max_bound = min(up_candidates)
-                else:
-                    y_max_bound = y_s
+                y_min_bound = max(down_candidates) if down_candidates else y_s
+                y_max_bound = min(up_candidates) if up_candidates else y_s
                 fig_conc.add_trace(go.Scatter3d(
                     x=[x_s, x_s],
                     y=[y_min_bound, y_max_bound],
