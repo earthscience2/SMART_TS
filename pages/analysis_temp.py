@@ -3259,6 +3259,88 @@ def sync_viewer_to_display(main_figure):
 
 # 클라이언트 사이드 콜백 제거 - 충돌 방지
 
+# 3D 탭 시간 정보 업데이트 콜백
+@callback(
+    Output("viewer-3d-time-info", "children"),
+    Input("current-file-title-store", "data"),
+    Input("tabs-main", "active_tab"),
+    prevent_initial_call=True,
+)
+def update_3d_time_info(current_file_title, active_tab):
+    """3D 탭에서 시간 정보를 업데이트"""
+    
+    # 3D 탭이 아니면 빈 div 반환
+    if active_tab != "tab-3d":
+        return html.Div()
+    
+    if not current_file_title:
+        current_file_title = "시간 정보 없음"
+    
+    # 시간과 물성치 정보 분리
+    lines = current_file_title.split('\n')
+    time_info = lines[0] if lines else "시간 정보 없음"
+    material_info = lines[1] if len(lines) > 1 else ""
+    
+    # HTML 컴포넌트로 반환
+    return html.Div([
+        # 통합 정보 카드 (노션 스타일)
+        html.Div([
+            # 시간 정보 섹션
+            html.Div([
+                html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "14px"}),
+                html.Span(time_info, style={
+                    "fontWeight": "600",
+                    "color": "#1f2937",
+                    "fontSize": "14px",
+                    "marginLeft": "8px"
+                })
+            ], style={
+                "display": "flex",
+                "alignItems": "center",
+                "marginBottom": "1px" if material_info else "0",
+                "marginTop": "12px"
+            }),
+            
+            # 물성치 정보 섹션 (있는 경우만, 인라인 형태)
+            html.Div([
+                html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "14px"}),
+                *[html.Div([
+                    html.Span(f"{prop.split(':')[0]}:", style={
+                        "color": "#6b7280",
+                        "fontSize": "12px",
+                        "marginRight": "4px"
+                    }),
+                    html.Span(prop.split(":", 1)[1].strip(), style={
+                        "color": "#111827",
+                        "fontSize": "12px",
+                        "fontWeight": "500",
+                        "marginRight": "12px"
+                    })
+                ], style={"display": "inline"})
+                for prop in material_info.split(", ")]
+            ], style={
+                "display": "flex",
+                "alignItems": "flex-start",
+                "gap": "8px",
+                "flexWrap": "wrap",
+                "marginBottom": "12px"
+            }) if material_info else html.Div()
+            
+        ], style={
+            "padding": "8px 12px",
+            "backgroundColor": "#f8fafc",
+            "borderRadius": "8px",
+            "border": "1px solid #e2e8f0",
+            "boxShadow": "0 1px 3px rgba(0,0,0,0.05)",
+            "marginBottom": "16px",
+            "height": "65px",
+            "display": "flex",
+            "flexDirection": "column",
+            "justifyContent": "center",
+            "alignItems": "center"
+        })
+    ])
+
 # 단면도 탭 시간 정보 업데이트 콜백
 @callback(
     Output("section-time-info", "children"),
@@ -3412,6 +3494,10 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
 def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
     if not n_clicks or not figure:
         raise PreventUpdate
+    
+    # 즉시 로딩 상태로 변경
+    loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
+    
     try:
         # 파일명 생성
         if selected_rows and tbl_data:
@@ -3431,6 +3517,7 @@ def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
             from datetime import datetime
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"3D_히트맵_{timestamp}.png"
+        
         try:
             import plotly.io as pio
             img_bytes = pio.to_image(figure, format="png", width=1200, height=800, scale=2, engine="kaleido")
@@ -3442,7 +3529,6 @@ def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
         except Exception as pio_error:
             error_btn = [html.I(className="fas fa-times me-1"), "오류"]
             return dash.no_update, error_btn, False
-        # ... 이하 생략 ...
     except Exception as e:
         error_btn = [html.I(className="fas fa-times me-1"), "오류"]
         return dash.no_update, error_btn, False
@@ -3465,6 +3551,10 @@ def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
 def save_section_image(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl_data, time_value):
     if not n_clicks:
         raise PreventUpdate
+    
+    # 즉시 로딩 상태로 변경
+    loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
+    
     try:
         # 파일명 생성
         if selected_rows and tbl_data:
@@ -3547,6 +3637,10 @@ def save_section_image(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl
 def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z):
     if not n_clicks or not fig_3d:
         raise PreventUpdate
+    
+    # 즉시 로딩 상태로 변경
+    loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
+    
     try:
         if selected_rows and tbl_data:
             row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
@@ -3608,6 +3702,10 @@ def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z
 def save_current_inp(n_clicks, selected_rows, tbl_data, time_value):
     if not n_clicks or not selected_rows or not tbl_data:
         raise PreventUpdate
+    
+    # 즉시 로딩 상태로 변경
+    loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
+    
     try:
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
         concrete_pk = row["concrete_pk"]
@@ -3629,6 +3727,163 @@ def save_current_inp(n_clicks, selected_rows, tbl_data, time_value):
             file_content = f.read()
         default_btn = [html.I(className="fas fa-file-download me-1"), "INP 파일 저장"]
         return dict(content=file_content, filename=filename), default_btn, False
+    except Exception as e:
+        error_btn = [html.I(className="fas fa-times me-1"), "오류"]
+        return dash.no_update, error_btn, False
+
+# 단면도 INP 저장 콜백
+@callback(
+    Output("download-section-inp", "data"),
+    Output("btn-save-section-inp", "children"),
+    Output("btn-save-section-inp", "disabled"),
+    Input("btn-save-section-inp", "n_clicks"),
+    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    State("time-slider-section", "value"),
+    prevent_initial_call=True,
+)
+def save_section_inp(n_clicks, selected_rows, tbl_data, time_value):
+    if not n_clicks or not selected_rows or not tbl_data:
+        raise PreventUpdate
+    
+    # 즉시 로딩 상태로 변경
+    loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
+    
+    try:
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+        concrete_pk = row["concrete_pk"]
+        concrete_name = row.get("name", concrete_pk)
+        inp_dir = f"inp/{concrete_pk}"
+        inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+        if not inp_files:
+            raise PreventUpdate
+        if time_value is not None:
+            file_idx = min(int(time_value), len(inp_files)-1)
+        else:
+            file_idx = len(inp_files) - 1
+        current_file = inp_files[file_idx]
+        if not os.path.exists(current_file):
+            raise PreventUpdate
+        time_str = os.path.basename(current_file).split(".")[0]
+        filename = f"{concrete_name}_{time_str}.inp"
+        with open(current_file, 'r', encoding='utf-8') as f:
+            file_content = f.read()
+        default_btn = [html.I(className="fas fa-file-download me-1"), "INP 파일 저장"]
+        return dict(content=file_content, filename=filename), default_btn, False
+    except Exception as e:
+        error_btn = [html.I(className="fas fa-times me-1"), "오류"]
+        return dash.no_update, error_btn, False
+
+# 온도 변화 데이터 저장 콜백
+@callback(
+    Output("download-temp-data", "data"),
+    Output("btn-save-temp-data", "children"),
+    Output("btn-save-temp-data", "disabled"),
+    Input("btn-save-temp-data", "n_clicks"),
+    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    State("temp-x-input", "value"),
+    State("temp-y-input", "value"),
+    State("temp-z-input", "value"),
+    prevent_initial_call=True,
+)
+def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
+    if not n_clicks or not selected_rows or not tbl_data:
+        raise PreventUpdate
+    
+    # 즉시 로딩 상태로 변경
+    loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
+    
+    try:
+        import pandas as pd
+        import glob
+        import os
+        from datetime import datetime as dt_import
+        
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+        concrete_pk = row["concrete_pk"]
+        concrete_name = row.get("name", concrete_pk)
+        inp_dir = f"inp/{concrete_pk}"
+        inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+        
+        if not inp_files:
+            raise PreventUpdate
+        
+        # 온도 데이터 수집
+        temp_data = []
+        for f in inp_files:
+            try:
+                time_str = os.path.basename(f).split(".")[0]
+                dt = dt_import.strptime(time_str, "%Y%m%d%H")
+            except:
+                continue
+            
+            with open(f, 'r') as file:
+                lines = file.readlines()
+            
+            nodes = {}
+            node_section = False
+            for line in lines:
+                if line.startswith('*NODE'):
+                    node_section = True
+                    continue
+                elif line.startswith('*'):
+                    node_section = False
+                    continue
+                if node_section and ',' in line:
+                    parts = line.strip().split(',')
+                    if len(parts) >= 4:
+                        node_id = int(parts[0])
+                        nx = float(parts[1])
+                        ny = float(parts[2])
+                        nz = float(parts[3])
+                        nodes[node_id] = {'x': nx, 'y': ny, 'z': nz}
+            
+            temperatures = {}
+            temp_section = False
+            for line in lines:
+                if line.startswith('*TEMPERATURE'):
+                    temp_section = True
+                    continue
+                elif line.startswith('*'):
+                    temp_section = False
+                    continue
+                if temp_section and ',' in line:
+                    parts = line.strip().split(',')
+                    if len(parts) >= 2:
+                        node_id = int(parts[0])
+                        temp = float(parts[1])
+                        temperatures[node_id] = temp
+            
+            # 입력 위치와 가장 가까운 노드 찾기
+            if x is not None and y is not None and z is not None and nodes:
+                coords = np.array([[v['x'], v['y'], v['z']] for v in nodes.values()])
+                node_ids = list(nodes.keys())
+                dists = np.linalg.norm(coords - np.array([x, y, z]), axis=1)
+                min_idx = np.argmin(dists)
+                closest_id = node_ids[min_idx]
+                temp_val = temperatures.get(closest_id, None)
+                if temp_val is not None:
+                    temp_data.append({
+                        '시간': dt.strftime('%Y-%m-%d %H:%M'),
+                        '온도(°C)': round(temp_val, 2)
+                    })
+        
+        if not temp_data:
+            raise PreventUpdate
+        
+        # CSV 데이터 생성
+        df = pd.DataFrame(temp_data)
+        csv_content = df.to_csv(index=False, encoding='utf-8-sig')
+        
+        x_pos = round(x, 1) if x is not None else 0.0
+        y_pos = round(y, 1) if y is not None else 0.0
+        z_pos = round(z, 1) if z is not None else 0.0
+        filename = f"온도분석_{concrete_name}_위치({x_pos}_{y_pos}_{z_pos}).csv"
+        
+        default_btn = [html.I(className="fas fa-file-csv me-1"), "데이터 저장"]
+        return dict(content=csv_content, filename=filename), default_btn, False
+        
     except Exception as e:
         error_btn = [html.I(className="fas fa-times me-1"), "오류"]
         return dash.no_update, error_btn, False
