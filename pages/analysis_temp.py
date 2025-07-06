@@ -1502,7 +1502,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     html.Div([
                         # 재생/정지 버튼 (아이콘만)
                         dbc.Button(
-                            html.I(className="fas fa-play"),
+                            "▶",
                             id="btn-play-3d",
                             color="success",
                             size="sm",
@@ -1514,11 +1514,13 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                                 "marginRight": "8px",
                                 "display": "flex",
                                 "alignItems": "center",
-                                "justifyContent": "center"
+                                "justifyContent": "center",
+                                "fontSize": "14px",
+                                "fontWeight": "bold"
                             }
                         ),
                         dbc.Button(
-                            html.I(className="fas fa-pause"),
+                            "⏸",
                             id="btn-pause-3d",
                             color="warning",
                             size="sm",
@@ -1530,7 +1532,9 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                                 "marginRight": "8px",
                                 "display": "flex",
                                 "alignItems": "center",
-                                "justifyContent": "center"
+                                "justifyContent": "center",
+                                "fontSize": "14px",
+                                "fontWeight": "bold"
                             }
                         ),
                         # 배속 설정 드롭다운
@@ -1540,7 +1544,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                             dbc.DropdownMenuItem("4x", id="speed-4x-3d", n_clicks=0),
                             dbc.DropdownMenuItem("8x", id="speed-8x-3d", n_clicks=0),
                         ], 
-                        label=html.I(className="fas fa-tachometer-alt"),
+                        label="⚡",
                         id="speed-dropdown-3d",
                         size="sm",
                         style={
@@ -1557,7 +1561,9 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                             "height": "32px",
                             "padding": "0",
                             "backgroundColor": "#6c757d",
-                            "border": "none"
+                            "border": "none",
+                            "fontSize": "14px",
+                            "fontWeight": "bold"
                         }
                         ),
                     ], style={
@@ -1730,7 +1736,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     html.Div([
                         # 재생/정지 버튼 (아이콘만)
                         dbc.Button(
-                            html.I(className="fas fa-play"),
+                            "▶",
                             id="btn-play-section",
                             color="success",
                             size="sm",
@@ -1742,11 +1748,13 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                                 "marginRight": "8px",
                                 "display": "flex",
                                 "alignItems": "center",
-                                "justifyContent": "center"
+                                "justifyContent": "center",
+                                "fontSize": "14px",
+                                "fontWeight": "bold"
                             }
                         ),
                         dbc.Button(
-                            html.I(className="fas fa-pause"),
+                            "⏸",
                             id="btn-pause-section",
                             color="warning",
                             size="sm",
@@ -1758,7 +1766,9 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                                 "marginRight": "8px",
                                 "display": "flex",
                                 "alignItems": "center",
-                                "justifyContent": "center"
+                                "justifyContent": "center",
+                                "fontSize": "14px",
+                                "fontWeight": "bold"
                             }
                         ),
                         # 배속 설정 드롭다운
@@ -1768,7 +1778,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                             dbc.DropdownMenuItem("4x", id="speed-4x-section", n_clicks=0),
                             dbc.DropdownMenuItem("8x", id="speed-8x-section", n_clicks=0),
                         ], 
-                        label=html.I(className="fas fa-tachometer-alt"),
+                        label="⚡",
                         id="speed-dropdown-section",
                         size="sm",
                         style={
@@ -1785,7 +1795,9 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                             "height": "32px",
                             "padding": "0",
                             "backgroundColor": "#6c757d",
-                            "border": "none"
+                            "border": "none",
+                            "fontSize": "14px",
+                            "fontWeight": "bold"
                         }
                         ),
                     ], style={
@@ -4337,22 +4349,26 @@ def stop_playback(n_clicks, play_state):
     Output("time-slider-display", "value", allow_duplicate=True),
     Input("play-interval-3d", "n_intervals"),
     State("play-state-3d", "data"),
+    State("speed-state-3d", "data"),
     State("time-slider-display", "value"),
     State("time-slider-display", "max"),
     prevent_initial_call=True,
 )
-def auto_play_slider(n_intervals, play_state, current_value, max_value):
-    """자동 재생 시 슬라이더 값 자동 증가"""
+def auto_play_slider(n_intervals, play_state, speed_state, current_value, max_value):
+    """자동 재생 시 슬라이더 값 자동 증가 (배속에 따라 건너뛰기)"""
     if not play_state or not play_state.get("playing", False):
         raise PreventUpdate
     
     if current_value is None:
         current_value = 0
     
-    # 다음 값으로 증가
-    next_value = current_value + 1
+    # 배속에 따라 건너뛸 단계 수 결정
+    speed = speed_state.get("speed", 1) if speed_state else 1
     
-    # 최대값에 도달하면 처음으로 돌아가기
+    # 다음 값으로 증가 (배속만큼 건너뛰기)
+    next_value = current_value + speed
+    
+    # 최대값을 초과하면 처음으로 돌아가기
     if next_value > max_value:
         next_value = 0
     
@@ -4412,22 +4428,26 @@ def stop_section_playback(n_clicks, play_state):
     Output("time-slider-section", "value", allow_duplicate=True),
     Input("play-interval-section", "n_intervals"),
     State("play-state-section", "data"),
+    State("speed-state-section", "data"),
     State("time-slider-section", "value"),
     State("time-slider-section", "max"),
     prevent_initial_call=True,
 )
-def auto_play_section_slider(n_intervals, play_state, current_value, max_value):
-    """단면도 자동 재생 시 슬라이더 값 자동 증가"""
+def auto_play_section_slider(n_intervals, play_state, speed_state, current_value, max_value):
+    """단면도 자동 재생 시 슬라이더 값 자동 증가 (배속에 따라 건너뛰기)"""
     if not play_state or not play_state.get("playing", False):
         raise PreventUpdate
     
     if current_value is None:
         current_value = 0
     
-    # 다음 값으로 증가
-    next_value = current_value + 1
+    # 배속에 따라 건너뛸 단계 수 결정
+    speed = speed_state.get("speed", 1) if speed_state else 1
     
-    # 최대값에 도달하면 처음으로 돌아가기
+    # 다음 값으로 증가 (배속만큼 건너뛰기)
+    next_value = current_value + speed
+    
+    # 최대값을 초과하면 처음으로 돌아가기
     if next_value > max_value:
         next_value = 0
     
@@ -4451,7 +4471,6 @@ def reset_section_play_state_on_tab_change(active_tab):
 # 3D 뷰 배속 설정 콜백들
 @callback(
     Output("speed-state-3d", "data"),
-    Output("play-interval-3d", "interval"),
     Input("speed-1x-3d", "n_clicks"),
     Input("speed-2x-3d", "n_clicks"),
     Input("speed-4x-3d", "n_clicks"),
@@ -4467,20 +4486,19 @@ def set_speed_3d(speed_1x, speed_2x, speed_4x, speed_8x):
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
     if button_id == "speed-1x-3d":
-        return {"speed": 1}, 1000
+        return {"speed": 1}
     elif button_id == "speed-2x-3d":
-        return {"speed": 2}, 500
+        return {"speed": 2}
     elif button_id == "speed-4x-3d":
-        return {"speed": 4}, 250
+        return {"speed": 4}
     elif button_id == "speed-8x-3d":
-        return {"speed": 8}, 125
+        return {"speed": 8}
     
     raise PreventUpdate
 
 # 단면도 배속 설정 콜백들
 @callback(
     Output("speed-state-section", "data"),
-    Output("play-interval-section", "interval"),
     Input("speed-1x-section", "n_clicks"),
     Input("speed-2x-section", "n_clicks"),
     Input("speed-4x-section", "n_clicks"),
@@ -4496,13 +4514,13 @@ def set_speed_section(speed_1x, speed_2x, speed_4x, speed_8x):
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
     if button_id == "speed-1x-section":
-        return {"speed": 1}, 1000
+        return {"speed": 1}
     elif button_id == "speed-2x-section":
-        return {"speed": 2}, 500
+        return {"speed": 2}
     elif button_id == "speed-4x-section":
-        return {"speed": 4}, 250
+        return {"speed": 4}
     elif button_id == "speed-8x-section":
-        return {"speed": 8}, 125
+        return {"speed": 8}
     
     raise PreventUpdate
 
@@ -4510,11 +4528,9 @@ def set_speed_section(speed_1x, speed_2x, speed_4x, speed_8x):
 @callback(
     Output("speed-state-3d", "data", allow_duplicate=True),
     Output("speed-state-section", "data", allow_duplicate=True),
-    Output("play-interval-3d", "interval", allow_duplicate=True),
-    Output("play-interval-section", "interval", allow_duplicate=True),
     Input("tabs-main", "active_tab"),
     prevent_initial_call=True,
 )
 def reset_speed_on_tab_change(active_tab):
     """탭 변경 시 배속 상태 초기화"""
-    return {"speed": 1}, {"speed": 1}, 1000, 1000
+    return {"speed": 1}, {"speed": 1}
