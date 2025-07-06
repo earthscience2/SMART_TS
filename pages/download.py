@@ -173,6 +173,33 @@ layout = html.Div([
                                             'border': '1px solid #2196f3',
                                             'color': '#1565c0',
                                             'fontWeight': '500'
+                                        },
+                                        # 분석중 상태 (초록색)
+                                        {
+                                            'if': {
+                                                'filter_query': '{status} = "분석중"',
+                                                'column_id': 'status'
+                                            },
+                                            'backgroundColor': '#e8f5e8',
+                                            'color': '#2e7d32',
+                                            'fontWeight': 'bold'
+                                        },
+                                        # 설정중 상태 (회색)
+                                        {
+                                            'if': {
+                                                'filter_query': '{status} = "설정중"',
+                                                'column_id': 'status'
+                                            },
+                                            'backgroundColor': '#f5f5f5',
+                                            'color': '#6c757d',
+                                            'fontWeight': 'bold'
+                                        },
+                                        # 타설일(경과일) 컬럼 스타일
+                                        {
+                                            'if': {'column_id': 'pour_date'},
+                                            'fontSize': '0.85rem',
+                                            'color': '#6c757d',
+                                            'fontWeight': '500'
                                         }
                                     ],
                                     css=[
@@ -383,10 +410,86 @@ def dl_load_concrete_list(project_pk):
     if not project_pk:
         return [], [], []
     
-    df_conc = api_db.get_concrete_data(project_pk=project_pk)
-    data = df_conc[["concrete_pk", "name"]].to_dict("records")
-    columns = [{"name": "이름", "id": "name"}]
-    return data, columns, []
+    try:
+        # 해당 프로젝트의 콘크리트 데이터 로드
+        df_conc = api_db.get_concrete_data(project_pk=project_pk)
+        if df_conc.empty:
+            return [], [], []
+        
+        table_data = []
+        for _, row in df_conc.iterrows():
+            # 타설날짜 포맷팅
+            pour_date = "N/A"
+            if row.get("con_t") and row["con_t"] not in ["", "N/A", None]:
+                try:
+                    from datetime import datetime
+                    # datetime 객체인 경우
+                    if hasattr(row["con_t"], 'strftime'):
+                        dt = row["con_t"]
+                    # 문자열인 경우 파싱
+                    elif isinstance(row["con_t"], str):
+                        if 'T' in row["con_t"]:
+                            # ISO 형식 (2024-01-01T10:00 또는 2024-01-01T10:00:00)
+                            dt = datetime.fromisoformat(row["con_t"].replace('Z', ''))
+                        else:
+                            # 다른 형식 시도
+                            dt = datetime.strptime(str(row["con_t"]), '%Y-%m-%d %H:%M:%S')
+                    else:
+                        dt = None
+                    
+                    if dt:
+                        pour_date = dt.strftime('%y.%m.%d')
+                except Exception:
+                    pour_date = "N/A"
+            
+            # 경과일 계산 (현재 시간 - 타설일)
+            elapsed_days = "N/A"
+            if pour_date != "N/A":
+                try:
+                    from datetime import datetime
+                    pour_dt = datetime.strptime(pour_date, '%y.%m.%d')
+                    now = datetime.now()
+                    elapsed = (now - pour_dt).days
+                    elapsed_days = f"{elapsed}일"
+                except Exception:
+                    elapsed_days = "N/A"
+            
+            # 타설일과 경과일을 하나의 컬럼으로 합치기
+            pour_date_with_elapsed = pour_date
+            if pour_date != "N/A" and elapsed_days != "N/A":
+                pour_date_with_elapsed = f"{pour_date} ({elapsed_days})"
+            
+            # 상태 결정 (정렬을 위해 우선순위도 함께 설정)
+            if row["activate"] == 1:  # 활성
+                status = "설정중"
+                status_sort = 2  # 두 번째 우선순위
+            else:  # 비활성 (activate == 0)
+                status = "분석중"
+                status_sort = 1  # 첫 번째 우선순위
+            
+            table_data.append({
+                "concrete_pk": row["concrete_pk"],
+                "name": row["name"],
+                "status": status,
+                "status_sort": status_sort,  # 정렬용 숨겨진 필드
+                "pour_date": pour_date_with_elapsed,
+            })
+        
+        # 상태별 기본 정렬 적용 (분석중 → 설정중)
+        if table_data:
+            table_data = sorted(table_data, key=lambda x: x.get('status_sort', 999))
+        
+        # 테이블 컬럼 정의 (온도 분석 페이지와 동일)
+        columns = [
+            {"name": "이름", "id": "name", "type": "text"},
+            {"name": "타설일(경과일)", "id": "pour_date", "type": "text"},
+            {"name": "상태", "id": "status", "type": "text"},
+        ]
+        
+        return table_data, columns, []
+        
+    except Exception as e:
+        return [], [], []
 
 # ───────────────────── ③ 빠른 필터 업데이트 ────────────────────
 @dash.callback(
