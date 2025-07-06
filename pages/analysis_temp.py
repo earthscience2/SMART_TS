@@ -580,7 +580,7 @@ layout = dbc.Container(
                     "border": "1px solid #e2e8f0",
                     "height": "fit-content"
                 })
-            ], width=3),
+            ], md=4),
             
             # 오른쪽 메인 콘텐츠 영역
             dbc.Col([
@@ -695,7 +695,7 @@ layout = dbc.Container(
                     "border": "1px solid #e2e8f0",
                     "overflow": "hidden"
                 })
-            ], width=9),
+            ], md=8),
         ], className="g-4"),
     ],
 )
