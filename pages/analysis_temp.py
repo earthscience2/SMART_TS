@@ -738,22 +738,40 @@ layout = dbc.Container(
     prevent_initial_call=False,
 )
 def load_concrete_data(search, pathname):
+    print(f"load_concrete_data 시작 - 입력값:")
+    print(f"  search: {search} ({type(search)})")
+    print(f"  pathname: {pathname} ({type(pathname)})")
+    
     # URL에서 프로젝트 정보 추출 (암호화된 URL 지원)
     project_pk = None
     if search:
         try:
             project_pk = parse_project_key_from_url(search)
-        except Exception:
+            print(f"load_concrete_data - project_pk: {project_pk}")
+        except Exception as e:
+            print(f"load_concrete_data - project_pk 파싱 오류: {e}")
             pass
     
     if not project_pk:
-        return [], [], [], [], True, True, 0, 5, 0, {0: "시작", 5: "끝"}, None
+        # 타입 검증 및 안전한 값 설정
+        slider_min = 0
+        slider_max = 5
+        slider_value = 0
+        slider_marks = {0: "시작", 5: "끝"}
+        
+        return [], [], [], [], True, True, slider_min, slider_max, slider_value, slider_marks, None
     
     try:
         # 프로젝트 정보 로드
         df_proj = api_db.get_project_data(project_pk=project_pk)
         if df_proj.empty:
-            return [], [], [], [], True, True, 0, 5, 0, {0: "시작", 5: "끝"}, None
+            # 타입 검증 및 안전한 값 설정
+            slider_min = 0
+            slider_max = 5
+            slider_value = 0
+            slider_marks = {0: "시작", 5: "끝"}
+            
+            return [], [], [], [], True, True, slider_min, slider_max, slider_value, slider_marks, None
             
         proj_row = df_proj.iloc[0]
         proj_name = proj_row["name"]
@@ -761,11 +779,23 @@ def load_concrete_data(search, pathname):
         # 해당 프로젝트의 콘크리트 데이터 로드
         df_conc = api_db.get_concrete_data(project_pk=project_pk)
         if df_conc.empty:
-            return [], [], [], [], True, True, 0, 5, 0, {0: "시작", 5: "끝"}, None
+            # 타입 검증 및 안전한 값 설정
+            slider_min = 0
+            slider_max = 5
+            slider_value = 0
+            slider_marks = {0: "시작", 5: "끝"}
+            
+            return [], [], [], [], True, True, slider_min, slider_max, slider_value, slider_marks, None
         
     except Exception as e:
         print(f"프로젝트 로딩 오류: {e}")
-        return [], [], [], [], True, True, 0, 5, 0, {0: "시작", 5: "끝"}, None
+        # 타입 검증 및 안전한 값 설정
+        slider_min = 0
+        slider_max = 5
+        slider_value = 0
+        slider_marks = {0: "시작", 5: "끝"}
+        
+        return [], [], [], [], True, True, slider_min, slider_max, slider_value, slider_marks, None
     table_data = []
     for _, row in df_conc.iterrows():
         try:
@@ -900,7 +930,12 @@ def load_concrete_data(search, pathname):
     slider_value = 0
     slider_marks = {0: "시작", 5: "끝"}
     
-    # 디버깅 로그 제거
+    print(f"load_concrete_data 성공 완료 - 반환값:")
+    print(f"  table_data 개수: {len(table_data)}")
+    print(f"  slider_min: {slider_min} ({type(slider_min)})")
+    print(f"  slider_max: {slider_max} ({type(slider_max)})")
+    print(f"  slider_value: {slider_value} ({type(slider_value)})")
+    print(f"  slider_marks: {slider_marks} ({type(slider_marks)})")
     
     return table_data, columns, [], style_data_conditional, True, True, slider_min, slider_max, slider_value, slider_marks, None
 
@@ -918,8 +953,19 @@ def load_concrete_data(search, pathname):
     prevent_initial_call=True,
 )
 def on_concrete_select(selected_rows, tbl_data):
+    print(f"on_concrete_select 시작 - 입력값:")
+    print(f"  selected_rows: {selected_rows} ({type(selected_rows)})")
+    print(f"  tbl_data: {len(tbl_data) if tbl_data else None} ({type(tbl_data)})")
+    
     if not selected_rows or not tbl_data:
-        return True, True, "", 0, 5, 0, {0: "시작", 5: "끝"}
+        print("on_concrete_select - selected_rows 또는 tbl_data가 없음")
+        # 타입 검증 및 안전한 값 설정
+        slider_min = 0
+        slider_max = 5
+        slider_value = 0
+        slider_marks = {0: "시작", 5: "끝"}
+        
+        return True, True, "", slider_min, slider_max, slider_value, slider_marks
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     is_active = row["activate"] == "활성"
@@ -1035,7 +1081,14 @@ def on_concrete_select(selected_rows, tbl_data):
     if not isinstance(slider_marks, dict):
         slider_marks = {0: "시작", slider_max: "끝"}
     
-    # 디버깅 로그 제거
+    print(f"on_concrete_select 성공 완료 - 반환값:")
+    print(f"  analyze_disabled: {analyze_disabled} ({type(analyze_disabled)})")
+    print(f"  delete_disabled: {delete_disabled} ({type(delete_disabled)})")
+    print(f"  current_file_title: {current_file_title} ({type(current_file_title)})")
+    print(f"  slider_min: {slider_min} ({type(slider_min)})")
+    print(f"  slider_max: {slider_max} ({type(slider_max)})")
+    print(f"  slider_value: {slider_value} ({type(slider_value)})")
+    print(f"  slider_marks: {slider_marks} ({type(slider_marks)})")
     
     return analyze_disabled, delete_disabled, current_file_title, slider_min, slider_max, slider_value, slider_marks
 
@@ -1071,10 +1124,20 @@ def store_section_coord(clickData):
 )
 def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl_data, current_time):
     try:
+        print(f"update_heatmap 시작 - 입력값:")
+        print(f"  time_idx: {time_idx} ({type(time_idx)})")
+        print(f"  section_coord: {section_coord} ({type(section_coord)})")
+        print(f"  unified_colorbar: {unified_colorbar} ({type(unified_colorbar)})")
+        print(f"  selected_rows: {selected_rows} ({type(selected_rows)})")
+        print(f"  tbl_data: {len(tbl_data) if tbl_data else None} ({type(tbl_data)})")
+        print(f"  current_time: {current_time} ({type(current_time)})")
+        
         if not selected_rows or not tbl_data:
+            print("update_heatmap - selected_rows 또는 tbl_data가 없음")
             raise PreventUpdate
         
         if len(selected_rows) == 0:
+            print("update_heatmap - selected_rows가 비어있음")
             raise PreventUpdate
             
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
@@ -1082,7 +1145,10 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
         inp_dir = f"inp/{concrete_pk}"
         inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
         
+        print(f"update_heatmap - concrete_pk: {concrete_pk}, inp_dir: {inp_dir}, inp_files 개수: {len(inp_files)}")
+        
         if not inp_files:
+            print(f"update_heatmap - inp_files가 없음: {inp_dir}")
             raise PreventUpdate
         # 초기값 설정
         current_file_title = ""
@@ -1097,6 +1163,7 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
             except:
                 continue
         if not times:
+            print("update_heatmap - times가 비어있음")
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0
         # 슬라이더 마크: 모든 시간을 일 단위로 표시
         max_idx = max(0, len(times) - 1)
@@ -1274,6 +1341,7 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
                 except (KeyError, TypeError):
                     continue
         if not coords_list or not temps_list:
+            print(f"update_heatmap - coords_list: {len(coords_list)}, temps_list: {len(temps_list)}")
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0, ""
         coords = np.array(coords_list)
         temps = np.array(temps_list)
@@ -1373,12 +1441,24 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
         if not isinstance(slider_value, (int, float)):
             slider_value = 0
         
-        # 디버깅 로그 제거
+        print(f"update_heatmap 성공 완료 - 반환값:")
+        print(f"  slider_min: {slider_min} ({type(slider_min)})")
+        print(f"  slider_max: {slider_max} ({type(slider_max)})")
+        print(f"  slider_marks: {slider_marks} ({type(slider_marks)})")
+        print(f"  slider_value: {slider_value} ({type(slider_value)})")
         
         return fig_3d, current_time, viewer_data, slider_min, slider_max, slider_marks, slider_value, current_file_title
     except Exception as e:
+        import traceback
         print(f"update_heatmap 함수 오류: {e}")
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {0: "시작", 5: "끝"}, 0
+        print(f"오류 상세: {traceback.format_exc()}")
+        # 타입 검증 및 안전한 값 설정
+        slider_min = 0
+        slider_max = 5
+        slider_value = 0
+        slider_marks = {0: "시작", 5: "끝"}
+        
+        return dash.no_update, dash.no_update, dash.no_update, slider_min, slider_max, slider_marks, slider_value, ""
 
 # 탭 콘텐츠 처리 콜백 (수정)
 @callback(
@@ -3387,8 +3467,19 @@ def sync_display_slider_to_main(display_value):
     prevent_initial_call=True,
 )
 def sync_main_slider_to_display(main_value, main_min, main_max, main_marks):
-    # 임시로 기본값만 반환하여 문제 해결
+    """메인 슬라이더를 디스플레이 슬라이더와 동기화"""
     try:
+        print(f"sync_main_slider_to_display 시작 - 입력값:")
+        print(f"  main_value: {main_value} ({type(main_value)})")
+        print(f"  main_min: {main_min} ({type(main_min)})")
+        print(f"  main_max: {main_max} ({type(main_max)})")
+        print(f"  main_marks: {main_marks} ({type(main_marks)})")
+        
+        # 모든 입력값이 None인 경우 기본값 반환
+        if all(v is None for v in [main_value, main_min, main_max, main_marks]):
+            print("sync_main_slider_to_display - 모든 입력값이 None")
+            return 0, 0, 5, {0: "시작", 5: "끝"}
+        
         # 타입 검증 및 기본값 설정
         if isinstance(main_value, (int, float)) and main_value is not None:
             value = int(main_value)
@@ -3408,13 +3499,25 @@ def sync_main_slider_to_display(main_value, main_min, main_max, main_marks):
         if isinstance(main_marks, dict) and main_marks is not None:
             marks = main_marks
         else:
-            marks = {0: "시작", 5: "끝"}
+            marks = {0: "시작", max_val: "끝"}
         
-        # 디버깅 로그 제거
+        # 값 범위 검증
+        if value < min_val:
+            value = min_val
+        if value > max_val:
+            value = max_val
+        
+        print(f"sync_main_slider_to_display 성공 완료 - 반환값:")
+        print(f"  value: {value} ({type(value)})")
+        print(f"  min_val: {min_val} ({type(min_val)})")
+        print(f"  max_val: {max_val} ({type(max_val)})")
+        print(f"  marks: {marks} ({type(marks)})")
         
         return value, min_val, max_val, marks
     except Exception as e:
+        import traceback
         print(f"sync_main_slider_to_display 오류: {e}")
+        print(f"오류 상세: {traceback.format_exc()}")
         return 0, 0, 5, {0: "시작", 5: "끝"}
 
 # 3D 뷰어 동기화 콜백 (display용 뷰어와 실제 뷰어)
