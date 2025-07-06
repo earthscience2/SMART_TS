@@ -333,7 +333,7 @@ layout = html.Div([
                             # 재령분석 버튼을 박스 내부 하단에 배치
                             html.Div([
                                 dbc.Button("재령분석", id="add-age-analysis", color="warning", className="px-3", size="sm"),
-                            ], className="text-start"),
+                            ], className="text-center"),
                         ], className="bg-white p-3 rounded shadow-sm border mb-3"),
                         
                         # 기타 물성치 정보 박스
@@ -483,7 +483,7 @@ layout = html.Div([
                             # 재령분석 버튼을 박스 내부 하단에 배치
                             html.Div([
                                 dbc.Button("재령분석", id="edit-age-analysis", color="warning", className="px-3", size="sm"),
-                            ], className="text-start"),
+                            ], className="text-center"),
                         ], className="bg-white p-3 rounded shadow-sm border mb-3"),
                         
                         # 기타 물성치 정보 박스
