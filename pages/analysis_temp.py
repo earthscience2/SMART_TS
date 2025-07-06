@@ -265,6 +265,16 @@ layout = dbc.Container(
         # 키보드 이벤트 처리 스크립트
         html.Div([
             html.Script("""
+                // React 경고 억제
+                const originalConsoleWarn = console.warn;
+                console.warn = function(...args) {
+                    if (args[0] && typeof args[0] === 'string' && 
+                        (args[0].includes('findDOMNode') || args[0].includes('deprecated'))) {
+                        return; // 경고 억제
+                    }
+                    originalConsoleWarn.apply(console, args);
+                };
+                
                 window.addEventListener('load', function() {
                     if (!window.sliderKeyboardHandler) {
                         window.sliderKeyboardHandler = true;
@@ -647,9 +657,36 @@ layout = dbc.Container(
                     
                     # 숨김 처리된 콜백 대상 컴포넌트들 (항상 포함)
                     html.Div([
-                        dcc.Slider(id="time-slider", min=0, max=5, step=1, value=0, marks={}),
-                        dcc.Slider(id="time-slider-display", min=0, max=5, step=1, value=0, marks={}),
-                        dcc.Slider(id="time-slider-section", min=0, max=5, step=1, value=0, marks={}),  # 단면도용 독립 슬라이더 복원
+                        dcc.Slider(
+                            id="time-slider", 
+                            min=0, 
+                            max=5, 
+                            step=1, 
+                            value=0, 
+                            marks={},
+                            updatemode='drag',
+                            persistence=False
+                        ),
+                        dcc.Slider(
+                            id="time-slider-display", 
+                            min=0, 
+                            max=5, 
+                            step=1, 
+                            value=0, 
+                            marks={},
+                            updatemode='drag',
+                            persistence=False
+                        ),
+                        dcc.Slider(
+                            id="time-slider-section", 
+                            min=0, 
+                            max=5, 
+                            step=1, 
+                            value=0, 
+                            marks={},
+                            updatemode='drag',
+                            persistence=False
+                        ),  # 단면도용 독립 슬라이더 복원
                         # TCI 관련 컴포넌트들 - 제거됨
                         # dcc.Slider(id="temp-tci-time-slider", min=0, max=5, step=1, value=0, marks={}),  # TCI용 시간 슬라이더
                         dcc.Graph(id="viewer-3d"),
@@ -1497,6 +1534,8 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         value=slider_value,
                         marks=slider_marks,
                         tooltip={"placement": "bottom", "always_visible": True},
+                        updatemode='drag',
+                        persistence=False
                     ),
                     # 재생/정지/배속 버튼 추가 (3D 뷰용)
                     html.Div([
@@ -1732,6 +1771,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         marks=slider_marks if isinstance(slider_marks, dict) else {},
                         tooltip={"placement": "bottom", "always_visible": True},
                         updatemode='drag',
+                        persistence=False
                     ),
                     # 재생/정지/배속 버튼 추가 (단면도용)
                     html.Div([

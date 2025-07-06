@@ -195,6 +195,9 @@ app = Dash(
     use_pages=True,
     suppress_callback_exceptions=True,
     external_stylesheets=[dbc.themes.BOOTSTRAP],
+    # React 경고 줄이기 위한 설정
+    update_title=None,
+    suppress_hot_reload=True,
 )
 app.title = "Concrete Dashboard"
 
