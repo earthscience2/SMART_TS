@@ -3982,11 +3982,13 @@ def save_section_image(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl
     State("temp-x-input", "value"),
     State("temp-y-input", "value"),
     State("temp-z-input", "value"),
+    State("temp-range-filter", "value"),
     prevent_initial_call=True,
 )
-def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z):
+def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z, range_filter):
     # 기본값으로 "all" 사용 (temp-range-filter가 없을 때)
-    range_filter = "all"
+    if range_filter is None:
+        range_filter = "all"
     if not n_clicks or not fig_3d:
         raise PreventUpdate
     
@@ -4148,11 +4150,13 @@ def save_section_inp(n_clicks, selected_rows, tbl_data, time_value):
     State("temp-x-input", "value"),
     State("temp-y-input", "value"),
     State("temp-z-input", "value"),
+    State("temp-range-filter", "value"),
     prevent_initial_call=True,
 )
-def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
+def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z, range_filter):
     # 기본값으로 "all" 사용 (temp-range-filter가 없을 때)
-    range_filter = "all"
+    if range_filter is None:
+        range_filter = "all"
     if not n_clicks or not selected_rows or not tbl_data:
         raise PreventUpdate
     
