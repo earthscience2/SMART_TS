@@ -3065,11 +3065,12 @@ def update_section_views(time_idx,
     Input("temp-y-input", "value"),
     Input("temp-z-input", "value"),
     Input("unified-colorbar-state", "data"),
+    Input("temp-range-filter", "value"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=False,
 )
-def update_temp_tab(store_data, x, y, z, unified_colorbar, selected_rows, tbl_data):
+def update_temp_tab(store_data, x, y, z, unified_colorbar, range_filter, selected_rows, tbl_data):
     import plotly.graph_objects as go
     import numpy as np
     import glob, os
@@ -3198,7 +3199,25 @@ def update_temp_tab(store_data, x, y, z, unified_colorbar, selected_rows, tbl_da
             if temp_val is not None:
                 temp_times.append(dt)
                 temp_values.append(temp_val)
-    # 온도 범위 필터링은 별도 콜백으로 처리 (현재는 전체 데이터 표시)
+    # 온도 범위 필터링 적용
+    if range_filter and range_filter != "all" and temp_times:
+        try:
+            from datetime import timedelta
+            latest_time = max(temp_times)
+            days_back = int(range_filter)
+            cutoff_time = latest_time - timedelta(days=days_back)
+            
+            filtered_times = []
+            filtered_values = []
+            for i, dt in enumerate(temp_times):
+                if dt >= cutoff_time:
+                    filtered_times.append(dt)
+                    filtered_values.append(temp_values[i])
+            
+            temp_times = filtered_times
+            temp_values = filtered_values
+        except Exception as e:
+            print(f"온도 범위 필터링 오류: {e}")
     
     # 그래프 생성
     fig_temp = go.Figure()
@@ -3215,9 +3234,15 @@ def update_temp_tab(store_data, x, y, z, unified_colorbar, selected_rows, tbl_da
                 prev_date = current_date
             else:
                 x_labels.append("")
+        
+        # 제목에 기간 정보 추가
+        title_text = "시간에 따른 온도 정보"
+        if range_filter and range_filter != "all":
+            title_text += f" (최근 {range_filter}일)"
+        
         fig_temp.add_trace(go.Scatter(x=x_values, y=temp_values, mode='lines+markers', name='온도'))
         fig_temp.update_layout(
-            title="시간에 따른 온도 정보",
+            title=title_text,
             xaxis_title="날짜",
             yaxis_title="온도(°C)",
             xaxis=dict(
@@ -3352,9 +3377,14 @@ def update_temp_range_filter(range_filter, fig_3d, selected_rows, tbl_data):
                 prev_date = current_date
             else:
                 x_labels.append("")
+        # 제목에 기간 정보 추가
+        title_text = "시간에 따른 온도 정보"
+        if range_filter and range_filter != "all":
+            title_text += f" (최근 {range_filter}일)"
+        
         fig_temp.add_trace(go.Scatter(x=x_values, y=temp_values, mode='lines+markers', name='온도'))
         fig_temp.update_layout(
-            title="시간에 따른 온도 정보",
+            title=title_text,
             xaxis_title="날짜",
             yaxis_title="온도(°C)",
             xaxis=dict(
