@@ -680,7 +680,7 @@ layout = html.Div([
     Output("selected-project-store", "data", allow_duplicate=True),
     Output("current-project-info", "children", allow_duplicate=True),
     Input("concrete-url", "search"),
-    prevent_initial_call=False
+    prevent_initial_call=True
 )
 def parse_url_project(search):
     if not search:
