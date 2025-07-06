@@ -184,6 +184,7 @@ def logout():
 # ──────────────────────────────────────────────────────────────────────────────
 from dash import Dash, html, dcc, page_container, no_update
 from dash.dependencies import Input, Output
+from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 from flask import request as flask_request
 from utils.encryption import parse_project_key_from_url, create_project_url
@@ -612,78 +613,13 @@ def update_navbar(pathname):
 
 
 
-# 네비게이션 바 링크 URL 동적 업데이트 콜백 (분석 페이지용)
-@app.callback(
-    [Output("nav-temp", "href"),
-     Output("nav-stress", "href"),
-     Output("nav-tci", "href"),
-     Output("nav-strength", "href"),
-     Output("nav-download", "href")],
-    [Input("url", "pathname"),
-     Input("url", "search")],
-    prevent_initial_call=True
-)
-def update_analysis_nav_links(pathname, search):
-    """분석 페이지용 네비게이션 바 링크들이 현재 URL의 쿼리 파라미터를 유지하도록 업데이트합니다."""
-    
-    # 분석 페이지가 아닌 경우 업데이트하지 않음
-    if not (pathname.startswith("/temp") or pathname.startswith("/stress") or 
-            pathname.startswith("/tci") or pathname.startswith("/strength") or 
-            pathname.startswith("/download")):
-        raise dash.exceptions.PreventUpdate
-    
-    # 프로젝트 키 추출
-    project_pk = parse_project_key_from_url(search) if search else None
-    
-    # 암호화된 URL 생성
-    temp_url = create_project_url("/temp", project_pk)
-    stress_url = create_project_url("/stress", project_pk)
-    tci_url = create_project_url("/tci", project_pk)
-    strength_url = create_project_url("/strength", project_pk)
-    download_url = create_project_url("/download", project_pk)
-    
-    return temp_url, stress_url, tci_url, strength_url, download_url
+# 네비게이션 바 링크 URL 동적 업데이트 콜백 (분석 페이지용) - 제거됨
+# 이 콜백은 분석 페이지에서만 사용되므로 각 페이지에서 직접 처리
 
 
 
-# 분석 페이지용 네비게이션 바 active 클래스 동적 적용 콜백
-@app.callback(
-    [Output("nav-dashboard", "className", allow_duplicate=True),
-     Output("nav-temp", "className"),
-     Output("nav-stress", "className"),
-     Output("nav-tci", "className"),
-     Output("nav-strength", "className"),
-     Output("nav-download", "className")],
-    [Input("url", "pathname")],
-    prevent_initial_call=True
-)
-def update_analysis_nav_active(pathname):
-    """분석 페이지용 네비게이션 링크의 active 상태를 업데이트합니다."""
-    
-    # 분석 페이지가 아닌 경우 업데이트하지 않음
-    if not (pathname.startswith("/temp") or pathname.startswith("/stress") or 
-            pathname.startswith("/tci") or pathname.startswith("/strength") or 
-            pathname.startswith("/download")):
-        raise dash.exceptions.PreventUpdate
-    
-    # 기본 클래스 설정
-    base_classes = ["nav-link"] * 6
-    
-    # Active 클래스 추가
-    if pathname == "/":
-        base_classes[0] += " active"  # 대시보드
-    elif pathname.startswith("/temp"):
-        base_classes[1] += " active"  # 온도
-    elif pathname.startswith("/stress"):
-        base_classes[2] += " active"  # 응력
-    elif pathname.startswith("/tci"):
-        base_classes[3] += " active"  # TCI
-    elif pathname.startswith("/strength"):
-        base_classes[4] += " active"  # 강도
-    elif pathname.startswith("/download"):
-        base_classes[5] += " active"  # 다운로드
-    
-    return tuple(base_classes)
+# 분석 페이지용 네비게이션 바 active 클래스 동적 적용 콜백 - 제거됨
+# 이 콜백은 분석 페이지에서만 사용되므로 각 페이지에서 직접 처리
 
 # 관리자 네비게이션 바 active 클래스 동적 적용 콜백
 @app.callback(
