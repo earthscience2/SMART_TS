@@ -738,18 +738,12 @@ layout = dbc.Container(
     prevent_initial_call=False,
 )
 def load_concrete_data(search, pathname):
-    print(f"load_concrete_data 시작 - 입력값:")
-    print(f"  search: {search} ({type(search)})")
-    print(f"  pathname: {pathname} ({type(pathname)})")
-    
     # URL에서 프로젝트 정보 추출 (암호화된 URL 지원)
     project_pk = None
     if search:
         try:
             project_pk = parse_project_key_from_url(search)
-            print(f"load_concrete_data - project_pk: {project_pk}")
         except Exception as e:
-            print(f"load_concrete_data - project_pk 파싱 오류: {e}")
             pass
     
     if not project_pk:
@@ -788,7 +782,6 @@ def load_concrete_data(search, pathname):
             return [], [], [], [], True, True, slider_min, slider_max, slider_value, slider_marks, None
         
     except Exception as e:
-        print(f"프로젝트 로딩 오류: {e}")
         # 타입 검증 및 안전한 값 설정
         slider_min = 0
         slider_max = 5
@@ -929,13 +922,6 @@ def load_concrete_data(search, pathname):
     slider_max = 5
     slider_value = 0
     slider_marks = {0: "시작", 5: "끝"}
-    
-    print(f"load_concrete_data 성공 완료 - 반환값:")
-    print(f"  table_data 개수: {len(table_data)}")
-    print(f"  slider_min: {slider_min} ({type(slider_min)})")
-    print(f"  slider_max: {slider_max} ({type(slider_max)})")
-    print(f"  slider_value: {slider_value} ({type(slider_value)})")
-    print(f"  slider_marks: {slider_marks} ({type(slider_marks)})")
     
     return table_data, columns, [], style_data_conditional, True, True, slider_min, slider_max, slider_value, slider_marks, None
 
@@ -1081,15 +1067,6 @@ def on_concrete_select(selected_rows, tbl_data):
     if not isinstance(slider_marks, dict):
         slider_marks = {0: "시작", slider_max: "끝"}
     
-    print(f"on_concrete_select 성공 완료 - 반환값:")
-    print(f"  analyze_disabled: {analyze_disabled} ({type(analyze_disabled)})")
-    print(f"  delete_disabled: {delete_disabled} ({type(delete_disabled)})")
-    print(f"  current_file_title: {current_file_title} ({type(current_file_title)})")
-    print(f"  slider_min: {slider_min} ({type(slider_min)})")
-    print(f"  slider_max: {slider_max} ({type(slider_max)})")
-    print(f"  slider_value: {slider_value} ({type(slider_value)})")
-    print(f"  slider_marks: {slider_marks} ({type(slider_marks)})")
-    
     return analyze_disabled, delete_disabled, current_file_title, slider_min, slider_max, slider_value, slider_marks
 
 # ───────────────────── 3D 뷰 클릭 → 단면 위치 저장 ────────────────────
@@ -1124,14 +1101,6 @@ def store_section_coord(clickData):
 )
 def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl_data, current_time):
     try:
-        print(f"update_heatmap 시작 - 입력값:")
-        print(f"  time_idx: {time_idx} ({type(time_idx)})")
-        print(f"  section_coord: {section_coord} ({type(section_coord)})")
-        print(f"  unified_colorbar: {unified_colorbar} ({type(unified_colorbar)})")
-        print(f"  selected_rows: {selected_rows} ({type(selected_rows)})")
-        print(f"  tbl_data: {len(tbl_data) if tbl_data else None} ({type(tbl_data)})")
-        print(f"  current_time: {current_time} ({type(current_time)})")
-        
         if not selected_rows or not tbl_data:
             # 콘크리트가 선택되지 않은 상태는 정상적인 동작
             raise PreventUpdate
@@ -1144,8 +1113,6 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
         concrete_pk = row["concrete_pk"]
         inp_dir = f"inp/{concrete_pk}"
         inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
-        
-        print(f"update_heatmap - concrete_pk: {concrete_pk}, inp_dir: {inp_dir}, inp_files 개수: {len(inp_files)}")
         
         if not inp_files:
             # INP 파일이 없는 상태는 정상적인 동작
@@ -1214,7 +1181,6 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
                                 except (ValueError, TypeError):
                                     continue
                 except (IOError, OSError) as e:
-                    print(f"파일 읽기 오류 {f}: {e}")
                     continue
             if all_temps:
                 tmin, tmax = float(np.nanmin(all_temps)), float(np.nanmax(all_temps))
@@ -1242,7 +1208,6 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
                             except (ValueError, TypeError):
                                 continue
             except (IOError, OSError) as e:
-                print(f"현재 파일 읽기 오류 {current_file}: {e}")
                 current_temps = []
             if current_temps:
                 tmin, tmax = float(np.nanmin(current_temps)), float(np.nanmax(current_temps))
@@ -1276,7 +1241,6 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
                             continue
             material_info = parse_material_info_from_inp(lines)
         except (IOError, OSError) as e:
-            print(f"현재 파일 읽기 오류 {current_file}: {e}")
             current_temps = []
             material_info = ""
         if current_temps:
@@ -1328,7 +1292,6 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
                         except (ValueError, TypeError):
                             continue
         except (IOError, OSError) as e:
-            print(f"INP 파일 파싱 오류 {current_file}: {e}")
             nodes = {}
             temperatures = {}
         coords_list = []
@@ -1402,7 +1365,7 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
                         zs.append(dims['nodes'][2])
                         names.append(srow['device_id'])
                     except Exception as e:
-                        print('센서 파싱 오류:', e)
+                        pass
                 fig_3d.add_trace(go.Scatter3d(
                     x=xs, y=ys, z=zs,
                     mode='markers',
@@ -1413,7 +1376,7 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
                     showlegend=False
                 ))
         except Exception as e:
-            print('센서 표시 오류:', e)
+            pass
         viewer_data = {
             'figure': fig_3d,
             'current_time': current_time,
@@ -1441,19 +1404,8 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
         if not isinstance(slider_value, (int, float)):
             slider_value = 0
         
-        print(f"update_heatmap 성공 완료 - 반환값:")
-        print(f"  slider_min: {slider_min} ({type(slider_min)})")
-        print(f"  slider_max: {slider_max} ({type(slider_max)})")
-        print(f"  slider_marks: {slider_marks} ({type(slider_marks)})")
-        print(f"  slider_value: {slider_value} ({type(slider_value)})")
-        
         return fig_3d, current_time, viewer_data, slider_min, slider_max, slider_marks, slider_value, current_file_title
     except Exception as e:
-        import traceback
-        # PreventUpdate는 정상적인 동작이므로 로그에서 제외
-        if not isinstance(e, dash.exceptions.PreventUpdate):
-            print(f"update_heatmap 함수 오류: {e}")
-            print(f"오류 상세: {traceback.format_exc()}")
         # 타입 검증 및 안전한 값 설정
         slider_min = 0
         slider_max = 5
@@ -2570,7 +2522,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     
                     # 온도 범위 필터
                     html.Div([
-                        html.H6("📊 온도 범위 필터", style={
+                        html.H6("📊 날짜 범위 필터", style={
                             "fontWeight": "600",
                             "color": "#374151",
                             "marginBottom": "8px",
@@ -3341,7 +3293,7 @@ def update_temp_range_filter(range_filter, fig_3d, selected_rows, tbl_data, x, y
             temp_times = filtered_times
             temp_values = filtered_values
         except Exception as e:
-            print(f"온도 범위 필터링 오류: {e}")
+            pass
     
     # 그래프 생성
     fig_temp = go.Figure()
@@ -3545,15 +3497,8 @@ def sync_display_slider_to_main(display_value):
 def sync_main_slider_to_display(main_value, main_min, main_max, main_marks):
     """메인 슬라이더를 디스플레이 슬라이더와 동기화"""
     try:
-        print(f"sync_main_slider_to_display 시작 - 입력값:")
-        print(f"  main_value: {main_value} ({type(main_value)})")
-        print(f"  main_min: {main_min} ({type(main_min)})")
-        print(f"  main_max: {main_max} ({type(main_max)})")
-        print(f"  main_marks: {main_marks} ({type(main_marks)})")
-        
         # 모든 입력값이 None인 경우 기본값 반환
         if all(v is None for v in [main_value, main_min, main_max, main_marks]):
-            print("sync_main_slider_to_display - 모든 입력값이 None")
             return 0, 0, 5, {0: "시작", 5: "끝"}
         
         # 타입 검증 및 기본값 설정
@@ -3583,19 +3528,8 @@ def sync_main_slider_to_display(main_value, main_min, main_max, main_marks):
         if value > max_val:
             value = max_val
         
-        print(f"sync_main_slider_to_display 성공 완료 - 반환값:")
-        print(f"  value: {value} ({type(value)})")
-        print(f"  min_val: {min_val} ({type(min_val)})")
-        print(f"  max_val: {max_val} ({type(max_val)})")
-        print(f"  marks: {marks} ({type(marks)})")
-        
         return value, min_val, max_val, marks
     except Exception as e:
-        import traceback
-        # PreventUpdate는 정상적인 동작이므로 로그에서 제외
-        if not isinstance(e, dash.exceptions.PreventUpdate):
-            print(f"sync_main_slider_to_display 오류: {e}")
-            print(f"오류 상세: {traceback.format_exc()}")
         return 0, 0, 5, {0: "시작", 5: "끝"}
 
 # 3D 뷰어 동기화 콜백 (display용 뷰어와 실제 뷰어)
