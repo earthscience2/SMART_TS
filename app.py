@@ -213,6 +213,7 @@ app.index_string = '''
                 transition: all 0.2s ease;
                 font-weight: 500;
                 color: #ffffff !important;
+                position: relative;
             }
             
             .nav-link:hover {
@@ -224,6 +225,19 @@ app.index_string = '''
                 background-color: #ffc107;
                 color: #000000 !important;
                 font-weight: 600;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            }
+            
+            .nav-link.active::after {
+                content: '';
+                position: absolute;
+                bottom: -2px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 20px;
+                height: 3px;
+                background-color: #ffc107;
+                border-radius: 2px;
             }
             
             .navbar-brand {
@@ -269,7 +283,7 @@ def _build_home_navbar():
     return dbc.Navbar(
         dbc.Container([
             dbc.NavbarBrand(brand, href="/", className="fw-bold text-white"),
-            dbc.Nav(nav_links, navbar=True, className="mx-auto"),
+            dbc.Nav(nav_links, navbar=True, className="ms-auto"),
         ], fluid=True),
         color="dark",
         dark=True,
@@ -286,10 +300,15 @@ def _build_concrete_sensor_navbar():
     user_id = flask_request.cookies.get("login_user")
     admin_user = flask_request.cookies.get("admin_user")
 
-    nav_links = [
+    # 메인 네비게이션 링크들 (가운데 정렬)
+    main_nav_links = [
         dbc.NavItem(dcc.Link("대시보드", href="/", className="nav-link", id="nav-dashboard")),
         dbc.NavItem(dcc.Link("콘크리트 모델링", href="/concrete", className="nav-link", id="nav-concrete")),
         dbc.NavItem(dcc.Link("센서 위치", href="/sensor", className="nav-link", id="nav-sensor")),
+    ]
+    
+    # 로그아웃 버튼 (오른쪽 정렬)
+    logout_nav = [
         dbc.NavItem(dcc.Link(dbc.Button("Logout", color="danger", size="md", className="text-center"), href="/logout", className="text-decoration-none", id="nav-logout")),
     ]
 
@@ -311,7 +330,8 @@ def _build_concrete_sensor_navbar():
     return dbc.Navbar(
         dbc.Container([
             dbc.NavbarBrand(brand, href="/", className="fw-bold text-white"),
-            dbc.Nav(nav_links, navbar=True, className="mx-auto"),
+            dbc.Nav(main_nav_links, navbar=True, className="mx-auto"),
+            dbc.Nav(logout_nav, navbar=True, className="ms-auto"),
         ], fluid=True),
         color="dark",
         dark=True,
