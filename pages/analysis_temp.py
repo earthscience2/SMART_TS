@@ -1792,18 +1792,26 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         "marginBottom": "16px",
                         "fontSize": "16px"
                     }),
-                    # 온도바 통일 버튼
+                    # 온도바 통일 버튼 (ON/OFF 형식)
+                    dbc.Tooltip(
+                        "모든 그래프의 온도바 범위를 통일합니다",
+                        target="btn-unified-colorbar",
+                        placement="top"
+                    ),
                     dbc.Button(
-                        [html.I(className="fas fa-link me-1"), "온도바 통일"],
+                        [html.I(className="fas fa-link me-1"), "ON"],
                         id="btn-unified-colorbar",
-                        color="info",
+                        color="success",
                         size="sm",
-                        outline=True,
+                        title="온도바 통일 모드 활성화 (모든 그래프 동일 범위)",
                         style={
                             "borderRadius": "6px",
-                            "fontWeight": "500",
-                            "fontSize": "13px",
-                            "marginBottom": "12px"
+                            "fontWeight": "600",
+                            "fontSize": "12px",
+                            "marginBottom": "12px",
+                            "minWidth": "80px",
+                            "border": "2px solid #28a745",
+                            "boxShadow": "0 2px 4px rgba(40, 167, 69, 0.2)"
                         }
                     ),
                     dcc.Graph(
@@ -4038,12 +4046,14 @@ def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
     Output("unified-colorbar-state", "data"),
     Output("btn-unified-colorbar", "children"),
     Output("btn-unified-colorbar", "color"),
+    Output("btn-unified-colorbar", "style"),
+    Output("btn-unified-colorbar", "title"),
     Input("btn-unified-colorbar", "n_clicks"),
     State("unified-colorbar-state", "data"),
     prevent_initial_call=True,
 )
 def toggle_unified_colorbar(n_clicks, current_state):
-    """온도바 통일 버튼 토글 기능"""
+    """온도바 통일 버튼 토글 기능 (ON/OFF 형식)"""
     if not n_clicks:
         raise PreventUpdate
     
@@ -4051,15 +4061,35 @@ def toggle_unified_colorbar(n_clicks, current_state):
     new_state = not current_state
     
     if new_state:
-        # 통일 모드 활성화
-        btn_text = [html.I(className="fas fa-unlink me-1"), "온도바 분리"]
-        btn_color = "warning"
+        # 통일 모드 활성화 (ON)
+        btn_text = [html.I(className="fas fa-unlink me-1"), "OFF"]
+        btn_color = "danger"
+        btn_style = {
+            "borderRadius": "6px",
+            "fontWeight": "600",
+            "fontSize": "12px",
+            "marginBottom": "12px",
+            "minWidth": "80px",
+            "border": "2px solid #dc3545",
+            "boxShadow": "0 2px 4px rgba(220, 53, 69, 0.2)"
+        }
+        btn_title = "온도바 통일 모드 비활성화 (개별 범위 사용)"
     else:
-        # 개별 모드 활성화
-        btn_text = [html.I(className="fas fa-link me-1"), "온도바 통일"]
-        btn_color = "info"
+        # 개별 모드 활성화 (OFF)
+        btn_text = [html.I(className="fas fa-link me-1"), "ON"]
+        btn_color = "success"
+        btn_style = {
+            "borderRadius": "6px",
+            "fontWeight": "600",
+            "fontSize": "12px",
+            "marginBottom": "12px",
+            "minWidth": "80px",
+            "border": "2px solid #28a745",
+            "boxShadow": "0 2px 4px rgba(40, 167, 69, 0.2)"
+        }
+        btn_title = "온도바 통일 모드 활성화 (모든 그래프 동일 범위)"
     
-    return new_state, btn_text, btn_color
+    return new_state, btn_text, btn_color, btn_style, btn_title
 
 # ───────────── TCI 인장강도 계산식 입력창 동적 표시 콜백 ─────────────
 @callback(
