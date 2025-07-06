@@ -113,10 +113,10 @@ def get_file_info_grouped(folder, ext):
 layout = html.Div([
     dcc.Location(id="download-url", refresh=False),
     dcc.Store(id="selected-project-store"),
+    dcc.Store(id="file-data-store"),  # 파일 데이터 저장용
 
     dbc.Container([
         dbc.Alert(id="download-alert", is_open=False, duration=3000, color="info"),
-        dcc.Store(id="file-data-store"),  # 파일 데이터 저장용
         
         dbc.Row([
             # 왼쪽 사이드바 - 콘크리트 목록
@@ -140,102 +140,73 @@ layout = html.Div([
                                     page_size=5,
                                     row_selectable="single",
                                     sort_action="native",
-                                    sort_mode="multi",
-                                    style_table={"overflowY": "auto", "height": "calc(100vh - 300px)"},
                                     style_cell={
-                                        "whiteSpace": "nowrap", 
                                         "textAlign": "center",
-                                        "fontSize": "0.9rem",
-                                        "padding": "14px 12px",
+                                        "fontSize": "0.8rem",
+                                        "padding": "8px 6px",
                                         "border": "none",
-                                        "borderBottom": "1px solid #f1f1f0",
-                                        "fontFamily": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+                                        "borderBottom": "1px solid #e9ecef",
+                                        "fontFamily": "'Inter', sans-serif"
                                     },
                                     style_header={
-                                        "backgroundColor": "#fafafa", 
+                                        "backgroundColor": "#f8f9fa", 
                                         "fontWeight": 600,
-                                        "color": "#37352f",
+                                        "color": "#495057",
                                         "border": "none",
-                                        "borderBottom": "1px solid #e9e9e7",
+                                        "borderBottom": "2px solid #dee2e6",
                                         "fontSize": "0.8rem",
-                                        "textTransform": "uppercase",
-                                        "letterSpacing": "0.5px"
+                                        "textAlign": "center"
                                     },
                                     style_data={
                                         "backgroundColor": "white",
                                         "border": "none",
-                                        "color": "#37352f"
+                                        "color": "#212529"
                                     },
                                     style_data_conditional=[
                                         {
                                             'if': {'row_index': 'odd'},
-                                            'backgroundColor': '#fbfbfa'
+                                            'backgroundColor': '#f8f9fa'
                                         },
                                         {
                                             'if': {'state': 'selected'},
-                                            'backgroundColor': '#e8f4fd',
-                                            'border': '1px solid #579ddb',
-                                            'borderRadius': '6px',
-                                            'boxShadow': '0 0 0 1px rgba(87, 157, 219, 0.3)',
-                                            'color': '#1d4ed8'
-                                        },
-                                        {
-                                            'if': {'column_id': 'name'},
-                                            'fontWeight': '600',
-                                            'color': '#111827',
-                                            'textAlign': 'left',
-                                            'paddingLeft': '16px'
+                                            'backgroundColor': '#e3f2fd',
+                                            'border': '1px solid #2196f3',
+                                            'color': '#1565c0',
+                                            'fontWeight': '500'
                                         }
                                     ],
                                     css=[
                                         {
-                                            'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner table',
-                                            'rule': 'border-collapse: separate; border-spacing: 0;'
-                                        },
-                                        {
                                             'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr:hover',
-                                            'rule': 'background-color: #f8fafc !important; transition: background-color 0.15s ease;'
-                                        },
-                                        {
-                                            'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr.row-selected',
-                                            'rule': '''
-                                                background-color: #eff6ff !important;
-                                                box-shadow: inset 3px 0 0 #3b82f6;
-                                                border-left: 3px solid #3b82f6;
-                                            '''
-                                        },
-                                        {
-                                            'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner td',
-                                            'rule': 'cursor: pointer; transition: all 0.15s ease;'
+                                            'rule': 'background-color: #e8f5e8 !important; transition: all 0.2s ease;'
                                         }
-                                    ]
-                                ),
+                                    ],
+                                    style_table={"borderRadius": "6px", "overflow": "hidden"}
+                                )
                             ], style={
-                                "borderRadius": "12px", 
-                                "overflow": "hidden", 
-                                "border": "1px solid #e5e5e4",
-                                "boxShadow": "0 1px 3px rgba(0, 0, 0, 0.05)"
-                            }),
-                        ])
+                                "backgroundColor": "white",
+                                "borderRadius": "8px",
+                                "border": "1px solid #e2e8f0",
+                                "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
+                            })
+                        ], style={
+                            "backgroundColor": "white",
+                            "padding": "20px",
+                            "borderRadius": "12px",
+                            "border": "1px solid #e2e8f0",
+                            "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
+                        })
                     ])
-                ], style={
-                    "backgroundColor": "white",
-                    "padding": "20px",
-                    "borderRadius": "12px",
-                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
-                    "border": "1px solid #e2e8f0",
-                    "height": "fit-content"
-                })
-            ], md=4),
-            # 오른쪽 메인 콘텐츠 영역
+                ])
+            ], md=3),
+            
+            # 오른쪽 메인 콘텐츠 - 파일 목록 및 다운로드
             dbc.Col([
                 html.Div([
-                    # 탭 메뉴 (노션 스타일)
+                    # 탭 네비게이션
                     html.Div([
                         dbc.Tabs([
-                            dbc.Tab(
-                                label="INP 파일", 
-                                tab_id="tab-inp",
+                            dbc.Tab(label="📄 INP 파일", tab_id="tab-inp", 
                                 tab_style={
                                     "marginLeft": "2px",
                                     "marginRight": "2px",
@@ -253,9 +224,7 @@ layout = html.Div([
                                     "fontWeight": "600"
                                 }
                             ),
-                            dbc.Tab(
-                                label="FRD 파일", 
-                                tab_id="tab-frd",
+                            dbc.Tab(label="📊 FRD 파일", tab_id="tab-frd",
                                 tab_style={
                                     "marginLeft": "2px",
                                     "marginRight": "2px",
@@ -273,9 +242,7 @@ layout = html.Div([
                                     "fontWeight": "600"
                                 }
                             ),
-                            dbc.Tab(
-                                label="VTK 파일", 
-                                tab_id="tab-vtk",
+                            dbc.Tab(label="🎯 VTK 파일", tab_id="tab-vtk",
                                 tab_style={
                                     "marginLeft": "2px",
                                     "marginRight": "2px",
@@ -357,7 +324,7 @@ layout = html.Div([
                             "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
                         })
                     ])
-                ]),
+                ])
             ], md=9),
         ], className="g-3"),
     ], className="py-3")
