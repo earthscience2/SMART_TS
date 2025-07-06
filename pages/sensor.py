@@ -409,20 +409,35 @@ layout = html.Div([
 # ───────────────────── ① URL 파라미터 파싱 ─────────────────────
 @callback(
     Output("selected-project-store", "data"),
+    Output("current-project-info", "children"),
     Input("sensor-url", "search"),
     prevent_initial_call=False
 )
 def parse_url_project(search):
-    """URL에서 프로젝트 키를 파싱합니다."""
+    """URL에서 프로젝트 키를 파싱하고 프로젝트 정보를 표시합니다."""
+    project_pk = None
+    project_info = ""
+    
     if search:
         try:
             from urllib.parse import parse_qs
             params = parse_qs(search.lstrip('?'))
             project_pk = params.get('page', [None])[0]
-            return project_pk
+            
+            # 프로젝트 정보 표시
+            if project_pk:
+                try:
+                    projects_df = api_db.get_project_data()
+                    project_row = projects_df[projects_df["project_pk"] == str(project_pk)]
+                    if not project_row.empty:
+                        project_name = project_row.iloc[0]["name"]
+                        project_info = f"📋 프로젝트: {project_name} (ID: {project_pk})"
+                except Exception:
+                    project_info = f"📋 프로젝트 ID: {project_pk}"
         except Exception:
             pass
-    return None
+    
+    return project_pk, project_info
 
 # ───────────────────── ② 콘크리트 목록 초기화 ─────────────────────
 @callback(
