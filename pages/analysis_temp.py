@@ -1498,46 +1498,81 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         marks=slider_marks,
                         tooltip={"placement": "bottom", "always_visible": True},
                     ),
-                    # 재생/정지 버튼 추가
+                    # 재생/정지/배속 버튼 추가 (3D 뷰용)
                     html.Div([
+                        # 재생/정지 버튼 (아이콘만)
                         dbc.Button(
-                            [html.I(className="fas fa-play me-1"), "재생"],
+                            html.I(className="fas fa-play"),
                             id="btn-play-3d",
                             color="success",
                             size="sm",
                             style={
-                                "borderRadius": "6px",
-                                "fontWeight": "600",
-                                "fontSize": "13px",
-                                "width": "80px",
-                                "height": "36px",
-                                "marginRight": "8px"
+                                "borderRadius": "50%",
+                                "width": "32px",
+                                "height": "32px",
+                                "padding": "0",
+                                "marginRight": "8px",
+                                "display": "flex",
+                                "alignItems": "center",
+                                "justifyContent": "center"
                             }
                         ),
                         dbc.Button(
-                            [html.I(className="fas fa-pause me-1"), "정지"],
+                            html.I(className="fas fa-pause"),
                             id="btn-pause-3d",
                             color="warning",
                             size="sm",
                             style={
-                                "borderRadius": "6px",
-                                "fontWeight": "600",
-                                "fontSize": "13px",
-                                "width": "80px",
-                                "height": "36px"
+                                "borderRadius": "50%",
+                                "width": "32px",
+                                "height": "32px",
+                                "padding": "0",
+                                "marginRight": "8px",
+                                "display": "flex",
+                                "alignItems": "center",
+                                "justifyContent": "center"
                             }
+                        ),
+                        # 배속 설정 드롭다운
+                        dbc.DropdownMenu([
+                            dbc.DropdownMenuItem("1x", id="speed-1x-3d", n_clicks=0),
+                            dbc.DropdownMenuItem("2x", id="speed-2x-3d", n_clicks=0),
+                            dbc.DropdownMenuItem("4x", id="speed-4x-3d", n_clicks=0),
+                            dbc.DropdownMenuItem("8x", id="speed-8x-3d", n_clicks=0),
+                        ], 
+                        label=html.I(className="fas fa-tachometer-alt"),
+                        id="speed-dropdown-3d",
+                        size="sm",
+                        style={
+                            "width": "32px",
+                            "height": "32px",
+                            "padding": "0",
+                            "display": "flex",
+                            "alignItems": "center",
+                            "justifyContent": "center"
+                        },
+                        toggle_style={
+                            "borderRadius": "50%",
+                            "width": "32px",
+                            "height": "32px",
+                            "padding": "0",
+                            "backgroundColor": "#6c757d",
+                            "border": "none"
+                        }
                         ),
                     ], style={
                         "display": "flex",
-                        "justifyContent": "center",
+                        "alignItems": "center",
                         "marginTop": "12px"
                     }),
                     # 재생 상태 표시용 Store
                     dcc.Store(id="play-state-3d", data={"playing": False}),
+                    # 배속 상태 표시용 Store
+                    dcc.Store(id="speed-state-3d", data={"speed": 1}),
                     # 자동 재생용 Interval
                     dcc.Interval(
                         id="play-interval-3d",
-                        interval=1000,  # 1초마다
+                        interval=1000,  # 1초마다 (기본값)
                         n_intervals=0,
                         disabled=True
                     ),
@@ -1691,46 +1726,81 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         tooltip={"placement": "bottom", "always_visible": True},
                         updatemode='drag',
                     ),
-                    # 재생/정지 버튼 추가 (단면도용)
+                    # 재생/정지/배속 버튼 추가 (단면도용)
                     html.Div([
+                        # 재생/정지 버튼 (아이콘만)
                         dbc.Button(
-                            [html.I(className="fas fa-play me-1"), "재생"],
+                            html.I(className="fas fa-play"),
                             id="btn-play-section",
                             color="success",
                             size="sm",
                             style={
-                                "borderRadius": "6px",
-                                "fontWeight": "600",
-                                "fontSize": "13px",
-                                "width": "80px",
-                                "height": "36px",
-                                "marginRight": "8px"
+                                "borderRadius": "50%",
+                                "width": "32px",
+                                "height": "32px",
+                                "padding": "0",
+                                "marginRight": "8px",
+                                "display": "flex",
+                                "alignItems": "center",
+                                "justifyContent": "center"
                             }
                         ),
                         dbc.Button(
-                            [html.I(className="fas fa-pause me-1"), "정지"],
+                            html.I(className="fas fa-pause"),
                             id="btn-pause-section",
                             color="warning",
                             size="sm",
                             style={
-                                "borderRadius": "6px",
-                                "fontWeight": "600",
-                                "fontSize": "13px",
-                                "width": "80px",
-                                "height": "36px"
+                                "borderRadius": "50%",
+                                "width": "32px",
+                                "height": "32px",
+                                "padding": "0",
+                                "marginRight": "8px",
+                                "display": "flex",
+                                "alignItems": "center",
+                                "justifyContent": "center"
                             }
+                        ),
+                        # 배속 설정 드롭다운
+                        dbc.DropdownMenu([
+                            dbc.DropdownMenuItem("1x", id="speed-1x-section", n_clicks=0),
+                            dbc.DropdownMenuItem("2x", id="speed-2x-section", n_clicks=0),
+                            dbc.DropdownMenuItem("4x", id="speed-4x-section", n_clicks=0),
+                            dbc.DropdownMenuItem("8x", id="speed-8x-section", n_clicks=0),
+                        ], 
+                        label=html.I(className="fas fa-tachometer-alt"),
+                        id="speed-dropdown-section",
+                        size="sm",
+                        style={
+                            "width": "32px",
+                            "height": "32px",
+                            "padding": "0",
+                            "display": "flex",
+                            "alignItems": "center",
+                            "justifyContent": "center"
+                        },
+                        toggle_style={
+                            "borderRadius": "50%",
+                            "width": "32px",
+                            "height": "32px",
+                            "padding": "0",
+                            "backgroundColor": "#6c757d",
+                            "border": "none"
+                        }
                         ),
                     ], style={
                         "display": "flex",
-                        "justifyContent": "center",
+                        "alignItems": "center",
                         "marginTop": "12px"
                     }),
                     # 재생 상태 표시용 Store (단면도용)
                     dcc.Store(id="play-state-section", data={"playing": False}),
+                    # 배속 상태 표시용 Store (단면도용)
+                    dcc.Store(id="speed-state-section", data={"speed": 1}),
                     # 자동 재생용 Interval (단면도용)
                     dcc.Interval(
                         id="play-interval-section",
-                        interval=1000,  # 1초마다
+                        interval=1000,  # 1초마다 (기본값)
                         n_intervals=0,
                         disabled=True
                     ),
@@ -4375,3 +4445,76 @@ def auto_play_section_slider(n_intervals, play_state, current_value, max_value):
 def reset_section_play_state_on_tab_change(active_tab):
     """탭 변경 시 단면도 재생 상태 초기화"""
     return {"playing": False}, True, False, True
+
+# ───────────────────── 배속 기능 콜백들 ─────────────────────
+
+# 3D 뷰 배속 설정 콜백들
+@callback(
+    Output("speed-state-3d", "data"),
+    Output("play-interval-3d", "interval"),
+    Input("speed-1x-3d", "n_clicks"),
+    Input("speed-2x-3d", "n_clicks"),
+    Input("speed-4x-3d", "n_clicks"),
+    Input("speed-8x-3d", "n_clicks"),
+    prevent_initial_call=True,
+)
+def set_speed_3d(speed_1x, speed_2x, speed_4x, speed_8x):
+    """3D 뷰 배속 설정"""
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        raise PreventUpdate
+    
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    if button_id == "speed-1x-3d":
+        return {"speed": 1}, 1000
+    elif button_id == "speed-2x-3d":
+        return {"speed": 2}, 500
+    elif button_id == "speed-4x-3d":
+        return {"speed": 4}, 250
+    elif button_id == "speed-8x-3d":
+        return {"speed": 8}, 125
+    
+    raise PreventUpdate
+
+# 단면도 배속 설정 콜백들
+@callback(
+    Output("speed-state-section", "data"),
+    Output("play-interval-section", "interval"),
+    Input("speed-1x-section", "n_clicks"),
+    Input("speed-2x-section", "n_clicks"),
+    Input("speed-4x-section", "n_clicks"),
+    Input("speed-8x-section", "n_clicks"),
+    prevent_initial_call=True,
+)
+def set_speed_section(speed_1x, speed_2x, speed_4x, speed_8x):
+    """단면도 배속 설정"""
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        raise PreventUpdate
+    
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    if button_id == "speed-1x-section":
+        return {"speed": 1}, 1000
+    elif button_id == "speed-2x-section":
+        return {"speed": 2}, 500
+    elif button_id == "speed-4x-section":
+        return {"speed": 4}, 250
+    elif button_id == "speed-8x-section":
+        return {"speed": 8}, 125
+    
+    raise PreventUpdate
+
+# 탭 변경 시 배속 상태 초기화
+@callback(
+    Output("speed-state-3d", "data", allow_duplicate=True),
+    Output("speed-state-section", "data", allow_duplicate=True),
+    Output("play-interval-3d", "interval", allow_duplicate=True),
+    Output("play-interval-section", "interval", allow_duplicate=True),
+    Input("tabs-main", "active_tab"),
+    prevent_initial_call=True,
+)
+def reset_speed_on_tab_change(active_tab):
+    """탭 변경 시 배속 상태 초기화"""
+    return {"speed": 1}, {"speed": 1}, 1000, 1000
