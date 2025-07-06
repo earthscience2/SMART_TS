@@ -253,6 +253,7 @@ layout = dbc.Container(
         dcc.Store(id="section-coord-store", data=None),
         dcc.Store(id="viewer-3d-store", data=None),
         dcc.Store(id="unified-colorbar-state", data=False),
+    dcc.Store(id="project-info-store", data=None),
         dcc.Graph(id='section-colorbar', style={'display':'none'}),
         
         # ── 다운로드 컴포넌트들
@@ -421,6 +422,22 @@ layout = dbc.Container(
             # 왼쪽 사이드바 - 콘크리트 목록
             dbc.Col([
                 html.Div([
+                    # 프로젝트 안내 박스
+                    html.Div([
+                        html.Div([
+                            html.H6("📋 현재 프로젝트", className="mb-0 text-secondary fw-bold"),
+                        ], className="d-flex justify-content-between align-items-center mb-2"),
+                        html.Div(id="project-info-display", children=[
+                            html.P("프로젝트를 선택해주세요", className="text-muted mb-0")
+                        ])
+                    ], style={
+                        "backgroundColor": "#f8fafc",
+                        "padding": "12px 16px",
+                        "borderRadius": "8px",
+                        "border": "1px solid #e2e8f0",
+                        "marginBottom": "16px"
+                    }),
+                    
                     # 콘크리트 목록 섹션
                     html.Div([
                         html.Div([
@@ -733,6 +750,7 @@ layout = dbc.Container(
     Output("time-slider", "value"),
     Output("time-slider", "marks"),
     Output("current-time-store", "data"),
+    Output("project-info-store", "data"),
     Input("project-url", "search"),
     Input("project-url", "pathname"),
     prevent_initial_call=False,
@@ -753,7 +771,7 @@ def load_concrete_data(search, pathname):
         slider_value = 0
         slider_marks = {0: "시작", 5: "끝"}
         
-        return [], [], [], [], True, True, slider_min, slider_max, slider_value, slider_marks, None
+        return [], [], [], [], True, True, slider_min, slider_max, slider_value, slider_marks, None, None
     
     try:
         # 프로젝트 정보 로드
@@ -765,7 +783,7 @@ def load_concrete_data(search, pathname):
             slider_value = 0
             slider_marks = {0: "시작", 5: "끝"}
             
-            return [], [], [], [], True, True, slider_min, slider_max, slider_value, slider_marks, None
+            return [], [], [], [], True, True, slider_min, slider_max, slider_value, slider_marks, None, None
             
         proj_row = df_proj.iloc[0]
         proj_name = proj_row["name"]
@@ -779,7 +797,7 @@ def load_concrete_data(search, pathname):
             slider_value = 0
             slider_marks = {0: "시작", 5: "끝"}
             
-            return [], [], [], [], True, True, slider_min, slider_max, slider_value, slider_marks, None
+            return [], [], [], [], True, True, slider_min, slider_max, slider_value, slider_marks, None, {"name": proj_name, "pk": project_pk}
         
     except Exception as e:
         # 타입 검증 및 안전한 값 설정
@@ -788,7 +806,7 @@ def load_concrete_data(search, pathname):
         slider_value = 0
         slider_marks = {0: "시작", 5: "끝"}
         
-        return [], [], [], [], True, True, slider_min, slider_max, slider_value, slider_marks, None
+        return [], [], [], [], True, True, slider_min, slider_max, slider_value, slider_marks, None, None
     table_data = []
     for _, row in df_conc.iterrows():
         try:
@@ -923,7 +941,26 @@ def load_concrete_data(search, pathname):
     slider_value = 0
     slider_marks = {0: "시작", 5: "끝"}
     
-    return table_data, columns, [], style_data_conditional, True, True, slider_min, slider_max, slider_value, slider_marks, None
+    return table_data, columns, [], style_data_conditional, True, True, slider_min, slider_max, slider_value, slider_marks, None, {"name": proj_name, "pk": project_pk}
+
+# ───────────────────── ② 프로젝트 정보 표시 콜백 ────────────────────
+@callback(
+    Output("project-info-display", "children"),
+    Input("project-info-store", "data"),
+    prevent_initial_call=True,
+)
+def update_project_info(project_info):
+    if not project_info:
+        return html.P("프로젝트를 선택해주세요", className="text-muted mb-0")
+    
+    return html.Div([
+        html.H6(project_info.get("name", "알 수 없는 프로젝트"), 
+                className="mb-1 fw-bold", 
+                style={"color": "#1f2937", "fontSize": "14px"}),
+        html.Small(f"프로젝트 ID: {project_info.get('pk', 'N/A')}", 
+                  className="text-muted", 
+                  style={"fontSize": "12px"})
+    ])
 
 # ───────────────────── ③ 콘크리트 선택 콜백 ────────────────────
 @callback(
