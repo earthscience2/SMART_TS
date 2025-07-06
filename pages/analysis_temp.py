@@ -3357,7 +3357,7 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
     
     return 0, max_idx, max_idx, marks
 
-# ───────────────────── 3D 이미지 저장 콜백 ─────────────────────
+# 3D 이미지 저장 콜백
 @callback(
     Output("download-3d-image", "data"),
     Output("btn-save-3d-image", "children"),
@@ -3372,16 +3372,12 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
 def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
     if not n_clicks or not figure:
         raise PreventUpdate
-    # 즉시 로딩 상태 반환
-    loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
-    yield dash.no_update, loading_btn, True
     try:
         # 파일명 생성
         if selected_rows and tbl_data:
             row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
             concrete_pk = row["concrete_pk"]
             concrete_name = row.get("name", concrete_pk)
-            # 현재 시간 정보 추가
             inp_dir = f"inp/{concrete_pk}"
             inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
             if inp_files and time_value is not None:
@@ -3395,196 +3391,23 @@ def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
             from datetime import datetime
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"3D_히트맵_{timestamp}.png"
-        # 이미지 저장 방법 1: plotly.io 시도
         try:
             import plotly.io as pio
-            # kaleido 엔진 확인
             img_bytes = pio.to_image(figure, format="png", width=1200, height=800, scale=2, engine="kaleido")
-            # 저장 후 버튼 텍스트를 항상 '이미지 저장'으로 복원
             default_btn = [html.I(className="fas fa-camera me-1"), "이미지 저장"]
             return dcc.send_bytes(img_bytes, filename=filename), default_btn, False
         except ImportError:
-            print("kaleido가 설치되지 않음. 대안 방법 시도 중...")
-        except Exception as pio_error:
-            print(f"plotly.io 저장 실패: {pio_error}")
-        # 이미지 저장 방법 2: HTML을 통한 이미지 생성 (대안)
-        try:
-            import json
-            import base64
-            fig_json = json.dumps(figure, cls=plotly.utils.PlotlyJSONEncoder)
-            html_template = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <script src=\"https://cdn.plot.ly/plotly-latest.min.js\"></script>
-            </head>
-            <body>
-                <div id=\"plotly-div\" style=\"width:1200px;height:800px;\"></div>
-                <script>
-                    var figureData = {fig_json};
-                    Plotly.newPlot('plotly-div', figureData.data, figureData.layout, {{displayModeBar: false}});
-                </script>
-            </body>
-            </html>
-            """
-            html_filename = filename.replace('.png', '.html')
-            default_btn = [html.I(className="fas fa-camera me-1"), "이미지 저장"]
-            return dict(content=html_template, filename=html_filename), default_btn, False
-        except Exception as html_error:
-            print(f"HTML 저장도 실패: {html_error}")
-            error_btn = [html.I(className="fas fa-times me-1"), "실패"]
+            error_btn = [html.I(className="fas fa-times me-1"), "오류"]
             return dash.no_update, error_btn, False
+        except Exception as pio_error:
+            error_btn = [html.I(className="fas fa-times me-1"), "오류"]
+            return dash.no_update, error_btn, False
+        # ... 이하 생략 ...
     except Exception as e:
-        print(f"3D 이미지 저장 전체 오류: {e}")
         error_btn = [html.I(className="fas fa-times me-1"), "오류"]
         return dash.no_update, error_btn, False
 
-# ───────────────────── 이미지 저장 버튼 상태 초기화 ─────────────────────
-@callback(
-    Output("btn-save-3d-image", "children", allow_duplicate=True),
-    Output("btn-save-3d-image", "disabled", allow_duplicate=True),
-    Input("tabs-main", "active_tab"),
-    Input("tbl-concrete", "selected_rows"),
-    prevent_initial_call=True,
-)
-def reset_image_save_button(active_tab, selected_rows):
-    """탭 변경이나 콘크리트 선택 시 이미지 저장 버튼 상태 초기화"""
-    default_btn = [html.I(className="fas fa-camera me-1"), "이미지 저장"]
-    return default_btn, False
-
-# ───────────────────── 현재 INP 파일 저장 콜백 ─────────────────────
-@callback(
-    Output("download-current-inp", "data"),
-    Input("btn-save-current-inp", "n_clicks"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
-    State("time-slider-display", "value"),
-    prevent_initial_call=True,
-)
-def save_current_inp(n_clicks, selected_rows, tbl_data, time_value):
-    """현재 선택된 시간의 INP 파일을 저장"""
-    if not n_clicks or not selected_rows or not tbl_data:
-        raise PreventUpdate
-    
-    try:
-        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-        concrete_pk = row["concrete_pk"]
-        concrete_name = row.get("name", concrete_pk)
-        
-        # INP 파일 경로 찾기
-        inp_dir = f"inp/{concrete_pk}"
-        inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
-        
-        if not inp_files:
-            raise PreventUpdate
-        
-        # 현재 시간에 해당하는 파일 선택
-        if time_value is not None:
-            file_idx = min(int(time_value), len(inp_files)-1)
-        else:
-            file_idx = len(inp_files) - 1  # 최신 파일
-        
-        current_file = inp_files[file_idx]
-        
-        if not os.path.exists(current_file):
-            raise PreventUpdate
-        
-        # 파일명 생성
-        time_str = os.path.basename(current_file).split(".")[0]
-        filename = f"{concrete_name}_{time_str}.inp"
-        
-        # 파일 읽기 및 다운로드
-        with open(current_file, 'r', encoding='utf-8') as f:
-            file_content = f.read()
-        
-        return dict(content=file_content, filename=filename)
-        
-    except Exception as e:
-        print(f"INP 파일 저장 오류: {e}")
-        raise PreventUpdate
-
-    # 3D 뷰 탭 시간 정보 업데이트 콜백
-@callback(
-    Output("viewer-3d-time-info", "children"),
-    Input("current-file-title-store", "data"),
-    Input("tabs-main", "active_tab"),
-    prevent_initial_call=True,
-)
-def update_viewer3d_time_info(current_file_title, active_tab):
-    """3D 뷰 탭에서 시간/물성치 정보를 업데이트"""
-    if active_tab != "tab-3d":
-        return html.Div()
-    if not current_file_title:
-        current_file_title = "시간 정보 없음"
-    
-    # 시간과 물성치 정보 분리
-    lines = current_file_title.split('\n')
-    time_info = lines[0] if lines else "시간 정보 없음"
-    material_info = lines[1] if len(lines) > 1 else ""
-    
-    return html.Div([
-        # 통합 정보 카드 (노션 스타일)
-        html.Div([
-            # 시간 정보 섹션
-            html.Div([
-                html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "14px"}),
-                html.Span(time_info, style={
-                    "fontWeight": "600",
-                    "color": "#1f2937",
-                    "fontSize": "14px",
-                    "marginLeft": "8px"
-                })
-            ], style={
-                "display": "flex",
-                "alignItems": "center",
-                "marginBottom": "1px" if material_info else "0",
-                "marginTop": "12px"
-            }),
-            
-            # 물성치 정보 섹션 (있는 경우만, 인라인 형태)
-            html.Div([
-                html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "14px"}),
-                *[html.Div([
-                    html.Span(f"{prop.split(':')[0]}:", style={
-                        "color": "#6b7280",
-                        "fontSize": "12px",
-                        "marginRight": "4px"
-                    }),
-                    html.Span(prop.split(":", 1)[1].strip(), style={
-                        "color": "#111827",
-                        "fontSize": "12px",
-                        "fontWeight": "500",
-                        "marginRight": "12px"
-                    })
-                ], style={"display": "inline"})
-                for prop in material_info.split(", ")]
-            ], style={
-                "display": "flex",
-                "alignItems": "flex-start",
-                "gap": "8px",
-                "flexWrap": "wrap",
-                "marginBottom": "12px"
-            }) if material_info else html.Div()
-            
-        ], style={
-            "padding": "8px 12px",
-            "backgroundColor": "#f8fafc",
-            "borderRadius": "8px",
-            "border": "1px solid #e2e8f0",
-            "boxShadow": "0 1px 3px rgba(0,0,0,0.05)",
-            "height": "65px",
-            "display": "flex",
-            "flexDirection": "column",
-            "justifyContent": "center",
-            "alignItems": "center"
-        })
-    ], style={
-        "height": "65px",
-        "display": "flex",
-        "flexDirection": "column"
-    })
-
-# ───────────────────── 단면도 이미지 저장 콜백 ─────────────────────
+# 단면도 이미지 저장 콜백
 @callback(
     Output("download-section-image", "data"),
     Output("btn-save-section-image", "children"),
@@ -3602,16 +3425,12 @@ def update_viewer3d_time_info(current_file_title, active_tab):
 def save_section_image(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl_data, time_value):
     if not n_clicks:
         raise PreventUpdate
-    loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
-    yield dash.no_update, loading_btn, True
     try:
         # 파일명 생성
         if selected_rows and tbl_data:
             row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
             concrete_pk = row["concrete_pk"]
             concrete_name = row.get("name", concrete_pk)
-            
-            # 현재 시간 정보 추가
             inp_dir = f"inp/{concrete_pk}"
             inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
             if inp_files and time_value is not None:
@@ -3625,41 +3444,27 @@ def save_section_image(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl
             from datetime import datetime
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"단면도_{timestamp}.png"
-        
-        # 4개의 그래프를 하나로 합치기
         try:
             import plotly.graph_objects as go
             from plotly.subplots import make_subplots
-            
-            # 서브플롯 생성 (2x2 그리드)
             fig_combined = make_subplots(
                 rows=2, cols=2,
                 subplot_titles=('3D 뷰', 'X 단면도', 'Y 단면도', 'Z 단면도'),
                 specs=[[{"type": "scene"}, {"type": "xy"}],
                        [{"type": "xy"}, {"type": "xy"}]]
             )
-            
-            # 3D 뷰 추가
             if fig_3d and fig_3d.get('data'):
                 for trace in fig_3d['data']:
                     fig_combined.add_trace(trace, row=1, col=1)
-            
-            # X 단면도 추가
             if fig_x and fig_x.get('data'):
                 for trace in fig_x['data']:
                     fig_combined.add_trace(trace, row=1, col=2)
-            
-            # Y 단면도 추가
             if fig_y and fig_y.get('data'):
                 for trace in fig_y['data']:
                     fig_combined.add_trace(trace, row=2, col=1)
-            
-            # Z 단면도 추가
             if fig_z and fig_z.get('data'):
                 for trace in fig_z['data']:
                     fig_combined.add_trace(trace, row=2, col=2)
-            
-            # 레이아웃 업데이트
             fig_combined.update_layout(
                 height=800,
                 width=1200,
@@ -3667,114 +3472,24 @@ def save_section_image(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl
                 title_text="단면도 분석 결과",
                 title_x=0.5
             )
-            
-            # 각 서브플롯의 축 레이블 설정
             fig_combined.update_xaxes(title_text="X (m)", row=1, col=2)
             fig_combined.update_yaxes(title_text="Z (m)", row=1, col=2)
             fig_combined.update_xaxes(title_text="X (m)", row=2, col=1)
             fig_combined.update_yaxes(title_text="Z (m)", row=2, col=1)
             fig_combined.update_xaxes(title_text="X (m)", row=2, col=2)
             fig_combined.update_yaxes(title_text="Y (m)", row=2, col=2)
-            
-            # 이미지 저장
             import plotly.io as pio
             img_bytes = pio.to_image(fig_combined, format="png", width=1200, height=800, scale=2, engine="kaleido")
             default_btn = [html.I(className="fas fa-camera me-1"), "이미지 저장"]
             return dcc.send_bytes(img_bytes, filename=filename), default_btn, False
-            
-        except ImportError:
-            print("kaleido가 설치되지 않음. 대안 방법 시도 중...")
-            
-        except Exception as pio_error:
-            print(f"plotly.io 저장 실패: {pio_error}")
-        
-        # 대안: HTML 파일로 저장
-        try:
-            import json
-            fig_json = json.dumps(fig_combined, cls=plotly.utils.PlotlyJSONEncoder)
-            
-            html_template = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-            </head>
-            <body>
-                <div id="plotly-div" style="width:1200px;height:800px;"></div>
-                <script>
-                    var figureData = {fig_json};
-                    Plotly.newPlot('plotly-div', figureData.data, figureData.layout, {{displayModeBar: false}});
-                </script>
-            </body>
-            </html>
-            """
-            
-            html_filename = filename.replace('.png', '.html')
-            default_btn = [html.I(className="fas fa-camera me-1"), "이미지 저장"]
-            return dict(content=html_template, filename=html_filename), default_btn, False
-            
-        except Exception as html_error:
-            print(f"HTML 저장도 실패: {html_error}")
-            error_btn = [html.I(className="fas fa-times me-1"), "실패"]
+        except Exception as e:
+            error_btn = [html.I(className="fas fa-times me-1"), "오류"]
             return dash.no_update, error_btn, False
-        
     except Exception as e:
-        print(f"단면도 이미지 저장 전체 오류: {e}")
         error_btn = [html.I(className="fas fa-times me-1"), "오류"]
         return dash.no_update, error_btn, False
 
-# ───────────────────── 단면도 INP 파일 저장 콜백 ─────────────────────
-@callback(
-    Output("download-section-inp", "data"),
-    Input("btn-save-section-inp", "n_clicks"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
-    State("time-slider-section", "value"),
-    prevent_initial_call=True,
-)
-def save_section_inp(n_clicks, selected_rows, tbl_data, time_value):
-    """단면도 탭에서 현재 선택된 시간의 INP 파일을 저장"""
-    if not n_clicks or not selected_rows or not tbl_data:
-        raise PreventUpdate
-    
-    try:
-        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-        concrete_pk = row["concrete_pk"]
-        concrete_name = row.get("name", concrete_pk)
-        
-        # INP 파일 경로 찾기
-        inp_dir = f"inp/{concrete_pk}"
-        inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
-        
-        if not inp_files:
-            raise PreventUpdate
-        
-        # 현재 시간에 해당하는 파일 선택
-        if time_value is not None:
-            file_idx = min(int(time_value), len(inp_files)-1)
-        else:
-            file_idx = len(inp_files) - 1  # 최신 파일
-        
-        current_file = inp_files[file_idx]
-        
-        if not os.path.exists(current_file):
-            raise PreventUpdate
-        
-        # 파일명 생성
-        time_str = os.path.basename(current_file).split(".")[0]
-        filename = f"{concrete_name}_{time_str}.inp"
-        
-        # 파일 읽기 및 다운로드
-        with open(current_file, 'r', encoding='utf-8') as f:
-            file_content = f.read()
-        
-        return dict(content=file_content, filename=filename)
-        
-    except Exception as e:
-        print(f"단면도 INP 파일 저장 오류: {e}")
-        raise PreventUpdate
-
-# ───────────────────── 온도 변화 이미지 저장 콜백 ─────────────────────
+# 온도 변화 이미지 저장 콜백
 @callback(
     Output("download-temp-image", "data"),
     Output("btn-save-temp-image", "children"),
@@ -3792,49 +3507,33 @@ def save_section_inp(n_clicks, selected_rows, tbl_data, time_value):
 def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z):
     if not n_clicks or not fig_3d:
         raise PreventUpdate
-    loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
-    yield dash.no_update, loading_btn, True
     try:
-        # 파일명 생성 (위치 정보 포함)
         if selected_rows and tbl_data:
             row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
             concrete_pk = row["concrete_pk"]
             concrete_name = row.get("name", concrete_pk)
-            
-            # 위치 정보를 파일명에 포함
             x_pos = round(x, 1) if x is not None else 0.0
             y_pos = round(y, 1) if y is not None else 0.0
             z_pos = round(z, 1) if z is not None else 0.0
-            
             filename = f"온도분석_{concrete_name}_위치({x_pos}_{y_pos}_{z_pos}).png"
         else:
             from datetime import datetime
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"온도분석_{timestamp}.png"
-        
-        # 2개의 그래프를 하나로 합치기
         try:
             import plotly.graph_objects as go
             from plotly.subplots import make_subplots
-            
-            # 서브플롯 생성 (1x2 그리드)
             fig_combined = make_subplots(
                 rows=1, cols=2,
                 subplot_titles=('콘크리트 구조', '온도 변화 추이'),
                 specs=[[{"type": "scene"}, {"type": "xy"}]]
             )
-            
-            # 3D 뷰 추가
             if fig_3d and fig_3d.get('data'):
                 for trace in fig_3d['data']:
                     fig_combined.add_trace(trace, row=1, col=1)
-            
-            # 온도 변화 그래프 추가
             if fig_time and fig_time.get('data'):
                 for trace in fig_time['data']:
                     fig_combined.add_trace(trace, row=1, col=2)
-            
-            # 레이아웃 업데이트
             fig_combined.update_layout(
                 height=600,
                 width=1400,
@@ -3842,182 +3541,57 @@ def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z
                 title_text="온도 변화 분석 결과",
                 title_x=0.5
             )
-            
-            # 온도 변화 그래프의 축 레이블 설정
             fig_combined.update_xaxes(title_text="시간", row=1, col=2)
             fig_combined.update_yaxes(title_text="온도(°C)", row=1, col=2)
-            
-            # 이미지 저장
             import plotly.io as pio
             img_bytes = pio.to_image(fig_combined, format="png", width=1400, height=600, scale=2, engine="kaleido")
             default_btn = [html.I(className="fas fa-camera me-1"), "이미지 저장"]
             return dcc.send_bytes(img_bytes, filename=filename), default_btn, False
-            
-        except ImportError:
-            print("kaleido가 설치되지 않음. 대안 방법 시도 중...")
-            
-        except Exception as pio_error:
-            print(f"plotly.io 저장 실패: {pio_error}")
-        
-        # 대안: HTML 파일로 저장
-        try:
-            import json
-            fig_json = json.dumps(fig_combined, cls=plotly.utils.PlotlyJSONEncoder)
-            
-            html_template = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-            </head>
-            <body>
-                <div id="plotly-div" style="width:1200px;height:800px;"></div>
-                <script>
-                    var figureData = {fig_json};
-                    Plotly.newPlot('plotly-div', figureData.data, figureData.layout, {{displayModeBar: false}});
-                </script>
-            </body>
-            </html>
-            """
-            
-            html_filename = filename.replace('.png', '.html')
-            default_btn = [html.I(className="fas fa-camera me-1"), "이미지 저장"]
-            return dict(content=html_template, filename=html_filename), default_btn, False
-            
-        except Exception as html_error:
-            print(f"HTML 저장도 실패: {html_error}")
-            error_btn = [html.I(className="fas fa-times me-1"), "실패"]
+        except Exception as e:
+            error_btn = [html.I(className="fas fa-times me-1"), "오류"]
             return dash.no_update, error_btn, False
-        
     except Exception as e:
-        print(f"온도 변화 이미지 저장 전체 오류: {e}")
         error_btn = [html.I(className="fas fa-times me-1"), "오류"]
         return dash.no_update, error_btn, False
 
-# ───────────────────── 온도 변화 데이터 저장 콜백 ─────────────────────
+# INP 저장 콜백
 @callback(
-    Output("download-temp-data", "data"),
-    Input("btn-save-temp-data", "n_clicks"),
+    Output("download-current-inp", "data"),
+    Output("btn-save-current-inp", "children"),
+    Output("btn-save-current-inp", "disabled"),
+    Input("btn-save-current-inp", "n_clicks"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
-    State("temp-x-input", "value"),
-    State("temp-y-input", "value"),
-    State("temp-z-input", "value"),
+    State("time-slider-display", "value"),
     prevent_initial_call=True,
 )
-def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
-    """온도 변화 데이터를 CSV 형태로 저장"""
-    import pandas as pd
+def save_current_inp(n_clicks, selected_rows, tbl_data, time_value):
     if not n_clicks or not selected_rows or not tbl_data:
         raise PreventUpdate
-    
     try:
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
         concrete_pk = row["concrete_pk"]
         concrete_name = row.get("name", concrete_pk)
-        
-        # 위치 정보
-        x_pos = round(x, 1) if x is not None else 0.0
-        y_pos = round(y, 1) if y is not None else 0.0
-        z_pos = round(z, 1) if z is not None else 0.0
-        
-        # INP 파일들에서 온도 데이터 수집
         inp_dir = f"inp/{concrete_pk}"
         inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
-        
         if not inp_files:
             raise PreventUpdate
-        
-        # 온도 데이터 수집
-        temp_data = []
-        from datetime import datetime as dt_import
-        
-        for f in inp_files:
-            # 시간 파싱
-            try:
-                time_str = os.path.basename(f).split(".")[0]
-                dt = dt_import.strptime(time_str, "%Y%m%d%H")
-                formatted_time = dt.strftime("%Y-%m-%d %H:%M:%S")
-            except:
-                continue
-            
-            # inp 파일 파싱 (노드, 온도)
-            with open(f, 'r') as file:
-                lines = file.readlines()
-            
-            nodes = {}
-            node_section = False
-            for line in lines:
-                if line.startswith('*NODE'):
-                    node_section = True
-                    continue
-                elif line.startswith('*'):
-                    node_section = False
-                    continue
-                if node_section and ',' in line:
-                    parts = line.strip().split(',')
-                    if len(parts) >= 4:
-                        node_id = int(parts[0])
-                        nx = float(parts[1])
-                        ny = float(parts[2])
-                        nz = float(parts[3])
-                        nodes[node_id] = {'x': nx, 'y': ny, 'z': nz}
-            
-            temperatures = {}
-            temp_section = False
-            for line in lines:
-                if line.startswith('*TEMPERATURE'):
-                    temp_section = True
-                    continue
-                elif line.startswith('*'):
-                    temp_section = False
-                    continue
-                if temp_section and ',' in line:
-                    parts = line.strip().split(',')
-                    if len(parts) >= 2:
-                        node_id = int(parts[0])
-                        temp = float(parts[1])
-                        temperatures[node_id] = temp
-            
-            # 입력 위치와 가장 가까운 노드 찾기
-            if nodes:
-                coords = np.array([[v['x'], v['y'], v['z']] for v in nodes.values()])
-                node_ids = list(nodes.keys())
-                dists = np.linalg.norm(coords - np.array([x_pos, y_pos, z_pos]), axis=1)
-                min_idx = np.argmin(dists)
-                closest_id = node_ids[min_idx]
-                temp_val = temperatures.get(closest_id, None)
-                
-                if temp_val is not None:
-                    temp_data.append({
-                        '시간': formatted_time,
-                        '온도(°C)': round(temp_val, 2),
-                        '측정위치_X(m)': x_pos,
-                        '측정위치_Y(m)': y_pos,
-                        '측정위치_Z(m)': z_pos,
-                        '콘크리트명': concrete_name
-                    })
-        
-        if not temp_data:
+        if time_value is not None:
+            file_idx = min(int(time_value), len(inp_files)-1)
+        else:
+            file_idx = len(inp_files) - 1
+        current_file = inp_files[file_idx]
+        if not os.path.exists(current_file):
             raise PreventUpdate
-        
-        # CSV 데이터 생성
-        import io
-        import pandas as pd
-        
-        df = pd.DataFrame(temp_data)
-        csv_buffer = io.StringIO()
-        df.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
-        csv_buffer.seek(0)
-        
-        # 파일명 생성 (위치 정보 포함)
-        filename = f"온도데이터_{concrete_name}_위치({x_pos}_{y_pos}_{z_pos}).csv"
-        
-        return dict(content=csv_buffer.getvalue(), filename=filename)
-        
+        time_str = os.path.basename(current_file).split(".")[0]
+        filename = f"{concrete_name}_{time_str}.inp"
+        with open(current_file, 'r', encoding='utf-8') as f:
+            file_content = f.read()
+        default_btn = [html.I(className="fas fa-file-download me-1"), "INP 파일 저장"]
+        return dict(content=file_content, filename=filename), default_btn, False
     except Exception as e:
-        print(f"온도 변화 데이터 저장 오류: {e}")
-        raise PreventUpdate
+        error_btn = [html.I(className="fas fa-times me-1"), "오류"]
+        return dash.no_update, error_btn, False
 
 # ───────────── TCI 인장강도 계산식 입력창 동적 표시 콜백 ─────────────
 @callback(
