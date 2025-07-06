@@ -2497,7 +2497,7 @@ def update_section_views(time_idx,
     from scipy.interpolate import griddata
     from datetime import datetime
     
-    print(f"단면도 뷰 업데이트: time_idx={time_idx}, selected_rows={selected_rows}")  # 디버깅
+    
     
     if not selected_rows or not tbl_data:
         return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, ""
@@ -2510,12 +2510,12 @@ def update_section_views(time_idx,
     # 시간 인덱스 안전 처리
     if time_idx is None or (isinstance(time_idx, float) and math.isnan(time_idx)) or (isinstance(time_idx, str) and not str(time_idx).isdigit()):
         file_idx = len(inp_files)-1
-        print(f"시간 인덱스가 None이거나 잘못됨, 최신 파일 사용: file_idx={file_idx}")
+
     else:
         file_idx = min(int(time_idx), len(inp_files)-1)
-        print(f"시간 인덱스 {time_idx} → 파일 인덱스 {file_idx}")
+
     current_file = inp_files[file_idx]
-    print(f"선택된 파일: {current_file}, 전체 파일 수: {len(inp_files)}")
+
     # inp 파일 파싱 (노드, 온도)
     with open(current_file, 'r') as f:
         lines = f.readlines()
@@ -3370,13 +3370,12 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
     prevent_initial_call=True,
 )
 def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
-    """3D 뷰어의 현재 이미지를 PNG 파일로 저장"""
     if not n_clicks or not figure:
         raise PreventUpdate
-    
+    # 즉시 로딩 상태 반환
+    loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
+    yield dash.no_update, loading_btn, True
     try:
-        # 로딩 상태로 변경
-        # loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
         # 파일명 생성
         if selected_rows and tbl_data:
             row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
@@ -3601,10 +3600,10 @@ def update_viewer3d_time_info(current_file_title, active_tab):
     prevent_initial_call=True,
 )
 def save_section_image(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl_data, time_value):
-    """단면도 탭의 모든 뷰를 합쳐서 하나의 이미지로 저장"""
     if not n_clicks:
         raise PreventUpdate
-    
+    loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
+    yield dash.no_update, loading_btn, True
     try:
         # 파일명 생성
         if selected_rows and tbl_data:
@@ -3791,10 +3790,10 @@ def save_section_inp(n_clicks, selected_rows, tbl_data, time_value):
     prevent_initial_call=True,
 )
 def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z):
-    """온도 변화 탭의 콘크리트 구조 뷰를 이미지로 저장"""
     if not n_clicks or not fig_3d:
         raise PreventUpdate
-    
+    loading_btn = [html.I(className="fas fa-spinner fa-spin me-1"), "저장중..."]
+    yield dash.no_update, loading_btn, True
     try:
         # 파일명 생성 (위치 정보 포함)
         if selected_rows and tbl_data:
