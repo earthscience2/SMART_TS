@@ -3065,7 +3065,7 @@ def update_section_views(time_idx,
     Input("temp-y-input", "value"),
     Input("temp-z-input", "value"),
     Input("unified-colorbar-state", "data"),
-    Input("temp-range-filter", "value"),
+    State("temp-range-filter", "value"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=False,
@@ -4043,11 +4043,16 @@ def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z
             if fig_time and fig_time.get('data'):
                 for trace in fig_time['data']:
                     fig_combined.add_trace(trace, row=1, col=2)
+            # 기간 정보를 제목에 추가
+            title_text = "온도 변화 분석 결과"
+            if range_filter and range_filter != "all":
+                title_text += f" (최근 {range_filter}일)"
+            
             fig_combined.update_layout(
                 height=600,
                 width=1400,
                 showlegend=False,
-                title_text="온도 변화 분석 결과",
+                title_text=title_text,
                 title_x=0.5
             )
             fig_combined.update_xaxes(title_text="시간", row=1, col=2)
