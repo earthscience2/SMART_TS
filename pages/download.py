@@ -115,246 +115,251 @@ layout = html.Div([
     dcc.Store(id="selected-project-store"),
     dcc.Store(id="file-data-store"),  # 파일 데이터 저장용
 
-    dbc.Container([
-        dbc.Alert(id="download-alert", is_open=False, duration=3000, color="info"),
-        
-        dbc.Row([
-            # 왼쪽 사이드바 - 콘크리트 목록
-            dbc.Col([
-                html.Div([
-                    # 프로젝트 안내 박스
-                    dbc.Alert(id="current-project-info", color="info", className="mb-3 py-2"),
-                    
-                    # 콘크리트 목록 섹션
+    dbc.Container(
+        fluid=True,
+        className="px-4 py-3",
+        style={"backgroundColor": "#f7f9fc", "minHeight": "100vh"},
+        children=[
+            dbc.Alert(id="download-alert", is_open=False, duration=3000, color="info"),
+            
+            dbc.Row([
+                # 왼쪽 사이드바 - 콘크리트 목록
+                dbc.Col([
                     html.Div([
+                        # 프로젝트 안내 박스
+                        dbc.Alert(id="current-project-info", color="info", className="mb-3 py-2"),
+                        
+                        # 콘크리트 목록 섹션
                         html.Div([
-                            # 제목과 추가 버튼
                             html.Div([
-                                html.H6("🧱 콘크리트 목록", className="mb-0 text-secondary fw-bold"),
-                                html.Div()  # 추가 버튼은 다운로드 페이지에서는 필요 없음
-                            ], className="d-flex justify-content-between align-items-center mb-2"),
-                            html.Small("💡 행을 클릭하여 선택", className="text-muted mb-2 d-block"),
-                            html.Div([
-                                dash_table.DataTable(
-                                    id="dl-tbl-concrete",
-                                    page_size=5,
-                                    row_selectable="single",
-                                    sort_action="native",
-                                    style_cell={
-                                        "textAlign": "center",
-                                        "fontSize": "0.8rem",
-                                        "padding": "8px 6px",
-                                        "border": "none",
-                                        "borderBottom": "1px solid #e9ecef",
-                                        "fontFamily": "'Inter', sans-serif"
-                                    },
-                                    style_header={
-                                        "backgroundColor": "#f8f9fa", 
-                                        "fontWeight": 600,
-                                        "color": "#495057",
-                                        "border": "none",
-                                        "borderBottom": "2px solid #dee2e6",
-                                        "fontSize": "0.8rem",
-                                        "textAlign": "center"
-                                    },
-                                    style_data={
-                                        "backgroundColor": "white",
-                                        "border": "none",
-                                        "color": "#212529"
-                                    },
-                                    style_data_conditional=[
-                                        {
-                                            'if': {'row_index': 'odd'},
-                                            'backgroundColor': '#f8f9fa'
+                                # 제목과 추가 버튼
+                                html.Div([
+                                    html.H6("🧱 콘크리트 목록", className="mb-0 text-secondary fw-bold"),
+                                    html.Div()  # 추가 버튼은 다운로드 페이지에서는 필요 없음
+                                ], className="d-flex justify-content-between align-items-center mb-2"),
+                                html.Small("💡 행을 클릭하여 선택", className="text-muted mb-2 d-block"),
+                                html.Div([
+                                    dash_table.DataTable(
+                                        id="dl-tbl-concrete",
+                                        page_size=5,
+                                        row_selectable="single",
+                                        sort_action="native",
+                                        style_cell={
+                                            "textAlign": "center",
+                                            "fontSize": "0.8rem",
+                                            "padding": "8px 6px",
+                                            "border": "none",
+                                            "borderBottom": "1px solid #e9ecef",
+                                            "fontFamily": "'Inter', sans-serif"
                                         },
-                                        {
-                                            'if': {'state': 'selected'},
-                                            'backgroundColor': '#e3f2fd',
-                                            'border': '1px solid #2196f3',
-                                            'color': '#1565c0',
-                                            'fontWeight': '500'
+                                        style_header={
+                                            "backgroundColor": "#f8f9fa", 
+                                            "fontWeight": 600,
+                                            "color": "#495057",
+                                            "border": "none",
+                                            "borderBottom": "2px solid #dee2e6",
+                                            "fontSize": "0.8rem",
+                                            "textAlign": "center"
                                         },
-                                        # 분석중 상태 (초록색)
-                                        {
-                                            'if': {
-                                                'filter_query': '{status} = "분석중"',
-                                                'column_id': 'status'
+                                        style_data={
+                                            "backgroundColor": "white",
+                                            "border": "none",
+                                            "color": "#212529"
+                                        },
+                                        style_data_conditional=[
+                                            {
+                                                'if': {'row_index': 'odd'},
+                                                'backgroundColor': '#f8f9fa'
                                             },
-                                            'backgroundColor': '#e8f5e8',
-                                            'color': '#2e7d32',
-                                            'fontWeight': 'bold'
-                                        },
-                                        # 설정중 상태 (회색)
-                                        {
-                                            'if': {
-                                                'filter_query': '{status} = "설정중"',
-                                                'column_id': 'status'
+                                            {
+                                                'if': {'state': 'selected'},
+                                                'backgroundColor': '#e3f2fd',
+                                                'border': '1px solid #2196f3',
+                                                'color': '#1565c0',
+                                                'fontWeight': '500'
                                             },
-                                            'backgroundColor': '#f5f5f5',
-                                            'color': '#6c757d',
-                                            'fontWeight': 'bold'
-                                        },
-                                        # 타설일(경과일) 컬럼 스타일
-                                        {
-                                            'if': {'column_id': 'pour_date'},
-                                            'fontSize': '0.85rem',
-                                            'color': '#6c757d',
-                                            'fontWeight': '500'
-                                        }
-                                    ],
-                                    css=[
-                                        {
-                                            'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr:hover',
-                                            'rule': 'background-color: #e8f5e8 !important; transition: all 0.2s ease;'
-                                        }
-                                    ],
-                                    style_table={"borderRadius": "6px", "overflow": "hidden"}
-                                )
+                                            # 분석중 상태 (초록색)
+                                            {
+                                                'if': {
+                                                    'filter_query': '{status} = "분석중"',
+                                                    'column_id': 'status'
+                                                },
+                                                'backgroundColor': '#e8f5e8',
+                                                'color': '#2e7d32',
+                                                'fontWeight': 'bold'
+                                            },
+                                            # 설정중 상태 (회색)
+                                            {
+                                                'if': {
+                                                    'filter_query': '{status} = "설정중"',
+                                                    'column_id': 'status'
+                                                },
+                                                'backgroundColor': '#f5f5f5',
+                                                'color': '#6c757d',
+                                                'fontWeight': 'bold'
+                                            },
+                                            # 타설일(경과일) 컬럼 스타일
+                                            {
+                                                'if': {'column_id': 'pour_date'},
+                                                'fontSize': '0.85rem',
+                                                'color': '#6c757d',
+                                                'fontWeight': '500'
+                                            }
+                                        ],
+                                        css=[
+                                            {
+                                                'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr:hover',
+                                                'rule': 'background-color: #e8f5e8 !important; transition: all 0.2s ease;'
+                                            }
+                                        ],
+                                        style_table={"borderRadius": "6px", "overflow": "hidden"}
+                                    )
+                                ], style={
+                                    "backgroundColor": "white",
+                                    "borderRadius": "8px",
+                                    "border": "1px solid #e2e8f0",
+                                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
+                                })
                             ], style={
                                 "backgroundColor": "white",
-                                "borderRadius": "8px",
+                                "padding": "20px",
+                                "borderRadius": "12px",
                                 "border": "1px solid #e2e8f0",
                                 "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
                             })
-                        ], style={
-                            "backgroundColor": "white",
-                            "padding": "20px",
-                            "borderRadius": "12px",
-                            "border": "1px solid #e2e8f0",
-                            "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
-                        })
+                        ])
                     ])
-                ])
-            ], md=3),
-            
-            # 오른쪽 메인 콘텐츠 - 파일 목록 및 다운로드
-            dbc.Col([
-                html.Div([
-                    # 탭 네비게이션
+                ], md=3),
+                
+                # 오른쪽 메인 콘텐츠 - 파일 목록 및 다운로드
+                dbc.Col([
                     html.Div([
-                        dbc.Tabs([
-                            dbc.Tab(label="📄 INP 파일", tab_id="tab-inp", 
-                                tab_style={
-                                    "marginLeft": "2px",
-                                    "marginRight": "2px",
-                                    "border": "none",
-                                    "borderRadius": "6px 6px 0 0",
-                                    "backgroundColor": "#f8fafc",
-                                    "color": "#1f2937",
-                                    "fontWeight": "500"
-                                },
-                                active_tab_style={
-                                    "backgroundColor": "white",
-                                    "border": "1px solid #e2e8f0",
-                                    "borderBottom": "1px solid white",
-                                    "color": "#1f2937",
-                                    "fontWeight": "600"
-                                }
-                            ),
-                            dbc.Tab(label="📊 FRD 파일", tab_id="tab-frd",
-                                tab_style={
-                                    "marginLeft": "2px",
-                                    "marginRight": "2px",
-                                    "border": "none",
-                                    "borderRadius": "6px 6px 0 0",
-                                    "backgroundColor": "#f8fafc",
-                                    "color": "#1f2937",
-                                    "fontWeight": "500"
-                                },
-                                active_tab_style={
-                                    "backgroundColor": "white",
-                                    "border": "1px solid #e2e8f0",
-                                    "borderBottom": "1px solid white",
-                                    "color": "#1f2937",
-                                    "fontWeight": "600"
-                                }
-                            ),
-                            dbc.Tab(label="🎯 VTK 파일", tab_id="tab-vtk",
-                                tab_style={
-                                    "marginLeft": "2px",
-                                    "marginRight": "2px",
-                                    "border": "none",
-                                    "borderRadius": "6px 6px 0 0",
-                                    "backgroundColor": "#f8fafc",
-                                    "color": "#1f2937",
-                                    "fontWeight": "500"
-                                },
-                                active_tab_style={
-                                    "backgroundColor": "white",
-                                    "border": "1px solid #e2e8f0",
-                                    "borderBottom": "1px solid white",
-                                    "color": "#1f2937",
-                                    "fontWeight": "600"
-                                }
-                            ),
-                        ], id="dl-tabs", active_tab="tab-inp", className="mb-3"),
-                        
-                        # 탭 콘텐츠 영역
+                        # 탭 네비게이션
                         html.Div([
-                            # 필터 컨트롤 영역
-                            dbc.Card([
-                                dbc.CardBody([
-                                    html.H6("🔍 파일 필터링", className="mb-3 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
-                                    dbc.Row([
-                                        dbc.Col([
-                                            html.Label("빠른 필터", className="form-label mb-2", style={"fontSize": "0.8rem", "fontWeight": "600", "color": "#6c757d"}),
-                                            dcc.Dropdown(
-                                                id="quick-filter",
-                                                options=[
-                                                    {"label": "🕐 오늘", "value": "today"},
-                                                    {"label": "📅 최근 3일", "value": "3days"},
-                                                    {"label": "📅 최근 7일", "value": "7days"},
-                                                    {"label": "📅 최근 30일", "value": "30days"},
-                                                    {"label": "📂 전체", "value": "all"}
-                                                ],
-                                                value="all",
-                                                clearable=False,
-                                                style={"fontSize": "0.8rem"}
-                                            )
-                                        ], md=6),
-                                        dbc.Col([
-                                            html.Label("날짜 범위", className="form-label mb-1", style={"fontSize": "0.8rem", "fontWeight": "600", "color": "#6c757d"}),
-                                            html.Div([
-                                                dcc.DatePickerRange(
-                                                    id="date-range-picker",
-                                                    start_date=datetime.now() - timedelta(days=365),  # 기본값을 1년으로 확장
-                                                    end_date=datetime.now(),
-                                                    display_format="YYYY-MM-DD",
-                                                    style={
-                                                        "fontSize": "0.75rem", 
-                                                        "width": "100%"
-                                                    }
-                                                )
-                                            ], style={
-                                                "fontSize": "0.75rem",
-                                                "lineHeight": "1.2"
-                                            })
-                                        ], md=6),
-                                    ], className="g-2")
-                                ], className="py-2")
-                            ], className="mb-3", style={"border": "1px solid #e9ecef"}),
+                            dbc.Tabs([
+                                dbc.Tab(label="📄 INP 파일", tab_id="tab-inp", 
+                                    tab_style={
+                                        "marginLeft": "2px",
+                                        "marginRight": "2px",
+                                        "border": "none",
+                                        "borderRadius": "6px 6px 0 0",
+                                        "backgroundColor": "#f8fafc",
+                                        "color": "#1f2937",
+                                        "fontWeight": "500"
+                                    },
+                                    active_tab_style={
+                                        "backgroundColor": "white",
+                                        "border": "1px solid #e2e8f0",
+                                        "borderBottom": "1px solid white",
+                                        "color": "#1f2937",
+                                        "fontWeight": "600"
+                                    }
+                                ),
+                                dbc.Tab(label="📊 FRD 파일", tab_id="tab-frd",
+                                    tab_style={
+                                        "marginLeft": "2px",
+                                        "marginRight": "2px",
+                                        "border": "none",
+                                        "borderRadius": "6px 6px 0 0",
+                                        "backgroundColor": "#f8fafc",
+                                        "color": "#1f2937",
+                                        "fontWeight": "500"
+                                    },
+                                    active_tab_style={
+                                        "backgroundColor": "white",
+                                        "border": "1px solid #e2e8f0",
+                                        "borderBottom": "1px solid white",
+                                        "color": "#1f2937",
+                                        "fontWeight": "600"
+                                    }
+                                ),
+                                dbc.Tab(label="🎯 VTK 파일", tab_id="tab-vtk",
+                                    tab_style={
+                                        "marginLeft": "2px",
+                                        "marginRight": "2px",
+                                        "border": "none",
+                                        "borderRadius": "6px 6px 0 0",
+                                        "backgroundColor": "#f8fafc",
+                                        "color": "#1f2937",
+                                        "fontWeight": "500"
+                                    },
+                                    active_tab_style={
+                                        "backgroundColor": "white",
+                                        "border": "1px solid #e2e8f0",
+                                        "borderBottom": "1px solid white",
+                                        "color": "#1f2937",
+                                        "fontWeight": "600"
+                                    }
+                                ),
+                            ], id="dl-tabs", active_tab="tab-inp", className="mb-3"),
                             
-                            # 탭 콘텐츠
-                            html.Div(id="dl-tab-content", children=[
-                                html.Div([
+                            # 탭 콘텐츠 영역
+                            html.Div([
+                                # 필터 컨트롤 영역
+                                dbc.Card([
+                                    dbc.CardBody([
+                                        html.H6("🔍 파일 필터링", className="mb-3 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                                        dbc.Row([
+                                            dbc.Col([
+                                                html.Label("빠른 필터", className="form-label mb-2", style={"fontSize": "0.8rem", "fontWeight": "600", "color": "#6c757d"}),
+                                                dcc.Dropdown(
+                                                    id="quick-filter",
+                                                    options=[
+                                                        {"label": "🕐 오늘", "value": "today"},
+                                                        {"label": "📅 최근 3일", "value": "3days"},
+                                                        {"label": "📅 최근 7일", "value": "7days"},
+                                                        {"label": "📅 최근 30일", "value": "30days"},
+                                                        {"label": "📂 전체", "value": "all"}
+                                                    ],
+                                                    value="all",
+                                                    clearable=False,
+                                                    style={"fontSize": "0.8rem"}
+                                                )
+                                            ], md=6),
+                                            dbc.Col([
+                                                html.Label("날짜 범위", className="form-label mb-1", style={"fontSize": "0.8rem", "fontWeight": "600", "color": "#6c757d"}),
+                                                html.Div([
+                                                    dcc.DatePickerRange(
+                                                        id="date-range-picker",
+                                                        start_date=datetime.now() - timedelta(days=365),  # 기본값을 1년으로 확장
+                                                        end_date=datetime.now(),
+                                                        display_format="YYYY-MM-DD",
+                                                        style={
+                                                            "fontSize": "0.75rem", 
+                                                            "width": "100%"
+                                                        }
+                                                    )
+                                                ], style={
+                                                    "fontSize": "0.75rem",
+                                                    "lineHeight": "1.2"
+                                                })
+                                            ], md=6),
+                                        ], className="g-2")
+                                    ], className="py-2")
+                                ], className="mb-3", style={"border": "1px solid #e9ecef"}),
+                                
+                                # 탭 콘텐츠
+                                html.Div(id="dl-tab-content", children=[
                                     html.Div([
-                                        html.I(className="fas fa-info-circle me-2", style={"color": "#6b7280", "fontSize": "1.2rem"}),
-                                        html.Span("콘크리트를 선택하면 파일 목록이 표시됩니다", style={"color": "#6b7280", "fontSize": "0.9rem"})
-                                    ], className="d-flex align-items-center justify-content-center p-4", style={"backgroundColor": "#f9fafb", "borderRadius": "8px", "border": "1px dashed #d1d5db"})
-                                ])
-                            ]),
-                        ], style={
-                            "backgroundColor": "white",
-                            "padding": "20px",
-                            "borderRadius": "12px",
-                            "border": "1px solid #e2e8f0",
-                            "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
-                        })
+                                        html.Div([
+                                            html.I(className="fas fa-info-circle me-2", style={"color": "#6b7280", "fontSize": "1.2rem"}),
+                                            html.Span("콘크리트를 선택하면 파일 목록이 표시됩니다", style={"color": "#6b7280", "fontSize": "0.9rem"})
+                                        ], className="d-flex align-items-center justify-content-center p-4", style={"backgroundColor": "#f9fafb", "borderRadius": "8px", "border": "1px dashed #d1d5db"})
+                                    ])
+                                ]),
+                            ], style={
+                                "backgroundColor": "white",
+                                "padding": "20px",
+                                "borderRadius": "12px",
+                                "border": "1px solid #e2e8f0",
+                                "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
+                            })
+                        ])
                     ])
-                ])
-            ], md=9),
-        ], className="g-3"),
-    ], className="py-3")
+                ], md=9),
+            ], className="g-3"),
+        ]
+    )
 ])
 
 # ───────────────────── ① URL에서 프로젝트 정보 파싱 ─────────────────────
