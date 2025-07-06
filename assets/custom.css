@@ -151,4 +151,28 @@
     background-color: rgba(59, 130, 246, 0.1) !important;
     color: #3b82f6 !important;
     border-radius: 6px !important;
-} 
+}
+
+/* 탭 스타일 강제 적용 */
+.nav-tabs .nav-link {
+    color: #1f2937 !important;
+    font-weight: 500 !important;
+    background-color: #f8fafc !important;
+    border: none !important;
+    border-radius: 6px 6px 0 0 !important;
+    margin-left: 2px !important;
+    margin-right: 2px !important;
+}
+
+.nav-tabs .nav-link.active {
+    color: #1f2937 !important;
+    font-weight: 600 !important;
+    background-color: white !important;
+    border: 1px solid #e2e8f0 !important;
+    border-bottom: 1px solid white !important;
+}
+
+.nav-tabs .nav-link:hover {
+    color: #1f2937 !important;
+    background-color: #f1f5f9 !important;
+}
