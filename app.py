@@ -603,28 +603,7 @@ def update_navbar(pathname):
         # 기본값: 홈 네비게이션 바
         return _build_home_navbar()
 
-# 네비게이션 바 링크 URL 동적 업데이트 콜백 (콘크리트/센서 페이지용)
-@app.callback(
-    [Output("nav-concrete", "href"),
-     Output("nav-sensor", "href")],
-    [Input("url", "pathname"),
-     Input("url", "search")]
-)
-def update_concrete_sensor_nav_links(pathname, search):
-    """콘크리트/센서 페이지용 네비게이션 바 링크들이 현재 URL의 쿼리 파라미터를 유지하도록 업데이트합니다."""
-    
-    # 콘크리트/센서 페이지가 아닌 경우 업데이트하지 않음
-    if not (pathname.startswith("/concrete") or pathname.startswith("/sensor")):
-        raise dash.exceptions.PreventUpdate
-    
-    # 프로젝트 키 추출
-    project_pk = parse_project_key_from_url(search) if search else None
-    
-    # 암호화된 URL 생성
-    concrete_url = create_project_url("/concrete", project_pk)
-    sensor_url = create_project_url("/sensor", project_pk)
-    
-    return concrete_url, sensor_url
+
 
 # 네비게이션 바 링크 URL 동적 업데이트 콜백 (분석 페이지용)
 @app.callback(
@@ -634,7 +613,8 @@ def update_concrete_sensor_nav_links(pathname, search):
      Output("nav-strength", "href"),
      Output("nav-download", "href")],
     [Input("url", "pathname"),
-     Input("url", "search")]
+     Input("url", "search")],
+    prevent_initial_call=True
 )
 def update_analysis_nav_links(pathname, search):
     """분석 페이지용 네비게이션 바 링크들이 현재 URL의 쿼리 파라미터를 유지하도록 업데이트합니다."""
@@ -657,32 +637,7 @@ def update_analysis_nav_links(pathname, search):
     
     return temp_url, stress_url, tci_url, strength_url, download_url
 
-# 네비게이션 바 active 클래스 동적 적용 콜백 (콘크리트/센서 페이지용)
-@app.callback(
-    [Output("nav-dashboard", "className"),
-     Output("nav-concrete", "className"),
-     Output("nav-sensor", "className")],
-    [Input("url", "pathname")]
-)
-def update_nav_active(pathname):
-    """콘크리트/센서 페이지용 네비게이션 링크의 active 상태를 업데이트합니다."""
-    
-    # 콘크리트/센서 페이지가 아닌 경우 업데이트하지 않음
-    if not (pathname.startswith("/concrete") or pathname.startswith("/sensor")):
-        raise dash.exceptions.PreventUpdate
-    
-    # 기본 클래스 설정
-    base_classes = ["nav-link"] * 3
-    
-    # Active 클래스 추가
-    if pathname == "/":
-        base_classes[0] += " active"  # 대시보드
-    elif pathname.startswith("/concrete"):
-        base_classes[1] += " active"  # 콘크리트 모델링
-    elif pathname.startswith("/sensor") and not pathname.startswith("/sensor_data"):
-        base_classes[2] += " active"  # 센서 위치
-    
-    return tuple(base_classes)
+
 
 # 분석 페이지용 네비게이션 바 active 클래스 동적 적용 콜백
 @app.callback(
