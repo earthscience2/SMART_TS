@@ -3065,12 +3065,13 @@ def update_section_views(time_idx,
     Input("temp-y-input", "value"),
     Input("temp-z-input", "value"),
     Input("unified-colorbar-state", "data"),
-    State("temp-range-filter", "value"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=False,
 )
-def update_temp_tab(store_data, x, y, z, unified_colorbar, range_filter, selected_rows, tbl_data):
+def update_temp_tab(store_data, x, y, z, unified_colorbar, selected_rows, tbl_data):
+    # 기본값으로 "all" 사용 (temp-range-filter가 없을 때)
+    range_filter = "all"
     import plotly.graph_objects as go
     import numpy as np
     import glob, os
@@ -3253,148 +3254,8 @@ def update_temp_tab(store_data, x, y, z, unified_colorbar, range_filter, selecte
         )
     return fig_3d, fig_temp
 
-# 온도 범위 필터 콜백 (온도변화 탭에서만 작동)
-@callback(
-    Output("temp-time-graph", "figure", allow_duplicate=True),
-    Input("temp-range-filter", "value"),
-    State("temp-viewer-3d", "figure"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
-    prevent_initial_call=True,
-)
-def update_temp_range_filter(range_filter, fig_3d, selected_rows, tbl_data):
-    """온도 범위 필터 변경 시 온도 변화 그래프만 업데이트"""
-    if not selected_rows or not tbl_data or not range_filter:
-        raise PreventUpdate
-    
-    import plotly.graph_objects as go
-    import numpy as np
-    import glob, os
-    from datetime import datetime as dt_import
-    
-    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-    concrete_pk = row["concrete_pk"]
-    inp_dir = f"inp/{concrete_pk}"
-    inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
-    
-    # 온도 데이터 수집 (기존 로직과 동일)
-    temp_times = []
-    temp_values = []
-    
-    for f in inp_files:
-        try:
-            time_str = os.path.basename(f).split(".")[0]
-            dt = dt_import.strptime(time_str, "%Y%m%d%H")
-        except:
-            continue
-        
-        with open(f, 'r') as file:
-            lines = file.readlines()
-        
-        nodes = {}
-        node_section = False
-        for line in lines:
-            if line.startswith('*NODE'):
-                node_section = True
-                continue
-            elif line.startswith('*'):
-                node_section = False
-                continue
-            if node_section and ',' in line:
-                parts = line.strip().split(',')
-                if len(parts) >= 4:
-                    node_id = int(parts[0])
-                    nx = float(parts[1])
-                    ny = float(parts[2])
-                    nz = float(parts[3])
-                    nodes[node_id] = {'x': nx, 'y': ny, 'z': nz}
-        
-        temperatures = {}
-        temp_section = False
-        for line in lines:
-            if line.startswith('*TEMPERATURE'):
-                temp_section = True
-                continue
-            elif line.startswith('*'):
-                temp_section = False
-                continue
-            if temp_section and ',' in line:
-                parts = line.strip().split(',')
-                if len(parts) >= 2:
-                    node_id = int(parts[0])
-                    temp = float(parts[1])
-                    temperatures[node_id] = temp
-        
-        # 기본 위치에서 온도 찾기 (임시로 중앙점 사용)
-        if nodes:
-            coords = np.array([[v['x'], v['y'], v['z']] for v in nodes.values()])
-            node_ids = list(nodes.keys())
-            # 중앙점 계산
-            center_x = np.mean(coords[:, 0])
-            center_y = np.mean(coords[:, 1])
-            center_z = np.mean(coords[:, 2])
-            
-            dists = np.linalg.norm(coords - np.array([center_x, center_y, center_z]), axis=1)
-            min_idx = np.argmin(dists)
-            closest_id = node_ids[min_idx]
-            temp_val = temperatures.get(closest_id, None)
-            if temp_val is not None:
-                temp_times.append(dt)
-                temp_values.append(temp_val)
-    
-    # 온도 범위 필터링 적용
-    if range_filter and range_filter != "all" and temp_times:
-        try:
-            from datetime import timedelta
-            latest_time = max(temp_times)
-            days_back = int(range_filter)
-            cutoff_time = latest_time - timedelta(days=days_back)
-            
-            filtered_times = []
-            filtered_values = []
-            for i, dt in enumerate(temp_times):
-                if dt >= cutoff_time:
-                    filtered_times.append(dt)
-                    filtered_values.append(temp_values[i])
-            
-            temp_times = filtered_times
-            temp_values = filtered_values
-        except Exception as e:
-            print(f"온도 범위 필터링 오류: {e}")
-    
-    # 그래프 생성
-    fig_temp = go.Figure()
-    if temp_times and temp_values:
-        # x축 값: 시간별 실제 datetime 객체
-        x_values = temp_times
-        # x축 라벨: 날짜가 바뀌는 첫 번째만 날짜, 나머지는 빈 문자열
-        x_labels = []
-        prev_date = None
-        for dt in temp_times:
-            current_date = dt.strftime('%-m/%-d')
-            if current_date != prev_date:
-                x_labels.append(current_date)
-                prev_date = current_date
-            else:
-                x_labels.append("")
-        # 제목에 기간 정보 추가
-        title_text = "시간에 따른 온도 정보"
-        if range_filter and range_filter != "all":
-            title_text += f" (최근 {range_filter}일)"
-        
-        fig_temp.add_trace(go.Scatter(x=x_values, y=temp_values, mode='lines+markers', name='온도'))
-        fig_temp.update_layout(
-            title=title_text,
-            xaxis_title="날짜",
-            yaxis_title="온도(°C)",
-            xaxis=dict(
-                tickmode='array',
-                tickvals=x_values,
-                ticktext=x_labels
-            )
-        )
-    
-    return fig_temp
+# 온도 범위 필터 콜백은 제거 (temp-range-filter가 레이아웃에 없어서 오류 발생)
+# 대신 update_temp_tab 콜백에서 모든 업데이트를 처리
 
 # frd 파일 업로드 콜백 (중복 파일명 방지)
 @callback(
@@ -4000,10 +3861,11 @@ def save_section_image(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl
     State("temp-x-input", "value"),
     State("temp-y-input", "value"),
     State("temp-z-input", "value"),
-    State("temp-range-filter", "value"),
     prevent_initial_call=True,
 )
-def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z, range_filter):
+def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z):
+    # 기본값으로 "all" 사용 (temp-range-filter가 없을 때)
+    range_filter = "all"
     if not n_clicks or not fig_3d:
         raise PreventUpdate
     
@@ -4165,10 +4027,11 @@ def save_section_inp(n_clicks, selected_rows, tbl_data, time_value):
     State("temp-x-input", "value"),
     State("temp-y-input", "value"),
     State("temp-z-input", "value"),
-    State("temp-range-filter", "value"),
     prevent_initial_call=True,
 )
-def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z, range_filter):
+def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z):
+    # 기본값으로 "all" 사용 (temp-range-filter가 없을 때)
+    range_filter = "all"
     if not n_clicks or not selected_rows or not tbl_data:
         raise PreventUpdate
     
