@@ -218,8 +218,8 @@ layout = html.Div([
                         
                         # 선택된 콘크리트 작업 버튼
                         html.Div([
-                            dbc.Button("수정", id="btn-edit", color="secondary", size="sm", className="px-3", disabled=True),
-                            dbc.Button("삭제", id="btn-del", color="danger", size="sm", className="px-3", disabled=True),
+                            dbc.Button("수정", id="btn-edit", color="secondary", size="sm", className="px-3"),
+                            dbc.Button("삭제", id="btn-del", color="danger", size="sm", className="px-3"),
                         ], id="concrete-action-buttons", className="d-flex justify-content-center gap-2 mt-2", style={"display": "none"})
                     ], className="p-3")
                 ], className="bg-white rounded shadow-sm border"),
@@ -792,6 +792,8 @@ def refresh_table(n, project_pk, _data_ts):
     Output("viewer",           "figure"),
     Output("concrete-details", "children"),
     Output("concrete-action-buttons", "style"),
+    Output("btn-edit",         "disabled"),
+    Output("btn-del",          "disabled"),
     Input("tbl",               "selected_rows"),
     State("tbl",               "data"),
     prevent_initial_call=True
@@ -799,7 +801,7 @@ def refresh_table(n, project_pk, _data_ts):
 def show_selected(sel, data):
     # 아무 것도 선택 안 됐으면 모두 비활성
     if not sel:
-        return go.Figure(), "", {"display": "none"}
+        return go.Figure(), "", {"display": "none"}, True, True
 
     # 선택된 레코드 가져오기
     row = pd.DataFrame(data).iloc[sel[0]]
@@ -928,11 +930,11 @@ def show_selected(sel, data):
     ], className="shadow-sm")
 
     if not is_active:
-        # 분석중인 경우: 버튼 숨김
-        return fig, details, {"display": "none"}
+        # 분석중인 경우: 버튼 숨김 및 비활성화
+        return fig, details, {"display": "none"}, True, True
     else:
-        # 수정가능한 경우: 버튼 표시
-        return fig, details, {"display": "flex"}
+        # 설정중인 경우: 버튼 표시 및 활성화
+        return fig, details, {"display": "flex"}, False, False
 
 
 
