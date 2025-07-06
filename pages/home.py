@@ -228,121 +228,39 @@ def layout():
                             html.P(f"생성일: {format_date(row['created_at'])}", className="text-muted mb-0")
                         ], className="d-flex flex-column"),
                         html.Div([
-                            # 분석 결과 드롭다운
-                            html.Div([
-                                dbc.Row([
-                                    dbc.Col([
-                                        dcc.Link(
-                                            html.Div([
-                                                html.Span("🌡️", className="me-2", style={"fontSize": "16px"}),
-                                                html.Span("온도분석", style={"fontSize": "13px", "fontWeight": "500"})
-                                            ]),
-                                            href=f"/temp?page={proj_pk}",
-                                            className="btn btn-outline-primary btn-sm w-100",
-                                            style={
-                                                "textDecoration": "none",
-                                                "borderRadius": "6px",
-                                                "padding": "8px 18px",
-                                                "height": "40px",
-                                                "display": "flex",
-                                                "alignItems": "center",
-                                                "justifyContent": "center",
-                                                "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
-                                                "transition": "all 0.2s ease"
-                                            }
-                                        )
-                                    ], width=3),
-                                    dbc.Col([
-                                        dcc.Link(
-                                            html.Div([
-                                                html.Span("🔬", className="me-1", style={"fontSize": "16px"}),
-                                                html.Span("응력분석", style={"fontSize": "13px", "fontWeight": "500"})
-                                            ]),
-                                            href=f"/stress?page={proj_pk}",
-                                            className="btn btn-outline-warning btn-sm w-100",
-                                            style={
-                                                "textDecoration": "none",
-                                                "borderRadius": "6px",
-                                                "padding": "8px 18px",
-                                                "height": "40px",
-                                                "display": "flex",
-                                                "alignItems": "center",
-                                                "justifyContent": "center",
-                                                "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
-                                                "transition": "all 0.2s ease",
-                                                "whiteSpace": "nowrap",
-                                                "overflow": "hidden",
-                                                "textOverflow": "ellipsis"
-                                            }
-                                        )
-                                    ], width=3),
-                                    dbc.Col([
-                                        dcc.Link(
-                                            html.Div([
-                                                html.Span("⚠️", className="me-2", style={"fontSize": "16px"}),
-                                                html.Span("TCI분석", style={"fontSize": "13px", "fontWeight": "500"})
-                                            ]),
-                                            href=f"/tci?page={proj_pk}",
-                                            className="btn btn-outline-danger btn-sm w-100",
-                                            style={
-                                                "textDecoration": "none",
-                                                "borderRadius": "6px",
-                                                "padding": "8px 18px",
-                                                "height": "40px",
-                                                "display": "flex",
-                                                "alignItems": "center",
-                                                "justifyContent": "center",
-                                                "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
-                                                "transition": "all 0.2s ease"
-                                            }
-                                        )
-                                    ], width=3),
-                                    dbc.Col([
-                                        dcc.Link(
-                                            html.Div([
-                                                html.Span("💪", className="me-1", style={"fontSize": "16px"}),
-                                                html.Span("강도분석", style={"fontSize": "13px", "fontWeight": "500"})
-                                            ]),
-                                            href=f"/strength?page={proj_pk}",
-                                            className="btn btn-outline-success btn-sm w-100",
-                                            style={
-                                                "textDecoration": "none",
-                                                "borderRadius": "6px",
-                                                "padding": "8px 18px",
-                                                "height": "40px",
-                                                "display": "flex",
-                                                "alignItems": "center",
-                                                "justifyContent": "center",
-                                                "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
-                                                "transition": "all 0.2s ease",
-                                                "whiteSpace": "nowrap",
-                                                "overflow": "hidden",
-                                                "textOverflow": "ellipsis"
-                                            }
-                                        )
-                                    ], width=3)
-                                ], className="g-2")
-                            ], className="bg-light p-2 rounded border", style={"borderColor": "#e9ecef"}),
                             dcc.Link(
-                                "해석 파일 다운로드",
-                                href=f"/download?page={proj_pk}",
-                                className="btn btn-warning btn-sm text-center",
+                                "분석결과 확인",
+                                href=f"/temp?page={proj_pk}",
+                                className="btn btn-success btn-sm mt-2 me-2",
                                 style={
-                                    "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
-                                    "borderRadius": "6px",
+                                    "fontSize": "12px",
                                     "fontWeight": "500",
                                     "textDecoration": "none",
-                                    "textAlign": "center !important",
+                                    "textAlign": "center",
                                     "display": "flex",
                                     "alignItems": "center",
                                     "justifyContent": "center",
-                                    "padding": "8px 18px",
-                                    "height": "40px",
-                                    "fontSize": "13px",
-                                    "flexShrink": "0"
+                                    "width": "auto",
+                                    "minWidth": "fit-content"
+                                }
+                            ),
+                            dcc.Link(
+                                "해석 파일 다운로드",
+                                href=f"/download?page={proj_pk}",
+                                className="btn btn-warning btn-sm mt-2",
+                                style={
+                                    "fontSize": "12px",
+                                    "fontWeight": "500",
+                                    "textDecoration": "none",
+                                    "textAlign": "center",
+                                    "display": "flex",
+                                    "alignItems": "center",
+                                    "justifyContent": "center",
+                                    "width": "auto",
+                                    "minWidth": "fit-content"
                                 }
                             )
-                        ], className="d-flex flex-wrap gap-3 align-items-center")
+                        ], className="mt-2 d-flex justify-content-end")
                     ], className="d-flex justify-content-between align-items-center mb-3"),
                     
                     # 콘텐츠 그리드
