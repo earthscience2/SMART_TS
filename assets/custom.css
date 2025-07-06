@@ -2,18 +2,18 @@
 .user-navbar .nav-link,
 .user-navbar .dropdown-toggle {
     font-weight: 600 !important;
-    font-size: 17px !important;
-    padding: 8px 24px !important;
+    font-size: 14px !important;
+    padding: 6px 18px !important;
     border-radius: 12px !important;
     border: none !important;
     transition: all 0.2s;
     color: #111 !important;
     background: #ffc107 !important;
-    height: 48px !important;
+    height: 40px !important;
     display: flex !important;
     align-items: center !important;
     box-shadow: 0 0 0 3px #233 !important;
-    margin: 0 8px !important;
+    margin: 0 4px !important;
 }
 
 .user-navbar .nav-link.active,
@@ -30,14 +30,14 @@
 
 .user-navbar .dropdown-menu {
     border-radius: 12px !important;
-    min-width: 180px !important;
+    min-width: 160px !important;
     margin-top: 4px !important;
 }
 
 .user-navbar .dropdown-item {
-    font-size: 16px !important;
+    font-size: 14px !important;
     font-weight: 500 !important;
-    padding: 10px 24px !important;
+    padding: 8px 20px !important;
     border-radius: 8px !important;
     color: #222 !important;
 }
@@ -90,9 +90,9 @@
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    height: 38px !important;
-    padding: 8px 16px !important;
-    font-size: 14px !important;
+    height: 34px !important;
+    padding: 6px 14px !important;
+    font-size: 13px !important;
     font-weight: 600 !important;
     border-radius: 6px !important;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;

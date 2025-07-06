@@ -223,11 +223,12 @@ app.index_string = '''
             }
             
             .nav-link {
-                padding: 10px 20px !important;
-                margin: 0 8px !important;
+                padding: 8px 16px !important;
+                margin: 0 4px !important;
                 border-radius: 6px !important;
                 transition: all 0.3s ease !important;
                 font-weight: 500 !important;
+                font-size: 14px !important;
                 color: #ffffff !important;
                 position: relative !important;
                 text-decoration: none !important;
@@ -235,7 +236,7 @@ app.index_string = '''
                 white-space: nowrap !important;
                 text-align: center !important;
                 line-height: 1.2 !important;
-                min-width: 140px !important;
+                min-width: 120px !important;
             }
             
             .nav-link:hover {
@@ -275,7 +276,7 @@ app.index_string = '''
             }
             
             .navbar-brand {
-                font-size: 1.25rem !important;
+                font-size: 1.1rem !important;
                 z-index: 10 !important;
             }
             
