@@ -898,11 +898,11 @@ def on_concrete_select(selected_rows, tbl_data):
     slider_marks = {}
     
     # 안내 메시지 생성
-    if can_analyze:
+    if is_active and has_sensors:  # 설정중(센서있음)
         pass  # title 변수 제거됨
-    elif is_active and not has_sensors:
+    elif is_active and not has_sensors:  # 설정중(센서부족)
         pass  # title 변수 제거됨
-    else:
+    else:  # 분석중
         # 비활성 상태일 때 데이터 존재 여부 확인 및 초기 파일 정보 로드
         inp_dir = f"inp/{concrete_pk}"
         inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
