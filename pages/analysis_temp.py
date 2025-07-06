@@ -426,7 +426,7 @@ layout = dbc.Container(
                                     row_selectable="single",
                                     sort_action="native",
                                     sort_mode="multi",
-                                    style_table={"overflowY": "auto", "height": "40vh"},
+                                    style_table={"overflowY": "auto", "height": "calc(40vh - 50px)"},
                                     style_cell={
                                         "whiteSpace": "nowrap", 
                                         "textAlign": "center",
@@ -591,56 +591,59 @@ layout = dbc.Container(
                     html.Div([
                         dbc.Tabs([
                             dbc.Tab(
-                                label="🎯 3D 뷰", 
+                                label="입체", 
                                 tab_id="tab-3d",
                                 tab_style={
                                     "marginLeft": "2px",
                                     "marginRight": "2px",
                                     "border": "none",
                                     "borderRadius": "6px 6px 0 0",
-                                    "backgroundColor": "#f8fafc"
+                                    "backgroundColor": "#f8fafc",
+                                    "color": "#1f2937"
                                 },
                                 active_tab_style={
                                     "backgroundColor": "white",
                                     "border": "1px solid #e2e8f0",
                                     "borderBottom": "1px solid white",
-                                    "color": "#3182ce",
+                                    "color": "#1f2937",
                                     "fontWeight": "600"
                                 }
                             ),
                             dbc.Tab(
-                                label="📊 단면도", 
+                                label="단면", 
                                 tab_id="tab-section",
                                 tab_style={
                                     "marginLeft": "2px",
                                     "marginRight": "2px",
                                     "border": "none",
                                     "borderRadius": "6px 6px 0 0",
-                                    "backgroundColor": "#f8fafc"
+                                    "backgroundColor": "#f8fafc",
+                                    "color": "#1f2937"
                                 },
                                 active_tab_style={
                                     "backgroundColor": "white",
                                     "border": "1px solid #e2e8f0",
                                     "borderBottom": "1px solid white",
-                                    "color": "#3182ce",
+                                    "color": "#1f2937",
                                     "fontWeight": "600"
                                 }
                             ),
                             dbc.Tab(
-                                label="🌡️ 온도 변화", 
+                                label="노드", 
                                 tab_id="tab-temp",
                                 tab_style={
                                     "marginLeft": "2px",
                                     "marginRight": "2px",
                                     "border": "none",
                                     "borderRadius": "6px 6px 0 0",
-                                    "backgroundColor": "#f8fafc"
+                                    "backgroundColor": "#f8fafc",
+                                    "color": "#1f2937"
                                 },
                                 active_tab_style={
                                     "backgroundColor": "white",
                                     "border": "1px solid #e2e8f0",
                                     "borderBottom": "1px solid white",
-                                    "color": "#3182ce",
+                                    "color": "#1f2937",
                                     "fontWeight": "600"
                                 }
                             ),
