@@ -1278,29 +1278,119 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
 )
 def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_title):
     from datetime import datetime as dt_import  # 명시적 import로 충돌 방지
-    # 안내 문구만 보여야 하는 경우(분석 시작 안내, 데이터 없음)
+    # 콘크리트 데이터를 불러오는 중인 경우
+    if tbl_data is None:
+        return html.Div([
+            html.Div([
+                html.Div([
+                    html.I(className="fas fa-spinner fa-spin fa-2x", style={"color": "#3b82f6", "marginBottom": "16px"}),
+                    html.H5("콘크리트 데이터를 불러오는 중입니다...", style={
+                        "color": "#1f2937",
+                        "fontWeight": "600",
+                        "lineHeight": "1.6",
+                        "margin": "0"
+                    })
+                ], style={
+                    "textAlign": "center",
+                    "padding": "80px 40px",
+                    "backgroundColor": "#f8fafc",
+                    "borderRadius": "12px",
+                    "border": "1px solid #e2e8f0",
+                    "marginTop": "40px"
+                })
+            ])
+        ])
+    
+    # 콘크리트 목록이 비어있는 경우
+    if tbl_data is not None and len(tbl_data) == 0:
+        return html.Div([
+            html.Div([
+                html.Div([
+                    html.I(className="fas fa-plus-circle fa-2x", style={"color": "#10b981", "marginBottom": "16px"}),
+                    html.H5("분석할 콘크리트를 추가하세요", style={
+                        "color": "#1f2937",
+                        "fontWeight": "600",
+                        "lineHeight": "1.6",
+                        "margin": "0",
+                        "marginBottom": "8px"
+                    }),
+                    html.P("콘크리트 모델링 페이지에서 콘크리트를 추가한 후", style={
+                        "color": "#6b7280",
+                        "fontSize": "14px",
+                        "margin": "0",
+                        "lineHeight": "1.5"
+                    }),
+                    html.P("온도 분석을 진행할 수 있습니다.", style={
+                        "color": "#6b7280",
+                        "fontSize": "14px",
+                        "margin": "0",
+                        "lineHeight": "1.5"
+                    })
+                ], style={
+                    "textAlign": "center",
+                    "padding": "80px 40px",
+                    "backgroundColor": "#f8fafc",
+                    "borderRadius": "12px",
+                    "border": "1px solid #e2e8f0",
+                    "marginTop": "40px"
+                })
+            ])
+        ])
+    
+    # 콘크리트가 선택되지 않은 경우
+    if not selected_rows:
+        return html.Div([
+            # 안내 메시지 (노션 스타일)
+            html.Div([
+                html.Div([
+                    html.I(className="fas fa-mouse-pointer fa-2x", style={"color": "#3b82f6", "marginBottom": "16px"}),
+                    html.H5("콘크리트를 선택해주세요", style={
+                        "color": "#1f2937",
+                        "fontWeight": "600",
+                        "lineHeight": "1.6",
+                        "margin": "0",
+                        "marginBottom": "8px"
+                    }),
+                    html.P("왼쪽 콘크리트 목록에서 분석할 콘크리트를 선택하시면", style={
+                        "color": "#6b7280",
+                        "fontSize": "14px",
+                        "margin": "0",
+                        "lineHeight": "1.5"
+                    }),
+                    html.P("3D 뷰, 단면도, 온도 변화 분석을 확인할 수 있습니다.", style={
+                        "color": "#6b7280",
+                        "fontSize": "14px",
+                        "margin": "0",
+                        "lineHeight": "1.5"
+                    })
+                ], style={
+                    "textAlign": "center",
+                    "padding": "80px 40px",
+                    "backgroundColor": "#f8fafc",
+                    "borderRadius": "12px",
+                    "border": "1px solid #e2e8f0",
+                    "marginTop": "40px"
+                })
+            ])
+        ])
+    
+    # 콘크리트가 선택된 경우의 처리
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    is_active = row["activate"] == "활성"
+    has_sensors = row["has_sensors"]
+    concrete_pk = row["concrete_pk"]
+    inp_dir = f"inp/{concrete_pk}"
+    inp_files = glob.glob(f"{inp_dir}/*.inp")
+    
+    # 특정 상태에 따른 안내 메시지
     guide_message = None
-    if selected_rows and tbl_data:
-        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-        is_active = row["activate"] == "활성"
-        has_sensors = row["has_sensors"]
-        concrete_pk = row["concrete_pk"]
-        inp_dir = f"inp/{concrete_pk}"
-        inp_files = glob.glob(f"{inp_dir}/*.inp")
-        
-        # "분석 가능" 상태이고 INP 파일이 없는 경우만 안내 메시지 표시
-        if is_active and has_sensors and not inp_files:
-            guide_message = "⚠️ 분석을 시작하려면 왼쪽의 '분석 시작' 버튼을 클릭하세요."
-        # "센서 부족" 상태인 경우 안내 메시지 표시
-        elif is_active and not has_sensors:
-            guide_message = "⚠️ 센서가 부족합니다. 센서를 추가한 후 분석을 시작하세요."
-        # INP 파일이 없는 경우 (분석중 상태이지만 아직 데이터가 없음)
-        elif not is_active and not inp_files:
-            guide_message = "⏳ 아직 수집된 데이터가 없습니다. 잠시 후 다시 확인해주세요."
-    elif tbl_data is not None and len(tbl_data) == 0:
-        guide_message = "분석할 콘크리트를 추가하세요."
-    elif tbl_data is None:
-        guide_message = "콘크리트 데이터를 불러오는 중입니다..."
+    if is_active and has_sensors and not inp_files:
+        guide_message = "⚠️ 분석을 시작하려면 왼쪽의 '분석 시작' 버튼을 클릭하세요."
+    elif is_active and not has_sensors:
+        guide_message = "⚠️ 센서가 부족합니다. 센서를 추가한 후 분석을 시작하세요."
+    elif not is_active and not inp_files:
+        guide_message = "⏳ 아직 수집된 데이터가 없습니다. 잠시 후 다시 확인해주세요."
+    
     if guide_message:
         return html.Div([
             # 안내 메시지 (노션 스타일)
