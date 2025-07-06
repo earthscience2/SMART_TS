@@ -301,6 +301,13 @@ def _build_home_navbar():
     """홈 화면용 네비게이션 바 (로그아웃 버튼만 표시)"""
     user_id = flask_request.cookies.get("login_user")
     admin_user = flask_request.cookies.get("admin_user")
+    
+    # 현재 URL에서 프로젝트 키 추출 (홈 페이지에서도 프로젝트 정보 유지)
+    from flask import request
+    query = request.query_string.decode()
+    project_pk = None
+    if query:
+        project_pk = parse_project_key_from_url(f"?{query}")
 
     nav_links = [
         dbc.NavItem(dcc.Link(dbc.Button("Logout", color="danger", size="md", className="text-center"), href="/logout", className="text-decoration-none", id="nav-logout")),
@@ -323,7 +330,7 @@ def _build_home_navbar():
 
     return dbc.Navbar(
         dbc.Container([
-            dbc.NavbarBrand(brand, href="/", className="fw-bold text-white"),
+            dbc.NavbarBrand(brand, href=create_project_url("/", project_pk), className="fw-bold text-white"),
             dbc.Nav(nav_links, navbar=True, className="ms-auto"),
         ], fluid=True),
         color="dark",
@@ -350,7 +357,7 @@ def _build_concrete_sensor_navbar():
         project_pk = parse_project_key_from_url(f"?{query}")
 
     main_nav_links = [
-        dbc.NavItem(dcc.Link("대시보드", href="/", className="nav-link", id="nav-dashboard")),
+        dbc.NavItem(dcc.Link("대시보드", href=create_project_url("/", project_pk), className="nav-link", id="nav-dashboard")),
         dbc.NavItem(dcc.Link("콘크리트 모델링", href=create_project_url("/concrete", project_pk), className="nav-link", id="nav-concrete")),
         dbc.NavItem(dcc.Link("센서 위치", href=create_project_url("/sensor", project_pk), className="nav-link", id="nav-sensor")),
     ]
@@ -375,7 +382,7 @@ def _build_concrete_sensor_navbar():
 
     return dbc.Navbar(
         dbc.Container([
-            dbc.NavbarBrand(brand, href="/", className="fw-bold text-white"),
+            dbc.NavbarBrand(brand, href=create_project_url("/", project_pk), className="fw-bold text-white"),
             dbc.Nav(main_nav_links, navbar=True, className="mx-auto"),
             dbc.Nav(logout_nav, navbar=True, className="ms-auto"),
         ], fluid=True),
@@ -402,7 +409,7 @@ def _build_analysis_navbar():
         project_pk = parse_project_key_from_url(f"?{query}")
 
     main_nav_links = [
-        dbc.NavItem(dcc.Link("대시보드", href="/", className="nav-link", id="nav-dashboard")),
+        dbc.NavItem(dcc.Link("대시보드", href=create_project_url("/", project_pk), className="nav-link", id="nav-dashboard")),
         dbc.NavItem(dcc.Link("온도", href=create_project_url("/temp", project_pk), className="nav-link", id="nav-temp")),
         dbc.NavItem(dcc.Link("응력", href=create_project_url("/stress", project_pk), className="nav-link", id="nav-stress")),
         dbc.NavItem(dcc.Link("TCI", href=create_project_url("/tci", project_pk), className="nav-link", id="nav-tci")),
@@ -430,7 +437,7 @@ def _build_analysis_navbar():
 
     return dbc.Navbar(
         dbc.Container([
-            dbc.NavbarBrand(brand, href="/", className="fw-bold text-white"),
+            dbc.NavbarBrand(brand, href=create_project_url("/", project_pk), className="fw-bold text-white"),
             dbc.Nav(main_nav_links, navbar=True, className="mx-auto"),
             dbc.Nav(logout_nav, navbar=True, className="ms-auto"),
         ], fluid=True),
@@ -452,18 +459,13 @@ def _build_sensor_data_navbar():
     
     from flask import request
     query = request.query_string.decode()
-    page_param = None
+    project_pk = None
     if query:
-        from urllib.parse import parse_qs
-        params = parse_qs(query)
-        page_param = params.get('page', [None])[0]
-        query_str = f"?{query}" if page_param else ""
-    else:
-        query_str = ""
+        project_pk = parse_project_key_from_url(f"?{query}")
 
     main_nav_links = [
-        dbc.NavItem(dcc.Link("대시보드", href="/", className="nav-link", id="nav-dashboard")),
-        dbc.NavItem(dcc.Link("센서 데이터", href=f"/sensor_data{query_str}" if page_param else "/sensor_data", className="nav-link", id="nav-sensor-data")),
+        dbc.NavItem(dcc.Link("대시보드", href=create_project_url("/", project_pk), className="nav-link", id="nav-dashboard")),
+        dbc.NavItem(dcc.Link("센서 데이터", href=create_project_url("/sensor_data", project_pk), className="nav-link", id="nav-sensor-data")),
     ]
     
     logout_nav = [
@@ -486,7 +488,7 @@ def _build_sensor_data_navbar():
 
     return dbc.Navbar(
         dbc.Container([
-            dbc.NavbarBrand(brand, href="/", className="fw-bold text-white"),
+            dbc.NavbarBrand(brand, href=create_project_url("/", project_pk), className="fw-bold text-white"),
             dbc.Nav(main_nav_links, navbar=True, className="mx-auto"),
             dbc.Nav(logout_nav, navbar=True, className="ms-auto"),
         ], fluid=True),
