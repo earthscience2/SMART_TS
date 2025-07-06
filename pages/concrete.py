@@ -155,8 +155,8 @@ layout = html.Div([
                                             'filter_query': '{status} = 분석중',
                                             'column_id': 'status'
                                         },
-                                        'backgroundColor': '#fef3c7',
-                                        'color': '#92400e',
+                                        'backgroundColor': '#dcfce7',
+                                        'color': '#166534',
                                         'fontWeight': '600',
                                         'borderRadius': '4px',
                                         'textAlign': 'center'
@@ -166,8 +166,8 @@ layout = html.Div([
                                             'filter_query': '{status} = 수정가능',
                                             'column_id': 'status'
                                         },
-                                        'backgroundColor': '#dcfce7',
-                                        'color': '#166534',
+                                        'backgroundColor': '#f3f4f6',
+                                        'color': '#6b7280',
                                         'fontWeight': '600',
                                         'borderRadius': '4px',
                                         'textAlign': 'center'
@@ -220,7 +220,7 @@ layout = html.Div([
                         html.Div([
                             dbc.Button("수정", id="btn-edit", color="secondary", size="sm", className="px-3", disabled=True),
                             dbc.Button("삭제", id="btn-del", color="danger", size="sm", className="px-3", disabled=True),
-                        ], className="d-flex justify-content-center gap-2 mt-2")
+                        ], id="concrete-action-buttons", className="d-flex justify-content-center gap-2 mt-2")
                     ], className="p-3")
                 ], className="bg-white rounded shadow-sm border"),
             ], md=4),
@@ -736,7 +736,7 @@ def refresh_table(n, project_pk, _data_ts):
     
     # 상태 정보와 타설 날짜 추가
     if not df.empty:
-        df["status"] = df["activate"].apply(lambda x: "수정가능" if x == 1 else "분석중")
+        df["status"] = df["activate"].apply(lambda x: "분석중" if x == 0 else "수정가능")
         
         # 타설 날짜를 YY.MM.DD 형식으로 변환 및 정렬용 데이터 생성
         def format_date_display(con_t):
@@ -791,8 +791,7 @@ def refresh_table(n, project_pk, _data_ts):
 @callback(
     Output("viewer",           "figure"),
     Output("concrete-details", "children"),
-    Output("btn-edit",         "disabled"),
-    Output("btn-del",          "disabled"),
+    Output("concrete-action-buttons", "style"),
     Input("tbl",               "selected_rows"),
     State("tbl",               "data"),
     prevent_initial_call=True
@@ -800,7 +799,7 @@ def refresh_table(n, project_pk, _data_ts):
 def show_selected(sel, data):
     # 아무 것도 선택 안 됐으면 모두 비활성
     if not sel:
-        return go.Figure(), "", True, True
+        return go.Figure(), "", {"display": "none"}
 
     # 선택된 레코드 가져오기
     row = pd.DataFrame(data).iloc[sel[0]]
@@ -872,8 +871,8 @@ def show_selected(sel, data):
     is_active = row.get("activate", 1) == 1
     
     # 상태 정보 준비
-    status_text = "수정가능" if is_active else "분석중"
-    status_color = "success" if is_active else "warning"
+    status_text = "분석중" if not is_active else "수정가능"
+    status_color = "success" if not is_active else "secondary"
     
     # 상세 정보 카드 생성
     details = dbc.Card([
@@ -929,11 +928,11 @@ def show_selected(sel, data):
     ], className="shadow-sm")
 
     if not is_active:
-        # 비활성화된 경우: 수정/삭제 비활성화
-        return fig, details, True, True
+        # 분석중인 경우: 버튼 숨김
+        return fig, details, {"display": "none"}
     else:
-        # 활성화된 경우: 수정/삭제 활성화
-        return fig, details, False, False
+        # 수정가능한 경우: 버튼 표시
+        return fig, details, {"display": "flex"}
 
 
 

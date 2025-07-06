@@ -268,7 +268,7 @@ def layout():
                         # 콘크리트 섹션
                         dbc.Col([
                             html.Div([
-                                html.H6("콘크리트", className="mb-3 text-secondary fw-bold"),
+                                html.H6("콘크리트", className="mb-3 text-secondary fw-bold text-center"),
                                 html.Div([
                                     dash_table.DataTable(
                                         data=concrete_data,
@@ -369,7 +369,7 @@ def layout():
                         # 센서 섹션
                         dbc.Col([
                             html.Div([
-                                html.H6("ITS 센서", className="mb-3 text-secondary fw-bold"),
+                                html.H6("ITS 센서", className="mb-3 text-secondary fw-bold text-center"),
                                 html.Div([
                                     dash_table.DataTable(
                                         data=sensor_data,
@@ -479,8 +479,8 @@ def layout():
             dbc.Container([
                 # 헤더
                 html.Div([
-                    html.H2("프로젝트 대시보드", className="mb-2"),
-                    html.P(f"안녕하세요, {user_id}님!", className="text-muted mb-4")
+                    html.H2("프로젝트 대시보드", className="mb-2 text-center fw-bold"),
+                    html.P(f"안녕하세요, {user_id}님!", className="text-muted mb-4 text-center")
                 ], className="mb-5"),
                 
                 # 빈 상태
@@ -500,9 +500,9 @@ def layout():
         dbc.Container([
             # 헤더
             html.Div([
-                html.H2("프로젝트 대시보드", className="mb-2"),
+                html.H2("프로젝트 대시보드", className="mb-2 text-center fw-bold"),
                 html.P(f"안녕하세요, {user_id}님! 총 {len(projects)}개의 프로젝트에 접근할 수 있습니다.", 
-                       className="text-muted mb-4")
+                       className="text-muted mb-4 text-center")
             ], className="mb-5"),
             
             # 프로젝트 리스트
