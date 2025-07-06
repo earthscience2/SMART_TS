@@ -231,6 +231,12 @@ app.index_string = '''
                 position: relative !important;
                 text-decoration: none !important;
                 border: 2px solid transparent !important;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+                max-width: 120px !important;
+                text-align: center !important;
+                line-height: 1.2 !important;
             }
             
             .nav-link:hover {
@@ -247,12 +253,13 @@ app.index_string = '''
                 box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4) !important;
                 border: 2px solid #ffc107 !important;
                 transform: translateY(-2px) !important;
+                position: relative !important;
             }
             
             .nav-link.active::before {
                 content: '📍' !important;
-                margin-right: 6px !important;
-                font-size: 14px !important;
+                margin-right: 4px !important;
+                font-size: 12px !important;
             }
             
             .nav-link.active::after {
@@ -395,11 +402,11 @@ def _build_analysis_navbar():
 
     main_nav_links = [
         dbc.NavItem(dcc.Link("대시보드", href="/", className="nav-link", id="nav-dashboard")),
-        dbc.NavItem(dcc.Link("온도분석", href=create_project_url("/temp", project_pk), className="nav-link", id="nav-temp")),
-        dbc.NavItem(dcc.Link("응력분석", href=create_project_url("/stress", project_pk), className="nav-link", id="nav-stress")),
-        dbc.NavItem(dcc.Link("TCI분석", href=create_project_url("/tci", project_pk), className="nav-link", id="nav-tci")),
-        dbc.NavItem(dcc.Link("강도분석", href=create_project_url("/strength", project_pk), className="nav-link", id="nav-strength")),
-        dbc.NavItem(dcc.Link("파일 다운로드", href=create_project_url("/download", project_pk), className="nav-link", id="nav-download")),
+        dbc.NavItem(dcc.Link("온도", href=create_project_url("/temp", project_pk), className="nav-link", id="nav-temp")),
+        dbc.NavItem(dcc.Link("응력", href=create_project_url("/stress", project_pk), className="nav-link", id="nav-stress")),
+        dbc.NavItem(dcc.Link("TCI", href=create_project_url("/tci", project_pk), className="nav-link", id="nav-tci")),
+        dbc.NavItem(dcc.Link("강도", href=create_project_url("/strength", project_pk), className="nav-link", id="nav-strength")),
+        dbc.NavItem(dcc.Link("다운로드", href=create_project_url("/download", project_pk), className="nav-link", id="nav-download")),
     ]
     
     logout_nav = [
@@ -666,15 +673,15 @@ def update_analysis_nav_active(pathname):
     if pathname == "/":
         base_classes[0] += " active"  # 대시보드
     elif pathname.startswith("/temp"):
-        base_classes[1] += " active"  # 온도분석
+        base_classes[1] += " active"  # 온도
     elif pathname.startswith("/stress"):
-        base_classes[2] += " active"  # 응력분석
+        base_classes[2] += " active"  # 응력
     elif pathname.startswith("/tci"):
-        base_classes[3] += " active"  # TCI분석
+        base_classes[3] += " active"  # TCI
     elif pathname.startswith("/strength"):
-        base_classes[4] += " active"  # 강도분석
+        base_classes[4] += " active"  # 강도
     elif pathname.startswith("/download"):
-        base_classes[5] += " active"  # 파일 다운로드
+        base_classes[5] += " active"  # 다운로드
     
     return tuple(base_classes)
 

@@ -738,7 +738,7 @@ def refresh_table(n, project_pk, _data_ts):
     if not df.empty:
         df["status"] = df["activate"].apply(lambda x: "분석중" if x == 0 else "설정중")
         
-        # 타설 날짜를 YY.MM.DD 형식으로 변환 및 정렬용 데이터 생성
+        # 타설 날짜를 YY.MM.DD(경과일) 형식으로 변환 및 정렬용 데이터 생성
         def format_date_display(con_t):
             if con_t and con_t not in ["", "N/A", None]:
                 try:
@@ -757,7 +757,17 @@ def refresh_table(n, project_pk, _data_ts):
                     else:
                         return 'N/A'
                     
-                    return dt.strftime('%y.%m.%d')
+                    # 경과일 계산
+                    now = datetime.now()
+                    time_diff = now - dt
+                    days_elapsed = int(time_diff.total_seconds() // 86400)
+                    
+                    # 날짜 포맷 + 경과일
+                    date_str = dt.strftime('%y.%m.%d')
+                    if days_elapsed == 0:
+                        return f"{date_str}(0일)"
+                    else:
+                        return f"{date_str}({days_elapsed}일)"
                 except Exception:
                     return 'N/A'
             else:
@@ -781,7 +791,7 @@ def refresh_table(n, project_pk, _data_ts):
     
     cols = [
         {"name": "이름", "id": "name", "type": "text"},
-        {"name": "타설일", "id": "pour_date", "type": "text"},
+        {"name": "타설일(경과일)", "id": "pour_date", "type": "text"},
         {"name": "상태", "id": "status", "type": "text"},
     ]
     sel = [0] if not df.empty else []
