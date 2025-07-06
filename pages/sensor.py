@@ -452,9 +452,9 @@ def parse_url_project(search):
                     project_row = projects_df[projects_df["project_pk"] == str(project_pk)]
                     if not project_row.empty:
                         project_name = project_row.iloc[0]["name"]
-                        project_info = f"📋 프로젝트: {project_name} (ID: {project_pk})"
+                        project_info = f"📁 현재 프로젝트: {project_name}"
                 except Exception:
-                    project_info = f"📋 프로젝트 ID: {project_pk}"
+                    project_info = f"📁 현재 프로젝트 ID: {project_pk}"
         except Exception:
             pass
     
