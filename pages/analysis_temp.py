@@ -1889,7 +1889,8 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                             className="mb-0",
                             style={
                                 "display": "inline-block",
-                                "marginBottom": "12px"
+                                "marginBottom": "12px",
+                                "marginTop": "-5px"
                             }
                         ),
                         dbc.Tooltip(
