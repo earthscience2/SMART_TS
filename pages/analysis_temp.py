@@ -1173,7 +1173,7 @@ def update_heatmap(time_idx, section_coord, selected_rows, tbl_data, current_tim
         opacity=0.1, surface_count=15, 
         colorscale=[[0, 'blue'], [1, 'red']],
         colorbar=dict(title='Temperature (°C)', thickness=10),
-        cmin=np.nanmin(temps), cmax=np.nanmax(temps),
+        cmin=tmin, cmax=tmax,  # 전체 파일의 최대/최솟값 사용
         showscale=True
     ))
 
@@ -1498,6 +1498,49 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         marks=slider_marks,
                         tooltip={"placement": "bottom", "always_visible": True},
                     ),
+                    # 재생/정지 버튼 추가
+                    html.Div([
+                        dbc.Button(
+                            [html.I(className="fas fa-play me-1"), "재생"],
+                            id="btn-play-3d",
+                            color="success",
+                            size="sm",
+                            style={
+                                "borderRadius": "6px",
+                                "fontWeight": "600",
+                                "fontSize": "13px",
+                                "width": "80px",
+                                "height": "36px",
+                                "marginRight": "8px"
+                            }
+                        ),
+                        dbc.Button(
+                            [html.I(className="fas fa-pause me-1"), "정지"],
+                            id="btn-pause-3d",
+                            color="warning",
+                            size="sm",
+                            style={
+                                "borderRadius": "6px",
+                                "fontWeight": "600",
+                                "fontSize": "13px",
+                                "width": "80px",
+                                "height": "36px"
+                            }
+                        ),
+                    ], style={
+                        "display": "flex",
+                        "justifyContent": "center",
+                        "marginTop": "12px"
+                    }),
+                    # 재생 상태 표시용 Store
+                    dcc.Store(id="play-state-3d", data={"playing": False}),
+                    # 자동 재생용 Interval
+                    dcc.Interval(
+                        id="play-interval-3d",
+                        interval=1000,  # 1초마다
+                        n_intervals=0,
+                        disabled=True
+                    ),
                 ], style={
                     "padding": "16px 20px",
                     "backgroundColor": "#f9fafb",
@@ -1647,6 +1690,49 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                         marks=slider_marks if isinstance(slider_marks, dict) else {},
                         tooltip={"placement": "bottom", "always_visible": True},
                         updatemode='drag',
+                    ),
+                    # 재생/정지 버튼 추가 (단면도용)
+                    html.Div([
+                        dbc.Button(
+                            [html.I(className="fas fa-play me-1"), "재생"],
+                            id="btn-play-section",
+                            color="success",
+                            size="sm",
+                            style={
+                                "borderRadius": "6px",
+                                "fontWeight": "600",
+                                "fontSize": "13px",
+                                "width": "80px",
+                                "height": "36px",
+                                "marginRight": "8px"
+                            }
+                        ),
+                        dbc.Button(
+                            [html.I(className="fas fa-pause me-1"), "정지"],
+                            id="btn-pause-section",
+                            color="warning",
+                            size="sm",
+                            style={
+                                "borderRadius": "6px",
+                                "fontWeight": "600",
+                                "fontSize": "13px",
+                                "width": "80px",
+                                "height": "36px"
+                            }
+                        ),
+                    ], style={
+                        "display": "flex",
+                        "justifyContent": "center",
+                        "marginTop": "12px"
+                    }),
+                    # 재생 상태 표시용 Store (단면도용)
+                    dcc.Store(id="play-state-section", data={"playing": False}),
+                    # 자동 재생용 Interval (단면도용)
+                    dcc.Interval(
+                        id="play-interval-section",
+                        interval=1000,  # 1초마다
+                        n_intervals=0,
+                        disabled=True
                     ),
                 ], style={
                     "padding": "16px 20px",
@@ -2385,7 +2471,38 @@ def update_section_views(time_idx,
     y_coords = np.array([n['y'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
     z_coords = np.array([n['z'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
     temps = np.array([temperatures[k] for k in nodes.keys() if k in temperatures])
-    tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
+    
+    # 전체 파일의 온도 범위 계산
+    all_temps = []
+    for inp_file in inp_files:
+        try:
+            with open(inp_file, 'r') as f:
+                file_lines = f.readlines()
+            file_temperatures = {}
+            temp_section = False
+            for line in file_lines:
+                if line.startswith('*TEMPERATURE'):
+                    temp_section = True
+                    continue
+                elif line.startswith('*'):
+                    temp_section = False
+                    continue
+                if temp_section and ',' in line:
+                    parts = line.strip().split(',')
+                    if len(parts) >= 2:
+                        node_id = int(parts[0])
+                        temp = float(parts[1])
+                        file_temperatures[node_id] = temp
+            all_temps.extend(list(file_temperatures.values()))
+        except Exception as e:
+            print(f"파일 {inp_file} 읽기 오류: {e}")
+            continue
+    
+    # 전체 파일의 온도 범위 사용
+    if all_temps:
+        tmin, tmax = float(np.nanmin(all_temps)), float(np.nanmax(all_temps))
+    else:
+        tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
     # 입력창 min/max/기본값 자동 설정
     x_min, x_max = float(np.min(x_coords)), float(np.max(x_coords))
     y_min, y_max = float(np.min(y_coords)), float(np.max(y_coords))
@@ -4108,3 +4225,153 @@ def validate_inputs(fct28, formula_type):
         return "\n".join(messages), "warning", True
     
     return dash.no_update, dash.no_update, dash.no_update
+
+# ───────────────────── 재생/정지 기능 콜백들 ─────────────────────
+
+# 재생 버튼 클릭 시 콜백
+@callback(
+    Output("play-state-3d", "data"),
+    Output("play-interval-3d", "disabled"),
+    Output("btn-play-3d", "disabled"),
+    Output("btn-pause-3d", "disabled"),
+    Input("btn-play-3d", "n_clicks"),
+    State("play-state-3d", "data"),
+    prevent_initial_call=True,
+)
+def start_playback(n_clicks, play_state):
+    """재생 버튼 클릭 시 자동 재생 시작"""
+    if not n_clicks:
+        raise PreventUpdate
+    
+    return {"playing": True}, False, True, False
+
+# 정지 버튼 클릭 시 콜백
+@callback(
+    Output("play-state-3d", "data", allow_duplicate=True),
+    Output("play-interval-3d", "disabled", allow_duplicate=True),
+    Output("btn-play-3d", "disabled", allow_duplicate=True),
+    Output("btn-pause-3d", "disabled", allow_duplicate=True),
+    Input("btn-pause-3d", "n_clicks"),
+    State("play-state-3d", "data"),
+    prevent_initial_call=True,
+)
+def stop_playback(n_clicks, play_state):
+    """정지 버튼 클릭 시 자동 재생 중지"""
+    if not n_clicks:
+        raise PreventUpdate
+    
+    return {"playing": False}, True, False, True
+
+# 자동 재생 콜백
+@callback(
+    Output("time-slider-display", "value", allow_duplicate=True),
+    Input("play-interval-3d", "n_intervals"),
+    State("play-state-3d", "data"),
+    State("time-slider-display", "value"),
+    State("time-slider-display", "max"),
+    prevent_initial_call=True,
+)
+def auto_play_slider(n_intervals, play_state, current_value, max_value):
+    """자동 재생 시 슬라이더 값 자동 증가"""
+    if not play_state or not play_state.get("playing", False):
+        raise PreventUpdate
+    
+    if current_value is None:
+        current_value = 0
+    
+    # 다음 값으로 증가
+    next_value = current_value + 1
+    
+    # 최대값에 도달하면 처음으로 돌아가기
+    if next_value > max_value:
+        next_value = 0
+    
+    return next_value
+
+# 탭 변경 시 재생 상태 초기화
+@callback(
+    Output("play-state-3d", "data", allow_duplicate=True),
+    Output("play-interval-3d", "disabled", allow_duplicate=True),
+    Output("btn-play-3d", "disabled", allow_duplicate=True),
+    Output("btn-pause-3d", "disabled", allow_duplicate=True),
+    Input("tabs-main", "active_tab"),
+    prevent_initial_call=True,
+)
+def reset_play_state_on_tab_change(active_tab):
+    """탭 변경 시 재생 상태 초기화"""
+    return {"playing": False}, True, False, True
+
+# ───────────────────── 단면도 탭 재생/정지 기능 콜백들 ─────────────────────
+
+# 단면도 재생 버튼 클릭 시 콜백
+@callback(
+    Output("play-state-section", "data"),
+    Output("play-interval-section", "disabled"),
+    Output("btn-play-section", "disabled"),
+    Output("btn-pause-section", "disabled"),
+    Input("btn-play-section", "n_clicks"),
+    State("play-state-section", "data"),
+    prevent_initial_call=True,
+)
+def start_section_playback(n_clicks, play_state):
+    """단면도 재생 버튼 클릭 시 자동 재생 시작"""
+    if not n_clicks:
+        raise PreventUpdate
+    
+    return {"playing": True}, False, True, False
+
+# 단면도 정지 버튼 클릭 시 콜백
+@callback(
+    Output("play-state-section", "data", allow_duplicate=True),
+    Output("play-interval-section", "disabled", allow_duplicate=True),
+    Output("btn-play-section", "disabled", allow_duplicate=True),
+    Output("btn-pause-section", "disabled", allow_duplicate=True),
+    Input("btn-pause-section", "n_clicks"),
+    State("play-state-section", "data"),
+    prevent_initial_call=True,
+)
+def stop_section_playback(n_clicks, play_state):
+    """단면도 정지 버튼 클릭 시 자동 재생 중지"""
+    if not n_clicks:
+        raise PreventUpdate
+    
+    return {"playing": False}, True, False, True
+
+# 단면도 자동 재생 콜백
+@callback(
+    Output("time-slider-section", "value", allow_duplicate=True),
+    Input("play-interval-section", "n_intervals"),
+    State("play-state-section", "data"),
+    State("time-slider-section", "value"),
+    State("time-slider-section", "max"),
+    prevent_initial_call=True,
+)
+def auto_play_section_slider(n_intervals, play_state, current_value, max_value):
+    """단면도 자동 재생 시 슬라이더 값 자동 증가"""
+    if not play_state or not play_state.get("playing", False):
+        raise PreventUpdate
+    
+    if current_value is None:
+        current_value = 0
+    
+    # 다음 값으로 증가
+    next_value = current_value + 1
+    
+    # 최대값에 도달하면 처음으로 돌아가기
+    if next_value > max_value:
+        next_value = 0
+    
+    return next_value
+
+# 탭 변경 시 단면도 재생 상태 초기화
+@callback(
+    Output("play-state-section", "data", allow_duplicate=True),
+    Output("play-interval-section", "disabled", allow_duplicate=True),
+    Output("btn-play-section", "disabled", allow_duplicate=True),
+    Output("btn-pause-section", "disabled", allow_duplicate=True),
+    Input("tabs-main", "active_tab"),
+    prevent_initial_call=True,
+)
+def reset_section_play_state_on_tab_change(active_tab):
+    """탭 변경 시 단면도 재생 상태 초기화"""
+    return {"playing": False}, True, False, True
