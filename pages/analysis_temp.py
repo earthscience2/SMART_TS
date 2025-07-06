@@ -1060,52 +1060,70 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
         
         if not inp_files:
             raise PreventUpdate
-    except (IndexError, KeyError, TypeError) as e:
-        print(f"데이터 접근 오류: {e}")
-        raise PreventUpdate
+        # 초기값 설정
+        current_file_title = ""
 
-    # 초기값 설정
-    current_file_title = ""
-
-    # 시간 파싱 및 슬라이더 상태 계산
-    times = []
-    for f in inp_files:
-        try:
-            time_str = os.path.basename(f).split(".")[0]
-            dt = datetime.strptime(time_str, "%Y%m%d%H")
-            times.append(dt)
-        except:
-            continue
-    if not times:
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0, ""
-    # 슬라이더 마크: 모든 시간을 일 단위로 표시
-    max_idx = len(times) - 1
-    marks = {}
-    seen_dates = set()
-    for i, dt in enumerate(times):
-        date_str = dt.strftime("%-m/%-d")  # 6/13, 6/14 형식
-        if date_str not in seen_dates:
-            marks[i] = date_str
-            seen_dates.add(date_str)
-    
-    # value가 max보다 크거나 None/NaN이면 max로 맞춤
-    import math
-    if time_idx is None or (isinstance(time_idx, float) and math.isnan(time_idx)) or (isinstance(time_idx, str) and not time_idx.isdigit()):
-        value = max_idx
-    else:
-        value = min(int(time_idx), max_idx)
-
-    # 시간 슬라이더: 1시간 단위로 표시
-    current_file = inp_files[value]
-    
-    # 온도바 통일 여부에 따른 온도 범위 계산
-    if unified_colorbar:
-        # 전체 파일의 온도 min/max 계산 (통일 모드)
-        all_temps = []
+        # 시간 파싱 및 슬라이더 상태 계산
+        times = []
         for f in inp_files:
             try:
-                with open(f, 'r') as file:
-                    lines = file.readlines()
+                time_str = os.path.basename(f).split(".")[0]
+                dt = datetime.strptime(time_str, "%Y%m%d%H")
+                times.append(dt)
+            except:
+                continue
+        if not times:
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0, ""
+        # 슬라이더 마크: 모든 시간을 일 단위로 표시
+        max_idx = len(times) - 1
+        marks = {}
+        seen_dates = set()
+        for i, dt in enumerate(times):
+            date_str = dt.strftime("%-m/%-d")  # 6/13, 6/14 형식
+            if date_str not in seen_dates:
+                marks[i] = date_str
+                seen_dates.add(date_str)
+        import math
+        if time_idx is None or (isinstance(time_idx, float) and math.isnan(time_idx)) or (isinstance(time_idx, str) and not time_idx.isdigit()):
+            value = max_idx
+        else:
+            value = min(int(time_idx), max_idx)
+        current_file = inp_files[value]
+        # 온도바 통일 여부에 따른 온도 범위 계산
+        if unified_colorbar:
+            all_temps = []
+            for f in inp_files:
+                try:
+                    with open(f, 'r') as file:
+                        lines = file.readlines()
+                    temp_section = False
+                    for line in lines:
+                        if line.startswith('*TEMPERATURE'):
+                            temp_section = True
+                            continue
+                        elif line.startswith('*'):
+                            temp_section = False
+                            continue
+                        if temp_section and ',' in line:
+                            parts = line.strip().split(',')
+                            if len(parts) >= 2:
+                                try:
+                                    temp = float(parts[1])
+                                    all_temps.append(temp)
+                                except (ValueError, TypeError):
+                                    continue
+                except (IOError, OSError) as e:
+                    print(f"파일 읽기 오류 {f}: {e}")
+                    continue
+            if all_temps:
+                tmin, tmax = float(np.nanmin(all_temps)), float(np.nanmax(all_temps))
+            else:
+                tmin, tmax = 0, 100
+        else:
+            current_temps = []
+            try:
+                with open(current_file, 'r') as f:
+                    lines = f.readlines()
                 temp_section = False
                 for line in lines:
                     if line.startswith('*TEMPERATURE'):
@@ -1119,18 +1137,22 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
                         if len(parts) >= 2:
                             try:
                                 temp = float(parts[1])
-                                all_temps.append(temp)
+                                current_temps.append(temp)
                             except (ValueError, TypeError):
                                 continue
             except (IOError, OSError) as e:
-                print(f"파일 읽기 오류 {f}: {e}")
-                continue
-        if all_temps:
-            tmin, tmax = float(np.nanmin(all_temps)), float(np.nanmax(all_temps))
-        else:
-            tmin, tmax = 0, 100
-    else:
-        # 현재 파일의 온도 min/max 계산 (개별 모드)
+                print(f"현재 파일 읽기 오류 {current_file}: {e}")
+                current_temps = []
+            if current_temps:
+                tmin, tmax = float(np.nanmin(current_temps)), float(np.nanmax(current_temps))
+            else:
+                tmin, tmax = 0, 100
+        current_time = os.path.basename(current_file).split(".")[0]
+        try:
+            dt = datetime.strptime(current_time, "%Y%m%d%H")
+            formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
+        except:
+            formatted_time = current_time
         current_temps = []
         try:
             with open(current_file, 'r') as f:
@@ -1151,225 +1173,159 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
                             current_temps.append(temp)
                         except (ValueError, TypeError):
                             continue
+            material_info = parse_material_info_from_inp(lines)
         except (IOError, OSError) as e:
             print(f"현재 파일 읽기 오류 {current_file}: {e}")
             current_temps = []
-        
+            material_info = ""
         if current_temps:
-            tmin, tmax = float(np.nanmin(current_temps)), float(np.nanmax(current_temps))
+            current_min = float(np.nanmin(current_temps))
+            current_max = float(np.nanmax(current_temps))
+            current_avg = float(np.nanmean(current_temps))
+            current_file_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)\n{material_info}"
         else:
-            tmin, tmax = 0, 100
-    current_time = os.path.basename(current_file).split(".")[0]
-    
-    # 시간 형식을 읽기 쉽게 변환
-    try:
-        dt = datetime.strptime(current_time, "%Y%m%d%H")
-        formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
-    except:
-        formatted_time = current_time
-    
-    # 현재 파일의 온도 통계 계산
-    current_temps = []
-    try:
-        with open(current_file, 'r') as f:
-            lines = f.readlines()
-        temp_section = False
-        for line in lines:
-            if line.startswith('*TEMPERATURE'):
-                temp_section = True
-                continue
-            elif line.startswith('*'):
-                temp_section = False
-                continue
-            if temp_section and ',' in line:
-                parts = line.strip().split(',')
-                if len(parts) >= 2:
-                    try:
-                        temp = float(parts[1])
-                        current_temps.append(temp)
-                    except (ValueError, TypeError):
-                        continue
-        
-        # INP 파일에서 물성치 정보 추출
-        material_info = parse_material_info_from_inp(lines)
-    except (IOError, OSError) as e:
-        print(f"현재 파일 읽기 오류 {current_file}: {e}")
-        current_temps = []
-        material_info = ""
-
-    if current_temps:
-        current_min = float(np.nanmin(current_temps))
-        current_max = float(np.nanmax(current_temps))
-        current_avg = float(np.nanmean(current_temps))
-        current_file_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)\n{material_info}"
-    else:
-        current_file_title = f"{formatted_time}\n{material_info}"
-
-    # inp 파일 파싱 (노드, 온도)
-    nodes = {}
-    temperatures = {}
-    try:
-        with open(current_file, 'r') as f:
-            lines = f.readlines()
-        
-        # 노드 정보 파싱
-        node_section = False
-        for line in lines:
-            if line.startswith('*NODE'):
-                node_section = True
-                continue
-            elif line.startswith('*'):
-                node_section = False
-                continue
-            if node_section and ',' in line:
-                parts = line.strip().split(',')
-                if len(parts) >= 4:
-                    try:
-                        node_id = int(parts[0])
-                        x = float(parts[1])
-                        y = float(parts[2])
-                        z = float(parts[3])
-                        nodes[node_id] = {'x': x, 'y': y, 'z': z}
-                    except (ValueError, TypeError):
-                        continue
-        
-        # 온도 정보 파싱
-        temp_section = False
-        for line in lines:
-            if line.startswith('*TEMPERATURE'):
-                temp_section = True
-                continue
-            elif line.startswith('*'):
-                temp_section = False
-                continue
-            if temp_section and ',' in line:
-                parts = line.strip().split(',')
-                if len(parts) >= 2:
-                    try:
-                        node_id = int(parts[0])
-                        temp = float(parts[1])
-                        temperatures[node_id] = temp
-                    except (ValueError, TypeError):
-                        continue
-    except (IOError, OSError) as e:
-        print(f"INP 파일 파싱 오류 {current_file}: {e}")
+            current_file_title = f"{formatted_time}\n{material_info}"
         nodes = {}
         temperatures = {}
-    
-    # 좌표와 온도 데이터 준비
-    coords_list = []
-    temps_list = []
-    
-    for node_id, node_data in nodes.items():
-        if node_id in temperatures and node_data:
-            try:
-                coords_list.append([node_data['x'], node_data['y'], node_data['z']])
-                temps_list.append(temperatures[node_id])
-            except (KeyError, TypeError):
-                continue
-    
-    if not coords_list or not temps_list:
-        # 데이터가 없으면 기본값 반환
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0, ""
-    
-    coords = np.array(coords_list)
-    temps = np.array(temps_list)
-    x_coords = coords[:, 0]
-    y_coords = coords[:, 1]
-    z_coords = coords[:, 2]
-
-    # 콘크리트 dims 파싱 (꼭짓점, 높이)
-    try:
-        dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
-        poly_nodes = np.array(dims["nodes"])  # (n, 2)
-        poly_h = float(dims["h"])
-    except Exception:
-        poly_nodes = None
-        poly_h = None
-
-    # 1. 3D 볼륨 렌더링 (노드 기반, 원래 방식)
-    fig_3d = go.Figure(data=go.Volume(
-        x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
-        opacity=0.1, surface_count=15, 
-        colorscale=[[0, 'blue'], [1, 'red']],
-        colorbar=dict(title='Temperature (°C)', thickness=10),
-        cmin=tmin, cmax=tmax,  # 전체 파일의 최대/최솟값 사용
-        showscale=True
-    ))
-
-    # 3D 뷰 시점 고정 및 경계선 추가
-    fig_3d.update_layout(
-        uirevision='constant',  # 시점 고정
-        scene=dict(
-            aspectmode='data',  # 데이터 비율 유지
-            bgcolor='white',    # 배경색
-            xaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
-            yaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
-            zaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
-        ),
-        margin=dict(l=0, r=0, t=0, b=0)
-    )
-    # 모서리 강조(기존 코드)
-    if poly_nodes is not None and poly_h is not None:
-        n = len(poly_nodes)
-        x0, y0 = poly_nodes[:,0], poly_nodes[:,1]
-        z0 = np.zeros(n)
-        x1, y1 = x0, y0
-        z1 = np.full(n, poly_h)
-        fig_3d.add_trace(go.Scatter3d(
-            x=np.append(x0, x0[0]), y=np.append(y0, y0[0]), z=np.append(z0, z0[0]),
-            mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
-        fig_3d.add_trace(go.Scatter3d(
-            x=np.append(x1, x1[0]), y=np.append(y1, y1[0]), z=np.append(z1, z1[0]),
-            mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
-        for i in range(n):
-            fig_3d.add_trace(go.Scatter3d(
-                x=[x0[i], x1[i]], y=[y0[i], y1[i]], z=[z0[i], z1[i]],
-                mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
-    # 센서 위치 표시
-    try:
-        df_sensors = api_db.get_sensors_data(concrete_pk=concrete_pk)
-        if not df_sensors.empty:
-            xs, ys, zs, names = [], [], [], []
-            for _, srow in df_sensors.iterrows():
+        try:
+            with open(current_file, 'r') as f:
+                lines = f.readlines()
+            node_section = False
+            for line in lines:
+                if line.startswith('*NODE'):
+                    node_section = True
+                    continue
+                elif line.startswith('*'):
+                    node_section = False
+                    continue
+                if node_section and ',' in line:
+                    parts = line.strip().split(',')
+                    if len(parts) >= 4:
+                        try:
+                            node_id = int(parts[0])
+                            x = float(parts[1])
+                            y = float(parts[2])
+                            z = float(parts[3])
+                            nodes[node_id] = {'x': x, 'y': y, 'z': z}
+                        except (ValueError, TypeError):
+                            continue
+            temp_section = False
+            for line in lines:
+                if line.startswith('*TEMPERATURE'):
+                    temp_section = True
+                    continue
+                elif line.startswith('*'):
+                    temp_section = False
+                    continue
+                if temp_section and ',' in line:
+                    parts = line.strip().split(',')
+                    if len(parts) >= 2:
+                        try:
+                            node_id = int(parts[0])
+                            temp = float(parts[1])
+                            temperatures[node_id] = temp
+                        except (ValueError, TypeError):
+                            continue
+        except (IOError, OSError) as e:
+            print(f"INP 파일 파싱 오류 {current_file}: {e}")
+            nodes = {}
+            temperatures = {}
+        coords_list = []
+        temps_list = []
+        for node_id, node_data in nodes.items():
+            if node_id in temperatures and node_data:
                 try:
-                    dims = json.loads(srow['dims'])
-                    xs.append(dims['nodes'][0])
-                    ys.append(dims['nodes'][1])
-                    zs.append(dims['nodes'][2])
-                    names.append(srow['device_id'])
-                except Exception as e:
-                    print('센서 파싱 오류:', e)
+                    coords_list.append([node_data['x'], node_data['y'], node_data['z']])
+                    temps_list.append(temperatures[node_id])
+                except (KeyError, TypeError):
+                    continue
+        if not coords_list or not temps_list:
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0, ""
+        coords = np.array(coords_list)
+        temps = np.array(temps_list)
+        x_coords = coords[:, 0]
+        y_coords = coords[:, 1]
+        z_coords = coords[:, 2]
+        try:
+            dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
+            poly_nodes = np.array(dims["nodes"])
+            poly_h = float(dims["h"])
+        except Exception:
+            poly_nodes = None
+            poly_h = None
+        fig_3d = go.Figure(data=go.Volume(
+            x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
+            opacity=0.1, surface_count=15, 
+            colorscale=[[0, 'blue'], [1, 'red']],
+            colorbar=dict(title='Temperature (°C)', thickness=10),
+            cmin=tmin, cmax=tmax,  # 전체 파일의 최대/최솟값 사용
+            showscale=True
+        ))
+        fig_3d.update_layout(
+            uirevision='constant',
+            scene=dict(
+                aspectmode='data',
+                bgcolor='white',
+                xaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
+                yaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
+                zaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
+            ),
+            margin=dict(l=0, r=0, t=0, b=0)
+        )
+        if poly_nodes is not None and poly_h is not None:
+            n = len(poly_nodes)
+            x0, y0 = poly_nodes[:,0], poly_nodes[:,1]
+            z0 = np.zeros(n)
+            x1, y1 = x0, y0
+            z1 = np.full(n, poly_h)
             fig_3d.add_trace(go.Scatter3d(
-                x=xs, y=ys, z=zs,
-                mode='markers',
-                marker=dict(size=4, color='red', symbol='circle'),
-                text=names,
-                hoverinfo='text',
-                name='센서',
-                showlegend=False
-            ))
-    except Exception as e:
-        print('센서 표시 오류:', e)
-    
-    # 3D 뷰 정보를 Store에 저장
-    viewer_data = {
-        'figure': fig_3d,
-        'current_time': current_time,
-        'current_file_title': current_file_title,
-        'slider': {
-            'min': 0,
-            'max': max_idx,
-            'marks': marks,
-            'value': value
+                x=np.append(x0, x0[0]), y=np.append(y0, y0[0]), z=np.append(z0, z0[0]),
+                mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
+            fig_3d.add_trace(go.Scatter3d(
+                x=np.append(x1, x1[0]), y=np.append(y1, y1[0]), z=np.append(z1, z1[0]),
+                mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
+            for i in range(n):
+                fig_3d.add_trace(go.Scatter3d(
+                    x=[x0[i], x1[i]], y=[y0[i], y1[i]], z=[z0[i], z1[i]],
+                    mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
+        try:
+            df_sensors = api_db.get_sensors_data(concrete_pk=concrete_pk)
+            if not df_sensors.empty:
+                xs, ys, zs, names = [], [], [], []
+                for _, srow in df_sensors.iterrows():
+                    try:
+                        dims = json.loads(srow['dims'])
+                        xs.append(dims['nodes'][0])
+                        ys.append(dims['nodes'][1])
+                        zs.append(dims['nodes'][2])
+                        names.append(srow['device_id'])
+                    except Exception as e:
+                        print('센서 파싱 오류:', e)
+                fig_3d.add_trace(go.Scatter3d(
+                    x=xs, y=ys, z=zs,
+                    mode='markers',
+                    marker=dict(size=4, color='red', symbol='circle'),
+                    text=names,
+                    hoverinfo='text',
+                    name='센서',
+                    showlegend=False
+                ))
+        except Exception as e:
+            print('센서 표시 오류:', e)
+        viewer_data = {
+            'figure': fig_3d,
+            'current_time': current_time,
+            'current_file_title': current_file_title,
+            'slider': {
+                'min': 0,
+                'max': max_idx,
+                'marks': marks,
+                'value': value
+            }
         }
-    }
-    
-    return fig_3d, current_time, viewer_data, 0, max_idx, marks, value, current_file_title
-    
+        return fig_3d, current_time, viewer_data, 0, max_idx, marks, value, current_file_title
     except Exception as e:
         print(f"update_heatmap 함수 오류: {e}")
-        # 오류 발생 시 기본값 반환
         return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0, ""
 
 # 탭 콘텐츠 처리 콜백 (수정)
