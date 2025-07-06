@@ -1073,9 +1073,9 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
             except:
                 continue
         if not times:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0, ""
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 0, 5, {}, 0
         # 슬라이더 마크: 모든 시간을 일 단위로 표시
-        max_idx = len(times) - 1
+        max_idx = max(0, len(times) - 1)
         marks = {}
         seen_dates = set()
         for i, dt in enumerate(times):
@@ -1083,12 +1083,16 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
             if date_str not in seen_dates:
                 marks[i] = date_str
                 seen_dates.add(date_str)
+        
+        # marks가 비어있으면 기본값 제공
+        if not marks:
+            marks = {0: "시작", max_idx: "끝"}
         import math
         if time_idx is None or (isinstance(time_idx, float) and math.isnan(time_idx)) or (isinstance(time_idx, str) and not time_idx.isdigit()):
-            value = max_idx
+            value = max(0, max_idx)
         else:
-            value = min(int(time_idx), max_idx)
-        current_file = inp_files[value]
+            value = min(max(0, int(time_idx)), max(0, max_idx))
+        current_file = inp_files[min(value, len(inp_files) - 1)]
         # 온도바 통일 여부에 따른 온도 범위 계산
         if unified_colorbar:
             all_temps = []
