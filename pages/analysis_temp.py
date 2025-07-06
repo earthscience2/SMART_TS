@@ -689,6 +689,7 @@ layout = dbc.Container(
     Output("tbl-concrete", "selected_rows"),
     Output("tbl-concrete", "style_data_conditional"),
     Output("btn-concrete-analyze", "disabled"),
+    Output("btn-concrete-del", "disabled"),
     Output("time-slider", "min"),
     Output("time-slider", "max"),
     Output("time-slider", "value"),
@@ -708,13 +709,13 @@ def load_concrete_data(search, pathname):
             pass
     
     if not project_pk:
-        return [], [], [], [], True, 0, 5, 0, {}, None
+        return [], [], [], [], True, True, 0, 5, 0, {}, None
     
     try:
         # 프로젝트 정보 로드
         df_proj = api_db.get_project_data(project_pk=project_pk)
         if df_proj.empty:
-            return [], [], [], [], True, "존재하지 않는 프로젝트", 0, 5, 0, {}, None
+            return [], [], [], [], True, True, 0, 5, 0, {}, None
             
         proj_row = df_proj.iloc[0]
         proj_name = proj_row["name"]
@@ -722,11 +723,11 @@ def load_concrete_data(search, pathname):
         # 해당 프로젝트의 콘크리트 데이터 로드
         df_conc = api_db.get_concrete_data(project_pk=project_pk)
         if df_conc.empty:
-            return [], [], [], [], True, 0, 5, 0, {}, None
+            return [], [], [], [], True, True, 0, 5, 0, {}, None
         
     except Exception as e:
         print(f"프로젝트 로딩 오류: {e}")
-        return [], [], [], [], True, 0, 5, 0, {}, None
+        return [], [], [], [], True, True, 0, 5, 0, {}, None
     table_data = []
     for _, row in df_conc.iterrows():
         try:
@@ -855,11 +856,12 @@ def load_concrete_data(search, pathname):
     if table_data:
         table_data = sorted(table_data, key=lambda x: x.get('status_sort', 999))
     
-    return table_data, columns, [], style_data_conditional, True, 0, 5, 0, {}, None
+    return table_data, columns, [], style_data_conditional, True, True, 0, 5, 0, {}, None
 
 # ───────────────────── ③ 콘크리트 선택 콜백 ────────────────────
 @callback(
     Output("btn-concrete-analyze", "disabled", allow_duplicate=True),
+    Output("btn-concrete-del", "disabled", allow_duplicate=True),
     Output("current-file-title-store", "data", allow_duplicate=True),
     Output("time-slider", "min", allow_duplicate=True),
     Output("time-slider", "max", allow_duplicate=True),
@@ -871,7 +873,7 @@ def load_concrete_data(search, pathname):
 )
 def on_concrete_select(selected_rows, tbl_data):
     if not selected_rows or not tbl_data:
-        return True, "", 0, 5, 0, {}
+        return True, True, "", 0, 5, 0, {}
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     is_active = row["activate"] == "활성"
@@ -973,7 +975,7 @@ def on_concrete_select(selected_rows, tbl_data):
                     print(f"온도 데이터 파싱 오류: {e}")
                     current_file_title = f"{os.path.basename(latest_file)}"
             
-    return analyze_disabled, current_file_title, slider_min, slider_max, slider_value, slider_marks
+    return analyze_disabled, delete_disabled, current_file_title, slider_min, slider_max, slider_value, slider_marks
 
 # ───────────────────── 3D 뷰 클릭 → 단면 위치 저장 ────────────────────
 @callback(
@@ -2215,6 +2217,7 @@ def select_deselect_all(n_all, n_none, table_data):
     Output("temp-project-alert", "is_open", allow_duplicate=True),
     Output("tbl-concrete", "data", allow_duplicate=True),
     Output("btn-concrete-analyze", "disabled", allow_duplicate=True),
+    Output("btn-concrete-del", "disabled", allow_duplicate=True),
     Input("btn-concrete-analyze", "n_clicks"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
@@ -2222,7 +2225,7 @@ def select_deselect_all(n_all, n_none, table_data):
 )
 def start_analysis(n_clicks, selected_rows, tbl_data):
     if not selected_rows or not tbl_data:
-        return "콘크리트를 선택하세요", "warning", True, dash.no_update, dash.no_update
+        return "콘크리트를 선택하세요", "warning", True, dash.no_update, dash.no_update, dash.no_update
 
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
@@ -2242,9 +2245,9 @@ def start_analysis(n_clicks, selected_rows, tbl_data):
         updated_data[selected_rows[0]]["activate"] = "비활성"
         updated_data[selected_rows[0]]["status"] = "분석중"
         
-        return f"{concrete_pk} 분석이 시작되었습니다", "success", True, updated_data, True
+        return f"{concrete_pk} 분석이 시작되었습니다", "success", True, updated_data, True, False
     except Exception as e:
-        return f"분석 시작 실패: {e}", "danger", True, dash.no_update, dash.no_update
+        return f"분석 시작 실패: {e}", "danger", True, dash.no_update, dash.no_update, dash.no_update
 
 # ───────────────────── ⑥ 삭제 컨펌 토글 콜백 ───────────────────
 @callback(
