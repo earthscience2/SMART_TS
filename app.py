@@ -269,7 +269,7 @@ def _build_home_navbar():
     return dbc.Navbar(
         dbc.Container([
             dbc.NavbarBrand(brand, href="/", className="fw-bold text-white"),
-            dbc.Nav(nav_links, navbar=True, className="ms-auto"),
+            dbc.Nav(nav_links, navbar=True, className="mx-auto"),
         ], fluid=True),
         color="dark",
         dark=True,
@@ -311,7 +311,7 @@ def _build_concrete_sensor_navbar():
     return dbc.Navbar(
         dbc.Container([
             dbc.NavbarBrand(brand, href="/", className="fw-bold text-white"),
-            dbc.Nav(nav_links, navbar=True, className="ms-auto"),
+            dbc.Nav(nav_links, navbar=True, className="mx-auto"),
         ], fluid=True),
         color="dark",
         dark=True,
