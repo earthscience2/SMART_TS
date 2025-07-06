@@ -202,7 +202,7 @@ def create_table_component(filtered_logs):
     
     return [header] + rows
 
-def layout():
+def layout(**kwargs):
     """자동화 로그 페이지 레이아웃"""
     return dbc.Container([
         # 자동 새로고침을 위한 인터벌 컴포넌트

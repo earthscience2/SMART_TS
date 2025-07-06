@@ -112,7 +112,7 @@ def filter_local_projects(grade: str, auth_list: list) -> pd.DataFrame:
     return pd.DataFrame()
 
 
-def layout():
+def layout(**kwargs):
     # 로그인된 사용자 정보 가져오기
     user_id = request.cookies.get("login_user")
     if not user_id:
