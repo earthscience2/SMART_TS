@@ -616,20 +616,14 @@ def update_navbar(pathname):
 @app.callback(
     [Output("nav-dashboard", "className"),
      Output("nav-concrete", "className"),
-     Output("nav-sensor", "className"),
-     Output("nav-temp", "className"),
-     Output("nav-stress", "className"),
-     Output("nav-tci", "className"),
-     Output("nav-strength", "className"),
-     Output("nav-download", "className"),
-     Output("nav-sensor-data", "className")],
+     Output("nav-sensor", "className")],
     [Input("url", "pathname")]
 )
 def update_nav_active(pathname):
     """현재 페이지에 따라 네비게이션 링크의 active 상태를 업데이트합니다."""
     
     # 기본 클래스 설정
-    base_classes = ["nav-link"] * 9
+    base_classes = ["nav-link"] * 3
     
     # Active 클래스 추가
     if pathname == "/":
@@ -638,18 +632,6 @@ def update_nav_active(pathname):
         base_classes[1] += " active"  # 콘크리트 모델링
     elif pathname.startswith("/sensor") and not pathname.startswith("/sensor_data"):
         base_classes[2] += " active"  # 센서 위치
-    elif pathname.startswith("/temp"):
-        base_classes[3] += " active"  # 온도분석
-    elif pathname.startswith("/stress"):
-        base_classes[4] += " active"  # 응력분석
-    elif pathname.startswith("/tci"):
-        base_classes[5] += " active"  # TCI분석
-    elif pathname.startswith("/strength"):
-        base_classes[6] += " active"  # 강도분석
-    elif pathname.startswith("/download"):
-        base_classes[7] += " active"  # 파일 다운로드
-    elif pathname.startswith("/sensor_data"):
-        base_classes[8] += " active"  # 센서 데이터
     
     return tuple(base_classes)
 
