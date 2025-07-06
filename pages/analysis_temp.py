@@ -599,7 +599,8 @@ layout = dbc.Container(
                                     "border": "none",
                                     "borderRadius": "6px 6px 0 0",
                                     "backgroundColor": "#f8fafc",
-                                    "color": "#1f2937"
+                                    "color": "#1f2937",
+                                    "fontWeight": "500"
                                 },
                                 active_tab_style={
                                     "backgroundColor": "white",
@@ -618,7 +619,8 @@ layout = dbc.Container(
                                     "border": "none",
                                     "borderRadius": "6px 6px 0 0",
                                     "backgroundColor": "#f8fafc",
-                                    "color": "#1f2937"
+                                    "color": "#1f2937",
+                                    "fontWeight": "500"
                                 },
                                 active_tab_style={
                                     "backgroundColor": "white",
@@ -637,7 +639,8 @@ layout = dbc.Container(
                                     "border": "none",
                                     "borderRadius": "6px 6px 0 0",
                                     "backgroundColor": "#f8fafc",
-                                    "color": "#1f2937"
+                                    "color": "#1f2937",
+                                    "fontWeight": "500"
                                 },
                                 active_tab_style={
                                     "backgroundColor": "white",
