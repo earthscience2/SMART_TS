@@ -335,9 +335,17 @@ layout = html.Div([
                             ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("센서 좌표 [x, y, z]", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
-                                    dbc.Input(id="add-sensor-coords", placeholder="센서 좌표 (예: [1, 1, 0])", className="form-control", style={"fontSize": "0.85rem"}),
-                                ], width=12)
+                                    dbc.Label("X 좌표", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                    dbc.Input(id="add-sensor-x", type="number", min="0", step="0.01", placeholder="X 좌표 (0 이상)", className="form-control", style={"fontSize": "0.85rem"}),
+                                ], width=4),
+                                dbc.Col([
+                                    dbc.Label("Y 좌표", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                    dbc.Input(id="add-sensor-y", type="number", min="0", step="0.01", placeholder="Y 좌표 (0 이상)", className="form-control", style={"fontSize": "0.85rem"}),
+                                ], width=4),
+                                dbc.Col([
+                                    dbc.Label("Z 좌표", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                    dbc.Input(id="add-sensor-z", type="number", min="0", step="0.01", placeholder="Z 좌표 (0 이상)", className="form-control", style={"fontSize": "0.85rem"}),
+                                ], width=4)
                             ], className="mb-2"),
                         ], className="bg-light p-2 rounded mb-3"),
                         
@@ -381,9 +389,17 @@ layout = html.Div([
                             ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
-                                    dbc.Label("센서 좌표 [x, y, z]", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
-                                    dbc.Input(id="edit-sensor-coords", placeholder="센서 좌표 (예: [1, 1, 0])", className="form-control", style={"fontSize": "0.85rem"}),
-                                ], width=12)
+                                    dbc.Label("X 좌표", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                    dbc.Input(id="edit-sensor-x", type="number", min="0", step="0.01", placeholder="X 좌표 (0 이상)", className="form-control", style={"fontSize": "0.85rem"}),
+                                ], width=4),
+                                dbc.Col([
+                                    dbc.Label("Y 좌표", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                    dbc.Input(id="edit-sensor-y", type="number", min="0", step="0.01", placeholder="Y 좌표 (0 이상)", className="form-control", style={"fontSize": "0.85rem"}),
+                                ], width=4),
+                                dbc.Col([
+                                    dbc.Label("Z 좌표", className="form-label fw-semibold", style={"fontSize": "0.85rem"}),
+                                    dbc.Input(id="edit-sensor-z", type="number", min="0", step="0.01", placeholder="Z 좌표 (0 이상)", className="form-control", style={"fontSize": "0.85rem"}),
+                                ], width=4)
                             ], className="mb-2"),
                         ], className="bg-light p-2 rounded mb-3"),
                         
@@ -878,11 +894,13 @@ def update_sensor_dropdown(selected_conc, modal_open, data_timestamp):
     Input("add-sensor-build", "n_clicks"),
     State("ddl-concrete",     "value"),
     State("add-sensor-dropdown", "value"),
-    State("add-sensor-coords","value"),
+    State("add-sensor-x","value"),
+    State("add-sensor-y","value"),
+    State("add-sensor-z","value"),
     State("toggle-lines",     "value"),   # ← 메인 뷰 보조선 토글 상태
     prevent_initial_call=True,
 )
-def add_sensor_preview(_, conc_pk, sensor_selection, coords_txt, show_lines):
+def add_sensor_preview(_, conc_pk, sensor_selection, x_val, y_val, z_val, show_lines):
     """
     센서 추가 모달에서:
     1) 콘크리트 + 기존 센서(파란 점) + 보조선(show_lines=True인 경우)
@@ -909,8 +927,13 @@ def add_sensor_preview(_, conc_pk, sensor_selection, coords_txt, show_lines):
     if not existing_sensors.empty:
         return dash.no_update, f"이미 존재하는 디바이스 ID와 채널 조합: {device_id} (채널: {channel})", True
 
-    if not coords_txt:
-        return dash.no_update, "좌표를 입력하세요 (예: [1,1,0])", True
+    # 좌표 입력 검사
+    if x_val is None or y_val is None or z_val is None:
+        return dash.no_update, "모든 좌표값을 입력하세요", True
+    
+    # 음수 값 검사
+    if x_val < 0 or y_val < 0 or z_val < 0:
+        return dash.no_update, "좌표값은 0 이상이어야 합니다", True
 
     # 1) 콘크리트 정보 로드 & 기본 Mesh 그리기
     try:
@@ -988,18 +1011,9 @@ def add_sensor_preview(_, conc_pk, sensor_selection, coords_txt, show_lines):
                     showlegend=False,
                 ))
 
-    # 3) coords_txt 파싱 → 새로 추가할 센서 좌표
-    try:
-        xyz = ast.literal_eval(coords_txt)
-        if not (isinstance(xyz, (list, tuple)) and len(xyz) == 3):
-            raise ValueError
-        xyz = [float(x) for x in xyz]
-    except Exception:
-        return dash.no_update, "좌표 형식이 잘못되었습니다 (예: [1,1,0])", True
-
-    # 4) 새로 추가할 센서를 파란 점(크기 6)으로 표시
+    # 3) 새로 추가할 센서를 파란 점(크기 6)으로 표시
     fig_conc.add_trace(go.Scatter3d(
-        x=[xyz[0]], y=[xyz[1]], z=[xyz[2]],
+        x=[x_val], y=[y_val], z=[z_val],
         mode="markers",
         marker=dict(size=6, color="yellow", opacity=0.6),
         name="Preview New Sensor",
@@ -1019,10 +1033,12 @@ def add_sensor_preview(_, conc_pk, sensor_selection, coords_txt, show_lines):
     Input("add-sensor-save", "n_clicks"),
     State("ddl-concrete",     "value"),
     State("add-sensor-dropdown", "value"),
-    State("add-sensor-coords","value"),
+    State("add-sensor-x","value"),
+    State("add-sensor-y","value"),
+    State("add-sensor-z","value"),
     prevent_initial_call=True,
 )
-def add_sensor_save(_, conc_pk, sensor_selection, coords_txt):
+def add_sensor_save(_, conc_pk, sensor_selection, x_val, y_val, z_val):
     """
     센서 추가 시:
     1) 콘크리트를 선택했는지, 디바이스 ID와 채널, 좌표를 입력했는지 확인
@@ -1047,21 +1063,17 @@ def add_sensor_save(_, conc_pk, sensor_selection, coords_txt):
     if not existing_sensors.empty:
         return dash.no_update, f"이미 존재하는 디바이스 ID와 채널 조합: {device_id} (채널: {channel})", "danger", True, dash.no_update
 
-    if not coords_txt:
-        return dash.no_update, "좌표를 입력하세요 (예: [1,1,0])", "danger", True, dash.no_update
-
-    # 좌표 파싱
-    try:
-        xyz = ast.literal_eval(coords_txt)
-        if not (isinstance(xyz, (list, tuple)) and len(xyz) == 3):
-            raise ValueError
-        xyz = [float(x) for x in xyz]
-    except Exception:
-        return dash.no_update, "좌표 형식이 잘못되었습니다 (예: [1,1,0])", "danger", True, dash.no_update
+    # 좌표 입력 검사
+    if x_val is None or y_val is None or z_val is None:
+        return dash.no_update, "모든 좌표값을 입력하세요", "danger", True, dash.no_update
+    
+    # 음수 값 검사
+    if x_val < 0 or y_val < 0 or z_val < 0:
+        return dash.no_update, "좌표값은 0 이상이어야 합니다", "danger", True, dash.no_update
 
     # 실제 추가
     try:
-        api_db.add_sensors_data(concrete_pk=conc_pk, device_id=device_id, channel=channel, d_type=1, dims={"nodes": xyz})
+        api_db.add_sensors_data(concrete_pk=conc_pk, device_id=device_id, channel=channel, d_type=1, dims={"nodes": [x_val, y_val, z_val]})
     except Exception as e:
         return dash.no_update, f"추가 실패: {e}", "danger", True, dash.no_update
 
@@ -1129,7 +1141,9 @@ def toggle_edit_modal(b_open, b_close, b_save, sel, tbl_data, conc_pk):
 
 # ───────────────────── ⑩ 수정 모달 필드 채우기 콜백 ────────────────────
 @callback(
-    Output("edit-sensor-coords", "value"),
+    Output("edit-sensor-x", "value"),
+    Output("edit-sensor-y", "value"),
+    Output("edit-sensor-z", "value"),
     Output("edit-sensor-preview", "figure"),
     Output("edit-sensor-alert", "children"),
     Output("edit-sensor-alert", "is_open"),
@@ -1148,9 +1162,11 @@ def fill_edit_sensor(opened, conc_pk, sensor_pk):
         device_id = sensor_row["device_id"]
         channel = sensor_row["channel"]
         dims = ast.literal_eval(sensor_row["dims"])
-        coords_txt = f"[{dims['nodes'][0]}, {dims['nodes'][1]}, {dims['nodes'][2]}]"
+        x_val = float(dims['nodes'][0])
+        y_val = float(dims['nodes'][1])
+        z_val = float(dims['nodes'][2])
     except Exception:
-        return dash.no_update, go.Figure(), "센서 정보를 불러올 수 없음", True, ""
+        return dash.no_update, dash.no_update, dash.no_update, go.Figure(), "센서 정보를 불러올 수 없음", True, ""
 
     # 2) 콘크리트 정보 로드
     try:
@@ -1159,7 +1175,7 @@ def fill_edit_sensor(opened, conc_pk, sensor_pk):
         conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
         fig_conc = make_concrete_fig(conc_nodes, conc_h)
     except Exception:
-        return dash.no_update, go.Figure(), "콘크리트 정보를 불러올 수 없음", True, f"{device_id} - Ch.{channel}"
+        return dash.no_update, dash.no_update, dash.no_update, go.Figure(), "콘크리트 정보를 불러올 수 없음", True, f"{device_id} - Ch.{channel}"
 
     # 3) 현재 콘크리트에 속한 모든 센서 정보를 가져와서 그리기 (파란 점, 크기 4)
     df_sensor_full = api_db.get_sensors_data()
@@ -1252,7 +1268,7 @@ def fill_edit_sensor(opened, conc_pk, sensor_pk):
             hoverinfo="skip",
         ))
 
-    return coords_txt, fig_conc, "", False, f"{device_id} - Ch.{channel}"
+    return x_val, y_val, z_val, fig_conc, "", False, f"{device_id} - Ch.{channel}"
 
 
 # ───────────────────── ⑪ 수정 미리보기 콜백 ────────────────────
@@ -1261,19 +1277,29 @@ def fill_edit_sensor(opened, conc_pk, sensor_pk):
     Output("edit-sensor-alert", "children", allow_duplicate=True),
     Output("edit-sensor-alert", "is_open", allow_duplicate=True),
     Input("edit-sensor-build", "n_clicks"),           # "새로고침" 버튼 클릭
-    State("edit-sensor-coords", "value"),             # 수정할 좌표
+    State("edit-sensor-x", "value"),                  # 수정할 X 좌표
+    State("edit-sensor-y", "value"),                  # 수정할 Y 좌표
+    State("edit-sensor-z", "value"),                  # 수정할 Z 좌표
     State("edit-sensor-concrete-id", "data"),         # 현재 콘크리트 ID
     State("edit-sensor-id-store", "data"),            # 수정 중인 센서 ID
     prevent_initial_call=True,
 )
-def edit_sensor_preview(n_clicks, coords_txt, conc_pk, sensor_pk):
+def edit_sensor_preview(n_clicks, x_val, y_val, z_val, conc_pk, sensor_pk):
     """
     수정 모달에서 '새로고침' 버튼이 클릭되면 실행됩니다.
 
     1) 콘크리트 + (수정 대상 제외) 나머지 센서를 파란 점으로 그림
     2) 보조선을 그림
-    3) 입력된 coords_txt로 수정된 센서를 빨간 점으로 그림
+    3) 입력된 좌표로 수정된 센서를 빨간 점으로 그림
     """
+    # 좌표 입력 검사
+    if x_val is None or y_val is None or z_val is None:
+        return dash.no_update, "모든 좌표값을 입력하세요", True
+    
+    # 음수 값 검사
+    if x_val < 0 or y_val < 0 or z_val < 0:
+        return dash.no_update, "좌표값은 0 이상이어야 합니다", True
+    
     # 1) 콘크리트 정보 로드 & 기본 Mesh 그리기
     try:
         conc_row = api_db.get_concrete_data().query("concrete_pk == @conc_pk").iloc[0]
@@ -1362,20 +1388,9 @@ def edit_sensor_preview(n_clicks, coords_txt, conc_pk, sensor_pk):
                     showlegend=False,
                 ))
 
-    # 4) coords_txt(수정할 좌표) 파싱
-    if not coords_txt:
-        return dash.no_update, "좌표를 입력하세요 (예: [1,1,0])", True
-    try:
-        xyz = ast.literal_eval(coords_txt)
-        if not (isinstance(xyz, (list, tuple)) and len(xyz) == 3):
-            raise ValueError
-        x_new, y_new, z_new = [float(v) for v in xyz]
-    except Exception:
-        return dash.no_update, "좌표 형식이 잘못되었습니다 (예: [1,1,0])", True
-
-    # 5) 수정된 센서를 빨간 점(크기 6)으로 표시
+    # 4) 수정된 센서를 빨간 점(크기 6)으로 표시
     fig_conc.add_trace(go.Scatter3d(
-        x=[x_new], y=[y_new], z=[z_new],
+        x=[x_val], y=[y_val], z=[z_val],
         mode="markers",
         marker=dict(size=6, color="red"),  # 수정된 센서: 빨간 점 (크기 6)
         name="Preview Edited Sensor",
@@ -1394,25 +1409,25 @@ def edit_sensor_preview(n_clicks, coords_txt, conc_pk, sensor_pk):
     Input("edit-sensor-save", "n_clicks"),
     State("edit-sensor-concrete-id", "data"),
     State("edit-sensor-id-store", "data"),       # old_sensor_pk
-    State("edit-sensor-coords", "value"),        # 수정된 좌표
+    State("edit-sensor-x", "value"),             # 수정된 X 좌표
+    State("edit-sensor-y", "value"),             # 수정된 Y 좌표
+    State("edit-sensor-z", "value"),             # 수정된 Z 좌표
     prevent_initial_call=True,
 )
-def edit_sensor_save(n_clicks, conc_pk, old_sensor_pk, coords_txt):
+def edit_sensor_save(n_clicks, conc_pk, old_sensor_pk, x_val, y_val, z_val):
     if not (conc_pk and old_sensor_pk):
         return dash.no_update, "데이터 로드 실패", "danger", True
-    if not coords_txt:
-        return dash.no_update, "좌표를 입력하세요 (예: [1,1,0])", "danger", True
+    
+    # 좌표 입력 검사
+    if x_val is None or y_val is None or z_val is None:
+        return dash.no_update, "모든 좌표값을 입력하세요", "danger", True
+    
+    # 음수 값 검사
+    if x_val < 0 or y_val < 0 or z_val < 0:
+        return dash.no_update, "좌표값은 0 이상이어야 합니다", "danger", True
 
     try:
-        xyz = ast.literal_eval(coords_txt)
-        if not (isinstance(xyz, (list, tuple)) and len(xyz) == 3):
-            raise ValueError
-        xyz = [float(x) for x in xyz]
-    except Exception:
-        return dash.no_update, "좌표 형식이 잘못되었습니다 (예: [1,1,0])", "danger", True
-
-    try:
-        api_db.update_sensors_data(sensor_pk=old_sensor_pk, dims={"nodes": xyz})
+        api_db.update_sensors_data(sensor_pk=old_sensor_pk, dims={"nodes": [x_val, y_val, z_val]})
     except Exception as e:
         return dash.no_update, f"위치 업데이트 실패: {e}", "danger", True
 
