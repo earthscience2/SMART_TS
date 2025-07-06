@@ -130,6 +130,8 @@ def get_polygon_intersections_y(x: float, nodes: list[list[float]]) -> list[floa
 
 # ────────────────────────────── 레이아웃 ────────────────────────────
 layout = html.Div([
+    dcc.Location(id="sensor-url", refresh=False),
+    dcc.Store(id="selected-project-store"),
     dbc.Container(
         children=[
             # ── (★) 카메라 정보를 저장하기 위한 Store
@@ -404,18 +406,42 @@ layout = html.Div([
 
 # ── 콜백 함수들 ──
 
-# ───────────────────── ① 콘크리트 목록 초기화 ─────────────────────
+# ───────────────────── ① URL 파라미터 파싱 ─────────────────────
+@callback(
+    Output("selected-project-store", "data"),
+    Input("sensor-url", "search"),
+    prevent_initial_call=False
+)
+def parse_url_project(search):
+    """URL에서 프로젝트 키를 파싱합니다."""
+    if search:
+        try:
+            from urllib.parse import parse_qs
+            params = parse_qs(search.lstrip('?'))
+            project_pk = params.get('page', [None])[0]
+            return project_pk
+        except Exception:
+            pass
+    return None
+
+# ───────────────────── ② 콘크리트 목록 초기화 ─────────────────────
 @callback(
     Output("ddl-concrete", "options"),
     Output("ddl-concrete", "value"),
     Input("ddl-concrete", "value"),
+    Input("selected-project-store", "data"),
     prevent_initial_call=False,
 )
-def init_dropdown(selected_value):
+def init_dropdown(selected_value, project_pk):
     """
     페이지 로드 또는 값이 None일 때 콘크리트 목록을 Dropdown 옵션으로 설정.
     """
     df_conc = api_db.get_concrete_data()
+    
+    # 프로젝트 키가 있으면 해당 프로젝트의 콘크리트만 필터링
+    if project_pk:
+        df_conc = df_conc[df_conc["project_pk"] == str(project_pk)]
+    
     options = []
     for _, row in df_conc.iterrows():
         # activate 상태에 따라 상태 텍스트 결정
@@ -430,7 +456,7 @@ def init_dropdown(selected_value):
 
     # 초기 로드 시(= selected_value가 None일 때)만 첫 번째 옵션을 기본값으로 지정
     if selected_value is None:
-        return options, options[0]["value"]
+        return options, options[0]["value"] if options else None
     # 사용자가 이미 선택한 값이 있으면 그대로 유지
     return options, selected_value
 

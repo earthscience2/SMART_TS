@@ -323,7 +323,8 @@ def _build_home_navbar():
         style={
             "backgroundColor": "#2c3e50",
             "borderBottom": "2px solid #34495e",
-            "padding": "0.5rem 1rem"
+            "padding": "0.5rem 1rem",
+            "position": "relative"
         }
     )
 
@@ -331,12 +332,18 @@ def _build_concrete_sensor_navbar():
     """콘크리트, 센서 페이지용 네비게이션 바"""
     user_id = flask_request.cookies.get("login_user")
     admin_user = flask_request.cookies.get("admin_user")
+    
+    # 현재 URL에서 프로젝트 키 추출
+    from flask import request
+    project_pk = None
+    if request.args.get('page'):
+        project_pk = request.args.get('page')
 
-    # 메인 네비게이션 링크들 (가운데 정렬)
+    # 메인 네비게이션 링크들 (가운데 정렬) - 프로젝트 키 포함
     main_nav_links = [
         dbc.NavItem(dcc.Link("대시보드", href="/", className="nav-link", id="nav-dashboard")),
-        dbc.NavItem(dcc.Link("콘크리트 모델링", href="/concrete", className="nav-link", id="nav-concrete")),
-        dbc.NavItem(dcc.Link("센서 위치", href="/sensor", className="nav-link", id="nav-sensor")),
+        dbc.NavItem(dcc.Link("콘크리트 모델링", href=f"/concrete?page={project_pk}" if project_pk else "/concrete", className="nav-link", id="nav-concrete")),
+        dbc.NavItem(dcc.Link("센서 위치", href=f"/sensor?page={project_pk}" if project_pk else "/sensor", className="nav-link", id="nav-sensor")),
     ]
     
     # 로그아웃 버튼 (오른쪽 정렬)
@@ -380,14 +387,25 @@ def _build_analysis_navbar():
     """분석 페이지용 네비게이션 바"""
     user_id = flask_request.cookies.get("login_user")
     admin_user = flask_request.cookies.get("admin_user")
+    
+    # 현재 URL에서 프로젝트 키 추출
+    from flask import request
+    project_pk = None
+    if request.args.get('page'):
+        project_pk = request.args.get('page')
 
-    nav_links = [
+    # 메인 네비게이션 링크들 (가운데 정렬) - 프로젝트 키 포함
+    main_nav_links = [
         dbc.NavItem(dcc.Link("대시보드", href="/", className="nav-link", id="nav-dashboard")),
-        dbc.NavItem(dcc.Link("온도분석", href="/temp", className="nav-link", id="nav-temp")),
-        dbc.NavItem(dcc.Link("응력분석", href="/stress", className="nav-link", id="nav-stress")),
-        dbc.NavItem(dcc.Link("TCI분석", href="/tci", className="nav-link", id="nav-tci")),
-        dbc.NavItem(dcc.Link("강도분석", href="/strength", className="nav-link", id="nav-strength")),
-        dbc.NavItem(dcc.Link("파일 다운로드", href="/download", className="nav-link", id="nav-download")),
+        dbc.NavItem(dcc.Link("온도분석", href=f"/temp?page={project_pk}" if project_pk else "/temp", className="nav-link", id="nav-temp")),
+        dbc.NavItem(dcc.Link("응력분석", href=f"/stress?page={project_pk}" if project_pk else "/stress", className="nav-link", id="nav-stress")),
+        dbc.NavItem(dcc.Link("TCI분석", href=f"/tci?page={project_pk}" if project_pk else "/tci", className="nav-link", id="nav-tci")),
+        dbc.NavItem(dcc.Link("강도분석", href=f"/strength?page={project_pk}" if project_pk else "/strength", className="nav-link", id="nav-strength")),
+        dbc.NavItem(dcc.Link("파일 다운로드", href=f"/download?page={project_pk}" if project_pk else "/download", className="nav-link", id="nav-download")),
+    ]
+    
+    # 로그아웃 버튼 (오른쪽 정렬)
+    logout_nav = [
         dbc.NavItem(dcc.Link(dbc.Button("Logout", color="danger", size="md", className="text-center"), href="/logout", className="text-decoration-none", id="nav-logout")),
     ]
 
@@ -409,7 +427,8 @@ def _build_analysis_navbar():
     return dbc.Navbar(
         dbc.Container([
             dbc.NavbarBrand(brand, href="/", className="fw-bold text-white"),
-            dbc.Nav(nav_links, navbar=True, className="ms-auto"),
+            dbc.Nav(main_nav_links, navbar=True, className="mx-auto"),
+            dbc.Nav(logout_nav, navbar=True, className="ms-auto"),
         ], fluid=True),
         color="dark",
         dark=True,
@@ -417,7 +436,8 @@ def _build_analysis_navbar():
         style={
             "backgroundColor": "#2c3e50",
             "borderBottom": "2px solid #34495e",
-            "padding": "0.5rem 1rem"
+            "padding": "0.5rem 1rem",
+            "position": "relative"
         }
     )
 
@@ -425,10 +445,21 @@ def _build_sensor_data_navbar():
     """센서 데이터 확인 페이지용 네비게이션 바"""
     user_id = flask_request.cookies.get("login_user")
     admin_user = flask_request.cookies.get("admin_user")
+    
+    # 현재 URL에서 프로젝트 키 추출
+    from flask import request
+    project_pk = None
+    if request.args.get('page'):
+        project_pk = request.args.get('page')
 
-    nav_links = [
+    # 메인 네비게이션 링크들 (가운데 정렬) - 프로젝트 키 포함
+    main_nav_links = [
         dbc.NavItem(dcc.Link("대시보드", href="/", className="nav-link", id="nav-dashboard")),
-        dbc.NavItem(dcc.Link("센서 데이터", href="/sensor_data", className="nav-link", id="nav-sensor-data")),
+        dbc.NavItem(dcc.Link("센서 데이터", href=f"/sensor_data?page={project_pk}" if project_pk else "/sensor_data", className="nav-link", id="nav-sensor-data")),
+    ]
+    
+    # 로그아웃 버튼 (오른쪽 정렬)
+    logout_nav = [
         dbc.NavItem(dcc.Link(dbc.Button("Logout", color="danger", size="md", className="text-center"), href="/logout", className="text-decoration-none", id="nav-logout")),
     ]
 
@@ -450,7 +481,8 @@ def _build_sensor_data_navbar():
     return dbc.Navbar(
         dbc.Container([
             dbc.NavbarBrand(brand, href="/", className="fw-bold text-white"),
-            dbc.Nav(nav_links, navbar=True, className="ms-auto"),
+            dbc.Nav(main_nav_links, navbar=True, className="mx-auto"),
+            dbc.Nav(logout_nav, navbar=True, className="ms-auto"),
         ], fluid=True),
         color="dark",
         dark=True,
@@ -458,7 +490,8 @@ def _build_sensor_data_navbar():
         style={
             "backgroundColor": "#2c3e50",
             "borderBottom": "2px solid #34495e",
-            "padding": "0.5rem 1rem"
+            "padding": "0.5rem 1rem",
+            "position": "relative"
         }
     )
 
@@ -638,67 +671,7 @@ def update_admin_nav_active(pathname):
     
     return base_classes[0], base_classes[1], base_classes[2], base_classes[3]
 
-# 네비게이션 링크 href 동적 업데이트
-@app.callback(
-    [Output("nav-home", "href"),
-     Output("nav-concrete", "href"),
-     Output("nav-sensor", "href"),
-     Output("nav-download", "href")],
-    [Input("url", "pathname"),
-     Input("url", "search")]
-)
-def update_nav_links(pathname, search):
-    # 프로젝트 ID 추출
-    project_pk = None
-    if search:
-        try:
-            from urllib.parse import parse_qs
-            params = parse_qs(search.lstrip('?'))
-            project_pk = params.get('page', [None])[0]
-        except Exception:
-            pass
-    
-    # 기본 링크
-    if project_pk and pathname != "/":
-        return (
-            "/",
-            f"/concrete?page={project_pk}",
-            f"/sensor?page={project_pk}",
-            f"/download?page={project_pk}"
-        )
-    else:
-        return "/", "/concrete", "/sensor", "/download"
 
-# 분석결과 드롭다운 메뉴 href 동적 업데이트
-@app.callback(
-    [Output("nav-temp", "href"),
-     Output("nav-stress", "href"),
-     Output("nav-tci", "href"),
-     Output("nav-strength", "href")],
-    [Input("url", "pathname"),
-     Input("url", "search")]
-)
-def update_analysis_dropdown_links(pathname, search):
-    # 프로젝트 ID 추출
-    project_pk = None
-    if search:
-        try:
-            from urllib.parse import parse_qs
-            params = parse_qs(search.lstrip('?'))
-            project_pk = params.get('page', [None])[0]
-        except Exception:
-            pass
-    
-    # 분석 페이지 링크
-    if project_pk and pathname != "/":
-        return (
-            f"/temp?page={project_pk}",
-            f"/stress?page={project_pk}",
-            f"/tci?page={project_pk}",
-            f"/strength?page={project_pk}"
-        )
-    else:
-        return "/temp", "/stress", "/tci", "/strength"
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=23022)
