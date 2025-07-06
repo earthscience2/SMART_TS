@@ -35,6 +35,7 @@ import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
 
 import api_db
+from utils.encryption import parse_project_key_from_url
 
 register_page(__name__, path="/sensor", title="센서 관리")
 
@@ -441,9 +442,8 @@ def parse_url_project(search):
     
     if search:
         try:
-            from urllib.parse import parse_qs
-            params = parse_qs(search.lstrip('?'))
-            project_pk = params.get('page', [None])[0]
+            # 암호화된 프로젝트 키 파싱
+            project_pk = parse_project_key_from_url(search)
             
             # 프로젝트 정보 표시
             if project_pk:

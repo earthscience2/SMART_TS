@@ -30,6 +30,7 @@ from dash import (
 import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
 import api_db
+from utils.encryption import parse_project_key_from_url
 
 # 페이지 등록
 register_page(__name__, path="/concrete", title="콘크리트 관리")
@@ -690,9 +691,8 @@ def parse_url_project(search):
         ]
     
     try:
-        from urllib.parse import parse_qs
-        params = parse_qs(search.lstrip('?'))
-        project_pk = params.get('page', [None])[0]
+        # 암호화된 프로젝트 키 파싱
+        project_pk = parse_project_key_from_url(search)
         
         if not project_pk:
             return None, [

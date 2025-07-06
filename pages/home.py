@@ -5,6 +5,7 @@ import pandas as pd
 from datetime import datetime
 
 import api_db
+from utils.encryption import create_project_url
 
 register_page(__name__, path="/", title="프로젝트 목록")
 
@@ -230,7 +231,7 @@ def layout():
                         html.Div([
                             dcc.Link(
                                 "분석결과 확인",
-                                href=f"/temp?page={proj_pk}",
+                                                                    href=create_project_url("/temp", proj_pk),
                                 className="btn btn-success btn-sm mt-2 me-2",
                                 style={
                                     "fontSize": "12px",
@@ -246,7 +247,7 @@ def layout():
                             ),
                             dcc.Link(
                                 "해석 파일 다운로드",
-                                href=f"/download?page={proj_pk}",
+                                                                    href=create_project_url("/download", proj_pk),
                                 className="btn btn-warning btn-sm mt-2",
                                 style={
                                     "fontSize": "12px",
@@ -332,7 +333,7 @@ def layout():
                                 html.Div([
                                     dcc.Link(
                                         "콘크리트 모델링 추가/수정",
-                                        href=f"/concrete?page={proj_pk}",
+                                        href=create_project_url("/concrete", proj_pk),
                                         className="btn btn-secondary btn-sm mt-2 me-2",
                                         style={
                                             "fontSize": "12px",
@@ -348,7 +349,7 @@ def layout():
                                     ),
                                     dcc.Link(
                                         "센서 위치 추가/수정",
-                                        href=f"/sensor?page={proj_pk}",
+                                        href=create_project_url("/sensor", proj_pk),
                                         className="btn btn-info btn-sm mt-2",
                                         style={
                                             "fontSize": "12px",
@@ -451,7 +452,7 @@ def layout():
                                 html.Div([
                                     dcc.Link(
                                         "센서 데이터 확인",
-                                        href=f"/sensor?page={proj_pk}",
+                                        href=create_project_url("/sensor", proj_pk),
                                         className="btn btn-danger btn-sm mt-2",
                                         style={
                                             "fontSize": "12px",

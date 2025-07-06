@@ -186,6 +186,7 @@ from dash import Dash, html, dcc, page_container, no_update
 from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
 from flask import request as flask_request
+from utils.encryption import parse_project_key_from_url, create_project_url
 
 app = Dash(
     __name__,
@@ -333,22 +334,17 @@ def _build_concrete_sensor_navbar():
     user_id = flask_request.cookies.get("login_user")
     admin_user = flask_request.cookies.get("admin_user")
     
-    # 현재 URL에서 쿼리스트링 전체 추출
+    # 현재 URL에서 프로젝트 키 추출
     from flask import request
     query = request.query_string.decode()
-    page_param = None
+    project_pk = None
     if query:
-        from urllib.parse import parse_qs
-        params = parse_qs(query)
-        page_param = params.get('page', [None])[0]
-        query_str = f"?{query}" if page_param else ""
-    else:
-        query_str = ""
+        project_pk = parse_project_key_from_url(f"?{query}")
 
     main_nav_links = [
         dbc.NavItem(dcc.Link("대시보드", href="/", className="nav-link", id="nav-dashboard")),
-        dbc.NavItem(dcc.Link("콘크리트 모델링", href="/concrete", className="nav-link", id="nav-concrete")),
-        dbc.NavItem(dcc.Link("센서 위치", href="/sensor", className="nav-link", id="nav-sensor")),
+        dbc.NavItem(dcc.Link("콘크리트 모델링", href=create_project_url("/concrete", project_pk), className="nav-link", id="nav-concrete")),
+        dbc.NavItem(dcc.Link("센서 위치", href=create_project_url("/sensor", project_pk), className="nav-link", id="nav-sensor")),
     ]
     
     logout_nav = [
@@ -393,22 +389,17 @@ def _build_analysis_navbar():
     
     from flask import request
     query = request.query_string.decode()
-    page_param = None
+    project_pk = None
     if query:
-        from urllib.parse import parse_qs
-        params = parse_qs(query)
-        page_param = params.get('page', [None])[0]
-        query_str = f"?{query}" if page_param else ""
-    else:
-        query_str = ""
+        project_pk = parse_project_key_from_url(f"?{query}")
 
     main_nav_links = [
         dbc.NavItem(dcc.Link("대시보드", href="/", className="nav-link", id="nav-dashboard")),
-        dbc.NavItem(dcc.Link("온도분석", href="/temp", className="nav-link", id="nav-temp")),
-        dbc.NavItem(dcc.Link("응력분석", href="/stress", className="nav-link", id="nav-stress")),
-        dbc.NavItem(dcc.Link("TCI분석", href="/tci", className="nav-link", id="nav-tci")),
-        dbc.NavItem(dcc.Link("강도분석", href="/strength", className="nav-link", id="nav-strength")),
-        dbc.NavItem(dcc.Link("파일 다운로드", href="/download", className="nav-link", id="nav-download")),
+        dbc.NavItem(dcc.Link("온도분석", href=create_project_url("/temp", project_pk), className="nav-link", id="nav-temp")),
+        dbc.NavItem(dcc.Link("응력분석", href=create_project_url("/stress", project_pk), className="nav-link", id="nav-stress")),
+        dbc.NavItem(dcc.Link("TCI분석", href=create_project_url("/tci", project_pk), className="nav-link", id="nav-tci")),
+        dbc.NavItem(dcc.Link("강도분석", href=create_project_url("/strength", project_pk), className="nav-link", id="nav-strength")),
+        dbc.NavItem(dcc.Link("파일 다운로드", href=create_project_url("/download", project_pk), className="nav-link", id="nav-download")),
     ]
     
     logout_nav = [
@@ -626,14 +617,12 @@ def update_concrete_sensor_nav_links(pathname, search):
     if not (pathname.startswith("/concrete") or pathname.startswith("/sensor")):
         raise dash.exceptions.PreventUpdate
     
-    # 기본 URL 설정
-    concrete_url = "/concrete"
-    sensor_url = "/sensor"
+    # 프로젝트 키 추출
+    project_pk = parse_project_key_from_url(search) if search else None
     
-    # 쿼리 파라미터가 있으면 추가
-    if search:
-        concrete_url += search
-        sensor_url += search
+    # 암호화된 URL 생성
+    concrete_url = create_project_url("/concrete", project_pk)
+    sensor_url = create_project_url("/sensor", project_pk)
     
     return concrete_url, sensor_url
 
@@ -656,20 +645,15 @@ def update_analysis_nav_links(pathname, search):
             pathname.startswith("/download")):
         raise dash.exceptions.PreventUpdate
     
-    # 기본 URL 설정
-    temp_url = "/temp"
-    stress_url = "/stress"
-    tci_url = "/tci"
-    strength_url = "/strength"
-    download_url = "/download"
+    # 프로젝트 키 추출
+    project_pk = parse_project_key_from_url(search) if search else None
     
-    # 쿼리 파라미터가 있으면 추가
-    if search:
-        temp_url += search
-        stress_url += search
-        tci_url += search
-        strength_url += search
-        download_url += search
+    # 암호화된 URL 생성
+    temp_url = create_project_url("/temp", project_pk)
+    stress_url = create_project_url("/stress", project_pk)
+    tci_url = create_project_url("/tci", project_pk)
+    strength_url = create_project_url("/strength", project_pk)
+    download_url = create_project_url("/download", project_pk)
     
     return temp_url, stress_url, tci_url, strength_url, download_url
 
