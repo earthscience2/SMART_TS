@@ -252,6 +252,7 @@ layout = dbc.Container(
         dcc.Store(id="current-file-title-store", data=""),
         dcc.Store(id="section-coord-store", data=None),
         dcc.Store(id="viewer-3d-store", data=None),
+        dcc.Store(id="unified-colorbar-state", data=False),
         dcc.Graph(id='section-colorbar', style={'display':'none'}),
         
         # ── 다운로드 컴포넌트들
@@ -1893,7 +1894,6 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                     dcc.Store(id="play-state-section", data={"playing": False}),
                     # 배속 상태 표시용 Store (단면도용)
                     dcc.Store(id="speed-state-section", data={"speed": 1}),
-dcc.Store(id="unified-colorbar-state", data=False),
                     # 자동 재생용 Interval (단면도용)
                     dcc.Interval(
                         id="play-interval-section",
