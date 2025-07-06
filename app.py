@@ -233,11 +233,9 @@ app.index_string = '''
                 text-decoration: none !important;
                 border: 2px solid transparent !important;
                 white-space: nowrap !important;
-                overflow: hidden !important;
-                text-overflow: ellipsis !important;
-                max-width: 120px !important;
                 text-align: center !important;
                 line-height: 1.2 !important;
+                min-width: 140px !important;
             }
             
             .nav-link:hover {
@@ -297,17 +295,15 @@ app.index_string = '''
 </html>
 '''
 
-def _build_home_navbar():
+def _build_home_navbar(pathname=None, search=None):
     """홈 화면용 네비게이션 바 (로그아웃 버튼만 표시)"""
     user_id = flask_request.cookies.get("login_user")
     admin_user = flask_request.cookies.get("admin_user")
     
-    # 현재 URL에서 프로젝트 키 추출 (홈 페이지에서도 프로젝트 정보 유지)
-    from flask import request
-    query = request.query_string.decode()
+    # 프로젝트 키 추출
     project_pk = None
-    if query:
-        project_pk = parse_project_key_from_url(f"?{query}")
+    if search:
+        project_pk = parse_project_key_from_url(search)
 
     nav_links = [
         dbc.NavItem(dcc.Link(dbc.Button("Logout", color="danger", size="md", className="text-center"), href="/logout", className="text-decoration-none", id="nav-logout")),
@@ -344,20 +340,18 @@ def _build_home_navbar():
         }
     )
 
-def _build_concrete_sensor_navbar():
+def _build_concrete_sensor_navbar(pathname=None, search=None):
     """콘크리트, 센서 페이지용 네비게이션 바"""
     user_id = flask_request.cookies.get("login_user")
     admin_user = flask_request.cookies.get("admin_user")
     
-    # 현재 URL에서 프로젝트 키 추출
-    from flask import request
-    query = request.query_string.decode()
+    # 프로젝트 키 추출
     project_pk = None
-    if query:
-        project_pk = parse_project_key_from_url(f"?{query}")
+    if search:
+        project_pk = parse_project_key_from_url(search)
     
     # 현재 페이지 확인
-    current_path = request.path
+    current_path = pathname or "/"
 
     # 기본 클래스 설정
     dashboard_class = "nav-link"
@@ -413,19 +407,18 @@ def _build_concrete_sensor_navbar():
         }
     )
 
-def _build_analysis_navbar():
+def _build_analysis_navbar(pathname=None, search=None):
     """분석 페이지용 네비게이션 바"""
     user_id = flask_request.cookies.get("login_user")
     admin_user = flask_request.cookies.get("admin_user")
     
-    from flask import request
-    query = request.query_string.decode()
+    # 프로젝트 키 추출
     project_pk = None
-    if query:
-        project_pk = parse_project_key_from_url(f"?{query}")
+    if search:
+        project_pk = parse_project_key_from_url(search)
     
     # 현재 페이지 확인
-    current_path = request.path
+    current_path = pathname or "/"
 
     # 기본 클래스 설정
     dashboard_class = "nav-link"
@@ -493,19 +486,18 @@ def _build_analysis_navbar():
         }
     )
 
-def _build_sensor_data_navbar():
+def _build_sensor_data_navbar(pathname=None, search=None):
     """센서 데이터 확인 페이지용 네비게이션 바"""
     user_id = flask_request.cookies.get("login_user")
     admin_user = flask_request.cookies.get("admin_user")
     
-    from flask import request
-    query = request.query_string.decode()
+    # 프로젝트 키 추출
     project_pk = None
-    if query:
-        project_pk = parse_project_key_from_url(f"?{query}")
+    if search:
+        project_pk = parse_project_key_from_url(search)
     
     # 현재 페이지 확인
-    current_path = request.path
+    current_path = pathname or "/"
 
     # 기본 클래스 설정
     dashboard_class = "nav-link"
@@ -654,19 +646,19 @@ def update_navbar(pathname, search):
     # 페이지별 네비게이션 바 선택
     if pathname == "/":
         # 홈 화면: 로그아웃 버튼만
-        return _build_home_navbar()
+        return _build_home_navbar(pathname, search)
     elif pathname.startswith("/concrete") or pathname.startswith("/sensor"):
         # 콘크리트, 센서 페이지: 대시보드, 콘크리트 모델링, 센서 위치
-        return _build_concrete_sensor_navbar()
+        return _build_concrete_sensor_navbar(pathname, search)
     elif pathname.startswith("/temp") or pathname.startswith("/stress") or pathname.startswith("/tci") or pathname.startswith("/strength") or pathname.startswith("/download"):
         # 분석 페이지: 대시보드, 온도분석, 응력분석, TCI분석, 강도분석, 파일 다운로드
-        return _build_analysis_navbar()
+        return _build_analysis_navbar(pathname, search)
     elif pathname.startswith("/sensor_data"):
         # 센서 데이터 확인 페이지: 대시보드, 센서 데이터
-        return _build_sensor_data_navbar()
+        return _build_sensor_data_navbar(pathname, search)
     else:
         # 기본값: 홈 네비게이션 바
-        return _build_home_navbar()
+        return _build_home_navbar(pathname, search)
 
 # 관리자 네비게이션 바 active 클래스 동적 적용 콜백
 @app.callback(
