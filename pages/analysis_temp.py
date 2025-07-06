@@ -3334,30 +3334,48 @@ def sync_display_slider_to_main(display_value):
 )
 def sync_main_slider_to_display(main_value, main_min, main_max, main_marks):
     try:
-        # marks가 None이거나 딕셔너리가 아니면 기본값 사용
-        if main_marks is None or not isinstance(main_marks, dict):
-            main_marks = {0: "시작", 5: "끝"}
+        print(f"sync_main_slider_to_display 입력값:")
+        print(f"  main_value: {main_value} ({type(main_value)})")
+        print(f"  main_min: {main_min} ({type(main_min)})")
+        print(f"  main_max: {main_max} ({type(main_max)})")
+        print(f"  main_marks: {main_marks} ({type(main_marks)})")
         
-        # value가 None이거나 숫자가 아니면 기본값 사용
-        if main_value is None:
-            main_value = 0
-        elif not isinstance(main_value, (int, float)):
-            main_value = 0
+        # 값들이 바뀌어서 전달되었을 가능성을 고려하여 타입에 따라 처리
+        value = None
+        min_val = None
+        max_val = None
+        marks = None
         
-        # min, max가 None이거나 숫자가 아니면 기본값 사용
-        if main_min is None:
-            main_min = 0
-        elif not isinstance(main_min, (int, float)):
-            main_min = 0
-            
-        if main_max is None:
-            main_max = 5
-        elif not isinstance(main_max, (int, float)):
-            main_max = 5
-            
-        print(f"sync_main_slider_to_display - value: {main_value} ({type(main_value)}), min: {main_min} ({type(main_min)}), max: {main_max} ({type(main_max)}), marks: {main_marks} ({type(main_marks)})")
+        # 각 매개변수를 타입에 따라 분류
+        for param in [main_value, main_min, main_max, main_marks]:
+            if isinstance(param, dict):
+                if marks is None:
+                    marks = param
+            elif isinstance(param, (int, float)):
+                if value is None:
+                    value = param
+                elif min_val is None:
+                    min_val = param
+                elif max_val is None:
+                    max_val = param
         
-        return main_value, main_min, main_max, main_marks
+        # 기본값 설정
+        if value is None:
+            value = 0
+        if min_val is None:
+            min_val = 0
+        if max_val is None:
+            max_val = 5
+        if marks is None or not isinstance(marks, dict):
+            marks = {0: "시작", 5: "끝"}
+        
+        print(f"sync_main_slider_to_display 처리 후:")
+        print(f"  value: {value} ({type(value)})")
+        print(f"  min_val: {min_val} ({type(min_val)})")
+        print(f"  max_val: {max_val} ({type(max_val)})")
+        print(f"  marks: {marks} ({type(marks)})")
+        
+        return value, min_val, max_val, marks
     except Exception as e:
         print(f"sync_main_slider_to_display 오류: {e}")
         return 0, 0, 5, {0: "시작", 5: "끝"}
