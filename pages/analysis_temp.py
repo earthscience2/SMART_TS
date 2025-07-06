@@ -879,11 +879,18 @@ def on_concrete_select(selected_rows, tbl_data):
     concrete_pk = row["concrete_pk"]
     
     # 버튼 상태 결정
-    # 활성도가 1이고 센서가 있으면: 분석 시작 활성화, 삭제 비활성화
-    # 나머지 경우: 분석 시작 비활성화, 삭제 활성화
-    can_analyze = is_active and has_sensors
-    analyze_disabled = not can_analyze
-    delete_disabled = can_analyze
+    # 분석중 (activate == 0): 분석 시작(비활성화), 삭제(활성화)
+    # 설정중(센서있음) (activate == 1, has_sensors == True): 분석 시작(활성화), 삭제(비활성화)
+    # 설정중(센서부족) (activate == 1, has_sensors == False): 분석 시작(비활성화), 삭제(비활성화)
+    if not is_active:  # 분석중
+        analyze_disabled = True
+        delete_disabled = False
+    elif is_active and has_sensors:  # 설정중(센서있음)
+        analyze_disabled = False
+        delete_disabled = True
+    else:  # 설정중(센서부족)
+        analyze_disabled = True
+        delete_disabled = True
     
     # 초기값 설정
     current_file_title = ""
@@ -966,7 +973,7 @@ def on_concrete_select(selected_rows, tbl_data):
                     print(f"온도 데이터 파싱 오류: {e}")
                     current_file_title = f"{os.path.basename(latest_file)}"
             
-    return delete_disabled, current_file_title, slider_min, slider_max, slider_value, slider_marks
+    return analyze_disabled, current_file_title, slider_min, slider_max, slider_value, slider_marks
 
 # ───────────────────── 3D 뷰 클릭 → 단면 위치 저장 ────────────────────
 @callback(
