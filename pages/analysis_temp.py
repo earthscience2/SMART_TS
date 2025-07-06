@@ -3070,8 +3070,7 @@ def update_section_views(time_idx,
     prevent_initial_call=False,
 )
 def update_temp_tab(store_data, x, y, z, unified_colorbar, selected_rows, tbl_data):
-    # 기본값으로 "all" 사용 (temp-range-filter가 없을 때)
-    range_filter = "all"
+    # 기본적으로 전체 데이터 표시 (필터는 별도 콜백에서 처리)
     import plotly.graph_objects as go
     import numpy as np
     import glob, os
@@ -3200,6 +3199,130 @@ def update_temp_tab(store_data, x, y, z, unified_colorbar, selected_rows, tbl_da
             if temp_val is not None:
                 temp_times.append(dt)
                 temp_values.append(temp_val)
+    
+    # 그래프 생성
+    fig_temp = go.Figure()
+    if temp_times and temp_values:
+        # x축 값: 시간별 실제 datetime 객체
+        x_values = temp_times
+        # x축 라벨: 날짜가 바뀌는 첫 번째만 날짜, 나머지는 빈 문자열
+        x_labels = []
+        prev_date = None
+        for dt in temp_times:
+            current_date = dt.strftime('%-m/%-d')
+            if current_date != prev_date:
+                x_labels.append(current_date)
+                prev_date = current_date
+            else:
+                x_labels.append("")
+        
+        # 기본 제목 (필터는 별도 콜백에서 처리)
+        title_text = "시간에 따른 온도 정보"
+        
+        fig_temp.add_trace(go.Scatter(x=x_values, y=temp_values, mode='lines+markers', name='온도'))
+        fig_temp.update_layout(
+            title=title_text,
+            xaxis_title="날짜",
+            yaxis_title="온도(°C)",
+            xaxis=dict(
+                tickmode='array',
+                tickvals=x_values,
+                ticktext=x_labels
+            )
+        )
+    return fig_3d, fig_temp
+
+# 온도 범위 필터 콜백 (온도변화 탭에서만 작동)
+@callback(
+    Output("temp-time-graph", "figure", allow_duplicate=True),
+    Input("temp-range-filter", "value"),
+    State("temp-viewer-3d", "figure"),
+    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete", "data"),
+    State("temp-x-input", "value"),
+    State("temp-y-input", "value"),
+    State("temp-z-input", "value"),
+    prevent_initial_call=True,
+)
+def update_temp_range_filter(range_filter, fig_3d, selected_rows, tbl_data, x, y, z):
+    """온도 범위 필터 변경 시 온도 변화 그래프만 업데이트"""
+    if not selected_rows or not tbl_data:
+        raise PreventUpdate
+    
+    # range_filter가 None이면 기본값 "all" 사용
+    if range_filter is None:
+        range_filter = "all"
+    
+    import plotly.graph_objects as go
+    import numpy as np
+    import glob, os
+    from datetime import datetime as dt_import
+    
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    inp_dir = f"inp/{concrete_pk}"
+    inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+    
+    # 온도 데이터 수집
+    temp_times = []
+    temp_values = []
+    
+    for f in inp_files:
+        try:
+            time_str = os.path.basename(f).split(".")[0]
+            dt = dt_import.strptime(time_str, "%Y%m%d%H")
+        except:
+            continue
+        
+        with open(f, 'r') as file:
+            lines = file.readlines()
+        
+        nodes = {}
+        node_section = False
+        for line in lines:
+            if line.startswith('*NODE'):
+                node_section = True
+                continue
+            elif line.startswith('*'):
+                node_section = False
+                continue
+            if node_section and ',' in line:
+                parts = line.strip().split(',')
+                if len(parts) >= 4:
+                    node_id = int(parts[0])
+                    nx = float(parts[1])
+                    ny = float(parts[2])
+                    nz = float(parts[3])
+                    nodes[node_id] = {'x': nx, 'y': ny, 'z': nz}
+        
+        temperatures = {}
+        temp_section = False
+        for line in lines:
+            if line.startswith('*TEMPERATURE'):
+                temp_section = True
+                continue
+            elif line.startswith('*'):
+                temp_section = False
+                continue
+            if temp_section and ',' in line:
+                parts = line.strip().split(',')
+                if len(parts) >= 2:
+                    node_id = int(parts[0])
+                    temp = float(parts[1])
+                    temperatures[node_id] = temp
+        
+        # 입력 위치와 가장 가까운 노드 찾기
+        if x is not None and y is not None and z is not None and nodes:
+            coords = np.array([[v['x'], v['y'], v['z']] for v in nodes.values()])
+            node_ids = list(nodes.keys())
+            dists = np.linalg.norm(coords - np.array([x, y, z]), axis=1)
+            min_idx = np.argmin(dists)
+            closest_id = node_ids[min_idx]
+            temp_val = temperatures.get(closest_id, None)
+            if temp_val is not None:
+                temp_times.append(dt)
+                temp_values.append(temp_val)
+    
     # 온도 범위 필터링 적용
     if range_filter and range_filter != "all" and temp_times:
         try:
@@ -3252,10 +3375,8 @@ def update_temp_tab(store_data, x, y, z, unified_colorbar, selected_rows, tbl_da
                 ticktext=x_labels
             )
         )
-    return fig_3d, fig_temp
-
-# 온도 범위 필터 콜백은 제거 (temp-range-filter가 레이아웃에 없어서 오류 발생)
-# 대신 update_temp_tab 콜백에서 모든 업데이트를 처리
+    
+    return fig_temp
 
 # frd 파일 업로드 콜백 (중복 파일명 방지)
 @callback(
