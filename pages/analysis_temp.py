@@ -1830,34 +1830,46 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 # 오른쪽: 저장 버튼들
                 dbc.Col([
                     html.Div([
-                        dbc.Button(
-                            [html.I(className="fas fa-camera me-1"), "이미지 저장"],
-                            id="btn-save-3d-image",
-                            color="primary",
-                            size="lg",
-                            style={
-                                "borderRadius": "8px",
-                                "fontWeight": "600",
-                                "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                "fontSize": "15px",
-                                "width": "120px",
-                                "height": "48px",
-                                "marginRight": "16px"
-                            }
+                        dcc.Loading(
+                            id="loading-btn-save-3d-image",
+                            type="circle",
+                            children=[
+                                dbc.Button(
+                                    [html.I(className="fas fa-camera me-1"), "이미지 저장"],
+                                    id="btn-save-3d-image",
+                                    color="primary",
+                                    size="lg",
+                                    style={
+                                        "borderRadius": "8px",
+                                        "fontWeight": "600",
+                                        "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                        "fontSize": "15px",
+                                        "width": "120px",
+                                        "height": "48px",
+                                        "marginRight": "16px"
+                                    }
+                                )
+                            ]
                         ),
-                        dbc.Button(
-                            [html.I(className="fas fa-file-download me-1"), "INP 파일 저장"],
-                            id="btn-save-current-inp",
-                            color="success",
-                            size="lg",
-                            style={
-                                "borderRadius": "8px",
-                                "fontWeight": "600",
-                                "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                "fontSize": "15px",
-                                "width": "140px",
-                                "height": "48px"
-                            }
+                        dcc.Loading(
+                            id="loading-btn-save-current-inp",
+                            type="circle",
+                            children=[
+                                dbc.Button(
+                                    [html.I(className="fas fa-file-download me-1"), "INP 파일 저장"],
+                                    id="btn-save-current-inp",
+                                    color="success",
+                                    size="lg",
+                                    style={
+                                        "borderRadius": "8px",
+                                        "fontWeight": "600",
+                                        "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                        "fontSize": "15px",
+                                        "width": "140px",
+                                        "height": "48px"
+                                    }
+                                )
+                            ]
                         ),
                     ], style={"display": "flex", "justifyContent": "center", "alignItems": "center", "height": "65px"})
                 ], md=4, style={
@@ -2121,34 +2133,46 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 # 오른쪽: 저장 버튼들
                 dbc.Col([
                     html.Div([
-                        dbc.Button(
-                            [html.I(className="fas fa-camera me-1"), "이미지 저장"],
-                            id="btn-save-section-image",
-                            color="primary",
-                            size="lg",
-                            style={
-                                "borderRadius": "8px",
-                                "fontWeight": "600",
-                                "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                "fontSize": "15px",
-                                "width": "120px",
-                                "height": "48px",
-                                "marginRight": "16px"
-                            }
+                        dcc.Loading(
+                            id="loading-btn-save-section-image",
+                            type="circle",
+                            children=[
+                                dbc.Button(
+                                    [html.I(className="fas fa-camera me-1"), "이미지 저장"],
+                                    id="btn-save-section-image",
+                                    color="primary",
+                                    size="lg",
+                                    style={
+                                        "borderRadius": "8px",
+                                        "fontWeight": "600",
+                                        "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                        "fontSize": "15px",
+                                        "width": "120px",
+                                        "height": "48px",
+                                        "marginRight": "16px"
+                                    }
+                                )
+                            ]
                         ),
-                        dbc.Button(
-                            [html.I(className="fas fa-file-download me-1"), "INP 파일 저장"],
-                            id="btn-save-section-inp",
-                            color="success",
-                            size="lg",
-                            style={
-                                "borderRadius": "8px",
-                                "fontWeight": "600",
-                                "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                "fontSize": "15px",
-                                "width": "140px",
-                                "height": "48px"
-                            }
+                        dcc.Loading(
+                            id="loading-btn-save-section-inp",
+                            type="circle",
+                            children=[
+                                dbc.Button(
+                                    [html.I(className="fas fa-file-download me-1"), "INP 파일 저장"],
+                                    id="btn-save-section-inp",
+                                    color="success",
+                                    size="lg",
+                                    style={
+                                        "borderRadius": "8px",
+                                        "fontWeight": "600",
+                                        "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                        "fontSize": "15px",
+                                        "width": "140px",
+                                        "height": "48px"
+                                    }
+                                )
+                            ]
                         ),
                     ], style={"display": "flex", "justifyContent": "center", "alignItems": "center", "height": "65px"})
                 ], md=4, style={
@@ -2501,34 +2525,46 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
                 # 오른쪽: 저장 버튼들
                 dbc.Col([
                     html.Div([
-                        dbc.Button(
-                            [html.I(className="fas fa-camera me-1"), "이미지 저장"],
-                            id="btn-save-temp-image",
-                            color="primary",
-                            size="lg",
-                            style={
-                                "borderRadius": "8px",
-                                "fontWeight": "600",
-                                "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                "fontSize": "15px",
-                                "width": "120px",
-                                "height": "48px",
-                                "marginRight": "16px"
-                            }
+                        dcc.Loading(
+                            id="loading-btn-save-temp-image",
+                            type="circle",
+                            children=[
+                                dbc.Button(
+                                    [html.I(className="fas fa-camera me-1"), "이미지 저장"],
+                                    id="btn-save-temp-image",
+                                    color="primary",
+                                    size="lg",
+                                    style={
+                                        "borderRadius": "8px",
+                                        "fontWeight": "600",
+                                        "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                        "fontSize": "15px",
+                                        "width": "120px",
+                                        "height": "48px",
+                                        "marginRight": "16px"
+                                    }
+                                )
+                            ]
                         ),
-                        dbc.Button(
-                            [html.I(className="fas fa-file-csv me-1"), "데이터 저장"],
-                            id="btn-save-temp-data",
-                            color="success",
-                            size="lg",
-                            style={
-                                "borderRadius": "8px",
-                                "fontWeight": "600",
-                                "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                "fontSize": "15px",
-                                "width": "120px",
-                                "height": "48px"
-                            }
+                        dcc.Loading(
+                            id="loading-btn-save-temp-data",
+                            type="circle",
+                            children=[
+                                dbc.Button(
+                                    [html.I(className="fas fa-file-csv me-1"), "데이터 저장"],
+                                    id="btn-save-temp-data",
+                                    color="success",
+                                    size="lg",
+                                    style={
+                                        "borderRadius": "8px",
+                                        "fontWeight": "600",
+                                        "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                        "fontSize": "15px",
+                                        "width": "120px",
+                                        "height": "48px"
+                                    }
+                                )
+                            ]
                         ),
                     ], style={"display": "flex", "justifyContent": "center", "alignItems": "center", "marginBottom": "16px"}),
                     
