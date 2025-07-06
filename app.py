@@ -333,25 +333,28 @@ def _build_concrete_sensor_navbar():
     user_id = flask_request.cookies.get("login_user")
     admin_user = flask_request.cookies.get("admin_user")
     
-    # 현재 URL에서 프로젝트 키 추출
+    # 현재 URL에서 쿼리스트링 전체 추출
     from flask import request
-    project_pk = None
-    if request.args.get('page'):
-        project_pk = request.args.get('page')
+    query = request.query_string.decode()
+    page_param = None
+    if query:
+        from urllib.parse import parse_qs
+        params = parse_qs(query)
+        page_param = params.get('page', [None])[0]
+        query_str = f"?{query}" if page_param else ""
+    else:
+        query_str = ""
 
-    # 메인 네비게이션 링크들 (가운데 정렬) - 프로젝트 키 포함
     main_nav_links = [
         dbc.NavItem(dcc.Link("대시보드", href="/", className="nav-link", id="nav-dashboard")),
-        dbc.NavItem(dcc.Link("콘크리트 모델링", href=f"/concrete?page={project_pk}" if project_pk else "/concrete", className="nav-link", id="nav-concrete")),
-        dbc.NavItem(dcc.Link("센서 위치", href=f"/sensor?page={project_pk}" if project_pk else "/sensor", className="nav-link", id="nav-sensor")),
+        dbc.NavItem(dcc.Link("콘크리트 모델링", href=f"/concrete{query_str}" if page_param else "/concrete", className="nav-link", id="nav-concrete")),
+        dbc.NavItem(dcc.Link("센서 위치", href=f"/sensor{query_str}" if page_param else "/sensor", className="nav-link", id="nav-sensor")),
     ]
     
-    # 로그아웃 버튼 (오른쪽 정렬)
     logout_nav = [
         dbc.NavItem(dcc.Link(dbc.Button("Logout", color="danger", size="md", className="text-center"), href="/logout", className="text-decoration-none", id="nav-logout")),
     ]
 
-    # 브랜드(좌측) - 사용자 이름 부분을 강조색으로
     if admin_user:
         brand = html.Span([
             "Concrete MONITOR | ",
@@ -388,28 +391,30 @@ def _build_analysis_navbar():
     user_id = flask_request.cookies.get("login_user")
     admin_user = flask_request.cookies.get("admin_user")
     
-    # 현재 URL에서 프로젝트 키 추출
     from flask import request
-    project_pk = None
-    if request.args.get('page'):
-        project_pk = request.args.get('page')
+    query = request.query_string.decode()
+    page_param = None
+    if query:
+        from urllib.parse import parse_qs
+        params = parse_qs(query)
+        page_param = params.get('page', [None])[0]
+        query_str = f"?{query}" if page_param else ""
+    else:
+        query_str = ""
 
-    # 메인 네비게이션 링크들 (가운데 정렬) - 프로젝트 키 포함
     main_nav_links = [
         dbc.NavItem(dcc.Link("대시보드", href="/", className="nav-link", id="nav-dashboard")),
-        dbc.NavItem(dcc.Link("온도분석", href=f"/temp?page={project_pk}" if project_pk else "/temp", className="nav-link", id="nav-temp")),
-        dbc.NavItem(dcc.Link("응력분석", href=f"/stress?page={project_pk}" if project_pk else "/stress", className="nav-link", id="nav-stress")),
-        dbc.NavItem(dcc.Link("TCI분석", href=f"/tci?page={project_pk}" if project_pk else "/tci", className="nav-link", id="nav-tci")),
-        dbc.NavItem(dcc.Link("강도분석", href=f"/strength?page={project_pk}" if project_pk else "/strength", className="nav-link", id="nav-strength")),
-        dbc.NavItem(dcc.Link("파일 다운로드", href=f"/download?page={project_pk}" if project_pk else "/download", className="nav-link", id="nav-download")),
+        dbc.NavItem(dcc.Link("온도분석", href=f"/temp{query_str}" if page_param else "/temp", className="nav-link", id="nav-temp")),
+        dbc.NavItem(dcc.Link("응력분석", href=f"/stress{query_str}" if page_param else "/stress", className="nav-link", id="nav-stress")),
+        dbc.NavItem(dcc.Link("TCI분석", href=f"/tci{query_str}" if page_param else "/tci", className="nav-link", id="nav-tci")),
+        dbc.NavItem(dcc.Link("강도분석", href=f"/strength{query_str}" if page_param else "/strength", className="nav-link", id="nav-strength")),
+        dbc.NavItem(dcc.Link("파일 다운로드", href=f"/download{query_str}" if page_param else "/download", className="nav-link", id="nav-download")),
     ]
     
-    # 로그아웃 버튼 (오른쪽 정렬)
     logout_nav = [
         dbc.NavItem(dcc.Link(dbc.Button("Logout", color="danger", size="md", className="text-center"), href="/logout", className="text-decoration-none", id="nav-logout")),
     ]
 
-    # 브랜드(좌측) - 사용자 이름 부분을 강조색으로
     if admin_user:
         brand = html.Span([
             "Concrete MONITOR | ",
@@ -446,24 +451,26 @@ def _build_sensor_data_navbar():
     user_id = flask_request.cookies.get("login_user")
     admin_user = flask_request.cookies.get("admin_user")
     
-    # 현재 URL에서 프로젝트 키 추출
     from flask import request
-    project_pk = None
-    if request.args.get('page'):
-        project_pk = request.args.get('page')
+    query = request.query_string.decode()
+    page_param = None
+    if query:
+        from urllib.parse import parse_qs
+        params = parse_qs(query)
+        page_param = params.get('page', [None])[0]
+        query_str = f"?{query}" if page_param else ""
+    else:
+        query_str = ""
 
-    # 메인 네비게이션 링크들 (가운데 정렬) - 프로젝트 키 포함
     main_nav_links = [
         dbc.NavItem(dcc.Link("대시보드", href="/", className="nav-link", id="nav-dashboard")),
-        dbc.NavItem(dcc.Link("센서 데이터", href=f"/sensor_data?page={project_pk}" if project_pk else "/sensor_data", className="nav-link", id="nav-sensor-data")),
+        dbc.NavItem(dcc.Link("센서 데이터", href=f"/sensor_data{query_str}" if page_param else "/sensor_data", className="nav-link", id="nav-sensor-data")),
     ]
     
-    # 로그아웃 버튼 (오른쪽 정렬)
     logout_nav = [
         dbc.NavItem(dcc.Link(dbc.Button("Logout", color="danger", size="md", className="text-center"), href="/logout", className="text-decoration-none", id="nav-logout")),
     ]
 
-    # 브랜드(좌측) - 사용자 이름 부분을 강조색으로
     if admin_user:
         brand = html.Span([
             "Concrete MONITOR | ",
