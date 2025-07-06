@@ -229,7 +229,7 @@ layout = html.Div([
                             })
                         ])
                     ])
-                ], md=3),
+                ], md=4),
                 
                 # 오른쪽 메인 콘텐츠 - 파일 목록 및 다운로드
                 dbc.Col([
@@ -356,7 +356,7 @@ layout = html.Div([
                             })
                         ])
                     ])
-                ], md=9),
+                ], md=8),
             ], className="g-3"),
         ]
     )
