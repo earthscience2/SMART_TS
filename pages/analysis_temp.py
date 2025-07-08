@@ -743,6 +743,10 @@ layout = dbc.Container(
     prevent_initial_call=False,
 )
 def load_concrete_data_tmp(search, pathname):
+    # 온도 분석 페이지에서만 실행
+    if '/temp' not in pathname:
+        raise PreventUpdate
+    
     # URL에서 프로젝트 정보 추출 (암호화된 URL 지원)
     project_pk = None
     if search:
@@ -934,9 +938,14 @@ def load_concrete_data_tmp(search, pathname):
 @callback(
     Output("current-project-info", "children"),
     Input("project-info-store", "data"),
+    Input("project-url", "pathname"),
     prevent_initial_call=True,
 )
-def update_project_info_tmp(project_info):
+def update_project_info_tmp(project_info, pathname):
+    # 온도 분석 페이지에서만 실행
+    if '/temp' not in pathname:
+        raise PreventUpdate
+    
     if not project_info:
         return [
             "프로젝트가 선택되지 않았습니다. ",
@@ -956,10 +965,15 @@ def update_project_info_tmp(project_info):
     Output("time-slider", "value", allow_duplicate=True),
     Output("time-slider", "marks", allow_duplicate=True),
     Input("tbl-concrete", "selected_rows"),
+    Input("project-url", "pathname"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def on_concrete_select_tmp(selected_rows, tbl_data):
+def on_concrete_select_tmp(selected_rows, pathname, tbl_data):
+    # 온도 분석 페이지에서만 실행
+    if '/temp' not in pathname:
+        raise PreventUpdate
+    
     print(f"on_concrete_select 시작 - 입력값:")
     print(f"  selected_rows: {selected_rows} ({type(selected_rows)})")
     print(f"  tbl_data: {len(tbl_data) if tbl_data else None} ({type(tbl_data)})")
@@ -1440,12 +1454,17 @@ def update_heatmap_tmp(time_idx, section_coord, unified_colorbar, selected_rows,
     Output("tab-content", "children"),
     Input("tabs-main", "active_tab"),
     Input("tbl-concrete", "selected_rows"),
+    Input("project-url", "pathname"),
     State("tbl-concrete", "data"),
     State("viewer-3d-store", "data"),
     State("current-file-title-store", "data"),
     prevent_initial_call=True,
 )
-def switch_tab_tmp(active_tab, selected_rows, tbl_data, viewer_data, current_file_title):
+def switch_tab_tmp(active_tab, selected_rows, pathname, tbl_data, viewer_data, current_file_title):
+    # 온도 분석 페이지에서만 실행
+    if '/temp' not in pathname:
+        raise PreventUpdate
+    
     from datetime import datetime as dt_import  # 명시적 import로 충돌 방지
     # 콘크리트 데이터를 불러오는 중인 경우
     if tbl_data is None:

@@ -1140,7 +1140,7 @@ def update_stress_3d_view_stress(pathname, active_tab, time_idx, selected_rows, 
     State("time-slider-stress", "value"),
     prevent_initial_call=True
 )
-def update_stress_3d_view_with_options(field_name, preset, slice_enable, slice_axis, slice_slider, pathname, selected_rows, tbl_data, time_idx):
+def update_stress_3d_view_with_options_stress(field_name, preset, slice_enable, slice_axis, slice_slider, pathname, selected_rows, tbl_data, time_idx):
     """드롭다운 옵션 변경 시 3D 뷰어를 업데이트합니다."""
     # 응력 분석 페이지에서만 실행
     if '/stress' not in pathname:
