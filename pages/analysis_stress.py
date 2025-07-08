@@ -135,7 +135,7 @@ layout = dbc.Container(
         
         # ── 컨펌 다이얼로그 및 알림
         dcc.ConfirmDialog(
-            id="confirm-del-concrete",
+            id="confirm-del-concrete-stress",
             message="선택한 콘크리트를 정말 삭제하시겠습니까?"
         ),
         dbc.Alert(
@@ -147,13 +147,13 @@ layout = dbc.Container(
         ),
 
         # ── 데이터 저장용 Store들
-        dcc.Store(id="current-time-store", data=None),
-        dcc.Store(id="current-file-title-store", data=""),
-        dcc.Store(id="section-coord-store", data=None),
-        dcc.Store(id="viewer-3d-store", data=None),
-        dcc.Store(id="unified-colorbar-state", data=False),
-        dcc.Store(id="unified-colorbar-section-state", data=False),
-        dcc.Store(id="project-info-store", data=None),
+        dcc.Store(id="current-time-store-stress", data=None),
+        dcc.Store(id="current-file-title-store-stress", data=""),
+        dcc.Store(id="section-coord-store-stress", data=None),
+        dcc.Store(id="viewer-3d-store-stress", data=None),
+        dcc.Store(id="unified-colorbar-state-stress", data=False),
+        dcc.Store(id="unified-colorbar-section-state-stress", data=False),
+        dcc.Store(id="project-info-store-stress", data=None),
         dcc.Store(id="stress-data-store", data=None),
         dcc.Graph(id='section-colorbar', style={'display':'none'}),
         
@@ -459,8 +459,8 @@ layout = dbc.Container(
                             
                             # 액션 버튼들
                             html.Div([
-                                dbc.Button("분석 시작", id="btn-concrete-analyze", color="success", size="sm", className="px-3", disabled=True),
-                                dbc.Button("삭제", id="btn-concrete-del", color="danger", size="sm", className="px-3", disabled=True),
+                                dbc.Button("분석 시작", id="btn-concrete-analyze-stress", color="success", size="sm", className="px-3", disabled=True),
+                                dbc.Button("삭제", id="btn-concrete-del-stress", color="danger", size="sm", className="px-3", disabled=True),
                             ], className="d-flex justify-content-center gap-2 mt-2"),
                         ])
                     ])
@@ -571,14 +571,14 @@ layout = dbc.Container(
     Output("tbl-concrete", "columns"),
     Output("tbl-concrete", "selected_rows"),
     Output("tbl-concrete", "style_data_conditional"),
-    Output("btn-concrete-analyze", "disabled"),
-    Output("btn-concrete-del", "disabled"),
+    Output("btn-concrete-analyze-stress", "disabled"),
+    Output("btn-concrete-del-stress", "disabled"),
     Output("time-slider", "min"),
     Output("time-slider", "max"),
     Output("time-slider", "value"),
     Output("time-slider", "marks"),
-    Output("current-time-store", "data"),
-    Output("project-info-store", "data"),
+    Output("current-time-store-stress", "data", allow_duplicate=True),
+    Output("project-info-store-stress", "data", allow_duplicate=True),
     Input("project-url", "search"),
     Input("project-url", "pathname"),
     prevent_initial_call=False,
@@ -648,8 +648,8 @@ def load_concrete_data(search, pathname):
         return [], [], [], [], True, True, 0, 1, 0, {}, None, None
 
 @callback(
-    Output("current-project-info", "children"),
-    Input("project-info-store", "data"),
+    Output("current-project-info", "children", allow_duplicate=True),
+    Input("project-info-store-stress", "data"),
     prevent_initial_call=True,
 )
 def update_project_info(project_info):
@@ -660,12 +660,12 @@ def update_project_info(project_info):
     return f"📋 {project_info['name']} | 📅 {project_info['start_date']} ~ {project_info['end_date']}"
 
 @callback(
-    Output("tab-content", "children"),
+    Output("tab-content", "children", allow_duplicate=True),
     Input("tabs-main", "active_tab"),
     Input("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
-    State("viewer-3d-store", "data"),
-    State("current-file-title-store", "data"),
+    State("viewer-3d-store-stress", "data"),
+    State("current-file-title-store-stress", "data"),
     prevent_initial_call=True,
 )
 def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_title):
@@ -1055,10 +1055,10 @@ def update_node_graphs(selected_node, stress_data):
     return stress_fig, disp_fig
 
 @callback(
-    Output("viewer-3d-section", "figure"),
-    Output("viewer-section-x", "figure"),
-    Output("viewer-section-y", "figure"),
-    Output("viewer-section-z", "figure"),
+    Output("viewer-3d-section", "figure", allow_duplicate=True),
+    Output("viewer-section-x", "figure", allow_duplicate=True),
+    Output("viewer-section-y", "figure", allow_duplicate=True),
+    Output("viewer-section-z", "figure", allow_duplicate=True),
     Output("section-x-input", "min", allow_duplicate=True), Output("section-x-input", "max", allow_duplicate=True), Output("section-x-input", "value", allow_duplicate=True),
     Output("section-y-input", "min", allow_duplicate=True), Output("section-y-input", "max", allow_duplicate=True), Output("section-y-input", "value", allow_duplicate=True),
     Output("section-z-input", "min", allow_duplicate=True), Output("section-z-input", "max", allow_duplicate=True), Output("section-z-input", "value", allow_duplicate=True),
@@ -1067,7 +1067,7 @@ def update_node_graphs(selected_node, stress_data):
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
     Input("section-z-input", "value"),
-    Input("unified-colorbar-section-state", "data"),
+    Input("unified-colorbar-section-state-stress", "data"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
@@ -1282,8 +1282,8 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
     return 0, max_idx, max_idx, marks
 
 @callback(
-    Output("btn-concrete-analyze", "disabled", allow_duplicate=True),
-    Output("btn-concrete-del", "disabled", allow_duplicate=True),
+    Output("btn-concrete-analyze-stress", "disabled", allow_duplicate=True),
+    Output("btn-concrete-del-stress", "disabled", allow_duplicate=True),
     Output("current-file-title-store", "data", allow_duplicate=True),
     Output("time-slider", "min", allow_duplicate=True),
     Output("time-slider", "max", allow_duplicate=True),
@@ -1319,7 +1319,7 @@ def on_concrete_select(selected_rows, tbl_data):
     Output("stress-project-alert", "color", allow_duplicate=True),
     Output("stress-project-alert", "is_open", allow_duplicate=True),
     Output("tbl-concrete", "data", allow_duplicate=True),
-    Input("btn-concrete-analyze", "n_clicks"),
+    Input("btn-concrete-analyze-stress", "n_clicks"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
@@ -1352,8 +1352,8 @@ def start_analysis(n_clicks, selected_rows, tbl_data):
         return f"응력 분석 중 오류가 발생했습니다: {e}", "danger", True, tbl_data, True, True
 
 @callback(
-    Output("confirm-del-concrete", "displayed"),
-    Input("btn-concrete-del", "n_clicks"),
+    Output("confirm-del-concrete-stress", "displayed", allow_duplicate=True),
+    Input("btn-concrete-del-stress", "n_clicks"),
     State("tbl-concrete", "selected_rows"),
     prevent_initial_call=True
 )
@@ -1368,7 +1368,7 @@ def ask_delete_concrete(n, sel):
     Output("stress-project-alert", "color", allow_duplicate=True),
     Output("stress-project-alert", "is_open", allow_duplicate=True),
     Output("tbl-concrete", "data", allow_duplicate=True),
-    Input("confirm-del-concrete", "submit_n_clicks"),
+    Input("confirm-del-concrete-stress", "submit_n_clicks"),
     State("tbl-concrete", "selected_rows"),
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
