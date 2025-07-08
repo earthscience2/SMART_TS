@@ -586,6 +586,10 @@ layout = dbc.Container(
 )
 def load_concrete_data(search, pathname):
     """프로젝트 정보를 로드하고 콘크리트 목록을 표시합니다."""
+    # 응력 분석 페이지에서만 실행
+    if '/stress' not in pathname:
+        raise PreventUpdate
+    
     # URL에서 프로젝트 정보 추출
     project_pk = parse_project_key_from_url(search, pathname)
     
@@ -651,10 +655,15 @@ def load_concrete_data(search, pathname):
 @callback(
     Output("current-project-info", "children", allow_duplicate=True),
     Input("project-info-store-stress", "data"),
+    Input("project-url", "pathname"),
     prevent_initial_call=True,
 )
-def update_project_info(project_info):
+def update_project_info(project_info, pathname):
     """프로젝트 정보를 표시합니다."""
+    # 응력 분석 페이지에서만 실행
+    if '/stress' not in pathname:
+        raise PreventUpdate
+    
     if not project_info:
         return "프로젝트를 선택하세요."
     
@@ -664,13 +673,18 @@ def update_project_info(project_info):
     Output("tab-content", "children", allow_duplicate=True),
     Input("tabs-main", "active_tab"),
     Input("tbl-concrete-stress", "selected_rows"),
+    Input("project-url", "pathname"),
     State("tbl-concrete-stress", "data"),
     State("viewer-3d-store-stress", "data"),
     State("current-file-title-store-stress", "data"),
     prevent_initial_call=True,
 )
-def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_title):
+def switch_tab(active_tab, selected_rows, pathname, tbl_data, viewer_data, current_file_title):
     """탭 전환 시 해당 탭의 콘텐츠를 표시합니다."""
+    # 응력 분석 페이지에서만 실행
+    if '/stress' not in pathname:
+        raise PreventUpdate
+    
     if not selected_rows or not tbl_data:
         return html.Div("콘크리트를 선택하세요.", className="text-center text-muted mt-5")
     
@@ -984,10 +998,15 @@ def update_stress_3d_view(pathname, active_tab, field_name, preset, time_idx, sl
 @callback(
     Output("slice-detail-controls", "style"),
     Input("slice-enable", "value"),
+    Input("project-url", "pathname"),
     prevent_initial_call=True
 )
-def toggle_slice_controls(slice_enable):
+def toggle_slice_controls(slice_enable, pathname):
     """단면 보기 컨트롤을 토글합니다."""
+    # 응력 분석 페이지에서만 실행
+    if '/stress' not in pathname:
+        raise PreventUpdate
+    
     if slice_enable and "on" in slice_enable:
         return {"display": "block"}
     else:
@@ -997,10 +1016,15 @@ def toggle_slice_controls(slice_enable):
     Output("node-selection-dropdown", "options"),
     Output("node-selection-dropdown", "value"),
     Input("stress-data-store", "data"),
+    Input("project-url", "pathname"),
     prevent_initial_call=True
 )
-def update_node_selection(stress_data):
+def update_node_selection(stress_data, pathname):
     """노드 선택 드롭다운을 업데이트합니다."""
+    # 응력 분석 페이지에서만 실행
+    if '/stress' not in pathname:
+        raise PreventUpdate
+    
     if not stress_data or 'nodes' not in stress_data:
         return [], None
     
@@ -1012,11 +1036,16 @@ def update_node_selection(stress_data):
     Output("node-stress-graph", "figure"),
     Output("node-displacement-graph", "figure"),
     Input("node-selection-dropdown", "value"),
+    Input("project-url", "pathname"),
     State("stress-data-store", "data"),
     prevent_initial_call=True
 )
-def update_node_graphs(selected_node, stress_data):
+def update_node_graphs(selected_node, pathname, stress_data):
     """노드별 응력 및 변위 그래프를 업데이트합니다."""
+    # 응력 분석 페이지에서만 실행
+    if '/stress' not in pathname:
+        raise PreventUpdate
+    
     if not selected_node or not stress_data:
         return go.Figure(), go.Figure()
     
@@ -1390,11 +1419,16 @@ def start_analysis(pathname, n_clicks, selected_rows, tbl_data):
 @callback(
     Output("confirm-del-concrete-stress", "displayed", allow_duplicate=True),
     Input("btn-concrete-del-stress", "n_clicks"),
+    Input("project-url", "pathname"),
     State("tbl-concrete-stress", "selected_rows"),
     prevent_initial_call=True
 )
-def ask_delete_concrete(n, sel):
+def ask_delete_concrete(n, pathname, sel):
     """콘크리트 삭제 확인 다이얼로그를 표시합니다."""
+    # 응력 분석 페이지에서만 실행
+    if '/stress' not in pathname:
+        raise PreventUpdate
+    
     if n and sel:
         return True
     return False
@@ -1405,12 +1439,17 @@ def ask_delete_concrete(n, sel):
     Output("stress-project-alert", "is_open", allow_duplicate=True),
     Output("tbl-concrete-stress", "data", allow_duplicate=True),
     Input("confirm-del-concrete-stress", "submit_n_clicks"),
+    Input("project-url", "pathname"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def delete_concrete_confirm(_click, sel, tbl_data):
+def delete_concrete_confirm(_click, pathname, sel, tbl_data):
     """콘크리트 삭제를 확인합니다."""
+    # 응력 분석 페이지에서만 실행
+    if '/stress' not in pathname:
+        raise PreventUpdate
+    
     if not _click or not sel or not tbl_data:
         raise PreventUpdate
     
