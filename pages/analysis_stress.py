@@ -1220,18 +1220,18 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
         except:
             formatted_time = filename
         
-        # 응력 통계 계산
-        if stress_values:
-            current_min = float(np.nanmin(stress_values))
-            current_max = float(np.nanmax(stress_values))
-            current_avg = float(np.nanmean(stress_values))
-            time_info = f"{formatted_time} - {component_name} (최저: {current_min:.2f}GPa, 최고: {current_max:.2f}GPa, 평균: {current_avg:.2f}GPa)"
-        else:
-            time_info = formatted_time
-        
         # 단위 변환: Pa → GPa
         stress_values_gpa = np.array(stress_values) / 1e9
         stress_min, stress_max = np.nanmin(stress_values_gpa), np.nanmax(stress_values_gpa)
+        
+        # 응력 통계 계산 (GPa 단위)
+        if stress_values:
+            current_min = float(np.nanmin(stress_values_gpa))
+            current_max = float(np.nanmax(stress_values_gpa))
+            current_avg = float(np.nanmean(stress_values_gpa))
+            time_info = f"{formatted_time} - {component_name} (최저: {current_min:.2f}GPa, 최고: {current_max:.2f}GPa, 평균: {current_avg:.2f}GPa)"
+        else:
+            time_info = formatted_time
         
         # 온도분석 페이지와 동일한 형식으로 3D 등응력면 생성
         fig = go.Figure(data=go.Volume(
