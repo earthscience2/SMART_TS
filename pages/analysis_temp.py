@@ -253,6 +253,7 @@ layout = dbc.Container(
         dcc.Store(id="section-coord-store-tmp", data=None),
         dcc.Store(id="viewer-3d-store-tmp", data=None),
         dcc.Store(id="unified-colorbar-state-tmp", data=False),
+        dcc.Store(id="unified-colorbar-section-state-tmp", data=False),
         dcc.Store(id="project-info-store-tmp", data=None),
         dcc.Store(id="temp-data-store", data=None),
         dcc.Graph(id='section-colorbar-tmp', style={'display':'none'}),
