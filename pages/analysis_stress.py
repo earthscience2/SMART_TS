@@ -278,53 +278,53 @@ def read_frd_stress_data(frd_path):
         reading_nodes = False
         reading_stress = False
         node_coords = {}
+        current_stress_values = {}
         
         for line in lines:
             line = line.strip()
             
-            # 시간 스텝 찾기
+            # 시간 스텝 찾기 (1C로 시작하는 라인)
             if line.startswith('    1C'):
                 try:
-                    time_str = line[6:].strip()
-                    current_time = float(time_str)
-                    stress_data['times'].append(current_time)
+                    # 시간 정보가 있는 경우 추출
+                    if len(line) > 6:
+                        time_str = line[6:].strip()
+                        if time_str and time_str != 'Concrete Curing Thermal Stress Analysis':
+                            current_time = float(time_str)
+                            stress_data['times'].append(current_time)
                 except:
                     pass
             
-            # 노드 좌표 읽기
-            elif line.startswith(' -1') and 'NODE' in line:
-                reading_nodes = True
-                continue
-            elif reading_nodes and line.startswith(' -2'):
-                reading_nodes = False
-                continue
-            elif reading_nodes and line and not line.startswith(' -'):
+            # 노드 좌표 읽기 (-1로 시작하는 라인들)
+            elif line.startswith(' -1') and len(line) > 10:
                 try:
                     parts = line.split()
                     if len(parts) >= 4:
-                        node_id = int(parts[0])
-                        x, y, z = float(parts[1]), float(parts[2]), float(parts[3])
+                        # 첫 번째 숫자가 노드 ID, 나머지 3개가 x, y, z 좌표
+                        node_id = int(parts[1])
+                        x, y, z = float(parts[2]), float(parts[3]), float(parts[4])
                         node_coords[node_id] = [x, y, z]
                 except:
                     pass
             
-            # 응력 데이터 읽기
-            elif line.startswith(' -1') and 'STRESS' in line:
-                reading_stress = True
-                current_stress_values = {}
-                continue
-            elif reading_stress and line.startswith(' -2'):
-                reading_stress = False
-                if current_stress_values:
-                    stress_data['stress_values'].append(current_stress_values)
-                continue
-            elif reading_stress and line and not line.startswith(' -'):
+            # 응력 데이터 읽기 (숫자로 시작하는 라인들)
+            elif line and line[0].isdigit() and len(line) > 20:
                 try:
                     parts = line.split()
                     if len(parts) >= 7:
                         node_id = int(parts[0])
-                        # von Mises 응력 (7번째 값)
-                        von_mises = float(parts[6])
+                        # von Mises 응력 계산 (6개 응력 성분으로부터)
+                        sxx = float(parts[1])
+                        syy = float(parts[2])
+                        szz = float(parts[3])
+                        sxy = float(parts[4])
+                        syz = float(parts[5])
+                        sxz = float(parts[6])
+                        
+                        # von Mises 응력 계산
+                        von_mises = np.sqrt(0.5 * ((sxx - syy)**2 + (syy - szz)**2 + (szz - sxx)**2 + 
+                                                   6 * (sxy**2 + syz**2 + sxz**2)))
+                        
                         current_stress_values[node_id] = von_mises
                 except:
                     pass
@@ -333,6 +333,10 @@ def read_frd_stress_data(frd_path):
         if node_coords:
             stress_data['coordinates'] = [node_coords[i] for i in sorted(node_coords.keys())]
             stress_data['nodes'] = sorted(node_coords.keys())
+        
+        # 응력 값이 있으면 추가
+        if current_stress_values:
+            stress_data['stress_values'].append(current_stress_values)
         
         return stress_data
         
