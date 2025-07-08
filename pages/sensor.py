@@ -101,29 +101,44 @@ def make_concrete_fig(nodes: list[list[float]], h: float) -> go.Figure:
     return fig
 
 def is_point_in_polygon(x: float, y: float, nodes: list[list[float]]) -> bool:
-    """
-    점 (x, y)가 폴리곤 내부에 있는지 확인하는 함수
-    간단하고 안정적인 Ray casting 알고리즘 사용
-    """
     n = len(nodes)
-    inside = False
-    
-    # 부동소수점 오차를 고려한 작은 값
+    if n < 3:
+        return False
+
     epsilon = 1e-6
-    
+
+    # 1. 점이 폴리곤의 경계선 위에 있는지 먼저 확인
     for i in range(n):
         j = (i + 1) % n
         xi, yi = nodes[i]
         xj, yj = nodes[j]
-        
-        # 점이 엣지의 y 범위 안에 있는지 확인
+
+        # 엣지가 수평선인 경우
+        if abs(yj - yi) <= epsilon:
+            if abs(y - yi) <= epsilon and (xi <= x <= xj or xj <= x <= xi):
+                return True
+        # 엣지가 수직선인 경우
+        elif abs(xj - xi) <= epsilon:
+            if abs(x - xi) <= epsilon and (yi <= y <= yj or yj <= y <= yi):
+                return True
+        # 일반적인 경우
+        else:
+            if (yi <= y <= yj or yj <= y <= yi) and (xi <= x <= xj or xj <= x <= xi):
+                edge_y = yi + (yj - yi) * (x - xi) / (xj - xi)
+                if abs(y - edge_y) <= epsilon:
+                    return True
+
+    # 2. 점이 폴리곤 내부에 있는지 확인 (Ray casting)
+    inside = False
+    for i in range(n):
+        j = (i + 1) % n
+        xi, yi = nodes[i]
+        xj, yj = nodes[j]
         if (yi <= y and y < yj) or (yj <= y and y < yi):
-            # 점이 엣지의 오른쪽에 있는지 확인
-            if abs(yj - yi) > epsilon:  # 수평선이 아닌 경우
+            if abs(yj - yi) > epsilon:
                 intersect_x = xi + (xj - xi) * (y - yi) / (yj - yi)
                 if x <= intersect_x:
                     inside = not inside
-    
     return inside
 
 def is_point_in_concrete(x: float, y: float, z: float, nodes: list[list[float]], h: float) -> bool:
