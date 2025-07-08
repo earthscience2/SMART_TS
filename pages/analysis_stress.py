@@ -320,6 +320,18 @@ def read_frd_stress_data(frd_path):
         if stress_values:
             stress_data['stress_values'].append(stress_values)
         
+        # 좌표와 응력 값의 노드 ID를 맞춤
+        if node_coords and stress_values:
+            coord_node_ids = set(node_coords.keys())
+            stress_node_ids = set(stress_values.keys())
+            common_node_ids = coord_node_ids.intersection(stress_node_ids)
+            
+            if common_node_ids:
+                # 공통 노드 ID만 사용
+                stress_data['coordinates'] = [node_coords[i] for i in sorted(common_node_ids)]
+                stress_data['nodes'] = sorted(common_node_ids)
+                stress_data['stress_values'] = [{i: stress_values[i] for i in common_node_ids}]
+        
         try:
             filename = os.path.basename(frd_path)
             time_str = filename.split(".")[0]
@@ -920,6 +932,42 @@ def create_3d_stress_figure(stress_data):
     coords = np.array(first_data['coordinates'])
     stress_values = list(first_data['stress_values'][0].values())
     
+    # 데이터 검증: 좌표와 응력 값의 개수가 일치하는지 확인
+    if len(coords) != len(stress_values):
+        print(f"데이터 불일치: 좌표 {len(coords)}개, 응력 값 {len(stress_values)}개")
+        # 산점도로 대체
+        fig = go.Figure(data=[
+            go.Scatter3d(
+                x=coords[:, 0],
+                y=coords[:, 1],
+                z=coords[:, 2],
+                mode='markers',
+                marker=dict(
+                    size=5,
+                    color=stress_values[:len(coords)] if len(stress_values) > len(coords) else stress_values,
+                    colorscale='Viridis',
+                    colorbar=dict(title="응력 (MPa)"),
+                    showscale=True
+                ),
+                text=[f"노드 {i+1}<br>응력: {val:.2f} MPa" for i, val in enumerate(stress_values[:len(coords)] if len(stress_values) > len(coords) else stress_values)],
+                hoverinfo='text'
+            )
+        ])
+        
+        fig.update_layout(
+            title="3D 응력 분포 (산점도 - 데이터 불일치)",
+            scene=dict(
+                xaxis_title="X (m)",
+                yaxis_title="Y (m)",
+                zaxis_title="Z (m)",
+                aspectmode='data'
+            ),
+            margin=dict(l=0, r=0, b=0, t=30),
+            height=500
+        )
+        
+        return fig
+    
     # 등온면 생성을 위한 3D 격자 데이터 생성
     try:
         from scipy.interpolate import griddata
@@ -1077,6 +1125,52 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_rows, tbl_data)
         # 좌표와 응력 값 추출
         coords = np.array(stress_data['coordinates'])
         stress_values = list(stress_data['stress_values'][0].values())
+        
+        # 데이터 검증: 좌표와 응력 값의 개수가 일치하는지 확인
+        if len(coords) != len(stress_values):
+            print(f"데이터 불일치: 좌표 {len(coords)}개, 응력 값 {len(stress_values)}개")
+            # 산점도로 대체
+            fig = go.Figure(data=[
+                go.Scatter3d(
+                    x=coords[:, 0],
+                    y=coords[:, 1],
+                    z=coords[:, 2],
+                    mode='markers',
+                    marker=dict(
+                        size=5,
+                        color=stress_values[:len(coords)] if len(stress_values) > len(coords) else stress_values,
+                        colorscale='Viridis',
+                        colorbar=dict(title="응력 (MPa)"),
+                        showscale=True
+                    ),
+                    text=[f"노드 {i+1}<br>응력: {val:.2f} MPa" for i, val in enumerate(stress_values[:len(coords)] if len(stress_values) > len(coords) else stress_values)],
+                    hoverinfo='text'
+                )
+            ])
+            
+            fig.update_layout(
+                title="3D 응력 분포 (산점도 - 데이터 불일치)",
+                scene=dict(
+                    xaxis_title="X (m)",
+                    yaxis_title="Y (m)",
+                    zaxis_title="Z (m)",
+                    aspectmode='data'
+                ),
+                margin=dict(l=0, r=0, b=0, t=30),
+                height=500
+            )
+            
+            # 시간 정보 계산
+            try:
+                time_str = filename.split(".")[0]
+                dt = datetime.strptime(time_str, "%Y%m%d%H")
+                formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
+            except:
+                formatted_time = filename
+            
+            time_info = f"{formatted_time} (데이터 불일치로 산점도 표시)"
+            
+            return fig, time_info
         
         # 시간 정보 계산
         try:
