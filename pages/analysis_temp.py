@@ -38,7 +38,7 @@ import dash_vtk
 import api_db
 from utils.encryption import parse_project_key_from_url
 
-# register_page(__name__, path="/temp", title="온도 분석")  # 임시 비활성화
+register_page(__name__, path="/temp", title="온도 분석")
 
 
 
