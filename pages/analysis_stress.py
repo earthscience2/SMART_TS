@@ -19,6 +19,7 @@ from dash.exceptions import PreventUpdate
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import json
+import ast
 
 import api_db
 from utils.encryption import parse_project_key_from_url
@@ -1158,11 +1159,11 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_rows, tbl_data)
         else:
             time_info = formatted_time
         
-        # 3D 볼륨 시각화 (온도분석 페이지와 동일한 방식)
-        # 응력 값을 MPa에서 Pa로 변환 (파일의 단위가 Pa이므로)
-        stress_values_gpa = stress_values  # 이미 GPa 단위
+        # 단위 변환: MPa → GPa
+        stress_values_gpa = np.array(stress_values) / 1000.0
+        stress_min, stress_max = np.nanmin(stress_values_gpa), np.nanmax(stress_values_gpa)
         
-        # 3D 볼륨 생성 (온도분석 페이지와 동일한 방식)
+        # 온도분석 페이지와 동일한 형식으로 3D 볼륨 생성
         fig = go.Figure(data=go.Volume(
             x=coords[:, 0], 
             y=coords[:, 1], 
@@ -1170,7 +1171,7 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_rows, tbl_data)
             value=stress_values_gpa,
             opacity=0.1, 
             surface_count=15, 
-            colorscale=[[0, 'blue'], [1, 'red']],  # 파스칼 단위에 맞는 색상 스케일
+            colorscale=[[0, 'blue'], [1, 'red']],
             colorbar=dict(title='Stress (GPa)', thickness=10),
             cmin=stress_min, 
             cmax=stress_max,
@@ -1178,7 +1179,6 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_rows, tbl_data)
         ))
         
         fig.update_layout(
-            title="3D 응력 분포 (볼륨)",
             uirevision='constant',
             scene=dict(
                 aspectmode='data',
@@ -1187,9 +1187,38 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_rows, tbl_data)
                 yaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
                 zaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
             ),
-            margin=dict(l=0, r=0, t=30, b=0),
-            height=500
+            margin=dict(l=0, r=0, t=0, b=0)
         )
+        
+        # 콘크리트 외곽선 추가 (온도분석 페이지와 동일)
+        try:
+            dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
+            poly_nodes = np.array(dims["nodes"])
+            poly_h = float(dims["h"])
+            
+            n = len(poly_nodes)
+            x0, y0 = poly_nodes[:,0], poly_nodes[:,1]
+            z0 = np.zeros(n)
+            x1, y1 = x0, y0
+            z1 = np.full(n, poly_h)
+            
+            # 하단 외곽선
+            fig.add_trace(go.Scatter3d(
+                x=np.append(x0, x0[0]), y=np.append(y0, y0[0]), z=np.append(z0, z0[0]),
+                mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
+            
+            # 상단 외곽선
+            fig.add_trace(go.Scatter3d(
+                x=np.append(x1, x1[0]), y=np.append(y1, y1[0]), z=np.append(z1, z1[0]),
+                mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
+            
+            # 세로 연결선
+            for i in range(n):
+                fig.add_trace(go.Scatter3d(
+                    x=[x0[i], x1[i]], y=[y0[i], y1[i]], z=[z0[i], z1[i]],
+                    mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
+        except Exception:
+            pass
         
         return fig, time_info
     
