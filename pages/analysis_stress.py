@@ -337,7 +337,7 @@ layout = dbc.Container(
                             html.Small("💡 행을 클릭하여 선택", className="text-muted mb-2 d-block"),
                             html.Div([
                                 dash_table.DataTable(
-                                    id="tbl-concrete",
+                                    id="tbl-concrete-stress",
                                     page_size=5,
                                     row_selectable="single",
                                     sort_action="native",
@@ -567,10 +567,10 @@ layout = dbc.Container(
 # ───────────────────── 콜백 함수들 ─────────────────────
 
 @callback(
-    Output("tbl-concrete", "data", allow_duplicate=True),
-    Output("tbl-concrete", "columns", allow_duplicate=True),
-    Output("tbl-concrete", "selected_rows", allow_duplicate=True),
-    Output("tbl-concrete", "style_data_conditional", allow_duplicate=True),
+    Output("tbl-concrete-stress", "data", allow_duplicate=True),
+    Output("tbl-concrete-stress", "columns", allow_duplicate=True),
+    Output("tbl-concrete-stress", "selected_rows", allow_duplicate=True),
+    Output("tbl-concrete-stress", "style_data_conditional", allow_duplicate=True),
     Output("btn-concrete-analyze-stress", "disabled", allow_duplicate=True),
     Output("btn-concrete-del-stress", "disabled", allow_duplicate=True),
     Output("time-slider", "min", allow_duplicate=True),
@@ -662,8 +662,8 @@ def update_project_info(project_info):
 @callback(
     Output("tab-content", "children", allow_duplicate=True),
     Input("tabs-main", "active_tab"),
-    Input("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    Input("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
     State("viewer-3d-store-stress", "data"),
     State("current-file-title-store-stress", "data"),
     prevent_initial_call="initial_duplicate",
@@ -844,8 +844,8 @@ def create_node_tab_content(concrete_pk):
     Input("slice-enable", "value"),
     Input("slice-axis", "value"),
     Input("slice-slider", "value"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    State("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
     prevent_initial_call=True
 )
 def update_stress_3d_view(field_name, preset, time_idx, slice_enable, slice_axis, slice_slider, selected_rows, tbl_data):
@@ -1068,8 +1068,8 @@ def update_node_graphs(selected_node, stress_data):
     Input("section-y-input", "value"),
     Input("section-z-input", "value"),
     Input("unified-colorbar-section-state-stress", "data"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    State("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
     prevent_initial_call="initial_duplicate",
 )
 def update_section_views(time_idx, x_val, y_val, z_val, unified_colorbar, selected_rows, tbl_data):
@@ -1256,8 +1256,8 @@ def update_section_views(time_idx, x_val, y_val, z_val, unified_colorbar, select
     Output("time-slider-section", "value", allow_duplicate=True),
     Output("time-slider-section", "marks", allow_duplicate=True),
     Input("tabs-main", "active_tab"),
-    Input("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    Input("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
     prevent_initial_call="initial_duplicate",
 )
 def init_section_slider_independent(active_tab, selected_rows, tbl_data):
@@ -1289,8 +1289,8 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
     Output("time-slider", "max", allow_duplicate=True),
     Output("time-slider", "value", allow_duplicate=True),
     Output("time-slider", "marks", allow_duplicate=True),
-    Input("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    Input("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
     prevent_initial_call="initial_duplicate",
 )
 def on_concrete_select(selected_rows, tbl_data):
@@ -1318,10 +1318,10 @@ def on_concrete_select(selected_rows, tbl_data):
     Output("stress-project-alert", "children", allow_duplicate=True),
     Output("stress-project-alert", "color", allow_duplicate=True),
     Output("stress-project-alert", "is_open", allow_duplicate=True),
-    Output("tbl-concrete", "data", allow_duplicate=True),
+    Output("tbl-concrete-stress", "data", allow_duplicate=True),
     Input("btn-concrete-analyze-stress", "n_clicks"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    State("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
     prevent_initial_call="initial_duplicate",
 )
 def start_analysis(n_clicks, selected_rows, tbl_data):
@@ -1354,7 +1354,7 @@ def start_analysis(n_clicks, selected_rows, tbl_data):
 @callback(
     Output("confirm-del-concrete-stress", "displayed", allow_duplicate=True),
     Input("btn-concrete-del-stress", "n_clicks"),
-    State("tbl-concrete", "selected_rows"),
+    State("tbl-concrete-stress", "selected_rows"),
     prevent_initial_call="initial_duplicate"
 )
 def ask_delete_concrete(n, sel):
@@ -1367,10 +1367,10 @@ def ask_delete_concrete(n, sel):
     Output("stress-project-alert", "children", allow_duplicate=True),
     Output("stress-project-alert", "color", allow_duplicate=True),
     Output("stress-project-alert", "is_open", allow_duplicate=True),
-    Output("tbl-concrete", "data", allow_duplicate=True),
+    Output("tbl-concrete-stress", "data", allow_duplicate=True),
     Input("confirm-del-concrete-stress", "submit_n_clicks"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    State("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
     prevent_initial_call="initial_duplicate",
 )
 def delete_concrete_confirm(_click, sel, tbl_data):
