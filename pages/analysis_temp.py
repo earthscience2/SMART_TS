@@ -38,7 +38,7 @@ import dash_vtk
 import api_db
 from utils.encryption import parse_project_key_from_url
 
-register_page(__name__, path="/temp", title="온도 분석")
+# register_page(__name__, path="/temp", title="온도 분석")  # 임시 비활성화
 
 
 
@@ -990,7 +990,20 @@ def on_concrete_select_tmp(selected_rows, pathname, tbl_data):
         
         return True, True, "", slider_min, slider_max, slider_value, slider_marks
     
-    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    # 안전한 배열 접근
+    if len(selected_rows) == 0:
+        print("DEBUG: selected_rows가 비어있음")
+        return True, True, "", 0, 5, 0, {}
+    
+    if len(tbl_data) == 0:
+        print("DEBUG: tbl_data가 비어있음")
+        return True, True, "", 0, 5, 0, {}
+    
+    try:
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    except (IndexError, KeyError) as e:
+        print(f"DEBUG: 데이터 접근 오류: {e}")
+        return True, True, "", 0, 5, 0, {}
     is_active = row["activate"] == "활성"
     has_sensors = row["has_sensors"]
     concrete_pk = row["concrete_pk"]
