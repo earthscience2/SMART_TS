@@ -163,19 +163,91 @@ layout = dbc.Container(
                 })
             ], md=6),
             
-            # 오른쪽 메인 콘텐츠 영역
+                        # 오른쪽 메인 콘텐츠 영역
             dbc.Col([
                 html.Div([
-                    html.H4("응력 분석", className="mb-3"),
-                    html.P("콘크리트를 선택하면 응력 분석 기능이 여기에 표시됩니다.", className="text-muted")
-                ], style={
-                    "backgroundColor": "white",
-                    "padding": "20px",
-                    "borderRadius": "12px",
-                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
-                    "border": "1px solid #e2e8f0",
-                    "minHeight": "calc(100vh - 200px)"
-                })
+                    # 탭 메뉴 (노션 스타일)
+                    html.Div([
+                        dbc.Tabs([
+                            dbc.Tab(
+                                label="입체", 
+                                tab_id="tab-3d-stress",
+                                tab_style={
+                                    "marginLeft": "2px",
+                                    "marginRight": "2px",
+                                    "border": "none",
+                                    "borderRadius": "6px 6px 0 0",
+                                    "backgroundColor": "#f8fafc",
+                                    "color": "#1f2937",
+                                    "fontWeight": "500"
+                                },
+                                active_tab_style={
+                                    "backgroundColor": "white",
+                                    "border": "1px solid #e2e8f0",
+                                    "borderBottom": "1px solid white",
+                                    "color": "#1f2937",
+                                    "fontWeight": "600"
+                                }
+                            ),
+                            dbc.Tab(
+                                label="단면", 
+                                tab_id="tab-section-stress",
+                                tab_style={
+                                    "marginLeft": "2px",
+                                    "marginRight": "2px",
+                                    "border": "none",
+                                    "borderRadius": "6px 6px 0 0",
+                                    "backgroundColor": "#f8fafc",
+                                    "color": "#1f2937",
+                                    "fontWeight": "500"
+                                },
+                                active_tab_style={
+                                    "backgroundColor": "white",
+                                    "border": "1px solid #e2e8f0",
+                                    "borderBottom": "1px solid white",
+                                    "color": "#1f2937",
+                                    "fontWeight": "600"
+                                }
+                            ),
+                            dbc.Tab(
+                                label="노드별", 
+                                tab_id="tab-node-stress",
+                                tab_style={
+                                    "marginLeft": "2px",
+                                    "marginRight": "2px",
+                                    "border": "none",
+                                    "borderRadius": "6px 6px 0 0",
+                                    "backgroundColor": "#f8fafc",
+                                    "color": "#1f2937",
+                                    "fontWeight": "500"
+                                },
+                                active_tab_style={
+                                    "backgroundColor": "white",
+                                    "border": "1px solid #e2e8f0",
+                                    "borderBottom": "1px solid white",
+                                    "color": "#1f2937",
+                                    "fontWeight": "600"
+                                }
+                            )
+                        ], id="tabs-main-stress", active_tab="tab-3d-stress", className="mb-0")
+                    ], style={
+                        "backgroundColor": "#f8fafc",
+                        "padding": "8px 8px 0 8px",
+                        "borderRadius": "8px 8px 0 0",
+                        "border": "1px solid #e2e8f0",
+                        "borderBottom": "none"
+                    }),
+                    
+                    # 탭 콘텐츠 영역
+                    html.Div(id="tab-content-stress", style={
+                        "backgroundColor": "white",
+                        "border": "1px solid #e2e8f0",
+                        "borderTop": "none",
+                        "borderRadius": "0 0 8px 8px",
+                        "padding": "20px",
+                        "minHeight": "calc(100vh - 200px)"
+                    })
+                ])
             ], md=6)
         ], className="g-4")
     ]
@@ -370,4 +442,54 @@ def update_project_info_stress(project_info, pathname):
     if not project_info:
         return "프로젝트를 선택하세요."
     
-    return f"📋 {project_info['name']}"
+    return f"📁 현재 프로젝트: {project_info['name']}"
+
+@callback(
+    Output("tab-content-stress", "children"),
+    Input("tabs-main-stress", "active_tab"),
+    Input("tbl-concrete-stress", "selected_rows"),
+    Input("project-url", "pathname"),
+    State("tbl-concrete-stress", "data"),
+    prevent_initial_call=True,
+)
+def switch_tab_stress(active_tab, selected_rows, pathname, tbl_data):
+    """탭 전환 시 해당 탭의 콘텐츠를 표시합니다."""
+    # 응력 분석 페이지에서만 실행
+    if '/stress' not in pathname:
+        raise PreventUpdate
+    
+    if not selected_rows or not tbl_data:
+        return html.Div("콘크리트를 선택하세요.", className="text-center text-muted mt-5")
+    
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    
+    if active_tab == "tab-3d-stress":
+        return create_3d_tab_content_stress(concrete_pk)
+    elif active_tab == "tab-section-stress":
+        return create_section_tab_content_stress(concrete_pk)
+    elif active_tab == "tab-node-stress":
+        return create_node_tab_content_stress(concrete_pk)
+    else:
+        return html.Div("알 수 없는 탭입니다.", className="text-center text-muted mt-5")
+
+def create_3d_tab_content_stress(concrete_pk):
+    """입체 탭 콘텐츠를 생성합니다."""
+    return html.Div([
+        html.H4("3D 응력 분석", className="mb-3"),
+        html.P("3D 응력 분석 기능이 여기에 표시됩니다.", className="text-muted")
+    ])
+
+def create_section_tab_content_stress(concrete_pk):
+    """단면 탭 콘텐츠를 생성합니다."""
+    return html.Div([
+        html.H4("단면 응력 분석", className="mb-3"),
+        html.P("단면 응력 분석 기능이 여기에 표시됩니다.", className="text-muted")
+    ])
+
+def create_node_tab_content_stress(concrete_pk):
+    """노드별 탭 콘텐츠를 생성합니다."""
+    return html.Div([
+        html.H4("노드별 응력 분석", className="mb-3"),
+        html.P("노드별 응력 분석 기능이 여기에 표시됩니다.", className="text-muted")
+    ])
