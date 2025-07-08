@@ -18,6 +18,7 @@ from dash import (
 )
 import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
+import dash
 from scipy.interpolate import griddata
 import ast
 import json
@@ -581,7 +582,7 @@ layout = dbc.Container(
     Output("project-info-store-stress", "data", allow_duplicate=True),
     Input("project-url", "search"),
     Input("project-url", "pathname"),
-    prevent_initial_call="initial_duplicate",
+    prevent_initial_call=True,
 )
 def load_concrete_data(search, pathname):
     """프로젝트 정보를 로드하고 콘크리트 목록을 표시합니다."""
@@ -650,7 +651,7 @@ def load_concrete_data(search, pathname):
 @callback(
     Output("current-project-info", "children", allow_duplicate=True),
     Input("project-info-store-stress", "data"),
-    prevent_initial_call="initial_duplicate",
+    prevent_initial_call=True,
 )
 def update_project_info(project_info):
     """프로젝트 정보를 표시합니다."""
@@ -666,7 +667,7 @@ def update_project_info(project_info):
     State("tbl-concrete-stress", "data"),
     State("viewer-3d-store-stress", "data"),
     State("current-file-title-store-stress", "data"),
-    prevent_initial_call="initial_duplicate",
+    prevent_initial_call=True,
 )
 def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_title):
     """탭 전환 시 해당 탭의 콘텐츠를 표시합니다."""
@@ -1076,7 +1077,7 @@ def update_node_graphs(selected_node, stress_data):
     Input("unified-colorbar-section-state-stress", "data"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
-    prevent_initial_call="initial_duplicate",
+    prevent_initial_call=True,
 )
 def update_section_views(active_tab, time_idx, x_val, y_val, z_val, unified_colorbar, selected_rows, tbl_data):
     """단면 뷰어들을 업데이트합니다."""
@@ -1268,7 +1269,7 @@ def update_section_views(active_tab, time_idx, x_val, y_val, z_val, unified_colo
     Input("tabs-main", "active_tab"),
     Input("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
-    prevent_initial_call="initial_duplicate",
+    prevent_initial_call=True,
 )
 def init_section_slider_independent(active_tab, selected_rows, tbl_data):
     """단면 탭용 독립 슬라이더를 초기화합니다."""
@@ -1301,7 +1302,7 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
     Output("time-slider", "marks", allow_duplicate=True),
     Input("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
-    prevent_initial_call="initial_duplicate",
+    prevent_initial_call=True,
 )
 def on_concrete_select(selected_rows, tbl_data):
     """콘크리트 선택 시 슬라이더를 초기화합니다."""
@@ -1332,7 +1333,7 @@ def on_concrete_select(selected_rows, tbl_data):
     Input("btn-concrete-analyze-stress", "n_clicks"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
-    prevent_initial_call="initial_duplicate",
+    prevent_initial_call=True,
 )
 def start_analysis(n_clicks, selected_rows, tbl_data):
     """응력 분석을 시작합니다."""
@@ -1365,7 +1366,7 @@ def start_analysis(n_clicks, selected_rows, tbl_data):
     Output("confirm-del-concrete-stress", "displayed", allow_duplicate=True),
     Input("btn-concrete-del-stress", "n_clicks"),
     State("tbl-concrete-stress", "selected_rows"),
-    prevent_initial_call="initial_duplicate"
+    prevent_initial_call=True
 )
 def ask_delete_concrete(n, sel):
     """콘크리트 삭제 확인 다이얼로그를 표시합니다."""
@@ -1381,7 +1382,7 @@ def ask_delete_concrete(n, sel):
     Input("confirm-del-concrete-stress", "submit_n_clicks"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
-    prevent_initial_call="initial_duplicate",
+    prevent_initial_call=True,
 )
 def delete_concrete_confirm(_click, sel, tbl_data):
     """콘크리트 삭제를 확인합니다."""
