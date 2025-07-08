@@ -103,19 +103,26 @@ def make_concrete_fig(nodes: list[list[float]], h: float) -> go.Figure:
 def is_point_in_polygon(x: float, y: float, nodes: list[list[float]]) -> bool:
     """
     점 (x, y)가 폴리곤 내부에 있는지 확인하는 함수
-    Ray casting 알고리즘 사용
+    간단하고 안정적인 Ray casting 알고리즘 사용
     """
     n = len(nodes)
     inside = False
+    
+    # 부동소수점 오차를 고려한 작은 값
+    epsilon = 1e-6
     
     for i in range(n):
         j = (i + 1) % n
         xi, yi = nodes[i]
         xj, yj = nodes[j]
         
-        # 점이 엣지의 y 범위 안에 있고, 엣지가 점의 오른쪽에 있는지 확인
-        if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi) + xi):
-            inside = not inside
+        # 점이 엣지의 y 범위 안에 있는지 확인
+        if (yi <= y and y < yj) or (yj <= y and y < yi):
+            # 점이 엣지의 오른쪽에 있는지 확인
+            if abs(yj - yi) > epsilon:  # 수평선이 아닌 경우
+                intersect_x = xi + (xj - xi) * (y - yi) / (yj - yi)
+                if x <= intersect_x:
+                    inside = not inside
     
     return inside
 
@@ -123,7 +130,7 @@ def is_point_in_concrete(x: float, y: float, z: float, nodes: list[list[float]],
     """
     점 (x, y, z)가 콘크리트 내부에 있는지 확인하는 함수
     """
-    # Z 좌표가 콘크리트 높이 범위 내에 있는지 확인
+    # Z 좌표가 콘크리트 높이 범위 내에 있는지 확인 (경계 포함)
     if z < 0 or z > h:
         return False
     
@@ -326,7 +333,7 @@ layout = html.Div([
                 dbc.Col([
                     html.Div([
                         html.Div([
-                            html.H6("🔍 센서 위치", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                            html.H6("🔍 센서 위치", className="mb-2 text-secondary fw-bold"),
                             html.Small("💡 마우스로 회전/줌/이동이 가능합니다", className="text-muted mb-2 d-block", style={"fontSize": "0.75rem"}),
                             dcc.Graph(
                                 id="viewer-sensor",
@@ -982,15 +989,6 @@ def add_sensor_preview(_, conc_pk, sensor_selection, x_val, y_val, z_val, show_l
     if not is_point_in_concrete(x_val, y_val, z_val, conc_nodes, conc_h):
         return dash.no_update, "센서 위치가 콘크리트 내부에 있어야 합니다", True
 
-    # 1) 콘크리트 정보 로드 & 기본 Mesh 그리기
-    try:
-        conc_row = api_db.get_concrete_data().query("concrete_pk == @conc_pk").iloc[0]
-        conc_dims = ast.literal_eval(conc_row["dims"])
-        conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
-        fig_conc = make_concrete_fig(conc_nodes, conc_h)
-    except Exception:
-        return go.Figure(), "콘크리트 정보를 불러올 수 없음", True
-
     # 2) 현재 콘크리트에 속한 기존 센서 정보를 모두 가져와서 그리기 (파란 점, 크기 4)
     all_xs, all_ys, all_zs = [], [], []
     for idx, row in df_same.iterrows():
@@ -1374,16 +1372,6 @@ def edit_sensor_preview(n_clicks, x_val, y_val, z_val, conc_pk, sensor_pk):
     # 콘크리트 내부에 있는지 확인
     if not is_point_in_concrete(x_val, y_val, z_val, conc_nodes, conc_h):
         return dash.no_update, "센서 위치가 콘크리트 내부에 있어야 합니다", True
-    
-    # 1) 콘크리트 정보 로드 & 기본 Mesh 그리기
-    try:
-        conc_row = api_db.get_concrete_data().query("concrete_pk == @conc_pk").iloc[0]
-        conc_dims = ast.literal_eval(conc_row["dims"])
-        conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
-        fig_conc = make_concrete_fig(conc_nodes, conc_h)
-    except Exception:
-        # 콘크리트 정보 로드 실패 시 빈 Figure와 에러 토스트 반환
-        return dash.no_update, "콘크리트 정보를 불러올 수 없음", True
 
     # 2) 수정 중인 센서를 제외한 "나머지 센서들"을 파란 점으로 먼저 그리기
     df_sensor_full = api_db.get_sensors_data()
