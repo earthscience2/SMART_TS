@@ -838,6 +838,7 @@ def create_node_tab_content(concrete_pk):
     Output("time-slider", "value", allow_duplicate=True),
     Output("time-slider", "marks", allow_duplicate=True),
     Output("stress-data-store", "data"),
+    Input("tabs-main", "active_tab"),
     Input("stress-field-dropdown", "value"),
     Input("stress-preset-dropdown", "value"),
     Input("time-slider", "value"),
@@ -848,8 +849,12 @@ def create_node_tab_content(concrete_pk):
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True
 )
-def update_stress_3d_view(field_name, preset, time_idx, slice_enable, slice_axis, slice_slider, selected_rows, tbl_data):
+def update_stress_3d_view(active_tab, field_name, preset, time_idx, slice_enable, slice_axis, slice_slider, selected_rows, tbl_data):
     """3D 응력 뷰어를 업데이트합니다."""
+    # 3D 탭이 활성화되지 않았으면 실행하지 않음
+    if active_tab != "tab-3d":
+        raise PreventUpdate
+    
     if not selected_rows or not tbl_data:
         return html.Html("콘크리트를 선택하세요."), "", 0, 1, 0, {}, None
     
@@ -1063,6 +1068,7 @@ def update_node_graphs(selected_node, stress_data):
     Output("section-y-input", "min", allow_duplicate=True), Output("section-y-input", "max", allow_duplicate=True), Output("section-y-input", "value", allow_duplicate=True),
     Output("section-z-input", "min", allow_duplicate=True), Output("section-z-input", "max", allow_duplicate=True), Output("section-z-input", "value", allow_duplicate=True),
     Output("current-file-title-store-stress", "data", allow_duplicate=True),
+    Input("tabs-main", "active_tab"),
     Input("time-slider-section", "value"),
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
@@ -1072,8 +1078,12 @@ def update_node_graphs(selected_node, stress_data):
     State("tbl-concrete-stress", "data"),
     prevent_initial_call="initial_duplicate",
 )
-def update_section_views(time_idx, x_val, y_val, z_val, unified_colorbar, selected_rows, tbl_data):
+def update_section_views(active_tab, time_idx, x_val, y_val, z_val, unified_colorbar, selected_rows, tbl_data):
     """단면 뷰어들을 업데이트합니다."""
+    # 단면 탭이 활성화되지 않았으면 실행하지 않음
+    if active_tab != "tab-section":
+        raise PreventUpdate
+    
     if not selected_rows or not tbl_data:
         return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, ""
     
