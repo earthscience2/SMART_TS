@@ -581,7 +581,7 @@ layout = dbc.Container(
     Output("project-info-store-stress", "data", allow_duplicate=True),
     Input("project-url", "search"),
     Input("project-url", "pathname"),
-    prevent_initial_call=False,
+    prevent_initial_call="initial_duplicate",
 )
 def load_concrete_data(search, pathname):
     """프로젝트 정보를 로드하고 콘크리트 목록을 표시합니다."""
@@ -1062,7 +1062,7 @@ def update_node_graphs(selected_node, stress_data):
     Output("section-x-input", "min", allow_duplicate=True), Output("section-x-input", "max", allow_duplicate=True), Output("section-x-input", "value", allow_duplicate=True),
     Output("section-y-input", "min", allow_duplicate=True), Output("section-y-input", "max", allow_duplicate=True), Output("section-y-input", "value", allow_duplicate=True),
     Output("section-z-input", "min", allow_duplicate=True), Output("section-z-input", "max", allow_duplicate=True), Output("section-z-input", "value", allow_duplicate=True),
-    Output("current-file-title-store", "data", allow_duplicate=True),
+    Output("current-file-title-store-stress", "data", allow_duplicate=True),
     Input("time-slider-section", "value"),
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
@@ -1284,7 +1284,7 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
 @callback(
     Output("btn-concrete-analyze-stress", "disabled", allow_duplicate=True),
     Output("btn-concrete-del-stress", "disabled", allow_duplicate=True),
-    Output("current-file-title-store", "data", allow_duplicate=True),
+    Output("current-file-title-store-stress", "data", allow_duplicate=True),
     Output("time-slider", "min", allow_duplicate=True),
     Output("time-slider", "max", allow_duplicate=True),
     Output("time-slider", "value", allow_duplicate=True),
