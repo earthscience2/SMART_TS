@@ -246,14 +246,15 @@ def load_concrete_data_stress(search, pathname):
         # 상태 결정 (정렬을 위해 우선순위도 함께 설정)
         if row["activate"] == 1:  # 활성
             if has_frd:
-                status = "응력 분석 가능"
+                # 분석 상태 확인 (임시로 모든 FRD 파일이 있는 경우를 분석중으로 설정)
+                status = "분석중"
                 status_sort = 1  # 첫 번째 우선순위
             else:
-                status = "FRD 파일 없음"
+                status = "설정중"
                 status_sort = 2  # 두 번째 우선순위
         else:  # 비활성 (activate == 0)
-            status = "비활성"
-            status_sort = 3  # 세 번째 우선순위
+            status = "설정중"
+            status_sort = 2  # 두 번째 우선순위
         
         # 타설날짜 포맷팅
         pour_date = "N/A"
@@ -317,34 +318,24 @@ def load_concrete_data_stress(search, pathname):
     
     # 테이블 스타일 설정 (문자열 비교 기반 색상)
     style_data_conditional = [
-        # 응력 분석 가능 상태 (초록색)
+        # 분석중 상태 (파란색)
         {
             'if': {
-                'filter_query': '{status} = "응력 분석 가능"',
+                'filter_query': '{status} = "분석중"',
                 'column_id': 'status'
             },
-            'backgroundColor': '#e8f5e8',
-            'color': '#2e7d32',
+            'backgroundColor': '#dbeafe',
+            'color': '#1e40af',
             'fontWeight': 'bold'
         },
-        # FRD 파일 없음 상태 (주황색)
+        # 설정중 상태 (주황색)
         {
             'if': {
-                'filter_query': '{status} = "FRD 파일 없음"',
+                'filter_query': '{status} = "설정중"',
                 'column_id': 'status'
             },
             'backgroundColor': '#fff3e0',
             'color': '#f57c00',
-            'fontWeight': 'bold'
-        },
-        # 비활성 상태 (회색)
-        {
-            'if': {
-                'filter_query': '{status} = "비활성"',
-                'column_id': 'status'
-            },
-            'backgroundColor': '#f5f5f5',
-            'color': '#6c757d',
             'fontWeight': 'bold'
         }
     ]
@@ -359,7 +350,7 @@ def load_concrete_data_stress(search, pathname):
         }
     ])
     
-    # 상태별 기본 정렬 적용 (응력 분석 가능 → FRD 파일 없음 → 비활성)
+    # 상태별 기본 정렬 적용 (분석중 → 설정중)
     if table_data:
         table_data = sorted(table_data, key=lambda x: x.get('status_sort', 999))
     
