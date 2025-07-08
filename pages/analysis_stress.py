@@ -601,8 +601,12 @@ layout = dbc.Container(
 )
 def load_concrete_data_stress(search, pathname):
     """프로젝트 정보를 로드하고 콘크리트 목록을 표시합니다."""
+    # 디버깅: 응력분석 페이지 로드 확인
+    print(f"DEBUG STRESS LOAD: pathname={pathname}, search={search}")
+    
     # 응력 분석 페이지에서만 실행
     if '/stress' not in pathname:
+        print(f"DEBUG: 응력분석 페이지가 아님, PreventUpdate")
         raise PreventUpdate
     
     # URL에서 프로젝트 정보 추출 (암호화된 URL 지원)
