@@ -1127,7 +1127,12 @@ def create_node_tab_content_stress(concrete_pk):
 )
 def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, selected_rows, tbl_data):
     """3D 응력 시각화를 업데이트합니다."""
+    print(f"=== 3D 응력 뷰어 업데이트 시작 ===")
+    print(f"time_idx: {time_idx}, selected_component: {selected_component}")
+    print(f"selected_rows: {selected_rows}, tbl_data 길이: {len(tbl_data) if tbl_data else 0}")
+    
     if not selected_rows or not tbl_data:
+        print("콘크리트가 선택되지 않음")
         return go.Figure().add_annotation(
             text="콘크리트를 선택하세요.",
             xref="paper", yref="paper",
@@ -1136,10 +1141,14 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
+    concrete_name = row["name"]
+    print(f"선택된 콘크리트: {concrete_name} (PK: {concrete_pk})")
     
     # FRD 파일 목록 가져오기
     frd_files = get_frd_files(concrete_pk)
+    print(f"FRD 파일 개수: {len(frd_files)}")
     if not frd_files:
+        print("FRD 파일이 없음")
         return go.Figure().add_annotation(
             text="FRD 파일이 없습니다.",
             xref="paper", yref="paper",
@@ -1150,10 +1159,18 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
     if time_idx is not None and time_idx < len(frd_files):
         selected_file = frd_files[time_idx]
         filename = os.path.basename(selected_file)
+        print(f"선택된 파일: {filename}")
         
         # FRD 파일에서 응력 데이터 읽기
         stress_data = read_frd_stress_data(selected_file)
+        print(f"응력 데이터 읽기 결과: {stress_data is not None}")
+        if stress_data:
+            print(f"좌표 개수: {len(stress_data.get('coordinates', []))}")
+            print(f"응력 값 개수: {len(stress_data.get('stress_values', []))}")
+            print(f"응력 성분: {list(stress_data.get('stress_components', {}).keys())}")
+        
         if not stress_data or not stress_data['coordinates'] or not stress_data['stress_values']:
+            print("유효한 응력 데이터가 없음")
             return go.Figure().add_annotation(
                 text="유효한 응력 데이터가 없습니다.",
                 xref="paper", yref="paper",
@@ -1162,6 +1179,10 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
         
         # 좌표와 응력 값 추출
         coords = np.array(stress_data['coordinates'])
+        print(f"좌표 배열 형태: {coords.shape}")
+        print(f"좌표 범위 - X: {coords[:, 0].min():.3f} ~ {coords[:, 0].max():.3f}")
+        print(f"좌표 범위 - Y: {coords[:, 1].min():.3f} ~ {coords[:, 1].max():.3f}")
+        print(f"좌표 범위 - Z: {coords[:, 2].min():.3f} ~ {coords[:, 2].max():.3f}")
         
         # 선택된 응력 성분에 따라 값 추출
         if selected_component == "von_mises":
@@ -1176,6 +1197,10 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
                 # fallback to von Mises
                 stress_values = list(stress_data['stress_values'][0].values())
                 component_name = "von Mises 응력"
+        
+        print(f"선택된 응력 성분: {component_name}")
+        print(f"응력 값 개수: {len(stress_values)}")
+        print(f"응력 값 범위 (Pa): {min(stress_values):.2e} ~ {max(stress_values):.2e}")
         
         # 데이터 검증: 좌표와 응력 값의 개수가 일치하는지 확인
         if len(coords) != len(stress_values):
@@ -1223,6 +1248,7 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
         # 단위 변환: Pa → GPa
         stress_values_gpa = np.array(stress_values) / 1e9
         stress_min, stress_max = np.nanmin(stress_values_gpa), np.nanmax(stress_values_gpa)
+        print(f"응력 값 범위 (GPa): {stress_min:.6f} ~ {stress_max:.6f}")
         
         # 응력 통계 계산 (GPa 단위)
         if stress_values:
@@ -1233,22 +1259,61 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
         else:
             time_info = formatted_time
         
-        # 온도분석 페이지와 동일한 형식으로 3D 등응력면 생성
-        fig = go.Figure(data=go.Volume(
-            x=coords[:, 0], 
-            y=coords[:, 1], 
-            z=coords[:, 2], 
-            value=stress_values_gpa,
-            opacity=0.1, 
-            surface_count=15, 
-            colorscale=[[0, 'blue'], [1, 'red']],
-            colorbar=dict(title=f'{component_name} (GPa)', thickness=10),
-            cmin=stress_min, 
-            cmax=stress_max,
-            showscale=True,
-            hoverinfo='skip',
-            name=f'{component_name} 볼륨'
-        ))
+        # 좌표 정규화 (모델링 비율 문제 해결)
+        coords_normalized = coords.copy()
+        
+        # 각 축별로 정규화
+        for axis in range(3):
+            axis_min, axis_max = coords[:, axis].min(), coords[:, axis].max()
+            if axis_max > axis_min:
+                coords_normalized[:, axis] = (coords[:, axis] - axis_min) / (axis_max - axis_min)
+        
+        print(f"정규화된 좌표 범위 - X: {coords_normalized[:, 0].min():.3f} ~ {coords_normalized[:, 0].max():.3f}")
+        print(f"정규화된 좌표 범위 - Y: {coords_normalized[:, 1].min():.3f} ~ {coords_normalized[:, 1].max():.3f}")
+        print(f"정규화된 좌표 범위 - Z: {coords_normalized[:, 2].min():.3f} ~ {coords_normalized[:, 2].max():.3f}")
+        
+        # 3D 시각화 생성 (Volume 또는 Scatter3d 선택)
+        # Volume이 보이지 않는 경우를 대비해 Scatter3d도 준비
+        try:
+            # 먼저 Volume으로 시도
+            fig = go.Figure(data=go.Volume(
+                x=coords_normalized[:, 0], 
+                y=coords_normalized[:, 1], 
+                z=coords_normalized[:, 2], 
+                value=stress_values_gpa,
+                opacity=0.1, 
+                surface_count=15, 
+                colorscale=[[0, 'blue'], [1, 'red']],
+                colorbar=dict(title=f'{component_name} (GPa)', thickness=10),
+                cmin=stress_min, 
+                cmax=stress_max,
+                showscale=True,
+                hoverinfo='skip',
+                name=f'{component_name} 볼륨'
+            ))
+            print("Volume 시각화 생성 성공")
+        except Exception as e:
+            print(f"Volume 시각화 실패, Scatter3d로 대체: {e}")
+            # Volume이 실패하면 Scatter3d로 대체
+            fig = go.Figure(data=go.Scatter3d(
+                x=coords_normalized[:, 0],
+                y=coords_normalized[:, 1],
+                z=coords_normalized[:, 2],
+                mode='markers',
+                marker=dict(
+                    size=3,
+                    color=stress_values_gpa,
+                    colorscale=[[0, 'blue'], [1, 'red']],
+                    colorbar=dict(title=f'{component_name} (GPa)', thickness=10),
+                    cmin=stress_min,
+                    cmax=stress_max,
+                    showscale=True
+                ),
+                text=[f"노드 {i+1}<br>{component_name}: {val:.4f} GPa" for i, val in enumerate(stress_values_gpa)],
+                hoverinfo='text',
+                name=f'{component_name} 산점도'
+            ))
+            print("Scatter3d 시각화 생성 성공")
         
         fig.update_layout(
             uirevision='constant',
@@ -1262,11 +1327,16 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
             margin=dict(l=0, r=0, t=0, b=0)
         )
         
-        # 콘크리트 외곽선 추가 (온도분석 페이지와 동일)
+        # 콘크리트 외곽선 추가 (정규화된 좌표에 맞게)
         try:
             dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
             poly_nodes = np.array(dims["nodes"])
             poly_h = float(dims["h"])
+            
+            # 원본 좌표 범위
+            orig_x_min, orig_x_max = coords[:, 0].min(), coords[:, 0].max()
+            orig_y_min, orig_y_max = coords[:, 1].min(), coords[:, 1].max()
+            orig_z_min, orig_z_max = coords[:, 2].min(), coords[:, 2].max()
             
             n = len(poly_nodes)
             x0, y0 = poly_nodes[:,0], poly_nodes[:,1]
@@ -1274,26 +1344,48 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
             x1, y1 = x0, y0
             z1 = np.full(n, poly_h)
             
+            # 외곽선 좌표도 정규화
+            if orig_x_max > orig_x_min:
+                x0_norm = (x0 - orig_x_min) / (orig_x_max - orig_x_min)
+                x1_norm = (x1 - orig_x_min) / (orig_x_max - orig_x_min)
+            else:
+                x0_norm, x1_norm = x0, x1
+                
+            if orig_y_max > orig_y_min:
+                y0_norm = (y0 - orig_y_min) / (orig_y_max - orig_y_min)
+                y1_norm = (y1 - orig_y_min) / (orig_y_max - orig_y_min)
+            else:
+                y0_norm, y1_norm = y0, y1
+                
+            if orig_z_max > orig_z_min:
+                z0_norm = (z0 - orig_z_min) / (orig_z_max - orig_z_min)
+                z1_norm = (z1 - orig_z_min) / (orig_z_max - orig_z_min)
+            else:
+                z0_norm, z1_norm = z0, z1
+            
             # 하단 외곽선
             fig.add_trace(go.Scatter3d(
-                x=np.append(x0, x0[0]), y=np.append(y0, y0[0]), z=np.append(z0, z0[0]),
+                x=np.append(x0_norm, x0_norm[0]), y=np.append(y0_norm, y0_norm[0]), z=np.append(z0_norm, z0_norm[0]),
                 mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
             
             # 상단 외곽선
             fig.add_trace(go.Scatter3d(
-                x=np.append(x1, x1[0]), y=np.append(y1, y1[0]), z=np.append(z1, z1[0]),
+                x=np.append(x1_norm, x1_norm[0]), y=np.append(y1_norm, y1_norm[0]), z=np.append(z1_norm, z1_norm[0]),
                 mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
             
             # 세로 연결선
             for i in range(n):
                 fig.add_trace(go.Scatter3d(
-                    x=[x0[i], x1[i]], y=[y0[i], y1[i]], z=[z0[i], z1[i]],
+                    x=[x0_norm[i], x1_norm[i]], y=[y0_norm[i], y1_norm[i]], z=[z0_norm[i], z1_norm[i]],
                     mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
-        except Exception:
+        except Exception as e:
+            print(f"외곽선 추가 오류: {e}")
             pass
         
+        print("=== 3D 응력 뷰어 업데이트 완료 ===")
         return fig, time_info
     
+    print("시간 인덱스가 유효하지 않음")
     return go.Figure().add_annotation(
         text="시간 인덱스가 유효하지 않습니다.",
         xref="paper", yref="paper",
