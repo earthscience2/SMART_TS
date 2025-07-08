@@ -281,11 +281,16 @@ def read_frd_stress_data(frd_path):
             'times': [],
             'nodes': [],
             'coordinates': [],
-            'stress_values': []
+            'stress_values': [],
+            'stress_components': {}  # 각 응력 성분별 데이터 저장
         }
         
         node_coords = {}
         stress_values = {}
+        stress_components = {
+            'SXX': {}, 'SYY': {}, 'SZZ': {}, 
+            'SXY': {}, 'SYZ': {}, 'SZX': {}
+        }
         current_block = None
         
         for i, line in enumerate(lines):
@@ -331,6 +336,14 @@ def read_frd_stress_data(frd_path):
                                 syz = float(stress_nums[4])
                                 sxz = float(stress_nums[5])
                                 
+                                # 각 응력 성분 저장
+                                stress_components['SXX'][node_id] = sxx
+                                stress_components['SYY'][node_id] = syy
+                                stress_components['SZZ'][node_id] = szz
+                                stress_components['SXY'][node_id] = sxy
+                                stress_components['SYZ'][node_id] = syz
+                                stress_components['SZX'][node_id] = sxz
+                                
                                 # von Mises 응력 계산
                                 von_mises = np.sqrt(0.5 * ((sxx - syy)**2 + (syy - szz)**2 + (szz - sxx)**2 + 6 * (sxy**2 + syz**2 + sxz**2)))
                                 stress_values[node_id] = von_mises
@@ -357,6 +370,12 @@ def read_frd_stress_data(frd_path):
                 stress_data['coordinates'] = [node_coords[i] for i in sorted(common_node_ids)]
                 stress_data['nodes'] = sorted(common_node_ids)
                 stress_data['stress_values'] = [{i: stress_values[i] for i in common_node_ids}]
+                
+                # 각 응력 성분별 데이터 저장
+                for component in stress_components:
+                    stress_data['stress_components'][component] = {
+                        i: stress_components[component][i] for i in common_node_ids
+                    }
         
         # 시간 정보 파싱
         try:
@@ -679,8 +698,27 @@ def create_3d_tab_content_stress(concrete_pk):
         
         frd_file_list = html.Div(frd_file_list)
     
-    # 3D 시각화 생성
-    stress_3d_figure = create_3d_stress_figure(all_stress_data)
+            # 3D 시각화 생성
+        stress_3d_figure = create_3d_stress_figure(all_stress_data)
+        
+        # 응력 성분 선택 드롭다운
+        stress_component_dropdown = dbc.Select(
+            id="stress-component-selector",
+            options=[
+                {"label": "von Mises 응력", "value": "von_mises"},
+                {"label": "SXX (X방향 정응력)", "value": "SXX"},
+                {"label": "SYY (Y방향 정응력)", "value": "SYY"},
+                {"label": "SZZ (Z방향 정응력)", "value": "SZZ"},
+                {"label": "SXY (XY면 전단응력)", "value": "SXY"},
+                {"label": "SYZ (YZ면 전단응력)", "value": "SYZ"},
+                {"label": "SZX (ZX면 전단응력)", "value": "SZX"},
+            ],
+            value="von_mises",
+            style={
+                "width": "200px",
+                "marginBottom": "12px"
+            }
+        )
     
     return html.Div([
         # 시간 컨트롤 섹션 (노션 스타일)
@@ -874,37 +912,54 @@ def create_3d_tab_content_stress(concrete_pk):
                     "marginBottom": "16px",
                     "fontSize": "16px"
                 }),
-                # 응력바 통일 토글 스위치
+                # 응력 성분 선택 및 응력바 통일 설정
                 html.Div([
-                    html.Label("전체 응력바 통일", style={
-                        "fontWeight": "500",
-                        "color": "#374151",
-                        "marginBottom": "8px",
-                        "fontSize": "13px",
-                        "display": "inline-block",
-                        "marginRight": "8px"
+                    # 응력 성분 선택
+                    html.Div([
+                        html.Label("응력 성분 선택", style={
+                            "fontWeight": "500",
+                            "color": "#374151",
+                            "marginBottom": "8px",
+                            "fontSize": "13px",
+                            "display": "block"
+                        }),
+                        stress_component_dropdown,
+                    ], style={
+                        "marginBottom": "16px"
                     }),
-                    dbc.Switch(
-                        id="btn-unified-stress-colorbar",
-                        label="",
-                        value=False,
-                        className="mb-0",
-                        style={
+                    
+                    # 응력바 통일 토글 스위치
+                    html.Div([
+                        html.Label("전체 응력바 통일", style={
+                            "fontWeight": "500",
+                            "color": "#374151",
+                            "marginBottom": "8px",
+                            "fontSize": "13px",
                             "display": "inline-block",
-                            "marginBottom": "12px",
-                            "marginTop": "-5px"
-                        }
-                    ),
-                    dbc.Tooltip(
-                        "모든 그래프의 응력바 범위를 통일합니다",
-                        target="btn-unified-stress-colorbar",
-                        placement="top"
-                    )
-                ], style={
-                    "display": "flex",
-                    "alignItems": "center",
-                    "marginBottom": "12px"
-                }),
+                            "marginRight": "8px"
+                        }),
+                        dbc.Switch(
+                            id="btn-unified-stress-colorbar",
+                            label="",
+                            value=False,
+                            className="mb-0",
+                            style={
+                                "display": "inline-block",
+                                "marginBottom": "12px",
+                                "marginTop": "-5px"
+                            }
+                        ),
+                        dbc.Tooltip(
+                            "모든 그래프의 응력바 범위를 통일합니다",
+                            target="btn-unified-stress-colorbar",
+                            placement="top"
+                        )
+                    ], style={
+                        "display": "flex",
+                        "alignItems": "center",
+                        "marginBottom": "12px"
+                    }),
+                ]),
                 dcc.Graph(
                     id="viewer-3d-stress-display",
                     style={
@@ -935,7 +990,7 @@ def create_3d_tab_content_stress(concrete_pk):
         ], style={"display": "none"})
     ])
 
-def create_3d_stress_figure(stress_data):
+def create_3d_stress_figure(stress_data, selected_component="von_mises"):
     """3D 응력 시각화를 생성합니다."""
     if not stress_data:
         return go.Figure().add_annotation(
@@ -957,7 +1012,20 @@ def create_3d_stress_figure(stress_data):
     
     # 좌표와 응력 값 추출
     coords = np.array(first_data['coordinates'])
-    stress_values = list(first_data['stress_values'][0].values())
+    
+    # 선택된 응력 성분에 따라 값 추출
+    if selected_component == "von_mises":
+        stress_values = list(first_data['stress_values'][0].values())
+        title_suffix = " (von Mises)"
+    else:
+        # 특정 응력 성분 선택
+        if selected_component in first_data.get('stress_components', {}):
+            stress_values = list(first_data['stress_components'][selected_component].values())
+            title_suffix = f" ({selected_component})"
+        else:
+            # fallback to von Mises
+            stress_values = list(first_data['stress_values'][0].values())
+            title_suffix = " (von Mises)"
     
     # 단위 변환: Pa → GPa (데이터 검증 전에 미리 정의)
     stress_values_gpa = np.array(stress_values) / 1e9
@@ -1017,7 +1085,7 @@ def create_3d_stress_figure(stress_data):
     ))
     
     fig.update_layout(
-        title="3D 응력 분포 (등응력면)",
+        title=f"3D 응력 분포 (등응력면){title_suffix}",
         uirevision='constant',
         scene=dict(
             aspectmode='data',
@@ -1052,11 +1120,12 @@ def create_node_tab_content_stress(concrete_pk):
     Output("viewer-3d-stress-time-info", "children"),
     Input("time-slider-stress", "value"),
     Input("btn-unified-stress-colorbar", "value"),
+    Input("stress-component-selector", "value"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def update_3d_stress_viewer(time_idx, unified_colorbar, selected_rows, tbl_data):
+def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, selected_rows, tbl_data):
     """3D 응력 시각화를 업데이트합니다."""
     if not selected_rows or not tbl_data:
         return go.Figure().add_annotation(
@@ -1093,7 +1162,20 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_rows, tbl_data)
         
         # 좌표와 응력 값 추출
         coords = np.array(stress_data['coordinates'])
-        stress_values = list(stress_data['stress_values'][0].values())
+        
+        # 선택된 응력 성분에 따라 값 추출
+        if selected_component == "von_mises":
+            stress_values = list(stress_data['stress_values'][0].values())
+            component_name = "von Mises 응력"
+        else:
+            # 특정 응력 성분 선택
+            if selected_component in stress_data.get('stress_components', {}):
+                stress_values = list(stress_data['stress_components'][selected_component].values())
+                component_name = f"{selected_component} 응력"
+            else:
+                # fallback to von Mises
+                stress_values = list(stress_data['stress_values'][0].values())
+                component_name = "von Mises 응력"
         
         # 데이터 검증: 좌표와 응력 값의 개수가 일치하는지 확인
         if len(coords) != len(stress_values):
@@ -1143,7 +1225,7 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_rows, tbl_data)
             current_min = float(np.nanmin(stress_values))
             current_max = float(np.nanmax(stress_values))
             current_avg = float(np.nanmean(stress_values))
-            time_info = f"{formatted_time} (최저: {current_min:.2f}GPa, 최고: {current_max:.2f}GPa, 평균: {current_avg:.2f}GPa)"
+            time_info = f"{formatted_time} - {component_name} (최저: {current_min:.2f}GPa, 최고: {current_max:.2f}GPa, 평균: {current_avg:.2f}GPa)"
         else:
             time_info = formatted_time
         
@@ -1160,12 +1242,12 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_rows, tbl_data)
             opacity=0.1, 
             surface_count=15, 
             colorscale=[[0, 'blue'], [1, 'red']],
-            colorbar=dict(title='Stress (GPa)', thickness=10),
+            colorbar=dict(title=f'{component_name} (GPa)', thickness=10),
             cmin=stress_min, 
             cmax=stress_max,
             showscale=True,
             hoverinfo='skip',
-            name='응력 볼륨'
+            name=f'{component_name} 볼륨'
         ))
         
         fig.update_layout(

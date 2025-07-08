@@ -17,11 +17,16 @@ def read_frd_stress_data(frd_path):
             'times': [],
             'nodes': [],
             'coordinates': [],
-            'stress_values': []
+            'stress_values': [],
+            'stress_components': {}  # 각 응력 성분별 데이터 저장
         }
         
         node_coords = {}
         stress_values = {}
+        stress_components = {
+            'SXX': {}, 'SYY': {}, 'SZZ': {}, 
+            'SXY': {}, 'SYZ': {}, 'SZX': {}
+        }
         current_block = None
         
         print(f"파일 읽기 시작: {frd_path}")
@@ -75,6 +80,14 @@ def read_frd_stress_data(frd_path):
                                 syz = float(stress_nums[4])
                                 sxz = float(stress_nums[5])
                                 
+                                # 각 응력 성분 저장
+                                stress_components['SXX'][node_id] = sxx
+                                stress_components['SYY'][node_id] = syy
+                                stress_components['SZZ'][node_id] = szz
+                                stress_components['SXY'][node_id] = sxy
+                                stress_components['SYZ'][node_id] = syz
+                                stress_components['SZX'][node_id] = sxz
+                                
                                 # von Mises 응력 계산
                                 von_mises = np.sqrt(0.5 * ((sxx - syy)**2 + (syy - szz)**2 + (szz - sxx)**2 + 6 * (sxy**2 + syz**2 + sxz**2)))
                                 stress_values[node_id] = von_mises
@@ -109,6 +122,12 @@ def read_frd_stress_data(frd_path):
                 stress_data['nodes'] = sorted(common_node_ids)
                 stress_data['stress_values'] = [{i: stress_values[i] for i in common_node_ids}]
                 
+                # 각 응력 성분별 데이터 저장
+                for component in stress_components:
+                    stress_data['stress_components'][component] = {
+                        i: stress_components[component][i] for i in common_node_ids
+                    }
+                
                 print(f"최종 데이터:")
                 print(f"  - 좌표: {len(stress_data['coordinates'])}개")
                 print(f"  - 노드: {len(stress_data['nodes'])}개")
@@ -117,8 +136,14 @@ def read_frd_stress_data(frd_path):
                 # 응력 값 범위 출력
                 if stress_data['stress_values'][0]:
                     stress_vals = list(stress_data['stress_values'][0].values())
-                    print(f"  - 응력 범위: {min(stress_vals):.2e} ~ {max(stress_vals):.2e} Pa")
-                    print(f"  - 응력 범위 (GPa): {min(stress_vals)/1e9:.6f} ~ {max(stress_vals)/1e9:.6f} GPa")
+                    print(f"  - von Mises 응력 범위: {min(stress_vals):.2e} ~ {max(stress_vals):.2e} Pa")
+                    print(f"  - von Mises 응력 범위 (GPa): {min(stress_vals)/1e9:.6f} ~ {max(stress_vals)/1e9:.6f} GPa")
+                
+                # 각 응력 성분별 범위 출력
+                for component in ['SXX', 'SYY', 'SZZ', 'SXY', 'SYZ', 'SZX']:
+                    if component in stress_data['stress_components'] and stress_data['stress_components'][component]:
+                        comp_vals = list(stress_data['stress_components'][component].values())
+                        print(f"  - {component} 범위: {min(comp_vals):.2e} ~ {max(comp_vals):.2e} Pa ({min(comp_vals)/1e9:.6f} ~ {max(comp_vals)/1e9:.6f} GPa)")
         
         # 시간 정보 파싱
         try:
