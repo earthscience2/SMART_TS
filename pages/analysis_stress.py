@@ -294,9 +294,13 @@ def read_frd_stress_data(frd_path):
             if line.startswith('2C'):
                 current_block = 'coordinates'
                 continue
-            # 응력 블록 시작 확인
+            # 응력 블록 시작 확인 (STRESS만, ERROR 제외)
             if '-4  STRESS' in line:
                 current_block = 'stress'
+                continue
+            # ERROR 블록 시작 시 stress 블록 종료
+            if '-4  ERROR' in line:
+                current_block = None
                 continue
             # -1로 시작하는 라인에서 모든 숫자 추출
             if line.startswith('-1') and current_block in ['coordinates', 'stress']:

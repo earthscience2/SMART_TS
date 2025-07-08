@@ -34,10 +34,15 @@ def read_frd_stress_data(frd_path):
                 current_block = 'coordinates'
                 print(f"라인 {i+1}: 좌표 블록 시작 - {line}")
                 continue
-            # 응력 블록 시작 확인
+            # 응력 블록 시작 확인 (STRESS만, ERROR 제외)
             if '-4  STRESS' in line:
                 current_block = 'stress'
                 print(f"라인 {i+1}: 응력 블록 시작 - {line}")
+                continue
+            # ERROR 블록 시작 시 stress 블록 종료
+            if '-4  ERROR' in line:
+                current_block = None
+                print(f"라인 {i+1}: ERROR 블록 시작 - stress 블록 종료")
                 continue
             # -1로 시작하는 라인에서 모든 숫자 추출
             if line.startswith('-1') and current_block in ['coordinates', 'stress']:
