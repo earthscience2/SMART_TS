@@ -100,6 +100,36 @@ def make_concrete_fig(nodes: list[list[float]], h: float) -> go.Figure:
     )
     return fig
 
+def is_point_in_polygon(x: float, y: float, nodes: list[list[float]]) -> bool:
+    """
+    점 (x, y)가 폴리곤 내부에 있는지 확인하는 함수
+    Ray casting 알고리즘 사용
+    """
+    n = len(nodes)
+    inside = False
+    
+    for i in range(n):
+        j = (i + 1) % n
+        xi, yi = nodes[i]
+        xj, yj = nodes[j]
+        
+        # 점이 엣지의 y 범위 안에 있고, 엣지가 점의 오른쪽에 있는지 확인
+        if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi) + xi):
+            inside = not inside
+    
+    return inside
+
+def is_point_in_concrete(x: float, y: float, z: float, nodes: list[list[float]], h: float) -> bool:
+    """
+    점 (x, y, z)가 콘크리트 내부에 있는지 확인하는 함수
+    """
+    # Z 좌표가 콘크리트 높이 범위 내에 있는지 확인
+    if z < 0 or z > h:
+        return False
+    
+    # XY 평면에서 폴리곤 내부에 있는지 확인
+    return is_point_in_polygon(x, y, nodes)
+
 def get_polygon_intersections_x(y: float, nodes: list[list[float]]) -> list[float]:
     intersections = []
     n = len(nodes)
@@ -349,6 +379,7 @@ layout = html.Div([
                                     dbc.Input(id="add-sensor-z", type="number", min="0", step="0.01", placeholder="Z 좌표 (0 이상)", className="form-control", style={"fontSize": "0.85rem"}),
                                 ], width=4)
                             ], className="mb-2"),
+                            html.Small("📍 센서는 콘크리트 내부에 위치해야 합니다", className="text-muted", style={"fontSize": "0.75rem"}),
                         ], className="bg-light p-2 rounded mb-3"),
                         
                         # 3D 미리보기 영역
@@ -403,6 +434,7 @@ layout = html.Div([
                                     dbc.Input(id="edit-sensor-z", type="number", min="0", step="0.01", placeholder="Z 좌표 (0 이상)", className="form-control", style={"fontSize": "0.85rem"}),
                                 ], width=4)
                             ], className="mb-2"),
+                            html.Small("📍 센서는 콘크리트 내부에 위치해야 합니다", className="text-muted", style={"fontSize": "0.75rem"}),
                         ], className="bg-light p-2 rounded mb-3"),
                         
                         # 3D 미리보기 영역
@@ -907,6 +939,7 @@ def add_sensor_preview(_, conc_pk, sensor_selection, x_val, y_val, z_val, show_l
     1) 콘크리트 + 기존 센서(파란 점) + 보조선(show_lines=True인 경우)
     2) 새로 추가할 센서를 파란 점(크기 6)으로 미리보기
     3) 이미 존재하는 디바이스 ID와 채널 조합이 입력되면 Alert 반환
+    4) 콘크리트 내부에 있는지 확인
     """
     # 콘크리트, 센서 선택, 좌표 입력 검사
     if not conc_pk:
@@ -935,6 +968,19 @@ def add_sensor_preview(_, conc_pk, sensor_selection, x_val, y_val, z_val, show_l
     # 음수 값 검사
     if x_val < 0 or y_val < 0 or z_val < 0:
         return dash.no_update, "좌표값은 0 이상이어야 합니다", True
+
+    # 1) 콘크리트 정보 로드 & 기본 Mesh 그리기
+    try:
+        conc_row = api_db.get_concrete_data().query("concrete_pk == @conc_pk").iloc[0]
+        conc_dims = ast.literal_eval(conc_row["dims"])
+        conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
+        fig_conc = make_concrete_fig(conc_nodes, conc_h)
+    except Exception:
+        return go.Figure(), "콘크리트 정보를 불러올 수 없음", True
+
+    # 콘크리트 내부에 있는지 확인
+    if not is_point_in_concrete(x_val, y_val, z_val, conc_nodes, conc_h):
+        return dash.no_update, "센서 위치가 콘크리트 내부에 있어야 합니다", True
 
     # 1) 콘크리트 정보 로드 & 기본 Mesh 그리기
     try:
@@ -1046,6 +1092,7 @@ def add_sensor_save(_, conc_pk, sensor_selection, x_val, y_val, z_val):
     2) 동일 콘크리트 내에 이미 같은 디바이스 ID와 채널 조합이 있으면 Alert 반환 후 저장 중단
     3) 좌표 형식이 정상일 경우 api_sensor.add_sensor 호출
     4) 성공하면 data_timestamp를 갱신 → 메인 뷰 테이블 재로딩
+    5) 콘크리트 내부에 있는지 확인
     """
     if not (conc_pk and sensor_selection):
         return dash.no_update, "콘크리트와 센서를 선택하세요", "danger", True, dash.no_update
@@ -1071,6 +1118,18 @@ def add_sensor_save(_, conc_pk, sensor_selection, x_val, y_val, z_val):
     # 음수 값 검사
     if x_val < 0 or y_val < 0 or z_val < 0:
         return dash.no_update, "좌표값은 0 이상이어야 합니다", "danger", True, dash.no_update
+
+    # 콘크리트 정보 로드 및 내부 위치 확인
+    try:
+        conc_row = api_db.get_concrete_data().query("concrete_pk == @conc_pk").iloc[0]
+        conc_dims = ast.literal_eval(conc_row["dims"])
+        conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
+    except Exception:
+        return dash.no_update, "콘크리트 정보를 불러올 수 없음", "danger", True, dash.no_update
+
+    # 콘크리트 내부에 있는지 확인
+    if not is_point_in_concrete(x_val, y_val, z_val, conc_nodes, conc_h):
+        return dash.no_update, "센서 위치가 콘크리트 내부에 있어야 합니다", "danger", True, dash.no_update
 
     # 실제 추가
     try:
@@ -1292,6 +1351,7 @@ def edit_sensor_preview(n_clicks, x_val, y_val, z_val, conc_pk, sensor_pk):
     1) 콘크리트 + (수정 대상 제외) 나머지 센서를 파란 점으로 그림
     2) 보조선을 그림
     3) 입력된 좌표로 수정된 센서를 빨간 점으로 그림
+    4) 콘크리트 내부에 있는지 확인
     """
     # 좌표 입력 검사
     if x_val is None or y_val is None or z_val is None:
@@ -1300,6 +1360,20 @@ def edit_sensor_preview(n_clicks, x_val, y_val, z_val, conc_pk, sensor_pk):
     # 음수 값 검사
     if x_val < 0 or y_val < 0 or z_val < 0:
         return dash.no_update, "좌표값은 0 이상이어야 합니다", True
+    
+    # 1) 콘크리트 정보 로드 & 기본 Mesh 그리기
+    try:
+        conc_row = api_db.get_concrete_data().query("concrete_pk == @conc_pk").iloc[0]
+        conc_dims = ast.literal_eval(conc_row["dims"])
+        conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
+        fig_conc = make_concrete_fig(conc_nodes, conc_h)
+    except Exception:
+        # 콘크리트 정보 로드 실패 시 빈 Figure와 에러 토스트 반환
+        return dash.no_update, "콘크리트 정보를 불러올 수 없음", True
+
+    # 콘크리트 내부에 있는지 확인
+    if not is_point_in_concrete(x_val, y_val, z_val, conc_nodes, conc_h):
+        return dash.no_update, "센서 위치가 콘크리트 내부에 있어야 합니다", True
     
     # 1) 콘크리트 정보 로드 & 기본 Mesh 그리기
     try:
@@ -1426,6 +1500,18 @@ def edit_sensor_save(n_clicks, conc_pk, old_sensor_pk, x_val, y_val, z_val):
     # 음수 값 검사
     if x_val < 0 or y_val < 0 or z_val < 0:
         return dash.no_update, "좌표값은 0 이상이어야 합니다", "danger", True
+
+    # 콘크리트 정보 로드 및 내부 위치 확인
+    try:
+        conc_row = api_db.get_concrete_data().query("concrete_pk == @conc_pk").iloc[0]
+        conc_dims = ast.literal_eval(conc_row["dims"])
+        conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
+    except Exception:
+        return dash.no_update, "콘크리트 정보를 불러올 수 없음", "danger", True
+
+    # 콘크리트 내부에 있는지 확인
+    if not is_point_in_concrete(x_val, y_val, z_val, conc_nodes, conc_h):
+        return dash.no_update, "센서 위치가 콘크리트 내부에 있어야 합니다", "danger", True
 
     try:
         api_db.update_sensors_data(sensor_pk=old_sensor_pk, dims={"nodes": [x_val, y_val, z_val]})
