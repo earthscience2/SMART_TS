@@ -1525,4 +1525,4 @@ def edit_sensor_save(n_clicks, conc_pk, old_sensor_pk, x_val, y_val, z_val):
         return dash.no_update, f"위치 업데이트 실패: {e}", "danger", True, True
 
     # 성공: 테이블 갱신 및 모달 닫기
-    return pd.Timestamp.utcnow().value, f"{old_sensor_pk} 위치 수정 완료", "success", True, False
+    return pd.Timestamp.utcnow().value, f"{old_sensor_pk} 위치 수정 완료", "success", False, False
