@@ -974,66 +974,28 @@ def create_3d_stress_figure(stress_data):
             height=500
         )
         return fig
+    
     stress_min, stress_max = np.nanmin(stress_values_gpa), np.nanmax(stress_values_gpa)
 
-    # 데이터가 충분히 많으면 볼륨+산점도, 적으면 산점도만
-    if len(coords) >= 100:
-        fig = go.Figure()
-        # 볼륨
-        fig.add_trace(go.Volume(
-            x=coords[:, 0],
-            y=coords[:, 1],
-            z=coords[:, 2],
-            value=stress_values_gpa,
-            opacity=0.1,
-            surface_count=15,
-            colorscale=[[0, 'blue'], [1, 'red']],
-            colorbar=dict(title='Stress (GPa)', thickness=10),
-            cmin=stress_min,
-            cmax=stress_max,
-            showscale=True,
-            hoverinfo='skip',
-            name='응력 볼륨'
-        ))
-        # 산점도
-        fig.add_trace(go.Scatter3d(
-            x=coords[:, 0],
-            y=coords[:, 1],
-            z=coords[:, 2],
-            mode='markers',
-            marker=dict(
-                size=3,
-                color=stress_values_gpa,
-                colorscale=[[0, 'blue'], [1, 'red']],
-                colorbar=dict(title="Stress (GPa)", thickness=10),
-                showscale=False
-            ),
-            text=[f"노드 {i+1}<br>응력: {val:.4f} GPa" for i, val in enumerate(stress_values_gpa)],
-            hoverinfo='text',
-            name='노드'
-        ))
-    else:
-        # 산점도만
-        fig = go.Figure(data=[
-            go.Scatter3d(
-                x=coords[:, 0],
-                y=coords[:, 1],
-                z=coords[:, 2],
-                mode='markers',
-                marker=dict(
-                    size=5,
-                    color=stress_values_gpa,
-                    colorscale=[[0, 'blue'], [1, 'red']],
-                    colorbar=dict(title="Stress (GPa)", thickness=10),
-                    showscale=True
-                ),
-                text=[f"노드 {i+1}<br>응력: {val:.4f} GPa" for i, val in enumerate(stress_values_gpa)],
-                hoverinfo='text',
-                name='노드'
-            )
-        ])
+    # 온도분석 페이지와 동일한 방식으로 등응력면(Volume) 생성
+    fig = go.Figure(data=go.Volume(
+        x=coords[:, 0],
+        y=coords[:, 1],
+        z=coords[:, 2],
+        value=stress_values_gpa,
+        opacity=0.1,
+        surface_count=15,
+        colorscale=[[0, 'blue'], [1, 'red']],
+        colorbar=dict(title='Stress (GPa)', thickness=10),
+        cmin=stress_min,
+        cmax=stress_max,
+        showscale=True,
+        hoverinfo='skip',
+        name='응력 볼륨'
+    ))
+    
     fig.update_layout(
-        title="3D 응력 분포 (볼륨+산점도)",
+        title="3D 응력 분포 (등응력면)",
         uirevision='constant',
         scene=dict(
             aspectmode='data',
@@ -1167,7 +1129,7 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_rows, tbl_data)
         stress_values_gpa = np.array(stress_values) / 1e9
         stress_min, stress_max = np.nanmin(stress_values_gpa), np.nanmax(stress_values_gpa)
         
-        # 온도분석 페이지와 동일한 형식으로 3D 볼륨 생성
+        # 온도분석 페이지와 동일한 형식으로 3D 등응력면 생성
         fig = go.Figure(data=go.Volume(
             x=coords[:, 0], 
             y=coords[:, 1], 
@@ -1179,7 +1141,9 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_rows, tbl_data)
             colorbar=dict(title='Stress (GPa)', thickness=10),
             cmin=stress_min, 
             cmax=stress_max,
-            showscale=True
+            showscale=True,
+            hoverinfo='skip',
+            name='응력 볼륨'
         ))
         
         fig.update_layout(
