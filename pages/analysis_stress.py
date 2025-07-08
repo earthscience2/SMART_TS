@@ -586,6 +586,10 @@ layout = dbc.Container(
 )
 def load_concrete_data_stress(search, pathname):
     """프로젝트 정보를 로드하고 콘크리트 목록을 표시합니다."""
+    # 응력 분석 페이지에서만 실행
+    if '/stress' not in pathname:
+        raise PreventUpdate
+    
     # URL에서 프로젝트 정보 추출 (암호화된 URL 지원)
     project_pk = None
     if search:
@@ -784,10 +788,15 @@ def load_concrete_data_stress(search, pathname):
 @callback(
     Output("current-project-info", "children", allow_duplicate=True),
     Input("project-info-store-stress", "data"),
+    Input("project-url", "pathname"),
     prevent_initial_call=True,
 )
-def update_project_info_stress(project_info):
+def update_project_info_stress(project_info, pathname):
     """프로젝트 정보를 표시합니다."""
+    # 응력 분석 페이지에서만 실행
+    if '/stress' not in pathname:
+        raise PreventUpdate
+    
     if not project_info:
         return "프로젝트를 선택하세요."
     
@@ -1125,13 +1134,18 @@ def update_stress_3d_view_stress(pathname, active_tab, time_idx, selected_rows, 
     Input("slice-enable", "value"),
     Input("slice-axis", "value"),
     Input("slice-slider", "value"),
+    Input("project-url", "pathname"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
     State("time-slider-stress", "value"),
     prevent_initial_call=True
 )
-def update_stress_3d_view_with_options(field_name, preset, slice_enable, slice_axis, slice_slider, selected_rows, tbl_data, time_idx):
+def update_stress_3d_view_with_options(field_name, preset, slice_enable, slice_axis, slice_slider, pathname, selected_rows, tbl_data, time_idx):
     """드롭다운 옵션 변경 시 3D 뷰어를 업데이트합니다."""
+    # 응력 분석 페이지에서만 실행
+    if '/stress' not in pathname:
+        raise PreventUpdate
+    
     if not selected_rows or not tbl_data:
         raise PreventUpdate
     
