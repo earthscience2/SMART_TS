@@ -420,6 +420,10 @@ def _build_analysis_navbar(pathname=None, search=None):
     if search:
         project_pk = parse_project_key_from_url(search)
     
+    # 디버깅: 프로젝트 키와 URL 확인
+    print(f"DEBUG: pathname={pathname}, search={search}, project_pk={project_pk}")
+    print(f"DEBUG: 응력 URL = {create_project_url('/stress', project_pk)}")
+    
     # 현재 페이지 확인
     current_path = pathname or "/"
 
