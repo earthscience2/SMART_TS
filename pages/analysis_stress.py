@@ -300,6 +300,7 @@ def read_frd_stress_data(frd_path):
                 continue
             # -1로 시작하는 라인에서 모든 숫자 추출
             if line.startswith('-1') and current_block in ['coordinates', 'stress']:
+                # 과학적 표기법을 포함한 숫자 추출 (E, e 포함)
                 nums = re.findall(r'-?\d+(?:\.\d+)?(?:[Ee][-+]?\d+)?', line)
                 if len(nums) >= 2:
                     node_id = int(nums[1])
@@ -319,9 +320,11 @@ def read_frd_stress_data(frd_path):
                             sxy = float(nums[5])
                             syz = float(nums[6])
                             sxz = float(nums[7])
+                            # von Mises 응력 계산
                             von_mises = np.sqrt(0.5 * ((sxx - syy)**2 + (syy - szz)**2 + (szz - sxx)**2 + 6 * (sxy**2 + syz**2 + sxz**2)))
                             stress_values[node_id] = von_mises
-                        except:
+                        except Exception as e:
+                            print(f"응력 파싱 오류 (라인 {i+1}): {e}, 라인: {line}")
                             continue
         
         # 좌표와 응력 값의 노드 ID를 맞춤
