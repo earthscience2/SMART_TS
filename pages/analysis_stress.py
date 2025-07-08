@@ -839,6 +839,7 @@ def create_node_tab_content(concrete_pk):
     Output("time-slider", "value", allow_duplicate=True),
     Output("time-slider", "marks", allow_duplicate=True),
     Output("stress-data-store", "data"),
+    Input("project-url", "pathname"),
     Input("tabs-main", "active_tab"),
     Input("stress-field-dropdown", "value"),
     Input("stress-preset-dropdown", "value"),
@@ -850,8 +851,12 @@ def create_node_tab_content(concrete_pk):
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True
 )
-def update_stress_3d_view(active_tab, field_name, preset, time_idx, slice_enable, slice_axis, slice_slider, selected_rows, tbl_data):
+def update_stress_3d_view(pathname, active_tab, field_name, preset, time_idx, slice_enable, slice_axis, slice_slider, selected_rows, tbl_data):
     """3D 응력 뷰어를 업데이트합니다."""
+    # 응력 분석 페이지에서만 실행
+    if '/stress' not in pathname:
+        raise PreventUpdate
+    
     # 3D 탭이 활성화되지 않았으면 실행하지 않음
     if active_tab != "tab-3d":
         raise PreventUpdate
@@ -1069,6 +1074,7 @@ def update_node_graphs(selected_node, stress_data):
     Output("section-y-input", "min", allow_duplicate=True), Output("section-y-input", "max", allow_duplicate=True), Output("section-y-input", "value", allow_duplicate=True),
     Output("section-z-input", "min", allow_duplicate=True), Output("section-z-input", "max", allow_duplicate=True), Output("section-z-input", "value", allow_duplicate=True),
     Output("current-file-title-store-stress", "data", allow_duplicate=True),
+    Input("project-url", "pathname"),
     Input("tabs-main", "active_tab"),
     Input("time-slider-section", "value"),
     Input("section-x-input", "value"),
@@ -1079,8 +1085,12 @@ def update_node_graphs(selected_node, stress_data):
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def update_section_views(active_tab, time_idx, x_val, y_val, z_val, unified_colorbar, selected_rows, tbl_data):
+def update_section_views(pathname, active_tab, time_idx, x_val, y_val, z_val, unified_colorbar, selected_rows, tbl_data):
     """단면 뷰어들을 업데이트합니다."""
+    # 응력 분석 페이지에서만 실행
+    if '/stress' not in pathname:
+        raise PreventUpdate
+    
     # 단면 탭이 활성화되지 않았으면 실행하지 않음
     if active_tab != "tab-section":
         raise PreventUpdate
@@ -1266,13 +1276,18 @@ def update_section_views(active_tab, time_idx, x_val, y_val, z_val, unified_colo
     Output("time-slider-section", "max", allow_duplicate=True), 
     Output("time-slider-section", "value", allow_duplicate=True),
     Output("time-slider-section", "marks", allow_duplicate=True),
+    Input("project-url", "pathname"),
     Input("tabs-main", "active_tab"),
     Input("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def init_section_slider_independent(active_tab, selected_rows, tbl_data):
+def init_section_slider_independent(pathname, active_tab, selected_rows, tbl_data):
     """단면 탭용 독립 슬라이더를 초기화합니다."""
+    # 응력 분석 페이지에서만 실행
+    if '/stress' not in pathname:
+        raise PreventUpdate
+    
     if active_tab != "tab-section" or not selected_rows or not tbl_data:
         return 0, 1, 0, {}
     
@@ -1300,12 +1315,17 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
     Output("time-slider", "max", allow_duplicate=True),
     Output("time-slider", "value", allow_duplicate=True),
     Output("time-slider", "marks", allow_duplicate=True),
+    Input("project-url", "pathname"),
     Input("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def on_concrete_select(selected_rows, tbl_data):
+def on_concrete_select(pathname, selected_rows, tbl_data):
     """콘크리트 선택 시 슬라이더를 초기화합니다."""
+    # 응력 분석 페이지에서만 실행
+    if '/stress' not in pathname:
+        raise PreventUpdate
+    
     if not selected_rows or not tbl_data:
         return False, False, "", 0, 1, 0, {}
     
@@ -1330,13 +1350,18 @@ def on_concrete_select(selected_rows, tbl_data):
     Output("stress-project-alert", "color", allow_duplicate=True),
     Output("stress-project-alert", "is_open", allow_duplicate=True),
     Output("tbl-concrete-stress", "data", allow_duplicate=True),
+    Input("project-url", "pathname"),
     Input("btn-concrete-analyze-stress", "n_clicks"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def start_analysis(n_clicks, selected_rows, tbl_data):
+def start_analysis(pathname, n_clicks, selected_rows, tbl_data):
     """응력 분석을 시작합니다."""
+    # 응력 분석 페이지에서만 실행
+    if '/stress' not in pathname:
+        raise PreventUpdate
+    
     if not n_clicks or not selected_rows or not tbl_data:
         raise PreventUpdate
     
