@@ -742,7 +742,7 @@ layout = dbc.Container(
     Input("project-url", "pathname"),
     prevent_initial_call=False,
 )
-def load_concrete_data(search, pathname):
+def load_concrete_data_tmp(search, pathname):
     # URL에서 프로젝트 정보 추출 (암호화된 URL 지원)
     project_pk = None
     if search:
@@ -936,7 +936,7 @@ def load_concrete_data(search, pathname):
     Input("project-info-store", "data"),
     prevent_initial_call=True,
 )
-def update_project_info(project_info):
+def update_project_info_tmp(project_info):
     if not project_info:
         return [
             "프로젝트가 선택되지 않았습니다. ",
@@ -959,7 +959,7 @@ def update_project_info(project_info):
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def on_concrete_select(selected_rows, tbl_data):
+def on_concrete_select_tmp(selected_rows, tbl_data):
     print(f"on_concrete_select 시작 - 입력값:")
     print(f"  selected_rows: {selected_rows} ({type(selected_rows)})")
     print(f"  tbl_data: {len(tbl_data) if tbl_data else None} ({type(tbl_data)})")
@@ -1096,7 +1096,7 @@ def on_concrete_select(selected_rows, tbl_data):
     Input("viewer-3d", "clickData"),
     prevent_initial_call=True,
 )
-def store_section_coord(clickData):
+def store_section_coord_tmp(clickData):
     if not clickData or "points" not in clickData:
         raise PreventUpdate
     pt = clickData["points"][0]
@@ -1120,7 +1120,7 @@ def store_section_coord(clickData):
     State("current-time-store", "data"),
     prevent_initial_call=True,
 )
-def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl_data, current_time):
+def update_heatmap_tmp(time_idx, section_coord, unified_colorbar, selected_rows, tbl_data, current_time):
     try:
         if not selected_rows or not tbl_data:
             # 콘크리트가 선택되지 않은 상태는 정상적인 동작
@@ -1445,7 +1445,7 @@ def update_heatmap(time_idx, section_coord, unified_colorbar, selected_rows, tbl
     State("current-file-title-store", "data"),
     prevent_initial_call=True,
 )
-def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_title):
+def switch_tab_tmp(active_tab, selected_rows, tbl_data, viewer_data, current_file_title):
     from datetime import datetime as dt_import  # 명시적 import로 충돌 방지
     # 콘크리트 데이터를 불러오는 중인 경우
     if tbl_data is None:
@@ -2628,7 +2628,7 @@ def switch_tab(active_tab, selected_rows, tbl_data, viewer_data, current_file_ti
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def download_selected_inp_files(n_clicks, selected_rows, table_data, selected_conc_rows, tbl_data):
+def download_selected_inp_files_tmp(n_clicks, selected_rows, table_data, selected_conc_rows, tbl_data):
     from dash.exceptions import PreventUpdate
     import io, zipfile, os
     if not n_clicks or not selected_rows or not selected_conc_rows or not tbl_data:
@@ -2657,7 +2657,7 @@ def download_selected_inp_files(n_clicks, selected_rows, table_data, selected_co
     State("inp-file-table", "data"),
     prevent_initial_call=True,
 )
-def select_deselect_all(n_all, n_none, table_data):
+def select_deselect_all_tmp(n_all, n_none, table_data):
     import dash
     ctx = dash.callback_context
     if not ctx.triggered or not table_data:
@@ -2684,7 +2684,7 @@ def select_deselect_all(n_all, n_none, table_data):
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def start_analysis(n_clicks, selected_rows, tbl_data):
+def start_analysis_tmp(n_clicks, selected_rows, tbl_data):
     if not selected_rows or not tbl_data:
         return "콘크리트를 선택하세요", "warning", True, dash.no_update, dash.no_update, dash.no_update
 
@@ -2717,7 +2717,7 @@ def start_analysis(n_clicks, selected_rows, tbl_data):
     State("tbl-concrete", "selected_rows"),
     prevent_initial_call=True
 )
-def ask_delete_concrete(n, sel):
+def ask_delete_concrete_tmp(n, sel):
     return bool(n and sel)
 
 # ───────────────────── ⑦ 삭제 실행 콜백 ─────────────────────
@@ -2731,7 +2731,7 @@ def ask_delete_concrete(n, sel):
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def delete_concrete_confirm(_click, sel, tbl_data):
+def delete_concrete_confirm_tmp(_click, sel, tbl_data):
     if not sel or not tbl_data:
         raise PreventUpdate
 
@@ -2779,7 +2779,7 @@ def delete_concrete_confirm(_click, sel, tbl_data):
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def update_section_views(time_idx,
+def update_section_views_tmp(time_idx,
                          x_val, y_val, z_val, unified_colorbar,
                          selected_rows, tbl_data):
     """단면도 탭 전용 뷰 업데이트 (독립적)"""
@@ -3042,7 +3042,7 @@ def update_section_views(time_idx,
     State("tbl-concrete", "data"),
     prevent_initial_call=False,
 )
-def update_temp_tab(store_data, x, y, z, unified_colorbar, selected_rows, tbl_data):
+def update_temp_tab_tmp(store_data, x, y, z, unified_colorbar, selected_rows, tbl_data):
     # 기본적으로 전체 데이터 표시 (필터는 별도 콜백에서 처리)
     import plotly.graph_objects as go
     import numpy as np
@@ -3217,7 +3217,7 @@ def update_temp_tab(store_data, x, y, z, unified_colorbar, selected_rows, tbl_da
     State("temp-z-input", "value"),
     prevent_initial_call=True,
 )
-def update_temp_range_filter(range_filter, fig_3d, selected_rows, tbl_data, x, y, z):
+def update_temp_range_filter_tmp(range_filter, fig_3d, selected_rows, tbl_data, x, y, z):
     """온도 범위 필터 변경 시 온도 변화 그래프만 업데이트"""
     if not selected_rows or not tbl_data:
         raise PreventUpdate
@@ -3360,7 +3360,7 @@ def update_temp_range_filter(range_filter, fig_3d, selected_rows, tbl_data, x, y
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def save_frd_files(contents, filenames, selected_rows, tbl_data):
+def save_frd_files_tmp(contents, filenames, selected_rows, tbl_data):
     import base64, os
     from dash.exceptions import PreventUpdate
     if not contents or not filenames or not (selected_rows and tbl_data):
@@ -3403,7 +3403,7 @@ def save_frd_files(contents, filenames, selected_rows, tbl_data):
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def download_selected_vtk_files(n_clicks, selected_rows, table_data, selected_conc_rows, tbl_data):
+def download_selected_vtk_files_tmp(n_clicks, selected_rows, table_data, selected_conc_rows, tbl_data):
     from dash.exceptions import PreventUpdate
     import io, zipfile, os
     if not n_clicks or not selected_rows or not selected_conc_rows or not tbl_data:
@@ -3432,7 +3432,7 @@ def download_selected_vtk_files(n_clicks, selected_rows, table_data, selected_co
     State("vtk-file-table", "data"),
     prevent_initial_call=True,
 )
-def select_deselect_all_vtk(n_all, n_none, table_data):
+def select_deselect_all_vtk_tmp(n_all, n_none, table_data):
     import dash
     ctx = dash.callback_context
     if not ctx.triggered or not table_data:
@@ -3454,7 +3454,7 @@ def select_deselect_all_vtk(n_all, n_none, table_data):
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def download_selected_vtp_files(n_clicks, selected_rows, table_data, selected_conc_rows, tbl_data):
+def download_selected_vtp_files_tmp(n_clicks, selected_rows, table_data, selected_conc_rows, tbl_data):
     from dash.exceptions import PreventUpdate
     import io, zipfile, os
     if not n_clicks or not selected_rows or not selected_conc_rows or not tbl_data:
@@ -3483,7 +3483,7 @@ def download_selected_vtp_files(n_clicks, selected_rows, table_data, selected_co
     State("vtp-file-table", "data"),
     prevent_initial_call=True,
 )
-def select_deselect_all_vtp(n_all, n_none, table_data):
+def select_deselect_all_vtp_tmp(n_all, n_none, table_data):
     import dash
     ctx = dash.callback_context
     if not ctx.triggered or not table_data:
@@ -3501,7 +3501,7 @@ def select_deselect_all_vtp(n_all, n_none, table_data):
     Input("time-slider-display", "value"),
     prevent_initial_call=True,
 )
-def sync_display_slider_to_main(display_value):
+def sync_display_slider_to_main_tmp(display_value):
     return display_value
 
 @callback(
@@ -3515,7 +3515,7 @@ def sync_display_slider_to_main(display_value):
     Input("time-slider", "marks"),
     prevent_initial_call=True,
 )
-def sync_main_slider_to_display(main_value, main_min, main_max, main_marks):
+def sync_main_slider_to_display_tmp(main_value, main_min, main_max, main_marks):
     """메인 슬라이더를 디스플레이 슬라이더와 동기화"""
     try:
         # 모든 입력값이 None인 경우 기본값 반환
@@ -3559,7 +3559,7 @@ def sync_main_slider_to_display(main_value, main_min, main_max, main_marks):
     Input("viewer-3d", "figure"),
     prevent_initial_call=True,
 )
-def sync_viewer_to_display(main_figure):
+def sync_viewer_to_display_tmp(main_figure):
     return main_figure
 
 # 클라이언트 사이드 콜백 제거 - 충돌 방지
@@ -3571,7 +3571,7 @@ def sync_viewer_to_display(main_figure):
     Input("tabs-main", "active_tab"),
     prevent_initial_call=True,
 )
-def update_3d_time_info(current_file_title, active_tab):
+def update_3d_time_info_tmp(current_file_title, active_tab):
     """3D 탭에서 시간 정보를 업데이트"""
     
     # 3D 탭이 아니면 빈 div 반환
@@ -3653,7 +3653,7 @@ def update_3d_time_info(current_file_title, active_tab):
     Input("tabs-main", "active_tab"),
     prevent_initial_call=True,
 )
-def update_section_time_info(current_file_title, active_tab):
+def update_section_time_info_tmp(current_file_title, active_tab):
     """단면도 탭에서 시간 정보를 업데이트"""
     
     # 단면도 탭이 아니면 빈 div 반환
@@ -3739,7 +3739,7 @@ def update_section_time_info(current_file_title, active_tab):
     State("tbl-concrete", "data"),
     prevent_initial_call=True,
 )
-def init_section_slider_independent(active_tab, selected_rows, tbl_data):
+def init_section_slider_independent_tmp(active_tab, selected_rows, tbl_data):
     """단면도 탭의 슬라이더를 독립적으로 초기화"""
     from datetime import datetime as dt_import  # 명시적 import로 충돌 방지
     
@@ -3796,7 +3796,7 @@ def init_section_slider_independent(active_tab, selected_rows, tbl_data):
     State("time-slider-display", "value"),
     prevent_initial_call=True,
 )
-def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
+def save_3d_image_tmp(n_clicks, figure, selected_rows, tbl_data, time_value):
     if not n_clicks or not figure:
         raise PreventUpdate
     
@@ -3853,7 +3853,7 @@ def save_3d_image(n_clicks, figure, selected_rows, tbl_data, time_value):
     State("time-slider-section", "value"),
     prevent_initial_call=True,
 )
-def save_section_image(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl_data, time_value):
+def save_section_image_tmp(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl_data, time_value):
     if not n_clicks:
         raise PreventUpdate
     
@@ -3940,7 +3940,7 @@ def save_section_image(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl
     State("temp-range-filter", "value"),
     prevent_initial_call=True,
 )
-def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z, range_filter):
+def save_temp_image_tmp(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z, range_filter):
     # 기본값으로 "all" 사용 (temp-range-filter가 없을 때)
     if range_filter is None:
         range_filter = "all"
@@ -4019,7 +4019,7 @@ def save_temp_image(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, y, z
     State("time-slider-display", "value"),
     prevent_initial_call=True,
 )
-def save_current_inp(n_clicks, selected_rows, tbl_data, time_value):
+def save_current_inp_tmp(n_clicks, selected_rows, tbl_data, time_value):
     if not n_clicks or not selected_rows or not tbl_data:
         raise PreventUpdate
     
@@ -4062,7 +4062,7 @@ def save_current_inp(n_clicks, selected_rows, tbl_data, time_value):
     State("time-slider-section", "value"),
     prevent_initial_call=True,
 )
-def save_section_inp(n_clicks, selected_rows, tbl_data, time_value):
+def save_section_inp_tmp(n_clicks, selected_rows, tbl_data, time_value):
     if not n_clicks or not selected_rows or not tbl_data:
         raise PreventUpdate
     
@@ -4108,7 +4108,7 @@ def save_section_inp(n_clicks, selected_rows, tbl_data, time_value):
     State("temp-range-filter", "value"),
     prevent_initial_call=True,
 )
-def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z, range_filter):
+def save_temp_data_tmp(n_clicks, selected_rows, tbl_data, x, y, z, range_filter):
     # 기본값으로 "all" 사용 (temp-range-filter가 없을 때)
     if range_filter is None:
         range_filter = "all"
@@ -4243,7 +4243,7 @@ def save_temp_data(n_clicks, selected_rows, tbl_data, x, y, z, range_filter):
     Input("btn-unified-colorbar", "value"),
     prevent_initial_call=True,
 )
-def toggle_unified_colorbar(switch_value):
+def toggle_unified_colorbar_tmp(switch_value):
     """온도바 통일 토글 스위치 기능"""
     if switch_value is None:
         raise PreventUpdate
@@ -4255,7 +4255,7 @@ def toggle_unified_colorbar(switch_value):
     Input("btn-unified-colorbar-section", "value"),
     prevent_initial_call=True,
 )
-def toggle_unified_colorbar_section(switch_value):
+def toggle_unified_colorbar_section_tmp(switch_value):
     """단면도 온도바 통일 토글 스위치 기능"""
     if switch_value is None:
         raise PreventUpdate
@@ -4270,7 +4270,7 @@ def toggle_unified_colorbar_section(switch_value):
     Input("fct28-input", "value"),
     prevent_initial_call=True
 )
-def update_formula_display(formula_type, fct28):
+def update_formula_display_tmp(formula_type, fct28):
     from dash import dash_table
     import numpy as np
     import plotly.graph_objects as go
@@ -4417,7 +4417,7 @@ def update_formula_display(formula_type, fct28):
     State("fct28-input", "value"),
     prevent_initial_call=True
 )
-def update_preview_with_ab(a, b, formula_type, fct28):
+def update_preview_with_ab_tmp(a, b, formula_type, fct28):
     from dash import dash_table
     import numpy as np
     import plotly.graph_objects as go
@@ -4532,7 +4532,7 @@ def update_preview_with_ab(a, b, formula_type, fct28):
     State("fct-formula-type", "value"),
     prevent_initial_call=True
 )
-def validate_inputs(fct28, formula_type):
+def validate_inputs_tmp(fct28, formula_type):
     messages = []
     
     # fct28 검증
@@ -4564,7 +4564,7 @@ def validate_inputs(fct28, formula_type):
     State("play-state-3d", "data"),
     prevent_initial_call=True,
 )
-def start_playback(n_clicks, play_state):
+def start_playback_tmp(n_clicks, play_state):
     """재생 버튼 클릭 시 자동 재생 시작"""
     if not n_clicks:
         raise PreventUpdate
@@ -4581,7 +4581,7 @@ def start_playback(n_clicks, play_state):
     State("play-state-3d", "data"),
     prevent_initial_call=True,
 )
-def stop_playback(n_clicks, play_state):
+def stop_playback_tmp(n_clicks, play_state):
     """정지 버튼 클릭 시 자동 재생 중지"""
     if not n_clicks:
         raise PreventUpdate
@@ -4599,7 +4599,7 @@ def stop_playback(n_clicks, play_state):
     State("tabs-main", "active_tab"),
     prevent_initial_call=True,
 )
-def auto_play_slider(n_intervals, play_state, speed_state, current_value, max_value, active_tab):
+def auto_play_slider_tmp(n_intervals, play_state, speed_state, current_value, max_value, active_tab):
     """자동 재생 시 슬라이더 값 자동 증가 (배속에 따라 건너뛰기)"""
     # 3D 탭에서만 실행
     if active_tab != "tab-3d":
@@ -4632,7 +4632,7 @@ def auto_play_slider(n_intervals, play_state, speed_state, current_value, max_va
     Input("tabs-main", "active_tab"),
     prevent_initial_call=True,
 )
-def reset_play_state_on_tab_change(active_tab):
+def reset_play_state_on_tab_change_tmp(active_tab):
     """탭 변경 시 재생 상태 초기화"""
     return {"playing": False}, True, False, True
 
@@ -4648,7 +4648,7 @@ def reset_play_state_on_tab_change(active_tab):
     State("play-state-section", "data"),
     prevent_initial_call=True,
 )
-def start_section_playback(n_clicks, play_state):
+def start_section_playback_tmp(n_clicks, play_state):
     """단면도 재생 버튼 클릭 시 자동 재생 시작"""
     if not n_clicks:
         raise PreventUpdate
@@ -4665,7 +4665,7 @@ def start_section_playback(n_clicks, play_state):
     State("play-state-section", "data"),
     prevent_initial_call=True,
 )
-def stop_section_playback(n_clicks, play_state):
+def stop_section_playback_tmp(n_clicks, play_state):
     """단면도 정지 버튼 클릭 시 자동 재생 중지"""
     if not n_clicks:
         raise PreventUpdate
@@ -4683,7 +4683,7 @@ def stop_section_playback(n_clicks, play_state):
     State("tabs-main", "active_tab"),
     prevent_initial_call=True,
 )
-def auto_play_section_slider(n_intervals, play_state, speed_state, current_value, max_value, active_tab):
+def auto_play_section_slider_tmp(n_intervals, play_state, speed_state, current_value, max_value, active_tab):
     """단면도 자동 재생 시 슬라이더 값 자동 증가 (배속에 따라 건너뛰기)"""
     # 단면도 탭에서만 실행
     if active_tab != "tab-section":
@@ -4716,7 +4716,7 @@ def auto_play_section_slider(n_intervals, play_state, speed_state, current_value
     Input("tabs-main", "active_tab"),
     prevent_initial_call=True,
 )
-def reset_section_play_state_on_tab_change(active_tab):
+def reset_section_play_state_on_tab_change_tmp(active_tab):
     """탭 변경 시 단면도 재생 상태 초기화"""
     return {"playing": False}, True, False, True
 
@@ -4731,7 +4731,7 @@ def reset_section_play_state_on_tab_change(active_tab):
     Input("speed-8x-3d", "n_clicks"),
     prevent_initial_call=True,
 )
-def set_speed_3d(speed_1x, speed_2x, speed_4x, speed_8x):
+def set_speed_3d_tmp(speed_1x, speed_2x, speed_4x, speed_8x):
     """3D 뷰 배속 설정"""
     ctx = dash.callback_context
     if not ctx.triggered:
@@ -4759,7 +4759,7 @@ def set_speed_3d(speed_1x, speed_2x, speed_4x, speed_8x):
     Input("speed-8x-section", "n_clicks"),
     prevent_initial_call=True,
 )
-def set_speed_section(speed_1x, speed_2x, speed_4x, speed_8x):
+def set_speed_section_tmp(speed_1x, speed_2x, speed_4x, speed_8x):
     """단면도 배속 설정"""
     ctx = dash.callback_context
     if not ctx.triggered:
@@ -4784,7 +4784,7 @@ def set_speed_section(speed_1x, speed_2x, speed_4x, speed_8x):
     Input("tabs-main", "active_tab"),
     prevent_initial_call=True,
 )
-def reset_speed_3d_on_tab_change(active_tab):
+def reset_speed_3d_on_tab_change_tmp(active_tab):
     """탭 변경 시 3D 탭 배속 상태 초기화"""
     if active_tab == "tab-3d":
         return {"speed": 1}
@@ -4796,7 +4796,7 @@ def reset_speed_3d_on_tab_change(active_tab):
     Input("tabs-main", "active_tab"),
     prevent_initial_call=True,
 )
-def reset_speed_section_on_tab_change(active_tab):
+def reset_speed_section_on_tab_change_tmp(active_tab):
     """탭 변경 시 단면도 탭 배속 상태 초기화"""
     if active_tab == "tab-section":
         return {"speed": 1}

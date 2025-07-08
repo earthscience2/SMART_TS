@@ -584,7 +584,7 @@ layout = dbc.Container(
     Input("project-url", "pathname"),
     prevent_initial_call=True,
 )
-def load_concrete_data(search, pathname):
+def load_concrete_data_stress(search, pathname):
     """프로젝트 정보를 로드하고 콘크리트 목록을 표시합니다."""
     # 응력 분석 페이지에서만 실행
     if '/stress' not in pathname:
@@ -658,7 +658,7 @@ def load_concrete_data(search, pathname):
     Input("project-url", "pathname"),
     prevent_initial_call=True,
 )
-def update_project_info(project_info, pathname):
+def update_project_info_stress(project_info, pathname):
     """프로젝트 정보를 표시합니다."""
     # 응력 분석 페이지에서만 실행
     if '/stress' not in pathname:
@@ -679,7 +679,7 @@ def update_project_info(project_info, pathname):
     State("current-file-title-store-stress", "data"),
     prevent_initial_call=True,
 )
-def switch_tab(active_tab, selected_rows, pathname, tbl_data, viewer_data, current_file_title):
+def switch_tab_stress(active_tab, selected_rows, pathname, tbl_data, viewer_data, current_file_title):
     """탭 전환 시 해당 탭의 콘텐츠를 표시합니다."""
     # 응력 분석 페이지에서만 실행
     if '/stress' not in pathname:
@@ -865,7 +865,7 @@ def create_node_tab_content(concrete_pk):
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True
 )
-def update_stress_3d_view(pathname, active_tab, field_name, preset, time_idx, slice_enable, slice_axis, slice_slider, selected_rows, tbl_data):
+def update_stress_3d_view_stress(pathname, active_tab, field_name, preset, time_idx, slice_enable, slice_axis, slice_slider, selected_rows, tbl_data):
     """3D 응력 뷰어를 업데이트합니다."""
     # 응력 분석 페이지에서만 실행
     if '/stress' not in pathname:
@@ -1001,7 +1001,7 @@ def update_stress_3d_view(pathname, active_tab, field_name, preset, time_idx, sl
     Input("project-url", "pathname"),
     prevent_initial_call=True
 )
-def toggle_slice_controls(slice_enable, pathname):
+def toggle_slice_controls_stress(slice_enable, pathname):
     """단면 보기 컨트롤을 토글합니다."""
     # 응력 분석 페이지에서만 실행
     if '/stress' not in pathname:
@@ -1019,7 +1019,7 @@ def toggle_slice_controls(slice_enable, pathname):
     Input("project-url", "pathname"),
     prevent_initial_call=True
 )
-def update_node_selection(stress_data, pathname):
+def update_node_selection_stress(stress_data, pathname):
     """노드 선택 드롭다운을 업데이트합니다."""
     # 응력 분석 페이지에서만 실행
     if '/stress' not in pathname:
@@ -1040,7 +1040,7 @@ def update_node_selection(stress_data, pathname):
     State("stress-data-store", "data"),
     prevent_initial_call=True
 )
-def update_node_graphs(selected_node, pathname, stress_data):
+def update_node_graphs_stress(selected_node, pathname, stress_data):
     """노드별 응력 및 변위 그래프를 업데이트합니다."""
     # 응력 분석 페이지에서만 실행
     if '/stress' not in pathname:
@@ -1114,7 +1114,7 @@ def update_node_graphs(selected_node, pathname, stress_data):
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def update_section_views(pathname, active_tab, time_idx, x_val, y_val, z_val, unified_colorbar, selected_rows, tbl_data):
+def update_section_views_stress(pathname, active_tab, time_idx, x_val, y_val, z_val, unified_colorbar, selected_rows, tbl_data):
     """단면 뷰어들을 업데이트합니다."""
     # 응력 분석 페이지에서만 실행
     if '/stress' not in pathname:
@@ -1311,7 +1311,7 @@ def update_section_views(pathname, active_tab, time_idx, x_val, y_val, z_val, un
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def init_section_slider_independent(pathname, active_tab, selected_rows, tbl_data):
+def init_section_slider_independent_stress(pathname, active_tab, selected_rows, tbl_data):
     """단면 탭용 독립 슬라이더를 초기화합니다."""
     # 응력 분석 페이지에서만 실행
     if '/stress' not in pathname:
@@ -1349,7 +1349,7 @@ def init_section_slider_independent(pathname, active_tab, selected_rows, tbl_dat
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def on_concrete_select(pathname, selected_rows, tbl_data):
+def on_concrete_select_stress(pathname, selected_rows, tbl_data):
     """콘크리트 선택 시 슬라이더를 초기화합니다."""
     # 응력 분석 페이지에서만 실행
     if '/stress' not in pathname:
@@ -1385,7 +1385,7 @@ def on_concrete_select(pathname, selected_rows, tbl_data):
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def start_analysis(pathname, n_clicks, selected_rows, tbl_data):
+def start_analysis_stress(pathname, n_clicks, selected_rows, tbl_data):
     """응력 분석을 시작합니다."""
     # 응력 분석 페이지에서만 실행
     if '/stress' not in pathname:
@@ -1423,7 +1423,7 @@ def start_analysis(pathname, n_clicks, selected_rows, tbl_data):
     State("tbl-concrete-stress", "selected_rows"),
     prevent_initial_call=True
 )
-def ask_delete_concrete(n, pathname, sel):
+def ask_delete_concrete_stress(n, pathname, sel):
     """콘크리트 삭제 확인 다이얼로그를 표시합니다."""
     # 응력 분석 페이지에서만 실행
     if '/stress' not in pathname:
