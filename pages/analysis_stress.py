@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # pages/analysis_stress.py
-# 응력 분석 페이지: 간단한 콘크리트 목록 표시
+# 응력 분석 페이지: FRD 파일에서 응력 데이터를 읽어와 3D 시각화
 
 from __future__ import annotations
 
@@ -16,6 +16,9 @@ from dash import (
 )
 import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import json
 
 import api_db
 from utils.encryption import parse_project_key_from_url
@@ -32,6 +35,9 @@ layout = dbc.Container(
         
         # ── 데이터 저장용 Store들
         dcc.Store(id="project-info-store-stress", data=None),
+        dcc.Store(id="stress-data-store", data=None),
+        dcc.Store(id="current-stress-time-store", data=None),
+        dcc.Store(id="current-stress-file-title-store", data=None),
         
         # 메인 콘텐츠 영역
         dbc.Row([
@@ -163,7 +169,7 @@ layout = dbc.Container(
                 })
             ], md=6),
             
-                        # 오른쪽 메인 콘텐츠 영역
+            # 오른쪽 메인 콘텐츠 영역
             dbc.Col([
                 html.Div([
                     # 탭 메뉴 (노션 스타일)
@@ -253,6 +259,96 @@ layout = dbc.Container(
     ]
 )
 
+# ───────────────────── FRD 파일 처리 함수들 ─────────────────────
+
+def read_frd_stress_data(frd_path):
+    """FRD 파일에서 응력 데이터를 읽어옵니다."""
+    try:
+        with open(frd_path, 'r') as f:
+            lines = f.readlines()
+        
+        stress_data = {
+            'times': [],
+            'nodes': [],
+            'coordinates': [],
+            'stress_values': []
+        }
+        
+        current_time = None
+        reading_nodes = False
+        reading_stress = False
+        node_coords = {}
+        
+        for line in lines:
+            line = line.strip()
+            
+            # 시간 스텝 찾기
+            if line.startswith('    1C'):
+                try:
+                    time_str = line[6:].strip()
+                    current_time = float(time_str)
+                    stress_data['times'].append(current_time)
+                except:
+                    pass
+            
+            # 노드 좌표 읽기
+            elif line.startswith(' -1') and 'NODE' in line:
+                reading_nodes = True
+                continue
+            elif reading_nodes and line.startswith(' -2'):
+                reading_nodes = False
+                continue
+            elif reading_nodes and line and not line.startswith(' -'):
+                try:
+                    parts = line.split()
+                    if len(parts) >= 4:
+                        node_id = int(parts[0])
+                        x, y, z = float(parts[1]), float(parts[2]), float(parts[3])
+                        node_coords[node_id] = [x, y, z]
+                except:
+                    pass
+            
+            # 응력 데이터 읽기
+            elif line.startswith(' -1') and 'STRESS' in line:
+                reading_stress = True
+                current_stress_values = {}
+                continue
+            elif reading_stress and line.startswith(' -2'):
+                reading_stress = False
+                if current_stress_values:
+                    stress_data['stress_values'].append(current_stress_values)
+                continue
+            elif reading_stress and line and not line.startswith(' -'):
+                try:
+                    parts = line.split()
+                    if len(parts) >= 7:
+                        node_id = int(parts[0])
+                        # von Mises 응력 (7번째 값)
+                        von_mises = float(parts[6])
+                        current_stress_values[node_id] = von_mises
+                except:
+                    pass
+        
+        # 노드 좌표를 순서대로 정렬
+        if node_coords:
+            stress_data['coordinates'] = [node_coords[i] for i in sorted(node_coords.keys())]
+            stress_data['nodes'] = sorted(node_coords.keys())
+        
+        return stress_data
+        
+    except Exception as e:
+        print(f"FRD 파일 읽기 오류: {e}")
+        return None
+
+def get_frd_files(concrete_pk):
+    """콘크리트 PK에 해당하는 FRD 파일들을 찾습니다."""
+    frd_dir = f"frd/{concrete_pk}"
+    if not os.path.exists(frd_dir):
+        return []
+    
+    frd_files = glob.glob(f"{frd_dir}/*.frd")
+    return sorted(frd_files)
+
 # ───────────────────── 콜백 함수들 ─────────────────────
 
 @callback(
@@ -312,20 +408,20 @@ def load_concrete_data_stress(search, pathname):
         
         # FRD 파일 확인
         concrete_pk = row["concrete_pk"]
-        frd_dir = f"frd/{concrete_pk}"
-        has_frd = os.path.exists(frd_dir) and len(glob.glob(f"{frd_dir}/*.frd")) > 0
+        frd_files = get_frd_files(concrete_pk)
+        has_frd = len(frd_files) > 0
         
         # 상태 결정 (정렬을 위해 우선순위도 함께 설정)
         if row["activate"] == 1:  # 활성
             if has_frd:
-                status = "설정중"
-                status_sort = 2  # 두 번째 우선순위
+                status = "응력 분석 가능"
+                status_sort = 1  # 첫 번째 우선순위
             else:
-                status = "설정중"
-                status_sort = 3  # 세 번째 우선순위
+                status = "FRD 파일 없음"
+                status_sort = 2  # 두 번째 우선순위
         else:  # 비활성 (activate == 0)
-            status = "분석중"
-            status_sort = 1  # 첫 번째 우선순위
+            status = "비활성"
+            status_sort = 3  # 세 번째 우선순위
         
         # 타설날짜 포맷팅
         pour_date = "N/A"
@@ -389,20 +485,30 @@ def load_concrete_data_stress(search, pathname):
     
     # 테이블 스타일 설정 (문자열 비교 기반 색상)
     style_data_conditional = [
-        # 분석중 상태 (초록색)
+        # 응력 분석 가능 상태 (초록색)
         {
             'if': {
-                'filter_query': '{status} = "분석중"',
+                'filter_query': '{status} = "응력 분석 가능"',
                 'column_id': 'status'
             },
             'backgroundColor': '#e8f5e8',
             'color': '#2e7d32',
             'fontWeight': 'bold'
         },
-        # 설정중 상태 (회색)
+        # FRD 파일 없음 상태 (주황색)
         {
             'if': {
-                'filter_query': '{status} = "설정중"',
+                'filter_query': '{status} = "FRD 파일 없음"',
+                'column_id': 'status'
+            },
+            'backgroundColor': '#fff3e0',
+            'color': '#f57c00',
+            'fontWeight': 'bold'
+        },
+        # 비활성 상태 (회색)
+        {
+            'if': {
+                'filter_query': '{status} = "비활성"',
                 'column_id': 'status'
             },
             'backgroundColor': '#f5f5f5',
@@ -421,7 +527,7 @@ def load_concrete_data_stress(search, pathname):
         }
     ])
     
-    # 상태별 기본 정렬 적용 (분석중 → 설정중)
+    # 상태별 기본 정렬 적용 (응력 분석 가능 → FRD 파일 없음 → 비활성)
     if table_data:
         table_data = sorted(table_data, key=lambda x: x.get('status_sort', 999))
     
@@ -476,8 +582,34 @@ def switch_tab_stress(active_tab, selected_rows, pathname, tbl_data):
 def create_3d_tab_content_stress(concrete_pk):
     """입체 탭 콘텐츠를 생성합니다."""
     return html.Div([
-        html.H4("3D 응력 분석", className="mb-3"),
-        html.P("3D 응력 분석 기능이 여기에 표시됩니다.", className="text-muted")
+        # 제목 및 설명
+        html.Div([
+            html.H4("3D 응력 분석", className="mb-2"),
+            html.P("FRD 파일에서 응력 데이터를 읽어와 3D 시각화합니다.", className="text-muted mb-4")
+        ]),
+        
+        # FRD 파일 목록
+        html.Div([
+            html.H6("📁 FRD 파일 목록", className="mb-3"),
+            html.Div(id="frd-file-list-stress", className="mb-4")
+        ]),
+        
+        # 3D 시각화 영역
+        html.Div([
+            html.H6("🎯 3D 응력 분포", className="mb-3"),
+            dcc.Graph(
+                id="stress-3d-viewer",
+                style={"height": "500px"},
+                config={"displayModeBar": True, "displaylogo": False}
+            )
+        ]),
+        
+        # 숨겨진 컴포넌트들
+        html.Div([
+            dcc.Store(id="stress-data-store", data=None),
+            dcc.Store(id="current-stress-time-store", data=None),
+            dcc.Store(id="current-stress-file-title-store", data=None),
+        ], style={"display": "none"})
     ])
 
 def create_section_tab_content_stress(concrete_pk):
@@ -493,3 +625,113 @@ def create_node_tab_content_stress(concrete_pk):
         html.H4("노드별 응력 분석", className="mb-3"),
         html.P("노드별 응력 분석 기능이 여기에 표시됩니다.", className="text-muted")
     ])
+
+@callback(
+    Output("frd-file-list-stress", "children"),
+    Output("stress-data-store", "data"),
+    Input("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
+    prevent_initial_call=True,
+)
+def load_frd_files_stress(selected_rows, tbl_data):
+    """선택된 콘크리트의 FRD 파일들을 로드합니다."""
+    if not selected_rows or not tbl_data:
+        return "콘크리트를 선택하세요.", None
+    
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    
+    # FRD 파일 목록 가져오기
+    frd_files = get_frd_files(concrete_pk)
+    
+    if not frd_files:
+        return html.Div([
+            dbc.Alert("FRD 파일이 없습니다.", color="warning", className="mb-3")
+        ], className="mb-4"), None
+    
+    # FRD 파일 목록 표시
+    file_list = []
+    all_stress_data = {}
+    
+    for i, frd_file in enumerate(frd_files):
+        filename = os.path.basename(frd_file)
+        
+        # FRD 파일에서 응력 데이터 읽기
+        stress_data = read_frd_stress_data(frd_file)
+        if stress_data:
+            all_stress_data[filename] = stress_data
+            
+            file_list.append(
+                dbc.Card([
+                    dbc.CardBody([
+                        html.H6(f"📄 {filename}", className="mb-2"),
+                        html.Small(f"시간 스텝: {len(stress_data['times'])}개", className="text-muted"),
+                        html.Br(),
+                        html.Small(f"노드 수: {len(stress_data['nodes'])}개", className="text-muted")
+                    ])
+                ], className="mb-2")
+            )
+    
+    return html.Div(file_list), all_stress_data
+
+@callback(
+    Output("stress-3d-viewer", "figure"),
+    Input("stress-data-store", "data"),
+    prevent_initial_call=True,
+)
+def update_3d_stress_viewer(stress_data):
+    """3D 응력 시각화를 업데이트합니다."""
+    if not stress_data:
+        return go.Figure().add_annotation(
+            text="응력 데이터가 없습니다.",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+    
+    # 첫 번째 파일의 첫 번째 시간 스텝 데이터 사용
+    first_file = list(stress_data.keys())[0]
+    first_data = stress_data[first_file]
+    
+    if not first_data['coordinates'] or not first_data['stress_values']:
+        return go.Figure().add_annotation(
+            text="유효한 응력 데이터가 없습니다.",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+    
+    # 좌표와 응력 값 추출
+    coords = np.array(first_data['coordinates'])
+    stress_values = list(first_data['stress_values'][0].values())
+    
+    # 3D 산점도 생성
+    fig = go.Figure(data=[
+        go.Scatter3d(
+            x=coords[:, 0],
+            y=coords[:, 1],
+            z=coords[:, 2],
+            mode='markers',
+            marker=dict(
+                size=5,
+                color=stress_values,
+                colorscale='Viridis',
+                colorbar=dict(title="응력 (MPa)"),
+                showscale=True
+            ),
+            text=[f"노드 {i+1}<br>응력: {val:.2f} MPa" for i, val in enumerate(stress_values)],
+            hoverinfo='text'
+        )
+    ])
+    
+    fig.update_layout(
+        title="3D 응력 분포",
+        scene=dict(
+            xaxis_title="X (m)",
+            yaxis_title="Y (m)",
+            zaxis_title="Z (m)",
+            aspectmode='data'
+        ),
+        margin=dict(l=0, r=0, b=0, t=30),
+        height=500
+    )
+    
+    return fig
