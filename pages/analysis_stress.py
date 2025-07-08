@@ -158,6 +158,21 @@ layout = dbc.Container(
         dcc.Store(id="stress-data-store", data=None),
         dcc.Graph(id='section-colorbar-stress', style={'display':'none'}),
         
+        # ── 숨겨진 컴포넌트들 (콜백 참조용)
+        dcc.Slider(id="time-slider-section-stress", style={"display": "none"}),
+        dcc.Slider(id="section-x-input", style={"display": "none"}),
+        dcc.Slider(id="section-y-input", style={"display": "none"}),
+        dcc.Slider(id="section-z-input", style={"display": "none"}),
+        dcc.Graph(id="viewer-3d-section", style={"display": "none"}),
+        dcc.Graph(id="viewer-section-x", style={"display": "none"}),
+        dcc.Graph(id="viewer-section-y", style={"display": "none"}),
+        dcc.Graph(id="viewer-section-z", style={"display": "none"}),
+        dcc.Dropdown(id="stress-field-dropdown", style={"display": "none"}),
+        dcc.Dropdown(id="stress-preset-dropdown", style={"display": "none"}),
+        dbc.Checklist(id="slice-enable", style={"display": "none"}),
+        dcc.Dropdown(id="slice-axis", style={"display": "none"}),
+        dcc.Slider(id="slice-slider", style={"display": "none"}),
+        
         # ── 다운로드 컴포넌트들
         dcc.Download(id="download-3d-image-stress"),
         dcc.Download(id="download-current-frd-stress"),
