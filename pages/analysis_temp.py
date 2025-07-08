@@ -236,7 +236,7 @@ layout = dbc.Container(
 
         # ── 컨펌 다이얼로그 및 알림
         dcc.ConfirmDialog(
-            id="confirm-del-concrete",
+            id="confirm-del-concrete-tmp",
             message="선택한 콘크리트를 정말 삭제하시겠습니까?"
         ),
         dbc.Alert(
@@ -248,21 +248,22 @@ layout = dbc.Container(
         ),
 
         # ── 데이터 저장용 Store들
-        dcc.Store(id="current-time-store", data=None),
-        dcc.Store(id="current-file-title-store", data=""),
-        dcc.Store(id="section-coord-store", data=None),
-        dcc.Store(id="viewer-3d-store", data=None),
-        dcc.Store(id="unified-colorbar-state", data=False),
-    dcc.Store(id="project-info-store", data=None),
-        dcc.Graph(id='section-colorbar', style={'display':'none'}),
+        dcc.Store(id="current-time-store-tmp", data=None),
+        dcc.Store(id="current-file-title-store-tmp", data=""),
+        dcc.Store(id="section-coord-store-tmp", data=None),
+        dcc.Store(id="viewer-3d-store-tmp", data=None),
+        dcc.Store(id="unified-colorbar-state-tmp", data=False),
+        dcc.Store(id="project-info-store-tmp", data=None),
+        dcc.Store(id="temp-data-store", data=None),
+        dcc.Graph(id='section-colorbar-tmp', style={'display':'none'}),
         
         # ── 다운로드 컴포넌트들
-        dcc.Download(id="download-3d-image"),
-        dcc.Download(id="download-current-inp"),
-        dcc.Download(id="download-section-image"),
-        dcc.Download(id="download-section-inp"),
-        dcc.Download(id="download-temp-image"),
-        dcc.Download(id="download-temp-data"),
+        dcc.Download(id="download-3d-image-tmp"),
+        dcc.Download(id="download-current-inp-tmp"),
+        dcc.Download(id="download-section-image-tmp"),
+        dcc.Download(id="download-section-inp-tmp"),
+        dcc.Download(id="download-temp-image-tmp"),
+        dcc.Download(id="download-temp-data-tmp"),
         
         # 키보드 이벤트 처리 스크립트
         html.Div([
@@ -293,7 +294,7 @@ layout = dbc.Container(
                                 event.preventDefault();
                                 
                                 // 현재 보이는 슬라이더 찾기
-                                const sliders = ['time-slider-tmp', 'time-slider-section', 'analysis-time-slider'];
+                                const sliders = ['time-slider-tmp', 'time-slider-section-tmp', 'analysis-time-slider'];
                                 let activeSlider = null;
                                 
                                 for (const sliderId of sliders) {
@@ -683,7 +684,7 @@ layout = dbc.Container(
                             persistence=False
                         ),
                         dcc.Slider(
-                            id="time-slider-section", 
+                            id="time-slider-section-tmp", 
                             min=0, 
                             max=5, 
                             step=1, 
@@ -696,13 +697,13 @@ layout = dbc.Container(
                         # dcc.Slider(id="temp-tci-time-slider-tmp", min=0, max=5, step=1, value=0, marks={}),  # TCI용 시간 슬라이더
                         dcc.Graph(id="viewer-3d"),
                         dcc.Graph(id="viewer-3d-display"),
-                        dbc.Input(id="section-x-input", type="number", value=None),
-                        dbc.Input(id="section-y-input", type="number", value=None),
-                        dbc.Input(id="section-z-input", type="number", value=None),
-                        dcc.Graph(id="viewer-3d-section"),
-                        dcc.Graph(id="viewer-section-x"),
-                        dcc.Graph(id="viewer-section-y"),
-                        dcc.Graph(id="viewer-section-z"),
+                        dbc.Input(id="section-x-input-tmp", type="number", value=None),
+                        dbc.Input(id="section-y-input-tmp", type="number", value=None),
+                        dbc.Input(id="section-z-input-tmp", type="number", value=None),
+                        dcc.Graph(id="viewer-3d-section-tmp"),
+                        dcc.Graph(id="viewer-section-x-tmp"),
+                        dcc.Graph(id="viewer-section-y-tmp"),
+                        dcc.Graph(id="viewer-section-z-tmp"),
                         dcc.Store(id="temp-coord-store", data={}),
                         dbc.Input(id="temp-x-input", type="number", value=0),
                         dbc.Input(id="temp-y-input", type="number", value=0),
@@ -736,8 +737,8 @@ layout = dbc.Container(
     Output("time-slider-tmp", "max"),
     Output("time-slider-tmp", "value"),
     Output("time-slider-tmp", "marks"),
-    Output("current-time-store", "data"),
-    Output("project-info-store", "data"),
+    Output("current-time-store-tmp", "data"),
+    Output("project-info-store-tmp", "data"),
     Input("project-url", "search"),
     Input("project-url", "pathname"),
     prevent_initial_call=False,
@@ -937,7 +938,7 @@ def load_concrete_data_tmp(search, pathname):
 # ───────────────────── ② 프로젝트 정보 표시 콜백 ────────────────────
 @callback(
     Output("current-project-info", "children"),
-    Input("project-info-store", "data"),
+    Input("project-info-store-tmp", "data"),
     Input("project-url", "pathname"),
     prevent_initial_call=True,
 )
@@ -959,7 +960,7 @@ def update_project_info_tmp(project_info, pathname):
 @callback(
     Output("btn-concrete-analyze-tmp", "disabled", allow_duplicate=True),
     Output("btn-concrete-del-tmp", "disabled", allow_duplicate=True),
-    Output("current-file-title-store", "data", allow_duplicate=True),
+    Output("current-file-title-store-tmp", "data", allow_duplicate=True),
     Output("time-slider-tmp", "min", allow_duplicate=True),
     Output("time-slider-tmp", "max", allow_duplicate=True),
     Output("time-slider-tmp", "value", allow_duplicate=True),
@@ -1107,7 +1108,7 @@ def on_concrete_select_tmp(selected_rows, pathname, tbl_data):
 
 # ───────────────────── 3D 뷰 클릭 → 단면 위치 저장 ────────────────────
 @callback(
-    Output("section-coord-store", "data"),
+    Output("section-coord-store-tmp", "data"),
     Input("viewer-3d", "clickData"),
     prevent_initial_call=True,
 )
@@ -1120,19 +1121,19 @@ def store_section_coord_tmp(clickData):
 # ───────────────────── 3D/단면도 업데이트 콜백 ────────────────────
 @callback(
     Output("viewer-3d", "figure"),
-    Output("current-time-store", "data", allow_duplicate=True),
-    Output("viewer-3d-store", "data"),
+    Output("current-time-store-tmp", "data", allow_duplicate=True),
+    Output("viewer-3d-store-tmp", "data"),
     Output("time-slider-tmp", "min", allow_duplicate=True),
     Output("time-slider-tmp", "max", allow_duplicate=True),
     Output("time-slider-tmp", "marks", allow_duplicate=True),
     Output("time-slider-tmp", "value", allow_duplicate=True),
-    Output("current-file-title-store", "data", allow_duplicate=True),
+    Output("current-file-title-store-tmp", "data", allow_duplicate=True),
     Input("time-slider-tmp", "value"),
-    Input("section-coord-store", "data"),
-    Input("unified-colorbar-state", "data"),
+    Input("section-coord-store-tmp", "data"),
+    Input("unified-colorbar-state-tmp", "data"),
     Input("tbl-concrete-tmp", "selected_rows"),
     State("tbl-concrete-tmp", "data"),
-    State("current-time-store", "data"),
+    State("current-time-store-tmp", "data"),
     prevent_initial_call=True,
 )
 def update_heatmap_tmp(time_idx, section_coord, unified_colorbar, selected_rows, tbl_data, current_time):
@@ -1457,8 +1458,8 @@ def update_heatmap_tmp(time_idx, section_coord, unified_colorbar, selected_rows,
     Input("tbl-concrete-tmp", "selected_rows"),
     Input("project-url", "pathname"),
     State("tbl-concrete-tmp", "data"),
-    State("viewer-3d-store", "data"),
-    State("current-file-title-store", "data"),
+    State("viewer-3d-store-tmp", "data"),
+    State("current-file-title-store-tmp", "data"),
     prevent_initial_call=True,
 )
 def switch_tab_tmp(active_tab, selected_rows, pathname, tbl_data, viewer_data, current_file_title):
@@ -2008,7 +2009,7 @@ def switch_tab_tmp(active_tab, selected_rows, pathname, tbl_data, viewer_data, c
                         "marginBottom": "12px"
                     }),
                     dcc.Slider(
-                        id="time-slider-section",
+                        id="time-slider-section-tmp",
                         min=slider_min if slider_min is not None else 0,
                         max=slider_max if slider_max is not None and slider_max > 0 else 5,
                         step=1,
@@ -2097,7 +2098,7 @@ def switch_tab_tmp(active_tab, selected_rows, pathname, tbl_data, viewer_data, c
                     # 배속 상태 표시용 Store (단면도용)
                     dcc.Store(id="speed-state-section", data={"speed": 1}),
                     # 단면도 온도바 통일 상태 Store
-                    dcc.Store(id="unified-colorbar-section-state", data=False),
+                    dcc.Store(id="unified-colorbar-section-state-tmp", data=False),
                     # 자동 재생용 Interval (단면도용)
                     dcc.Interval(
                         id="play-interval-section",
@@ -2199,7 +2200,7 @@ def switch_tab_tmp(active_tab, selected_rows, pathname, tbl_data, viewer_data, c
                                             })
                                         ], style={"marginBottom": "4px"}),
                                         dbc.Input(
-                                            id="section-x-input", 
+                                            id="section-x-input-tmp", 
                                             type="number", 
                                             step=0.1, 
                                             value=None,
@@ -2228,7 +2229,7 @@ def switch_tab_tmp(active_tab, selected_rows, pathname, tbl_data, viewer_data, c
                                             })
                                         ], style={"marginBottom": "4px"}),
                                         dbc.Input(
-                                            id="section-y-input", 
+                                            id="section-y-input-tmp", 
                                             type="number", 
                                             step=0.1, 
                                             value=None,
@@ -2257,7 +2258,7 @@ def switch_tab_tmp(active_tab, selected_rows, pathname, tbl_data, viewer_data, c
                                             })
                                         ], style={"marginBottom": "4px"}),
                                         dbc.Input(
-                                            id="section-z-input", 
+                                            id="section-z-input-tmp", 
                                             type="number", 
                                             step=0.1, 
                                             value=None,
@@ -2299,7 +2300,7 @@ def switch_tab_tmp(active_tab, selected_rows, pathname, tbl_data, viewer_data, c
                                 "textAlign": "center"
                             }),
                             dcc.Graph(
-                                id="viewer-3d-section", 
+                                id="viewer-3d-section-tmp", 
                                 style={"height": "30vh", "borderRadius": "6px"}, 
                                 config={"scrollZoom": True}
                             ),
@@ -2320,7 +2321,7 @@ def switch_tab_tmp(active_tab, selected_rows, pathname, tbl_data, viewer_data, c
                                 "marginBottom": "8px",
                                 "textAlign": "center"
                             }),
-                            dcc.Graph(id="viewer-section-x", style={"height": "30vh"}),
+                            dcc.Graph(id="viewer-section-x-tmp", style={"height": "30vh"}),
                         ], style={
                             "backgroundColor": "white",
                             "padding": "12px",
@@ -2340,7 +2341,7 @@ def switch_tab_tmp(active_tab, selected_rows, pathname, tbl_data, viewer_data, c
                                 "marginBottom": "8px",
                                 "textAlign": "center"
                             }),
-                            dcc.Graph(id="viewer-section-y", style={"height": "30vh"}),
+                            dcc.Graph(id="viewer-section-y-tmp", style={"height": "30vh"}),
                         ], style={
                             "backgroundColor": "white",
                             "padding": "12px",
@@ -2358,7 +2359,7 @@ def switch_tab_tmp(active_tab, selected_rows, pathname, tbl_data, viewer_data, c
                                 "marginBottom": "8px",
                                 "textAlign": "center"
                             }),
-                            dcc.Graph(id="viewer-section-z", style={"height": "30vh"}),
+                            dcc.Graph(id="viewer-section-z-tmp", style={"height": "30vh"}),
                         ], style={
                             "backgroundColor": "white",
                             "padding": "12px",
@@ -2732,7 +2733,7 @@ def start_analysis_tmp(n_clicks, selected_rows, tbl_data):
 
 # ───────────────────── ⑥ 삭제 컨펌 토글 콜백 ───────────────────
 @callback(
-    Output("confirm-del-concrete", "displayed"),
+    Output("confirm-del-concrete-tmp", "displayed"),
     Input("btn-concrete-del-tmp", "n_clicks"),
     State("tbl-concrete-tmp", "selected_rows"),
     prevent_initial_call=True
@@ -2746,7 +2747,7 @@ def ask_delete_concrete_tmp(n, sel):
     Output("temp-project-alert", "color", allow_duplicate=True),
     Output("temp-project-alert", "is_open", allow_duplicate=True),
     Output("tbl-concrete-tmp", "data", allow_duplicate=True),
-    Input("confirm-del-concrete", "submit_n_clicks"),
+    Input("confirm-del-concrete-tmp", "submit_n_clicks"),
     State("tbl-concrete-tmp", "selected_rows"),
     State("tbl-concrete-tmp", "data"),
     prevent_initial_call=True,
@@ -2782,19 +2783,19 @@ def delete_concrete_confirm_tmp(_click, sel, tbl_data):
 
 # 단면도 탭 콜백: 3D 뷰(작게)와 X/Y/Z 단면도, 입력창 min/max 자동 설정
 @callback(
-    Output("viewer-3d-section", "figure"),
-    Output("viewer-section-x", "figure"),
-    Output("viewer-section-y", "figure"),
-    Output("viewer-section-z", "figure"),
-    Output("section-x-input", "min"), Output("section-x-input", "max"), Output("section-x-input", "value"),
-    Output("section-y-input", "min"), Output("section-y-input", "max"), Output("section-y-input", "value"),
-    Output("section-z-input", "min"), Output("section-z-input", "max"), Output("section-z-input", "value"),
-    Output("current-file-title-store", "data", allow_duplicate=True),
-    Input("time-slider-section", "value"),  # 단면도용 독립 슬라이더 사용
-    Input("section-x-input", "value"),
-    Input("section-y-input", "value"),
-    Input("section-z-input", "value"),
-    Input("unified-colorbar-section-state", "data"),
+    Output("viewer-3d-section-tmp", "figure"),
+    Output("viewer-section-x-tmp", "figure"),
+    Output("viewer-section-y-tmp", "figure"),
+    Output("viewer-section-z-tmp", "figure"),
+    Output("section-x-input-tmp", "min"), Output("section-x-input-tmp", "max"), Output("section-x-input-tmp", "value"),
+    Output("section-y-input-tmp", "min"), Output("section-y-input-tmp", "max"), Output("section-y-input-tmp", "value"),
+    Output("section-z-input-tmp", "min"), Output("section-z-input-tmp", "max"), Output("section-z-input-tmp", "value"),
+    Output("current-file-title-store-tmp", "data", allow_duplicate=True),
+    Input("time-slider-section-tmp", "value"),  # 단면도용 독립 슬라이더 사용
+    Input("section-x-input-tmp", "value"),
+    Input("section-y-input-tmp", "value"),
+    Input("section-z-input-tmp", "value"),
+    Input("unified-colorbar-section-state-tmp", "data"),
     State("tbl-concrete-tmp", "selected_rows"),
     State("tbl-concrete-tmp", "data"),
     prevent_initial_call=True,
@@ -3057,7 +3058,7 @@ def update_section_views_tmp(time_idx,
     Input("temp-x-input", "value"),
     Input("temp-y-input", "value"),
     Input("temp-z-input", "value"),
-    Input("unified-colorbar-state", "data"),
+    Input("unified-colorbar-state-tmp", "data"),
     State("tbl-concrete-tmp", "selected_rows"),
     State("tbl-concrete-tmp", "data"),
     prevent_initial_call=False,
@@ -3587,7 +3588,7 @@ def sync_viewer_to_display_tmp(main_figure):
 # 3D 탭 시간 정보 업데이트 콜백
 @callback(
     Output("viewer-3d-time-info", "children"),
-    Input("current-file-title-store", "data"),
+    Input("current-file-title-store-tmp", "data"),
     Input("tabs-main", "active_tab"),
     prevent_initial_call=True,
 )
@@ -3669,7 +3670,7 @@ def update_3d_time_info_tmp(current_file_title, active_tab):
 # 단면도 탭 시간 정보 업데이트 콜백
 @callback(
     Output("section-time-info", "children"),
-    Input("current-file-title-store", "data"),
+    Input("current-file-title-store-tmp", "data"),
     Input("tabs-main", "active_tab"),
     prevent_initial_call=True,
 )
@@ -3750,10 +3751,10 @@ def update_section_time_info_tmp(current_file_title, active_tab):
 
 # 단면도 탭 전용 시간 슬라이더 초기화 콜백 (독립적)
 @callback(
-    Output("time-slider-section", "min"),
-    Output("time-slider-section", "max"), 
-    Output("time-slider-section", "value"),
-    Output("time-slider-section", "marks"),
+    Output("time-slider-section-tmp", "min"),
+    Output("time-slider-section-tmp", "max"), 
+    Output("time-slider-section-tmp", "value"),
+    Output("time-slider-section-tmp", "marks"),
     Input("tabs-main", "active_tab"),
     Input("tbl-concrete-tmp", "selected_rows"),
     State("tbl-concrete-tmp", "data"),
@@ -3806,7 +3807,7 @@ def init_section_slider_independent_tmp(active_tab, selected_rows, tbl_data):
 
 # 3D 이미지 저장 콜백
 @callback(
-    Output("download-3d-image", "data"),
+    Output("download-3d-image-tmp", "data"),
     Output("btn-save-3d-image", "children"),
     Output("btn-save-3d-image", "disabled"),
     Input("btn-save-3d-image", "n_clicks"),
@@ -3860,17 +3861,17 @@ def save_3d_image_tmp(n_clicks, figure, selected_rows, tbl_data, time_value):
 
 # 단면도 이미지 저장 콜백
 @callback(
-    Output("download-section-image", "data"),
+    Output("download-section-image-tmp", "data"),
     Output("btn-save-section-image", "children"),
     Output("btn-save-section-image", "disabled"),
     Input("btn-save-section-image", "n_clicks"),
-    State("viewer-3d-section", "figure"),
-    State("viewer-section-x", "figure"),
-    State("viewer-section-y", "figure"),
-    State("viewer-section-z", "figure"),
+    State("viewer-3d-section-tmp", "figure"),
+    State("viewer-section-x-tmp", "figure"),
+    State("viewer-section-y-tmp", "figure"),
+    State("viewer-section-z-tmp", "figure"),
     State("tbl-concrete-tmp", "selected_rows"),
     State("tbl-concrete-tmp", "data"),
-    State("time-slider-section", "value"),
+    State("time-slider-section-tmp", "value"),
     prevent_initial_call=True,
 )
 def save_section_image_tmp(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl_data, time_value):
@@ -3946,7 +3947,7 @@ def save_section_image_tmp(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows,
 
 # 온도 변화 이미지 저장 콜백
 @callback(
-    Output("download-temp-image", "data"),
+    Output("download-temp-image-tmp", "data"),
     Output("btn-save-temp-image", "children"),
     Output("btn-save-temp-image", "disabled"),
     Input("btn-save-temp-image", "n_clicks"),
@@ -4030,7 +4031,7 @@ def save_temp_image_tmp(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, 
 
 # INP 저장 콜백
 @callback(
-    Output("download-current-inp", "data"),
+    Output("download-current-inp-tmp", "data"),
     Output("btn-save-current-inp", "children"),
     Output("btn-save-current-inp", "disabled"),
     Input("btn-save-current-inp", "n_clicks"),
@@ -4073,13 +4074,13 @@ def save_current_inp_tmp(n_clicks, selected_rows, tbl_data, time_value):
 
 # 단면도 INP 저장 콜백
 @callback(
-    Output("download-section-inp", "data"),
+    Output("download-section-inp-tmp", "data"),
     Output("btn-save-section-inp", "children"),
     Output("btn-save-section-inp", "disabled"),
     Input("btn-save-section-inp", "n_clicks"),
     State("tbl-concrete-tmp", "selected_rows"),
     State("tbl-concrete-tmp", "data"),
-    State("time-slider-section", "value"),
+    State("time-slider-section-tmp", "value"),
     prevent_initial_call=True,
 )
 def save_section_inp_tmp(n_clicks, selected_rows, tbl_data, time_value):
@@ -4116,7 +4117,7 @@ def save_section_inp_tmp(n_clicks, selected_rows, tbl_data, time_value):
 
 # 온도 변화 데이터 저장 콜백
 @callback(
-    Output("download-temp-data", "data"),
+    Output("download-temp-data-tmp", "data"),
     Output("btn-save-temp-data", "children"),
     Output("btn-save-temp-data", "disabled"),
     Input("btn-save-temp-data", "n_clicks"),
@@ -4259,7 +4260,7 @@ def save_temp_data_tmp(n_clicks, selected_rows, tbl_data, x, y, z, range_filter)
 
 # ───────────── 온도바 통일 기능 콜백 ─────────────
 @callback(
-    Output("unified-colorbar-state", "data"),
+    Output("unified-colorbar-state-tmp", "data"),
     Input("btn-unified-colorbar", "value"),
     prevent_initial_call=True,
 )
@@ -4271,7 +4272,7 @@ def toggle_unified_colorbar_tmp(switch_value):
     return switch_value
 
 @callback(
-    Output("unified-colorbar-section-state", "data"),
+    Output("unified-colorbar-section-state-tmp", "data"),
     Input("btn-unified-colorbar-section", "value"),
     prevent_initial_call=True,
 )
@@ -4694,12 +4695,12 @@ def stop_section_playback_tmp(n_clicks, play_state):
 
 # 단면도 자동 재생 콜백
 @callback(
-    Output("time-slider-section", "value", allow_duplicate=True),
+    Output("time-slider-section-tmp", "value", allow_duplicate=True),
     Input("play-interval-section", "n_intervals"),
     State("play-state-section", "data"),
     State("speed-state-section", "data"),
-    State("time-slider-section", "value"),
-    State("time-slider-section", "max"),
+    State("time-slider-section-tmp", "value"),
+    State("time-slider-section-tmp", "max"),
     State("tabs-main", "active_tab"),
     prevent_initial_call=True,
 )
