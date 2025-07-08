@@ -937,6 +937,9 @@ def create_3d_stress_figure(stress_data):
     coords = np.array(first_data['coordinates'])
     stress_values = list(first_data['stress_values'][0].values())
     
+    # 단위 변환: Pa → GPa (데이터 검증 전에 미리 정의)
+    stress_values_gpa = np.array(stress_values) / 1e9
+    
     # 데이터 검증: 좌표와 응력 값의 개수가 일치하는지 확인
     if len(coords) != len(stress_values):
         print(f"데이터 불일치: 좌표 {len(coords)}개, 응력 값 {len(stress_values)}개")
@@ -949,12 +952,12 @@ def create_3d_stress_figure(stress_data):
                 mode='markers',
                 marker=dict(
                     size=5,
-                    color=[v/1000 for v in (stress_values[:len(coords)] if len(stress_values) > len(coords) else stress_values)],
+                    color=stress_values_gpa[:len(coords)] if len(stress_values_gpa) > len(coords) else stress_values_gpa,
                     colorscale=[[0, 'blue'], [1, 'red']],
                     colorbar=dict(title="Stress (GPa)", thickness=10),
                     showscale=True
                 ),
-                text=[f"노드 {i+1}<br>응력: {val/1000:.4f} GPa" for i, val in enumerate(stress_values[:len(coords)] if len(stress_values) > len(coords) else stress_values)],
+                text=[f"노드 {i+1}<br>응력: {val:.4f} GPa" for i, val in enumerate(stress_values_gpa[:len(coords)] if len(stress_values_gpa) > len(coords) else stress_values_gpa)],
                 hoverinfo='text'
             )
         ])
@@ -971,9 +974,6 @@ def create_3d_stress_figure(stress_data):
             height=500
         )
         return fig
-
-            # 단위 변환: Pa → GPa
-        stress_values_gpa = np.array(stress_values) / 1e9
     stress_min, stress_max = np.nanmin(stress_values_gpa), np.nanmax(stress_values_gpa)
 
     # 데이터가 충분히 많으면 볼륨+산점도, 적으면 산점도만
