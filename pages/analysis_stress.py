@@ -20,6 +20,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import json
 import ast
+import re
 
 import api_db
 from utils.encryption import parse_project_key_from_url
@@ -285,41 +286,48 @@ def read_frd_stress_data(frd_path):
         
         node_coords = {}
         stress_values = {}
-        block = 'coord'  # 처음엔 좌표 블록
+        current_block = None
         
-        for line in lines:
+        for i, line in enumerate(lines):
             line = line.strip()
-            if line.startswith('-1') or line.startswith(' -1'):
-                parts = line.split()
-                # 좌표 블록: 5개
-                if block == 'coord' and len(parts) == 5:
+            
+            # 좌표 블록 시작 확인 (2C로 시작하는 라인)
+            if line.startswith('2C'):
+                current_block = 'coordinates'
+                continue
+            
+            # 응력 블록 시작 확인
+            if '-4  STRESS' in line:
+                current_block = 'stress'
+                continue
+            
+            # 좌표 데이터 파싱 (-1로 시작하고 5개 값: -1, node_id, x, y, z)
+            if current_block == 'coordinates' and line.startswith('-1'):
+                nums = re.findall(r'[-+]?\d*\.?\d+(?:[Ee][-+]?\d+)?', line)
+                if len(nums) == 5:  # -1, node_id, x, y, z
                     try:
-                        node_id = int(parts[1])
-                        x, y, z = float(parts[2]), float(parts[3]), float(parts[4])
+                        node_id = int(nums[1])
+                        x, y, z = float(nums[2]), float(nums[3]), float(nums[4])
                         node_coords[node_id] = [x, y, z]
                     except:
                         continue
-                # 응력 블록: 8개
-                elif len(parts) == 8:
-                    block = 'stress'  # 응력 블록 시작
+            # 응력 데이터 파싱 (-1로 시작하고 8개 값: -1, node_id, sxx, syy, szz, sxy, syz, sxz)
+            elif current_block == 'stress' and line.startswith('-1'):
+                nums = re.findall(r'[-+]?\d*\.?\d+(?:[Ee][-+]?\d+)?', line)
+                if len(nums) == 8:
                     try:
-                        node_id = int(parts[1])
-                        sxx = float(parts[2])
-                        syy = float(parts[3])
-                        szz = float(parts[4])
-                        sxy = float(parts[5])
-                        syz = float(parts[6])
-                        sxz = float(parts[7])
+                        node_id = int(nums[1])
+                        sxx = float(nums[2])
+                        syy = float(nums[3])
+                        szz = float(nums[4])
+                        sxy = float(nums[5])
+                        syz = float(nums[6])
+                        sxz = float(nums[7])
+                        # von Mises 응력 계산
                         von_mises = np.sqrt(0.5 * ((sxx - syy)**2 + (syy - szz)**2 + (szz - sxx)**2 + 6 * (sxy**2 + syz**2 + sxz**2)))
                         stress_values[node_id] = von_mises
                     except:
                         continue
-        
-        if node_coords:
-            stress_data['coordinates'] = [node_coords[i] for i in sorted(node_coords.keys())]
-            stress_data['nodes'] = sorted(node_coords.keys())
-        if stress_values:
-            stress_data['stress_values'].append(stress_values)
         
         # 좌표와 응력 값의 노드 ID를 맞춤
         if node_coords and stress_values:
@@ -333,6 +341,7 @@ def read_frd_stress_data(frd_path):
                 stress_data['nodes'] = sorted(common_node_ids)
                 stress_data['stress_values'] = [{i: stress_values[i] for i in common_node_ids}]
         
+        # 시간 정보 파싱
         try:
             filename = os.path.basename(frd_path)
             time_str = filename.split(".")[0]
