@@ -1198,17 +1198,19 @@ def delete_sensor_confirm(_click, sel, tbl_data, conc_pk):
     Output("edit-sensor-id-store", "data"),
     Input("btn-sensor-edit", "n_clicks"),
     Input("edit-sensor-close", "n_clicks"),
-    Input("edit-sensor-save", "n_clicks"),
     State("tbl-sensor", "selected_rows"), State("tbl-sensor", "data"),
     State("ddl-concrete", "value"),
     prevent_initial_call=True,
 )
-def toggle_edit_modal(b_open, b_close, b_save, sel, tbl_data, conc_pk):
+def toggle_edit_modal(b_open, b_close, sel, tbl_data, conc_pk):
     trig = dash.callback_context.triggered_id
     # "수정" 버튼을 누르면, 선택된 센서 정보(콘크리트ID + 센서ID)를 저장 후 모달 열기
     if trig == "btn-sensor-edit" and sel and conc_pk:
         row = pd.DataFrame(tbl_data).iloc[sel[0]]
         return True, conc_pk, row["sensor_pk"]
+    # "닫기" 버튼을 누르면 모달 닫기
+    if trig == "edit-sensor-close":
+        return False, dash.no_update, dash.no_update
     return False, dash.no_update, dash.no_update
 
 
@@ -1484,6 +1486,7 @@ def edit_sensor_preview(n_clicks, x_val, y_val, z_val, conc_pk, sensor_pk):
     Output("edit-sensor-alert", "children", allow_duplicate=True),
     Output("edit-sensor-alert", "color", allow_duplicate=True),
     Output("edit-sensor-alert", "is_open", allow_duplicate=True),
+    Output("modal-sensor-edit", "is_open", allow_duplicate=True),
     Input("edit-sensor-save", "n_clicks"),
     State("edit-sensor-concrete-id", "data"),
     State("edit-sensor-id-store", "data"),       # old_sensor_pk
@@ -1494,15 +1497,15 @@ def edit_sensor_preview(n_clicks, x_val, y_val, z_val, conc_pk, sensor_pk):
 )
 def edit_sensor_save(n_clicks, conc_pk, old_sensor_pk, x_val, y_val, z_val):
     if not (conc_pk and old_sensor_pk):
-        return dash.no_update, "데이터 로드 실패", "danger", True
+        return dash.no_update, "데이터 로드 실패", "danger", True, True
     
     # 좌표 입력 검사
     if x_val is None or y_val is None or z_val is None:
-        return dash.no_update, "모든 좌표값을 입력하세요", "danger", True
+        return dash.no_update, "모든 좌표값을 입력하세요", "danger", True, True
     
     # 음수 값 검사
     if x_val < 0 or y_val < 0 or z_val < 0:
-        return dash.no_update, "좌표값은 0 이상이어야 합니다", "danger", True
+        return dash.no_update, "좌표값은 0 이상이어야 합니다", "danger", True, True
 
     # 콘크리트 정보 로드 및 내부 위치 확인
     try:
@@ -1510,16 +1513,16 @@ def edit_sensor_save(n_clicks, conc_pk, old_sensor_pk, x_val, y_val, z_val):
         conc_dims = ast.literal_eval(conc_row["dims"])
         conc_nodes, conc_h = conc_dims["nodes"], conc_dims["h"]
     except Exception:
-        return dash.no_update, "콘크리트 정보를 불러올 수 없음", "danger", True
+        return dash.no_update, "콘크리트 정보를 불러올 수 없음", "danger", True, True
 
     # 콘크리트 내부에 있는지 확인
     if not is_point_in_concrete(x_val, y_val, z_val, conc_nodes, conc_h):
-        return dash.no_update, "센서 위치가 콘크리트 내부에 있어야 합니다", "danger", True
+        return dash.no_update, "센서 위치가 콘크리트 내부에 있어야 합니다", "danger", True, True
 
     try:
         api_db.update_sensors_data(sensor_pk=old_sensor_pk, dims={"nodes": [x_val, y_val, z_val]})
     except Exception as e:
-        return dash.no_update, f"위치 업데이트 실패: {e}", "danger", True
+        return dash.no_update, f"위치 업데이트 실패: {e}", "danger", True, True
 
-    # 성공: 테이블 갱신
-    return pd.Timestamp.utcnow().value, f"{old_sensor_pk} 위치 수정 완료", "success", True
+    # 성공: 테이블 갱신 및 모달 닫기
+    return pd.Timestamp.utcnow().value, f"{old_sensor_pk} 위치 수정 완료", "success", True, False
