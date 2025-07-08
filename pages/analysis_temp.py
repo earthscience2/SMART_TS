@@ -293,7 +293,7 @@ layout = dbc.Container(
                                 event.preventDefault();
                                 
                                 // 현재 보이는 슬라이더 찾기
-                                const sliders = ['time-slider', 'time-slider-section', 'analysis-time-slider'];
+                                const sliders = ['time-slider-tmp', 'time-slider-section', 'analysis-time-slider'];
                                 let activeSlider = null;
                                 
                                 for (const sliderId of sliders) {
@@ -436,7 +436,7 @@ layout = dbc.Container(
                             html.Small("💡 행을 클릭하여 선택", className="text-muted mb-2 d-block"),
                             html.Div([
                                 dash_table.DataTable(
-                                    id="tbl-concrete",
+                                    id="tbl-concrete-tmp",
                                     page_size=5,
                                     row_selectable="single",
                                     sort_action="native",
@@ -558,8 +558,8 @@ layout = dbc.Container(
                             
                             # 액션 버튼들
                             html.Div([
-                                dbc.Button("분석 시작", id="btn-concrete-analyze", color="success", size="sm", className="px-3", disabled=True),
-                                dbc.Button("삭제", id="btn-concrete-del", color="danger", size="sm", className="px-3", disabled=True),
+                                dbc.Button("분석 시작", id="btn-concrete-analyze-tmp", color="success", size="sm", className="px-3", disabled=True),
+                                dbc.Button("삭제", id="btn-concrete-del-tmp", color="danger", size="sm", className="px-3", disabled=True),
                             ], className="d-flex justify-content-center gap-2 mt-2"),
                         ])
                     ])
@@ -662,8 +662,8 @@ layout = dbc.Container(
                     
                     # 숨김 처리된 콜백 대상 컴포넌트들 (항상 포함)
                     html.Div([
-                        dcc.Slider(
-                            id="time-slider", 
+                                        dcc.Slider(
+                    id="time-slider-tmp", 
                             min=0, 
                             max=5, 
                             step=1, 
@@ -693,7 +693,7 @@ layout = dbc.Container(
                             persistence=False
                         ),  # 단면도용 독립 슬라이더 복원
                         # TCI 관련 컴포넌트들 - 제거됨
-                        # dcc.Slider(id="temp-tci-time-slider", min=0, max=5, step=1, value=0, marks={}),  # TCI용 시간 슬라이더
+                        # dcc.Slider(id="temp-tci-time-slider-tmp", min=0, max=5, step=1, value=0, marks={}),  # TCI용 시간 슬라이더
                         dcc.Graph(id="viewer-3d"),
                         dcc.Graph(id="viewer-3d-display"),
                         dbc.Input(id="section-x-input", type="number", value=None),
@@ -726,16 +726,16 @@ layout = dbc.Container(
 
 # ───────────────────── ① 콘크리트 목록 초기화 ─────────────────────
 @callback(
-    Output("tbl-concrete", "data"),
-    Output("tbl-concrete", "columns"),
-    Output("tbl-concrete", "selected_rows"),
-    Output("tbl-concrete", "style_data_conditional"),
-    Output("btn-concrete-analyze", "disabled"),
-    Output("btn-concrete-del", "disabled"),
-    Output("time-slider", "min"),
-    Output("time-slider", "max"),
-    Output("time-slider", "value"),
-    Output("time-slider", "marks"),
+    Output("tbl-concrete-tmp", "data"),
+    Output("tbl-concrete-tmp", "columns"),
+    Output("tbl-concrete-tmp", "selected_rows"),
+    Output("tbl-concrete-tmp", "style_data_conditional"),
+    Output("btn-concrete-analyze-tmp", "disabled"),
+    Output("btn-concrete-del-tmp", "disabled"),
+    Output("time-slider-tmp", "min"),
+    Output("time-slider-tmp", "max"),
+    Output("time-slider-tmp", "value"),
+    Output("time-slider-tmp", "marks"),
     Output("current-time-store", "data"),
     Output("project-info-store", "data"),
     Input("project-url", "search"),
@@ -957,16 +957,16 @@ def update_project_info_tmp(project_info, pathname):
 
 # ───────────────────── ③ 콘크리트 선택 콜백 ────────────────────
 @callback(
-    Output("btn-concrete-analyze", "disabled", allow_duplicate=True),
-    Output("btn-concrete-del", "disabled", allow_duplicate=True),
+    Output("btn-concrete-analyze-tmp", "disabled", allow_duplicate=True),
+    Output("btn-concrete-del-tmp", "disabled", allow_duplicate=True),
     Output("current-file-title-store", "data", allow_duplicate=True),
-    Output("time-slider", "min", allow_duplicate=True),
-    Output("time-slider", "max", allow_duplicate=True),
-    Output("time-slider", "value", allow_duplicate=True),
-    Output("time-slider", "marks", allow_duplicate=True),
-    Input("tbl-concrete", "selected_rows"),
+    Output("time-slider-tmp", "min", allow_duplicate=True),
+    Output("time-slider-tmp", "max", allow_duplicate=True),
+    Output("time-slider-tmp", "value", allow_duplicate=True),
+    Output("time-slider-tmp", "marks", allow_duplicate=True),
+    Input("tbl-concrete-tmp", "selected_rows"),
     Input("project-url", "pathname"),
-    State("tbl-concrete", "data"),
+    State("tbl-concrete-tmp", "data"),
     prevent_initial_call=True,
 )
 def on_concrete_select_tmp(selected_rows, pathname, tbl_data):
@@ -1122,16 +1122,16 @@ def store_section_coord_tmp(clickData):
     Output("viewer-3d", "figure"),
     Output("current-time-store", "data", allow_duplicate=True),
     Output("viewer-3d-store", "data"),
-    Output("time-slider", "min", allow_duplicate=True),
-    Output("time-slider", "max", allow_duplicate=True),
-    Output("time-slider", "marks", allow_duplicate=True),
-    Output("time-slider", "value", allow_duplicate=True),
+    Output("time-slider-tmp", "min", allow_duplicate=True),
+    Output("time-slider-tmp", "max", allow_duplicate=True),
+    Output("time-slider-tmp", "marks", allow_duplicate=True),
+    Output("time-slider-tmp", "value", allow_duplicate=True),
     Output("current-file-title-store", "data", allow_duplicate=True),
-    Input("time-slider", "value"),
+    Input("time-slider-tmp", "value"),
     Input("section-coord-store", "data"),
     Input("unified-colorbar-state", "data"),
-    Input("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    Input("tbl-concrete-tmp", "selected_rows"),
+    State("tbl-concrete-tmp", "data"),
     State("current-time-store", "data"),
     prevent_initial_call=True,
 )
@@ -1454,9 +1454,9 @@ def update_heatmap_tmp(time_idx, section_coord, unified_colorbar, selected_rows,
 @callback(
     Output("tab-content", "children"),
     Input("tabs-main", "active_tab"),
-    Input("tbl-concrete", "selected_rows"),
+    Input("tbl-concrete-tmp", "selected_rows"),
     Input("project-url", "pathname"),
-    State("tbl-concrete", "data"),
+    State("tbl-concrete-tmp", "data"),
     State("viewer-3d-store", "data"),
     State("current-file-title-store", "data"),
     prevent_initial_call=True,
@@ -2644,8 +2644,8 @@ def switch_tab_tmp(active_tab, selected_rows, pathname, tbl_data, viewer_data, c
     Input("btn-inp-download", "n_clicks"),
     State("inp-file-table", "selected_rows"),
     State("inp-file-table", "data"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    State("tbl-concrete-tmp", "selected_rows"),
+    State("tbl-concrete-tmp", "data"),
     prevent_initial_call=True,
 )
 def download_selected_inp_files_tmp(n_clicks, selected_rows, table_data, selected_conc_rows, tbl_data):
@@ -2696,12 +2696,12 @@ def select_deselect_all_tmp(n_all, n_none, table_data):
     Output("temp-project-alert", "children", allow_duplicate=True),
     Output("temp-project-alert", "color", allow_duplicate=True),
     Output("temp-project-alert", "is_open", allow_duplicate=True),
-    Output("tbl-concrete", "data", allow_duplicate=True),
-    Output("btn-concrete-analyze", "disabled", allow_duplicate=True),
-    Output("btn-concrete-del", "disabled", allow_duplicate=True),
-    Input("btn-concrete-analyze", "n_clicks"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    Output("tbl-concrete-tmp", "data", allow_duplicate=True),
+    Output("btn-concrete-analyze-tmp", "disabled", allow_duplicate=True),
+    Output("btn-concrete-del-tmp", "disabled", allow_duplicate=True),
+    Input("btn-concrete-analyze-tmp", "n_clicks"),
+    State("tbl-concrete-tmp", "selected_rows"),
+    State("tbl-concrete-tmp", "data"),
     prevent_initial_call=True,
 )
 def start_analysis_tmp(n_clicks, selected_rows, tbl_data):
@@ -2733,8 +2733,8 @@ def start_analysis_tmp(n_clicks, selected_rows, tbl_data):
 # ───────────────────── ⑥ 삭제 컨펌 토글 콜백 ───────────────────
 @callback(
     Output("confirm-del-concrete", "displayed"),
-    Input("btn-concrete-del", "n_clicks"),
-    State("tbl-concrete", "selected_rows"),
+    Input("btn-concrete-del-tmp", "n_clicks"),
+    State("tbl-concrete-tmp", "selected_rows"),
     prevent_initial_call=True
 )
 def ask_delete_concrete_tmp(n, sel):
@@ -2745,10 +2745,10 @@ def ask_delete_concrete_tmp(n, sel):
     Output("temp-project-alert", "children", allow_duplicate=True),
     Output("temp-project-alert", "color", allow_duplicate=True),
     Output("temp-project-alert", "is_open", allow_duplicate=True),
-    Output("tbl-concrete", "data", allow_duplicate=True),
+    Output("tbl-concrete-tmp", "data", allow_duplicate=True),
     Input("confirm-del-concrete", "submit_n_clicks"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    State("tbl-concrete-tmp", "selected_rows"),
+    State("tbl-concrete-tmp", "data"),
     prevent_initial_call=True,
 )
 def delete_concrete_confirm_tmp(_click, sel, tbl_data):
@@ -2795,8 +2795,8 @@ def delete_concrete_confirm_tmp(_click, sel, tbl_data):
     Input("section-y-input", "value"),
     Input("section-z-input", "value"),
     Input("unified-colorbar-section-state", "data"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    State("tbl-concrete-tmp", "selected_rows"),
+    State("tbl-concrete-tmp", "data"),
     prevent_initial_call=True,
 )
 def update_section_views_tmp(time_idx,
@@ -3058,8 +3058,8 @@ def update_section_views_tmp(time_idx,
     Input("temp-y-input", "value"),
     Input("temp-z-input", "value"),
     Input("unified-colorbar-state", "data"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    State("tbl-concrete-tmp", "selected_rows"),
+    State("tbl-concrete-tmp", "data"),
     prevent_initial_call=False,
 )
 def update_temp_tab_tmp(store_data, x, y, z, unified_colorbar, selected_rows, tbl_data):
@@ -3230,8 +3230,8 @@ def update_temp_tab_tmp(store_data, x, y, z, unified_colorbar, selected_rows, tb
     Output("temp-time-graph", "figure", allow_duplicate=True),
     Input("temp-range-filter", "value"),
     State("temp-viewer-3d", "figure"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    State("tbl-concrete-tmp", "selected_rows"),
+    State("tbl-concrete-tmp", "data"),
     State("temp-x-input", "value"),
     State("temp-y-input", "value"),
     State("temp-z-input", "value"),
@@ -3376,8 +3376,8 @@ def update_temp_range_filter_tmp(range_filter, fig_3d, selected_rows, tbl_data, 
     Output("frd-upload-msg", "children"),
     Input("frd-upload", "contents"),
     State("frd-upload", "filename"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    State("tbl-concrete-tmp", "selected_rows"),
+    State("tbl-concrete-tmp", "data"),
     prevent_initial_call=True,
 )
 def save_frd_files_tmp(contents, filenames, selected_rows, tbl_data):
@@ -3419,8 +3419,8 @@ def save_frd_files_tmp(contents, filenames, selected_rows, tbl_data):
     Input("btn-vtk-download", "n_clicks"),
     State("vtk-file-table", "selected_rows"),
     State("vtk-file-table", "data"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    State("tbl-concrete-tmp", "selected_rows"),
+    State("tbl-concrete-tmp", "data"),
     prevent_initial_call=True,
 )
 def download_selected_vtk_files_tmp(n_clicks, selected_rows, table_data, selected_conc_rows, tbl_data):
@@ -3470,8 +3470,8 @@ def select_deselect_all_vtk_tmp(n_all, n_none, table_data):
     Input("btn-vtp-download", "n_clicks"),
     State("vtp-file-table", "selected_rows"),
     State("vtp-file-table", "data"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    State("tbl-concrete-tmp", "selected_rows"),
+    State("tbl-concrete-tmp", "data"),
     prevent_initial_call=True,
 )
 def download_selected_vtp_files_tmp(n_clicks, selected_rows, table_data, selected_conc_rows, tbl_data):
@@ -3517,7 +3517,7 @@ def select_deselect_all_vtp_tmp(n_all, n_none, table_data):
 
 # 3D 뷰 슬라이더 동기화 콜백 (display용 슬라이더와 실제 슬라이더만, 단면도 슬라이더는 제외)
 @callback(
-    Output("time-slider", "value", allow_duplicate=True),
+    Output("time-slider-tmp", "value", allow_duplicate=True),
     Input("time-slider-display", "value"),
     prevent_initial_call=True,
 )
@@ -3529,10 +3529,10 @@ def sync_display_slider_to_main_tmp(display_value):
     Output("time-slider-display", "min", allow_duplicate=True),
     Output("time-slider-display", "max", allow_duplicate=True),
     Output("time-slider-display", "marks", allow_duplicate=True),
-    Input("time-slider", "value"),
-    Input("time-slider", "min"),
-    Input("time-slider", "max"),
-    Input("time-slider", "marks"),
+    Input("time-slider-tmp", "value"),
+    Input("time-slider-tmp", "min"),
+    Input("time-slider-tmp", "max"),
+    Input("time-slider-tmp", "marks"),
     prevent_initial_call=True,
 )
 def sync_main_slider_to_display_tmp(main_value, main_min, main_max, main_marks):
@@ -3755,8 +3755,8 @@ def update_section_time_info_tmp(current_file_title, active_tab):
     Output("time-slider-section", "value"),
     Output("time-slider-section", "marks"),
     Input("tabs-main", "active_tab"),
-    Input("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    Input("tbl-concrete-tmp", "selected_rows"),
+    State("tbl-concrete-tmp", "data"),
     prevent_initial_call=True,
 )
 def init_section_slider_independent_tmp(active_tab, selected_rows, tbl_data):
@@ -3811,8 +3811,8 @@ def init_section_slider_independent_tmp(active_tab, selected_rows, tbl_data):
     Output("btn-save-3d-image", "disabled"),
     Input("btn-save-3d-image", "n_clicks"),
     State("viewer-3d-display", "figure"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    State("tbl-concrete-tmp", "selected_rows"),
+    State("tbl-concrete-tmp", "data"),
     State("time-slider-display", "value"),
     prevent_initial_call=True,
 )
@@ -3868,8 +3868,8 @@ def save_3d_image_tmp(n_clicks, figure, selected_rows, tbl_data, time_value):
     State("viewer-section-x", "figure"),
     State("viewer-section-y", "figure"),
     State("viewer-section-z", "figure"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    State("tbl-concrete-tmp", "selected_rows"),
+    State("tbl-concrete-tmp", "data"),
     State("time-slider-section", "value"),
     prevent_initial_call=True,
 )
@@ -3952,8 +3952,8 @@ def save_section_image_tmp(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows,
     Input("btn-save-temp-image", "n_clicks"),
     State("temp-viewer-3d", "figure"),
     State("temp-time-graph", "figure"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    State("tbl-concrete-tmp", "selected_rows"),
+    State("tbl-concrete-tmp", "data"),
     State("temp-x-input", "value"),
     State("temp-y-input", "value"),
     State("temp-z-input", "value"),
@@ -4034,8 +4034,8 @@ def save_temp_image_tmp(n_clicks, fig_3d, fig_time, selected_rows, tbl_data, x, 
     Output("btn-save-current-inp", "children"),
     Output("btn-save-current-inp", "disabled"),
     Input("btn-save-current-inp", "n_clicks"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    State("tbl-concrete-tmp", "selected_rows"),
+    State("tbl-concrete-tmp", "data"),
     State("time-slider-display", "value"),
     prevent_initial_call=True,
 )
@@ -4077,8 +4077,8 @@ def save_current_inp_tmp(n_clicks, selected_rows, tbl_data, time_value):
     Output("btn-save-section-inp", "children"),
     Output("btn-save-section-inp", "disabled"),
     Input("btn-save-section-inp", "n_clicks"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    State("tbl-concrete-tmp", "selected_rows"),
+    State("tbl-concrete-tmp", "data"),
     State("time-slider-section", "value"),
     prevent_initial_call=True,
 )
@@ -4120,8 +4120,8 @@ def save_section_inp_tmp(n_clicks, selected_rows, tbl_data, time_value):
     Output("btn-save-temp-data", "children"),
     Output("btn-save-temp-data", "disabled"),
     Input("btn-save-temp-data", "n_clicks"),
-    State("tbl-concrete", "selected_rows"),
-    State("tbl-concrete", "data"),
+    State("tbl-concrete-tmp", "selected_rows"),
+    State("tbl-concrete-tmp", "data"),
     State("temp-x-input", "value"),
     State("temp-y-input", "value"),
     State("temp-z-input", "value"),
