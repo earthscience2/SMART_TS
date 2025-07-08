@@ -195,7 +195,7 @@ layout = dbc.Container(
                                 event.preventDefault();
                                 
                                 // 현재 보이는 슬라이더 찾기
-                                const sliders = ['time-slider', 'time-slider-section', 'analysis-time-slider'];
+                                const sliders = ['time-slider-stress', 'time-slider-section-stress', 'analysis-time-slider-stress'];
                                 let activeSlider = null;
                                 
                                 for (const sliderId of sliders) {
@@ -574,10 +574,10 @@ layout = dbc.Container(
     Output("tbl-concrete-stress", "style_data_conditional", allow_duplicate=True),
     Output("btn-concrete-analyze-stress", "disabled", allow_duplicate=True),
     Output("btn-concrete-del-stress", "disabled", allow_duplicate=True),
-    Output("time-slider", "min", allow_duplicate=True),
-    Output("time-slider", "max", allow_duplicate=True),
-    Output("time-slider", "value", allow_duplicate=True),
-    Output("time-slider", "marks", allow_duplicate=True),
+    Output("time-slider-stress", "min", allow_duplicate=True),
+    Output("time-slider-stress", "max", allow_duplicate=True),
+    Output("time-slider-stress", "value", allow_duplicate=True),
+    Output("time-slider-stress", "marks", allow_duplicate=True),
     Output("current-time-store-stress", "data", allow_duplicate=True),
     Output("project-info-store-stress", "data", allow_duplicate=True),
     Input("project-url", "search"),
@@ -707,7 +707,7 @@ def create_3d_tab_content(concrete_pk):
         html.Div([
             html.Label("⏰ 시간 설정", className="d-block mb-2 fw-bold"),
             dcc.Slider(
-                id="time-slider",
+                id="time-slider-stress",
                 min=0, max=0, value=0,
                 marks={},
                 tooltip={"always_visible": True}
@@ -774,7 +774,7 @@ def create_section_tab_content(concrete_pk):
         html.Div([
             html.Label("⏰ 시간 설정", className="d-block mb-2 fw-bold"),
             dcc.Slider(
-                id="time-slider-section",
+                id="time-slider-section-stress",
                 min=0, max=0, value=0,
                 marks={},
                 tooltip={"always_visible": True}
@@ -803,18 +803,18 @@ def create_section_tab_content(concrete_pk):
         # 단면 뷰어들
         dbc.Row([
             dbc.Col([
-                html.Div(id="viewer-3d-section", style={"height": "40vh"})
+                dcc.Graph(id="viewer-3d-section", style={"height": "40vh"})
             ], width=6),
             dbc.Col([
-                html.Div(id="viewer-section-x", style={"height": "40vh"})
+                dcc.Graph(id="viewer-section-x", style={"height": "40vh"})
             ], width=6)
         ], className="mb-3"),
         dbc.Row([
             dbc.Col([
-                html.Div(id="viewer-section-y", style={"height": "40vh"})
+                dcc.Graph(id="viewer-section-y", style={"height": "40vh"})
             ], width=6),
             dbc.Col([
-                html.Div(id="viewer-section-z", style={"height": "40vh"})
+                dcc.Graph(id="viewer-section-z", style={"height": "40vh"})
             ], width=6)
         ])
     ])
@@ -848,14 +848,14 @@ def create_node_tab_content(concrete_pk):
 @callback(
     Output("stress-analysis-3d-viewer", "children"),
     Output("stress-analysis-current-file-label", "children"),
-    Output("time-slider", "min", allow_duplicate=True),
-    Output("time-slider", "max", allow_duplicate=True),
-    Output("time-slider", "value", allow_duplicate=True),
-    Output("time-slider", "marks", allow_duplicate=True),
+    Output("time-slider-stress", "min", allow_duplicate=True),
+    Output("time-slider-stress", "max", allow_duplicate=True),
+    Output("time-slider-stress", "value", allow_duplicate=True),
+    Output("time-slider-stress", "marks", allow_duplicate=True),
     Output("stress-data-store", "data"),
     Input("project-url", "pathname"),
     Input("tabs-main", "active_tab"),
-    Input("time-slider", "value"),
+    Input("time-slider-stress", "value"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True
@@ -871,19 +871,19 @@ def update_stress_3d_view_stress(pathname, active_tab, time_idx, selected_rows, 
         raise PreventUpdate
     
     if not selected_rows or not tbl_data:
-        return html.Html("콘크리트를 선택하세요."), "", 0, 1, 0, {}, None
+        return html.Div("콘크리트를 선택하세요."), "", 0, 1, 0, {}, None
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
     frd_dir = f"frd/{concrete_pk}"
     
     if not os.path.exists(frd_dir):
-        return html.Html("FRD 파일이 없습니다."), "", 0, 1, 0, {}, None
+        return html.Div("FRD 파일이 없습니다."), "", 0, 1, 0, {}, None
     
     # FRD 파일 목록
     frd_files = sorted(glob.glob(f"{frd_dir}/*.frd"))
     if not frd_files:
-        return html.Html("FRD 파일이 없습니다."), "", 0, 1, 0, {}, None
+        return html.Div("FRD 파일이 없습니다."), "", 0, 1, 0, {}, None
     
     # 시간 인덱스 처리
     max_idx = len(frd_files) - 1
@@ -895,7 +895,7 @@ def update_stress_3d_view_stress(pathname, active_tab, time_idx, selected_rows, 
         nodes, elements, stresses, displacements = parse_frd_file(selected_file)
         
         if not nodes or not elements:
-            return html.Html("FRD 파일 파싱에 실패했습니다."), "", 0, 1, 0, {}, None
+            return html.Div("FRD 파일 파싱에 실패했습니다."), "", 0, 1, 0, {}, None
         
         # 응력 데이터 준비 (기본값: von Mises 응력)
         field_name = "von_mises"  # 기본값
@@ -986,11 +986,11 @@ def update_stress_3d_view_stress(pathname, active_tab, time_idx, selected_rows, 
             
             return fig, label, 0, max_idx, idx, marks, stress_store_data
         else:
-            return html.Html("응력 데이터가 없습니다."), "", 0, 1, 0, {}, None
+            return html.Div("응력 데이터가 없습니다."), "", 0, 1, 0, {}, None
             
     except Exception as e:
         print(f"3D 뷰어 업데이트 오류: {e}")
-        return html.Html(f"오류가 발생했습니다: {e}"), "", 0, 1, 0, {}, None
+        return html.Div(f"오류가 발생했습니다: {e}"), "", 0, 1, 0, {}, None
 
 # 추가 콜백들...
 @callback(
@@ -1003,7 +1003,7 @@ def update_stress_3d_view_stress(pathname, active_tab, time_idx, selected_rows, 
     Input("slice-slider", "value"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
-    State("time-slider", "value"),
+    State("time-slider-stress", "value"),
     prevent_initial_call=True
 )
 def update_stress_3d_view_with_options(field_name, preset, slice_enable, slice_axis, slice_slider, selected_rows, tbl_data, time_idx):
@@ -1224,7 +1224,7 @@ def update_node_graphs_stress(selected_node, pathname, stress_data):
     Output("current-file-title-store-stress", "data", allow_duplicate=True),
     Input("project-url", "pathname"),
     Input("tabs-main", "active_tab"),
-    Input("time-slider-section", "value"),
+    Input("time-slider-section-stress", "value"),
     Input("section-x-input", "value"),
     Input("section-y-input", "value"),
     Input("section-z-input", "value"),
@@ -1420,10 +1420,10 @@ def update_section_views_stress(pathname, active_tab, time_idx, x_val, y_val, z_
         return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, ""
 
 @callback(
-    Output("time-slider-section", "min", allow_duplicate=True),
-    Output("time-slider-section", "max", allow_duplicate=True), 
-    Output("time-slider-section", "value", allow_duplicate=True),
-    Output("time-slider-section", "marks", allow_duplicate=True),
+    Output("time-slider-section-stress", "min", allow_duplicate=True),
+    Output("time-slider-section-stress", "max", allow_duplicate=True), 
+    Output("time-slider-section-stress", "value", allow_duplicate=True),
+    Output("time-slider-section-stress", "marks", allow_duplicate=True),
     Input("project-url", "pathname"),
     Input("tabs-main", "active_tab"),
     Input("tbl-concrete-stress", "selected_rows"),
@@ -1459,10 +1459,10 @@ def init_section_slider_independent_stress(pathname, active_tab, selected_rows, 
     Output("btn-concrete-analyze-stress", "disabled", allow_duplicate=True),
     Output("btn-concrete-del-stress", "disabled", allow_duplicate=True),
     Output("current-file-title-store-stress", "data", allow_duplicate=True),
-    Output("time-slider", "min", allow_duplicate=True),
-    Output("time-slider", "max", allow_duplicate=True),
-    Output("time-slider", "value", allow_duplicate=True),
-    Output("time-slider", "marks", allow_duplicate=True),
+    Output("time-slider-stress", "min", allow_duplicate=True),
+    Output("time-slider-stress", "max", allow_duplicate=True),
+    Output("time-slider-stress", "value", allow_duplicate=True),
+    Output("time-slider-stress", "marks", allow_duplicate=True),
     Input("project-url", "pathname"),
     Input("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
@@ -1520,20 +1520,20 @@ def start_analysis_stress(pathname, n_clicks, selected_rows, tbl_data):
         # FRD 파일이 있는지 확인
         frd_dir = f"frd/{concrete_pk}"
         if not os.path.exists(frd_dir):
-            return "FRD 파일이 없습니다.", "warning", True, tbl_data, True, True
+            return "FRD 파일이 없습니다.", "warning", True, tbl_data
         
         frd_files = glob.glob(f"{frd_dir}/*.frd")
         if not frd_files:
-            return "FRD 파일이 없습니다.", "warning", True, tbl_data, True, True
+            return "FRD 파일이 없습니다.", "warning", True, tbl_data
         
         # 상태 업데이트
         updated_data = tbl_data.copy()
         updated_data[selected_rows[0]]["status"] = "응력 분석 완료"
         
-        return f"응력 분석이 완료되었습니다. ({len(frd_files)}개 파일)", "success", True, updated_data, False, False
+        return f"응력 분석이 완료되었습니다. ({len(frd_files)}개 파일)", "success", True, updated_data
         
     except Exception as e:
-        return f"응력 분석 중 오류가 발생했습니다: {e}", "danger", True, tbl_data, True, True
+        return f"응력 분석 중 오류가 발생했습니다: {e}", "danger", True, tbl_data
 
 @callback(
     Output("confirm-del-concrete-stress", "displayed", allow_duplicate=True),
