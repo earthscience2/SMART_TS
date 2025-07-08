@@ -968,99 +968,43 @@ def create_3d_stress_figure(stress_data):
         
         return fig
     
-    # 등온면 생성을 위한 3D 격자 데이터 생성
-    try:
-        from scipy.interpolate import griddata
-        
-        # 데이터 범위 계산
-        x_min, x_max = coords[:, 0].min(), coords[:, 0].max()
-        y_min, y_max = coords[:, 1].min(), coords[:, 1].max()
-        z_min, z_max = coords[:, 2].min(), coords[:, 2].max()
-        
-        # 격자 생성 (해상도 조절 가능)
-        grid_size = 20
-        x_grid = np.linspace(x_min, x_max, grid_size)
-        y_grid = np.linspace(y_min, y_max, grid_size)
-        z_grid = np.linspace(z_min, z_max, grid_size)
-        
-        X, Y, Z = np.meshgrid(x_grid, y_grid, z_grid)
-        
-        # 노드 데이터를 격자에 보간
-        grid_points = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()])
-        interpolated_values = griddata(coords, stress_values, grid_points, method='linear', fill_value=np.nanmean(stress_values))
-        
-        # 격자 형태로 재구성
-        stress_grid = interpolated_values.reshape(X.shape)
-        
-        # 등온면 생성 (여러 응력 레벨)
-        stress_min, stress_max = np.nanmin(stress_values), np.nanmax(stress_values)
-        isovalues = np.linspace(stress_min, stress_max, 5)  # 5개의 등온면
-        
-        fig = go.Figure()
-        
-        for i, isovalue in enumerate(isovalues):
-            fig.add_trace(go.Isosurface(
-                x=X.flatten(),
-                y=Y.flatten(),
-                z=Z.flatten(),
-                value=stress_grid.flatten(),
-                isomin=isovalue,
-                isomax=isovalue,
-                opacity=0.3,
-                surface_count=1,
-                colorscale='Viridis',
-                colorbar=dict(title="응력 (MPa)") if i == 0 else None,
-                showscale=True if i == 0 else False,
-                name=f"응력 {isovalue:.2f} MPa"
-            ))
-        
-        fig.update_layout(
-            title="3D 응력 분포 (등온면)",
-            scene=dict(
-                xaxis_title="X (m)",
-                yaxis_title="Y (m)",
-                zaxis_title="Z (m)",
-                aspectmode='data'
-            ),
-            margin=dict(l=0, r=0, b=0, t=30),
-            height=500
-        )
-        
-        return fig
-        
-    except ImportError:
-        # scipy가 없는 경우 산점도로 대체
-        fig = go.Figure(data=[
-            go.Scatter3d(
-                x=coords[:, 0],
-                y=coords[:, 1],
-                z=coords[:, 2],
-                mode='markers',
-                marker=dict(
-                    size=5,
-                    color=stress_values,
-                    colorscale='Viridis',
-                    colorbar=dict(title="응력 (MPa)"),
-                    showscale=True
-                ),
-                text=[f"노드 {i+1}<br>응력: {val:.2f} MPa" for i, val in enumerate(stress_values)],
-                hoverinfo='text'
-            )
-        ])
-        
-        fig.update_layout(
-            title="3D 응력 분포 (산점도)",
-            scene=dict(
-                xaxis_title="X (m)",
-                yaxis_title="Y (m)",
-                zaxis_title="Z (m)",
-                aspectmode='data'
-            ),
-            margin=dict(l=0, r=0, b=0, t=30),
-            height=500
-        )
-        
-        return fig
+    # 3D 볼륨 시각화 (온도분석 페이지와 동일한 방식)
+    # 응력 값을 MPa에서 Pa로 변환 (파일의 단위가 Pa이므로)
+    stress_values_pa = stress_values  # 이미 Pa 단위
+    
+    # 응력 범위 계산
+    stress_min, stress_max = np.nanmin(stress_values_pa), np.nanmax(stress_values_pa)
+    
+    # 3D 볼륨 생성 (온도분석 페이지와 동일한 방식)
+    fig = go.Figure(data=go.Volume(
+        x=coords[:, 0], 
+        y=coords[:, 1], 
+        z=coords[:, 2], 
+        value=stress_values_pa,
+        opacity=0.1, 
+        surface_count=15, 
+        colorscale=[[0, 'blue'], [1, 'red']],  # 파스칼 단위에 맞는 색상 스케일
+        colorbar=dict(title='Stress (Pa)', thickness=10),
+        cmin=stress_min, 
+        cmax=stress_max,
+        showscale=True
+    ))
+    
+    fig.update_layout(
+        title="3D 응력 분포 (볼륨)",
+        uirevision='constant',
+        scene=dict(
+            aspectmode='data',
+            bgcolor='white',
+            xaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
+            yaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
+            zaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
+        ),
+        margin=dict(l=0, r=0, t=30, b=0),
+        height=500
+    )
+    
+    return fig
 
 def create_section_tab_content_stress(concrete_pk):
     """단면 탭 콘텐츠를 생성합니다."""
@@ -1189,95 +1133,41 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_rows, tbl_data)
         else:
             time_info = formatted_time
         
-        # 등온면 생성을 위한 3D 격자 데이터 생성
-        try:
-            from scipy.interpolate import griddata
-            
-            # 데이터 범위 계산
-            x_min, x_max = coords[:, 0].min(), coords[:, 0].max()
-            y_min, y_max = coords[:, 1].min(), coords[:, 1].max()
-            z_min, z_max = coords[:, 2].min(), coords[:, 2].max()
-            
-            # 격자 생성 (해상도 조절 가능)
-            grid_size = 20
-            x_grid = np.linspace(x_min, x_max, grid_size)
-            y_grid = np.linspace(y_min, y_max, grid_size)
-            z_grid = np.linspace(z_min, z_max, grid_size)
-            
-            X, Y, Z = np.meshgrid(x_grid, y_grid, z_grid)
-            
-            # 노드 데이터를 격자에 보간
-            grid_points = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()])
-            interpolated_values = griddata(coords, stress_values, grid_points, method='linear', fill_value=np.nanmean(stress_values))
-            
-            # 격자 형태로 재구성
-            stress_grid = interpolated_values.reshape(X.shape)
-            
-            # 등온면 생성 (여러 응력 레벨)
-            stress_min, stress_max = np.nanmin(stress_values), np.nanmax(stress_values)
-            isovalues = np.linspace(stress_min, stress_max, 5)  # 5개의 등온면
-            
-            fig = go.Figure()
-            
-            for i, isovalue in enumerate(isovalues):
-                fig.add_trace(go.Isosurface(
-                    x=X.flatten(),
-                    y=Y.flatten(),
-                    z=Z.flatten(),
-                    value=stress_grid.flatten(),
-                    isomin=isovalue,
-                    isomax=isovalue,
-                    opacity=0.3,
-                    surface_count=1,
-                    colorscale='Viridis',
-                    colorbar=dict(title="응력 (MPa)") if i == 0 else None,
-                    showscale=True if i == 0 else False,
-                    name=f"응력 {isovalue:.2f} MPa"
-                ))
-            
-            fig.update_layout(
-                title="3D 응력 분포 (등온면)",
-                scene=dict(
-                    xaxis_title="X (m)",
-                    yaxis_title="Y (m)",
-                    zaxis_title="Z (m)",
-                    aspectmode='data'
-                ),
-                margin=dict(l=0, r=0, b=0, t=30),
-                height=500
-            )
-            
-        except ImportError:
-            # scipy가 없는 경우 산점도로 대체
-            fig = go.Figure(data=[
-                go.Scatter3d(
-                    x=coords[:, 0],
-                    y=coords[:, 1],
-                    z=coords[:, 2],
-                    mode='markers',
-                    marker=dict(
-                        size=5,
-                        color=stress_values,
-                        colorscale='Viridis',
-                        colorbar=dict(title="응력 (MPa)"),
-                        showscale=True
-                    ),
-                    text=[f"노드 {i+1}<br>응력: {val:.2f} MPa" for i, val in enumerate(stress_values)],
-                    hoverinfo='text'
-                )
-            ])
-            
-            fig.update_layout(
-                title="3D 응력 분포 (산점도)",
-                scene=dict(
-                    xaxis_title="X (m)",
-                    yaxis_title="Y (m)",
-                    zaxis_title="Z (m)",
-                    aspectmode='data'
-                ),
-                margin=dict(l=0, r=0, b=0, t=30),
-                height=500
-            )
+        # 3D 볼륨 시각화 (온도분석 페이지와 동일한 방식)
+        # 응력 값을 MPa에서 Pa로 변환 (파일의 단위가 Pa이므로)
+        stress_values_pa = stress_values  # 이미 Pa 단위
+        
+        # 응력 범위 계산
+        stress_min, stress_max = np.nanmin(stress_values_pa), np.nanmax(stress_values_pa)
+        
+        # 3D 볼륨 생성 (온도분석 페이지와 동일한 방식)
+        fig = go.Figure(data=go.Volume(
+            x=coords[:, 0], 
+            y=coords[:, 1], 
+            z=coords[:, 2], 
+            value=stress_values_pa,
+            opacity=0.1, 
+            surface_count=15, 
+            colorscale=[[0, 'blue'], [1, 'red']],  # 파스칼 단위에 맞는 색상 스케일
+            colorbar=dict(title='Stress (Pa)', thickness=10),
+            cmin=stress_min, 
+            cmax=stress_max,
+            showscale=True
+        ))
+        
+        fig.update_layout(
+            title="3D 응력 분포 (볼륨)",
+            uirevision='constant',
+            scene=dict(
+                aspectmode='data',
+                bgcolor='white',
+                xaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
+                yaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
+                zaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
+            ),
+            margin=dict(l=0, r=0, t=30, b=0),
+            height=500
+        )
         
         return fig, time_info
     
