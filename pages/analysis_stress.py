@@ -290,44 +290,39 @@ def read_frd_stress_data(frd_path):
         
         for i, line in enumerate(lines):
             line = line.strip()
-            
             # 좌표 블록 시작 확인 (2C로 시작하는 라인)
             if line.startswith('2C'):
                 current_block = 'coordinates'
                 continue
-            
             # 응력 블록 시작 확인
             if '-4  STRESS' in line:
                 current_block = 'stress'
                 continue
-            
-            # 좌표 데이터 파싱 (-1로 시작하고 5개 값: -1, node_id, x, y, z)
-            if current_block == 'coordinates' and line.startswith('-1'):
-                nums = re.findall(r'[-+]?\d*\.?\d+(?:[Ee][-+]?\d+)?', line)
-                if len(nums) == 5:  # -1, node_id, x, y, z
-                    try:
-                        node_id = int(nums[1])
-                        x, y, z = float(nums[2]), float(nums[3]), float(nums[4])
-                        node_coords[node_id] = [x, y, z]
-                    except:
-                        continue
-            # 응력 데이터 파싱 (-1로 시작하고 8개 값: -1, node_id, sxx, syy, szz, sxy, syz, sxz)
-            elif current_block == 'stress' and line.startswith('-1'):
-                nums = re.findall(r'[-+]?\d*\.?\d+(?:[Ee][-+]?\d+)?', line)
-                if len(nums) == 8:
-                    try:
-                        node_id = int(nums[1])
-                        sxx = float(nums[2])
-                        syy = float(nums[3])
-                        szz = float(nums[4])
-                        sxy = float(nums[5])
-                        syz = float(nums[6])
-                        sxz = float(nums[7])
-                        # von Mises 응력 계산
-                        von_mises = np.sqrt(0.5 * ((sxx - syy)**2 + (syy - szz)**2 + (szz - sxx)**2 + 6 * (sxy**2 + syz**2 + sxz**2)))
-                        stress_values[node_id] = von_mises
-                    except:
-                        continue
+            # -1로 시작하는 라인에서 모든 숫자 추출
+            if line.startswith('-1') and current_block in ['coordinates', 'stress']:
+                nums = re.findall(r'-?\d+(?:\.\d+)?(?:[Ee][-+]?\d+)?', line)
+                if len(nums) >= 2:
+                    node_id = int(nums[1])
+                    # 좌표: -1, node_id, x, y, z
+                    if current_block == 'coordinates' and len(nums) == 5:
+                        try:
+                            x, y, z = float(nums[2]), float(nums[3]), float(nums[4])
+                            node_coords[node_id] = [x, y, z]
+                        except:
+                            continue
+                    # 응력: -1, node_id, sxx, syy, szz, sxy, syz, sxz
+                    elif current_block == 'stress' and len(nums) == 8:
+                        try:
+                            sxx = float(nums[2])
+                            syy = float(nums[3])
+                            szz = float(nums[4])
+                            sxy = float(nums[5])
+                            syz = float(nums[6])
+                            sxz = float(nums[7])
+                            von_mises = np.sqrt(0.5 * ((sxx - syy)**2 + (syy - szz)**2 + (szz - sxx)**2 + 6 * (sxy**2 + syz**2 + sxz**2)))
+                            stress_values[node_id] = von_mises
+                        except:
+                            continue
         
         # 좌표와 응력 값의 노드 ID를 맞춤
         if node_coords and stress_values:
@@ -977,8 +972,8 @@ def create_3d_stress_figure(stress_data):
         )
         return fig
 
-    # 단위 변환: MPa → GPa
-    stress_values_gpa = np.array(stress_values) / 1000.0
+            # 단위 변환: Pa → GPa
+        stress_values_gpa = np.array(stress_values) / 1e9
     stress_min, stress_max = np.nanmin(stress_values_gpa), np.nanmax(stress_values_gpa)
 
     # 데이터가 충분히 많으면 볼륨+산점도, 적으면 산점도만
@@ -1168,8 +1163,8 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_rows, tbl_data)
         else:
             time_info = formatted_time
         
-        # 단위 변환: MPa → GPa
-        stress_values_gpa = np.array(stress_values) / 1000.0
+        # 단위 변환: Pa → GPa
+        stress_values_gpa = np.array(stress_values) / 1e9
         stress_min, stress_max = np.nanmin(stress_values_gpa), np.nanmax(stress_values_gpa)
         
         # 온도분석 페이지와 동일한 형식으로 3D 볼륨 생성

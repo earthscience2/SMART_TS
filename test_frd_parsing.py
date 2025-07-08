@@ -39,38 +39,33 @@ def read_frd_stress_data(frd_path):
                 print(f"응력 블록 시작: 라인 {i+1}")
                 continue
             
-            # 좌표 데이터 파싱 (-1로 시작하고 5개 값)
-            if current_block == 'coordinates' and line.startswith('-1'):
-                nums = re.findall(r'[-+]?\d*\.?\d+(?:[Ee][-+]?\d+)?', line)
-                print(f"[좌표] 라인 {i+1}: nums={nums}")
-                if len(nums) == 4:
-                    try:
-                        node_id = int(nums[0])
-                        x, y, z = float(nums[1]), float(nums[2]), float(nums[3])
-                        node_coords[node_id] = [x, y, z]
-                    except Exception as e:
-                        print(f"좌표 파싱 오류 (라인 {i+1}): {e}, 데이터: {line}")
-                        continue
-            
-            # 응력 데이터 파싱 (-1로 시작하고 7개 값: 노드ID + 6개 응력 성분)
-            elif current_block == 'stress' and line.startswith('-1'):
-                nums = re.findall(r'[-+]?\d*\.?\d+(?:[Ee][-+]?\d+)?', line)
-                print(f"[응력] 라인 {i+1}: nums={nums}")
-                if len(nums) == 7:
-                    try:
-                        node_id = int(nums[0])
-                        sxx = float(nums[1])
-                        syy = float(nums[2])
-                        szz = float(nums[3])
-                        sxy = float(nums[4])
-                        syz = float(nums[5])
-                        sxz = float(nums[6])
-                        # von Mises 응력 계산
-                        von_mises = np.sqrt(0.5 * ((sxx - syy)**2 + (syy - szz)**2 + (szz - sxx)**2 + 6 * (sxy**2 + syz**2 + sxz**2)))
-                        stress_values[node_id] = von_mises
-                    except Exception as e:
-                        print(f"응력 파싱 오류 (라인 {i+1}): {e}, 데이터: {line}")
-                        continue
+            # -1로 시작하는 라인에서 모든 숫자 추출
+            if line.startswith('-1') and current_block in ['coordinates', 'stress']:
+                nums = re.findall(r'-?\d+(?:\.\d+)?(?:[Ee][-+]?\d+)?', line)
+                if len(nums) >= 2:
+                    node_id = int(nums[1])
+                    # 좌표: -1, node_id, x, y, z
+                    if current_block == 'coordinates' and len(nums) == 5:
+                        try:
+                            x, y, z = float(nums[2]), float(nums[3]), float(nums[4])
+                            node_coords[node_id] = [x, y, z]
+                        except Exception as e:
+                            print(f"좌표 파싱 오류 (라인 {i+1}): {e}, 데이터: {line}")
+                            continue
+                    # 응력: -1, node_id, sxx, syy, szz, sxy, syz, sxz
+                    elif current_block == 'stress' and len(nums) == 8:
+                        try:
+                            sxx = float(nums[2])
+                            syy = float(nums[3])
+                            szz = float(nums[4])
+                            sxy = float(nums[5])
+                            syz = float(nums[6])
+                            sxz = float(nums[7])
+                            von_mises = np.sqrt(0.5 * ((sxx - syy)**2 + (syy - szz)**2 + (szz - sxx)**2 + 6 * (sxy**2 + syz**2 + sxz**2)))
+                            stress_values[node_id] = von_mises
+                        except Exception as e:
+                            print(f"응력 파싱 오류 (라인 {i+1}): {e}, 데이터: {line}")
+                            continue
         
         print(f"파싱된 좌표 수: {len(node_coords)}")
         print(f"파싱된 응력 값 수: {len(stress_values)}")
