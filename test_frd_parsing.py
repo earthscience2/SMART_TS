@@ -133,6 +133,19 @@ def read_frd_stress_data(frd_path):
                 print(f"  - 노드: {len(stress_data['nodes'])}개")
                 print(f"  - 응력 값: {len(stress_data['stress_values'][0])}개")
                 
+                # 좌표 범위 분석
+                coords_array = np.array(stress_data['coordinates'])
+                x_range = coords_array[:, 0].max() - coords_array[:, 0].min()
+                y_range = coords_array[:, 1].max() - coords_array[:, 1].min()
+                z_range = coords_array[:, 2].max() - coords_array[:, 2].min()
+                
+                print(f"  - 좌표 범위:")
+                print(f"    X축: {coords_array[:, 0].min():.3f} ~ {coords_array[:, 0].max():.3f} (범위: {x_range:.3f}m)")
+                print(f"    Y축: {coords_array[:, 1].min():.3f} ~ {coords_array[:, 1].max():.3f} (범위: {y_range:.3f}m)")
+                print(f"    Z축: {coords_array[:, 2].min():.3f} ~ {coords_array[:, 2].max():.3f} (범위: {z_range:.3f}m)")
+                print(f"  - 모델 크기: {x_range:.3f}m × {y_range:.3f}m × {z_range:.3f}m")
+                print(f"  - 모델 부피: {x_range * y_range * z_range:.3f} m³")
+                
                 # 응력 값 범위 출력
                 if stress_data['stress_values'][0]:
                     stress_vals = list(stress_data['stress_values'][0].values())
