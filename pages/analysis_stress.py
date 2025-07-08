@@ -102,30 +102,38 @@ layout = dbc.Container(
                                         },
                                         {
                                             'if': {
-                                                'filter_query': '{status} = 응력 분석 가능',
+                                                'filter_query': '{status} = 분석중',
                                                 'column_id': 'status'
                                             },
-                                            'backgroundColor': '#e8f5e8',
-                                            'color': '#2e7d32',
-                                            'fontWeight': 'bold'
+                                            'backgroundColor': '#dcfce7',
+                                            'color': '#166534',
+                                            'fontWeight': '600',
+                                            'borderRadius': '4px',
+                                            'textAlign': 'center'
                                         },
                                         {
                                             'if': {
-                                                'filter_query': '{status} = FRD 파일 없음',
-                                                'column_id': 'status'
-                                            },
-                                            'backgroundColor': '#fff3e0',
-                                            'color': '#f57c00',
-                                            'fontWeight': 'bold'
-                                        },
-                                        {
-                                            'if': {
-                                                'filter_query': '{status} = 비활성',
+                                                'filter_query': '{status} = 설정중',
                                                 'column_id': 'status'
                                             },
                                             'backgroundColor': '#f5f5f5',
                                             'color': '#6c757d',
-                                            'fontWeight': 'bold'
+                                            'fontWeight': '600',
+                                            'borderRadius': '4px',
+                                            'textAlign': 'center'
+                                        },
+                                        {
+                                            'if': {'column_id': 'pour_date'},
+                                            'fontSize': '0.85rem',
+                                            'color': '#6b7280',
+                                            'fontWeight': '500'
+                                        },
+                                        {
+                                            'if': {'column_id': 'name'},
+                                            'fontWeight': '600',
+                                            'color': '#111827',
+                                            'textAlign': 'left',
+                                            'paddingLeft': '16px'
                                         }
                                     ],
                                     css=[
@@ -167,7 +175,7 @@ layout = dbc.Container(
                     "border": "1px solid #e2e8f0",
                     "height": "fit-content"
                 })
-            ], md=6),
+            ], md=4),
             
             # 오른쪽 메인 콘텐츠 영역
             dbc.Col([
@@ -254,7 +262,7 @@ layout = dbc.Container(
                         "minHeight": "calc(100vh - 200px)"
                     })
                 ])
-            ], md=6)
+            ], md=8)
         ], className="g-4")
     ]
 )
@@ -415,17 +423,17 @@ def load_concrete_data_stress(search, pathname):
         frd_files = get_frd_files(concrete_pk)
         has_frd = len(frd_files) > 0
         
-        # 상태 결정 (정렬을 위해 우선순위도 함께 설정)
+        # 상태 결정 (온도분석 페이지와 동일한 로직)
         if row["activate"] == 1:  # 활성
             if has_frd:
-                status = "응력 분석 가능"
-                status_sort = 1  # 첫 번째 우선순위
-            else:
-                status = "FRD 파일 없음"
+                status = "설정중"
                 status_sort = 2  # 두 번째 우선순위
+            else:
+                status = "설정중"
+                status_sort = 3  # 세 번째 우선순위
         else:  # 비활성 (activate == 0)
-            status = "비활성"
-            status_sort = 3  # 세 번째 우선순위
+            status = "분석중"
+            status_sort = 1  # 첫 번째 우선순위
         
         # 타설날짜 포맷팅
         pour_date = "N/A"
@@ -487,51 +495,50 @@ def load_concrete_data_stress(search, pathname):
         {"name": "상태", "id": "status", "type": "text"},
     ]
     
-    # 테이블 스타일 설정 (문자열 비교 기반 색상)
+    # 테이블 스타일 설정 (온도분석 페이지와 동일)
     style_data_conditional = [
-        # 응력 분석 가능 상태 (초록색)
+        # 분석중 상태 (초록색)
         {
             'if': {
-                'filter_query': '{status} = "응력 분석 가능"',
+                'filter_query': '{status} = "분석중"',
                 'column_id': 'status'
             },
-            'backgroundColor': '#e8f5e8',
-            'color': '#2e7d32',
-            'fontWeight': 'bold'
+            'backgroundColor': '#dcfce7',
+            'color': '#166534',
+            'fontWeight': '600',
+            'borderRadius': '4px',
+            'textAlign': 'center'
         },
-        # FRD 파일 없음 상태 (주황색)
+        # 설정중 상태 (회색)
         {
             'if': {
-                'filter_query': '{status} = "FRD 파일 없음"',
-                'column_id': 'status'
-            },
-            'backgroundColor': '#fff3e0',
-            'color': '#f57c00',
-            'fontWeight': 'bold'
-        },
-        # 비활성 상태 (회색)
-        {
-            'if': {
-                'filter_query': '{status} = "비활성"',
+                'filter_query': '{status} = "설정중"',
                 'column_id': 'status'
             },
             'backgroundColor': '#f5f5f5',
             'color': '#6c757d',
-            'fontWeight': 'bold'
-        }
-    ]
-    
-    # 타설일(경과일) 컬럼 스타일 추가
-    style_data_conditional.extend([
+            'fontWeight': '600',
+            'borderRadius': '4px',
+            'textAlign': 'center'
+        },
+        # 타설일(경과일) 컬럼 스타일 추가
         {
             'if': {'column_id': 'pour_date'},
             'fontSize': '0.85rem',
-            'color': '#6c757d',
+            'color': '#6b7280',
             'fontWeight': '500'
+        },
+        # 이름 컬럼 스타일 추가
+        {
+            'if': {'column_id': 'name'},
+            'fontWeight': '600',
+            'color': '#111827',
+            'textAlign': 'left',
+            'paddingLeft': '16px'
         }
-    ])
+    ]
     
-    # 상태별 기본 정렬 적용 (응력 분석 가능 → FRD 파일 없음 → 비활성)
+    # 상태별 기본 정렬 적용 (분석중 → 설정중)
     if table_data:
         table_data = sorted(table_data, key=lambda x: x.get('status_sort', 999))
     
@@ -550,9 +557,13 @@ def update_project_info_stress(project_info, pathname):
         raise PreventUpdate
     
     if not project_info:
-        return "프로젝트를 선택하세요."
+        return [
+            "프로젝트가 선택되지 않았습니다. ",
+            html.A("홈으로 돌아가기", href="/", className="alert-link")
+        ]
     
-    return f"📁 현재 프로젝트: {project_info['name']}"
+    project_name = project_info.get("name", "알 수 없는 프로젝트")
+    return f"📁 현재 프로젝트: {project_name}"
 
 @callback(
     Output("tab-content-stress", "children"),
