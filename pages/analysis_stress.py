@@ -855,17 +855,12 @@ def create_node_tab_content(concrete_pk):
     Output("stress-data-store", "data"),
     Input("project-url", "pathname"),
     Input("tabs-main", "active_tab"),
-    Input("stress-field-dropdown", "value"),
-    Input("stress-preset-dropdown", "value"),
     Input("time-slider", "value"),
-    Input("slice-enable", "value"),
-    Input("slice-axis", "value"),
-    Input("slice-slider", "value"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True
 )
-def update_stress_3d_view_stress(pathname, active_tab, field_name, preset, time_idx, slice_enable, slice_axis, slice_slider, selected_rows, tbl_data):
+def update_stress_3d_view_stress(pathname, active_tab, time_idx, selected_rows, tbl_data):
     """3D 응력 뷰어를 업데이트합니다."""
     # 응력 분석 페이지에서만 실행
     if '/stress' not in pathname:
@@ -902,7 +897,10 @@ def update_stress_3d_view_stress(pathname, active_tab, field_name, preset, time_
         if not nodes or not elements:
             return html.Html("FRD 파일 파싱에 실패했습니다."), "", 0, 1, 0, {}, None
         
-        # 응력 데이터 준비
+        # 응력 데이터 준비 (기본값: von Mises 응력)
+        field_name = "von_mises"  # 기본값
+        preset = "rainbow"  # 기본값
+        
         stress_data = []
         for node_id, coords in nodes.items():
             if node_id in stresses:
@@ -995,6 +993,127 @@ def update_stress_3d_view_stress(pathname, active_tab, field_name, preset, time_
         return html.Html(f"오류가 발생했습니다: {e}"), "", 0, 1, 0, {}, None
 
 # 추가 콜백들...
+@callback(
+    Output("stress-analysis-3d-viewer", "children", allow_duplicate=True),
+    Output("stress-analysis-current-file-label", "children", allow_duplicate=True),
+    Input("stress-field-dropdown", "value"),
+    Input("stress-preset-dropdown", "value"),
+    Input("slice-enable", "value"),
+    Input("slice-axis", "value"),
+    Input("slice-slider", "value"),
+    State("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
+    State("time-slider", "value"),
+    prevent_initial_call=True
+)
+def update_stress_3d_view_with_options(field_name, preset, slice_enable, slice_axis, slice_slider, selected_rows, tbl_data, time_idx):
+    """드롭다운 옵션 변경 시 3D 뷰어를 업데이트합니다."""
+    if not selected_rows or not tbl_data:
+        raise PreventUpdate
+    
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    frd_dir = f"frd/{concrete_pk}"
+    
+    if not os.path.exists(frd_dir):
+        raise PreventUpdate
+    
+    frd_files = sorted(glob.glob(f"{frd_dir}/*.frd"))
+    if not frd_files:
+        raise PreventUpdate
+    
+    # 시간 인덱스 처리
+    max_idx = len(frd_files) - 1
+    idx = min(int(time_idx) if time_idx is not None else max_idx, max_idx)
+    selected_file = frd_files[idx]
+    
+    try:
+        # FRD 파일 파싱
+        nodes, elements, stresses, displacements = parse_frd_file(selected_file)
+        
+        if not nodes or not elements:
+            raise PreventUpdate
+        
+        # 응력 데이터 준비
+        stress_data = []
+        for node_id, coords in nodes.items():
+            if node_id in stresses:
+                stress_tensor = stresses[node_id]
+                if field_name == "von_mises":
+                    value = calculate_von_mises_stress(stress_tensor)
+                elif field_name == "sxx":
+                    value = stress_tensor[0]
+                elif field_name == "syy":
+                    value = stress_tensor[1]
+                elif field_name == "szz":
+                    value = stress_tensor[2]
+                elif field_name == "sxy":
+                    value = stress_tensor[3]
+                elif field_name == "syz":
+                    value = stress_tensor[4]
+                elif field_name == "szx":
+                    value = stress_tensor[5]
+                else:
+                    value = 0
+                
+                stress_data.append({
+                    'node_id': node_id,
+                    'x': coords[0],
+                    'y': coords[1],
+                    'z': coords[2],
+                    'value': value
+                })
+        
+        # 3D 산점도 생성
+        if stress_data:
+            df = pd.DataFrame(stress_data)
+            
+            fig = go.Figure(data=[
+                go.Scatter3d(
+                    x=df['x'],
+                    y=df['y'],
+                    z=df['z'],
+                    mode='markers',
+                    marker=dict(
+                        size=3,
+                        color=df['value'],
+                        colorscale=preset,
+                        opacity=0.8,
+                        colorbar=dict(title=f"{field_name.replace('_', ' ').title()} (MPa)")
+                    ),
+                    text=[f"노드 {row['node_id']}<br>응력: {row['value']:.2f} MPa" for _, row in df.iterrows()],
+                    hovertemplate='%{text}<extra></extra>'
+                )
+            ])
+            
+            fig.update_layout(
+                title=f"3D 응력 분포 - {field_name.replace('_', ' ').title()}",
+                scene=dict(
+                    xaxis_title="X (m)",
+                    yaxis_title="Y (m)",
+                    zaxis_title="Z (m)",
+                    aspectmode='data'
+                ),
+                height=600
+            )
+            
+            # 파일명 표시
+            file_name = os.path.basename(selected_file)
+            time_str = file_name.split('.')[0]
+            try:
+                dt = datetime.strptime(time_str, "%Y%m%d%H")
+                label = f"📅 {dt.strftime('%Y년 %m월 %d일 %H시')}"
+            except:
+                label = f"📄 {file_name}"
+            
+            return fig, label
+        else:
+            raise PreventUpdate
+            
+    except Exception as e:
+        print(f"3D 뷰어 업데이트 오류: {e}")
+        raise PreventUpdate
+
 @callback(
     Output("slice-detail-controls", "style"),
     Input("slice-enable", "value"),
