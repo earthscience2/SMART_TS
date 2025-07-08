@@ -296,7 +296,7 @@ layout = html.Div([
                 dbc.Col([
                     html.Div([
                         html.Div([
-                            html.H6("🔍 3D 센서 배치 뷰", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                            html.H6("🔍 센서 위치", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
                             html.Small("💡 마우스로 회전/줌/이동이 가능합니다", className="text-muted mb-2 d-block", style={"fontSize": "0.75rem"}),
                             dcc.Graph(
                                 id="viewer-sensor",

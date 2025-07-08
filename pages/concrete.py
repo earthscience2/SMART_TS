@@ -230,7 +230,8 @@ layout = html.Div([
             dbc.Col([
                 html.Div([
                     html.Div([
-                        html.H6("🔍 3D 미리보기", className="mb-2 text-secondary fw-bold"),
+                        html.H6("🔍 콘크리트 모델링", className="mb-2 text-secondary fw-bold"),
+                        html.Small("💡 마우스로 회전/줌/이동이 가능합니다", className="text-muted mb-2 d-block", style={"fontSize": "0.75rem"}),
                         dcc.Graph(id="viewer", style={"height": "82vh"}, config={'displayModeBar': False}),
                     ], className="p-3")
                 ], className="bg-white rounded shadow-sm border"),
@@ -389,7 +390,7 @@ layout = html.Div([
             ]),
             dbc.ModalFooter([
                 dbc.Button("📥 불러오기", id="add-load-btn", color="outline-primary", className="px-3", size="sm"),
-                dbc.Button("3D 미리보기", id="add-build", color="info", className="px-3", size="sm"),
+                dbc.Button("콘크리트 모델링", id="add-build", color="info", className="px-3", size="sm"),
                 dbc.Button("저장", id="add-save", color="success", className="px-3 fw-semibold ms-auto", size="sm"),
                 dbc.Button("닫기", id="add-close", color="secondary", className="px-3", size="sm"),
             ], className="border-0 pt-2"),
