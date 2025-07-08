@@ -596,6 +596,42 @@ def switch_tab_stress(active_tab, selected_rows, pathname, tbl_data):
 
 def create_3d_tab_content_stress(concrete_pk):
     """입체 탭 콘텐츠를 생성합니다."""
+    # FRD 파일 목록 가져오기
+    frd_files = get_frd_files(concrete_pk)
+    
+    # FRD 파일 목록 표시
+    frd_file_list = []
+    all_stress_data = {}
+    
+    if not frd_files:
+        frd_file_list = html.Div([
+            dbc.Alert("FRD 파일이 없습니다.", color="warning", className="mb-3")
+        ], className="mb-4")
+    else:
+        for i, frd_file in enumerate(frd_files):
+            filename = os.path.basename(frd_file)
+            
+            # FRD 파일에서 응력 데이터 읽기
+            stress_data = read_frd_stress_data(frd_file)
+            if stress_data:
+                all_stress_data[filename] = stress_data
+                
+                frd_file_list.append(
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H6(f"📄 {filename}", className="mb-2"),
+                            html.Small(f"시간 스텝: {len(stress_data['times'])}개", className="text-muted"),
+                            html.Br(),
+                            html.Small(f"노드 수: {len(stress_data['nodes'])}개", className="text-muted")
+                        ])
+                    ], className="mb-2")
+                )
+        
+        frd_file_list = html.Div(frd_file_list)
+    
+    # 3D 시각화 생성
+    stress_3d_figure = create_3d_stress_figure(all_stress_data)
+    
     return html.Div([
         # 제목 및 설명
         html.Div([
@@ -606,7 +642,7 @@ def create_3d_tab_content_stress(concrete_pk):
         # FRD 파일 목록
         html.Div([
             html.H6("📁 FRD 파일 목록", className="mb-3"),
-            html.Div(id="frd-file-list-stress", className="mb-4")
+            frd_file_list
         ]),
         
         # 3D 시각화 영역
@@ -614,6 +650,7 @@ def create_3d_tab_content_stress(concrete_pk):
             html.H6("🎯 3D 응력 분포", className="mb-3"),
             dcc.Graph(
                 id="stress-3d-viewer",
+                figure=stress_3d_figure,
                 style={"height": "500px"},
                 config={"displayModeBar": True, "displaylogo": False}
             )
@@ -621,81 +658,14 @@ def create_3d_tab_content_stress(concrete_pk):
         
         # 숨겨진 컴포넌트들
         html.Div([
-            dcc.Store(id="stress-data-store", data=None),
+            dcc.Store(id="stress-data-store", data=all_stress_data),
             dcc.Store(id="current-stress-time-store", data=None),
             dcc.Store(id="current-stress-file-title-store", data=None),
         ], style={"display": "none"})
     ])
 
-def create_section_tab_content_stress(concrete_pk):
-    """단면 탭 콘텐츠를 생성합니다."""
-    return html.Div([
-        html.H4("단면 응력 분석", className="mb-3"),
-        html.P("단면 응력 분석 기능이 여기에 표시됩니다.", className="text-muted")
-    ])
-
-def create_node_tab_content_stress(concrete_pk):
-    """노드별 탭 콘텐츠를 생성합니다."""
-    return html.Div([
-        html.H4("노드별 응력 분석", className="mb-3"),
-        html.P("노드별 응력 분석 기능이 여기에 표시됩니다.", className="text-muted")
-    ])
-
-@callback(
-    Output("frd-file-list-stress", "children"),
-    Output("stress-data-store", "data"),
-    Input("tbl-concrete-stress", "selected_rows"),
-    State("tbl-concrete-stress", "data"),
-    prevent_initial_call=True,
-)
-def load_frd_files_stress(selected_rows, tbl_data):
-    """선택된 콘크리트의 FRD 파일들을 로드합니다."""
-    if not selected_rows or not tbl_data:
-        return "콘크리트를 선택하세요.", None
-    
-    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-    concrete_pk = row["concrete_pk"]
-    
-    # FRD 파일 목록 가져오기
-    frd_files = get_frd_files(concrete_pk)
-    
-    if not frd_files:
-        return html.Div([
-            dbc.Alert("FRD 파일이 없습니다.", color="warning", className="mb-3")
-        ], className="mb-4"), None
-    
-    # FRD 파일 목록 표시
-    file_list = []
-    all_stress_data = {}
-    
-    for i, frd_file in enumerate(frd_files):
-        filename = os.path.basename(frd_file)
-        
-        # FRD 파일에서 응력 데이터 읽기
-        stress_data = read_frd_stress_data(frd_file)
-        if stress_data:
-            all_stress_data[filename] = stress_data
-            
-            file_list.append(
-                dbc.Card([
-                    dbc.CardBody([
-                        html.H6(f"📄 {filename}", className="mb-2"),
-                        html.Small(f"시간 스텝: {len(stress_data['times'])}개", className="text-muted"),
-                        html.Br(),
-                        html.Small(f"노드 수: {len(stress_data['nodes'])}개", className="text-muted")
-                    ])
-                ], className="mb-2")
-            )
-    
-    return html.Div(file_list), all_stress_data
-
-@callback(
-    Output("stress-3d-viewer", "figure"),
-    Input("stress-data-store", "data"),
-    prevent_initial_call=True,
-)
-def update_3d_stress_viewer(stress_data):
-    """3D 응력 시각화를 업데이트합니다."""
+def create_3d_stress_figure(stress_data):
+    """3D 응력 시각화를 생성합니다."""
     if not stress_data:
         return go.Figure().add_annotation(
             text="응력 데이터가 없습니다.",
@@ -750,3 +720,17 @@ def update_3d_stress_viewer(stress_data):
     )
     
     return fig
+
+def create_section_tab_content_stress(concrete_pk):
+    """단면 탭 콘텐츠를 생성합니다."""
+    return html.Div([
+        html.H4("단면 응력 분석", className="mb-3"),
+        html.P("단면 응력 분석 기능이 여기에 표시됩니다.", className="text-muted")
+    ])
+
+def create_node_tab_content_stress(concrete_pk):
+    """노드별 탭 콘텐츠를 생성합니다."""
+    return html.Div([
+        html.H4("노드별 응력 분석", className="mb-3"),
+        html.P("노드별 응력 분석 기능이 여기에 표시됩니다.", className="text-muted")
+    ])
