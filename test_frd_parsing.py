@@ -3,9 +3,9 @@
 # FRD 파일 파싱 테스트
 
 import os
+import re
 import numpy as np
 from datetime import datetime
-import re
 
 def read_frd_stress_data(frd_path):
     """FRD 파일에서 응력 데이터를 읽어옵니다."""
@@ -24,23 +24,24 @@ def read_frd_stress_data(frd_path):
         stress_values = {}
         current_block = None
         
+        print(f"파일 읽기 시작: {frd_path}")
+        print(f"총 라인 수: {len(lines)}")
+        
         for i, line in enumerate(lines):
             line = line.strip()
-            
             # 좌표 블록 시작 확인 (2C로 시작하는 라인)
             if line.startswith('2C'):
                 current_block = 'coordinates'
-                print(f"좌표 블록 시작: 라인 {i+1}")
+                print(f"라인 {i+1}: 좌표 블록 시작 - {line}")
                 continue
-            
             # 응력 블록 시작 확인
             if '-4  STRESS' in line:
                 current_block = 'stress'
-                print(f"응력 블록 시작: 라인 {i+1}")
+                print(f"라인 {i+1}: 응력 블록 시작 - {line}")
                 continue
-            
             # -1로 시작하는 라인에서 모든 숫자 추출
             if line.startswith('-1') and current_block in ['coordinates', 'stress']:
+                # 과학적 표기법을 포함한 숫자 추출 (E, e 포함)
                 nums = re.findall(r'-?\d+(?:\.\d+)?(?:[Ee][-+]?\d+)?', line)
                 if len(nums) >= 2:
                     node_id = int(nums[1])
@@ -49,26 +50,38 @@ def read_frd_stress_data(frd_path):
                         try:
                             x, y, z = float(nums[2]), float(nums[3]), float(nums[4])
                             node_coords[node_id] = [x, y, z]
+                            print(f"라인 {i+1}: 좌표 파싱 성공 - 노드 {node_id}: ({x}, {y}, {z})")
                         except Exception as e:
-                            print(f"좌표 파싱 오류 (라인 {i+1}): {e}, 데이터: {line}")
+                            print(f"라인 {i+1}: 좌표 파싱 오류 - {e}, 라인: {line}")
                             continue
                     # 응력: -1, node_id, sxx, syy, szz, sxy, syz, sxz
-                    elif current_block == 'stress' and len(nums) == 8:
+                    elif current_block == 'stress':
                         try:
-                            sxx = float(nums[2])
-                            syy = float(nums[3])
-                            szz = float(nums[4])
-                            sxy = float(nums[5])
-                            syz = float(nums[6])
-                            sxz = float(nums[7])
-                            von_mises = np.sqrt(0.5 * ((sxx - syy)**2 + (syy - szz)**2 + (szz - sxx)**2 + 6 * (sxy**2 + syz**2 + sxz**2)))
-                            stress_values[node_id] = von_mises
+                            # 응력 값들이 붙어있을 수 있으므로 더 정확한 파싱
+                            # 라인에서 노드 ID 이후의 모든 숫자를 추출
+                            stress_nums = re.findall(r'-?\d+(?:\.\d+)?(?:[Ee][-+]?\d+)?', line[line.find(str(node_id)) + len(str(node_id)):])
+                            
+                            if len(stress_nums) >= 6:
+                                sxx = float(stress_nums[0])
+                                syy = float(stress_nums[1])
+                                szz = float(stress_nums[2])
+                                sxy = float(stress_nums[3])
+                                syz = float(stress_nums[4])
+                                sxz = float(stress_nums[5])
+                                
+                                # von Mises 응력 계산
+                                von_mises = np.sqrt(0.5 * ((sxx - syy)**2 + (syy - szz)**2 + (szz - sxx)**2 + 6 * (sxy**2 + syz**2 + sxz**2)))
+                                stress_values[node_id] = von_mises
+                                print(f"라인 {i+1}: 응력 파싱 성공 - 노드 {node_id}: von Mises = {von_mises:.2e} Pa")
+                            else:
+                                print(f"라인 {i+1}: 응력 값 개수 부족 - {len(stress_nums)}개, 라인: {line}")
                         except Exception as e:
-                            print(f"응력 파싱 오류 (라인 {i+1}): {e}, 데이터: {line}")
+                            print(f"라인 {i+1}: 응력 파싱 오류 - {e}, 라인: {line}")
                             continue
         
-        print(f"파싱된 좌표 수: {len(node_coords)}")
-        print(f"파싱된 응력 값 수: {len(stress_values)}")
+        print(f"\n파싱 결과:")
+        print(f"좌표 데이터: {len(node_coords)}개 노드")
+        print(f"응력 데이터: {len(stress_values)}개 노드")
         
         # 좌표와 응력 값의 노드 ID를 맞춤
         if node_coords and stress_values:
@@ -76,13 +89,25 @@ def read_frd_stress_data(frd_path):
             stress_node_ids = set(stress_values.keys())
             common_node_ids = coord_node_ids.intersection(stress_node_ids)
             
-            print(f"공통 노드 ID 수: {len(common_node_ids)}")
-            
+            print(f"공통 노드 ID: {len(common_node_ids)}개")
             if common_node_ids:
+                print(f"공통 노드 ID 목록: {sorted(list(common_node_ids))[:10]}...")  # 처음 10개만 출력
+                
                 # 공통 노드 ID만 사용
                 stress_data['coordinates'] = [node_coords[i] for i in sorted(common_node_ids)]
                 stress_data['nodes'] = sorted(common_node_ids)
                 stress_data['stress_values'] = [{i: stress_values[i] for i in common_node_ids}]
+                
+                print(f"최종 데이터:")
+                print(f"  - 좌표: {len(stress_data['coordinates'])}개")
+                print(f"  - 노드: {len(stress_data['nodes'])}개")
+                print(f"  - 응력 값: {len(stress_data['stress_values'][0])}개")
+                
+                # 응력 값 범위 출력
+                if stress_data['stress_values'][0]:
+                    stress_vals = list(stress_data['stress_values'][0].values())
+                    print(f"  - 응력 범위: {min(stress_vals):.2e} ~ {max(stress_vals):.2e} Pa")
+                    print(f"  - 응력 범위 (GPa): {min(stress_vals)/1e9:.6f} ~ {max(stress_vals)/1e9:.6f} GPa")
         
         # 시간 정보 파싱
         try:
@@ -90,7 +115,9 @@ def read_frd_stress_data(frd_path):
             time_str = filename.split(".")[0]
             dt = datetime.strptime(time_str, "%Y%m%d%H")
             stress_data['times'].append(dt)
-        except:
+            print(f"시간 정보: {dt}")
+        except Exception as e:
+            print(f"시간 파싱 오류: {e}")
             stress_data['times'].append(0)
         
         return stress_data
@@ -98,27 +125,27 @@ def read_frd_stress_data(frd_path):
         print(f"FRD 파일 읽기 오류: {e}")
         return None
 
-if __name__ == "__main__":
-    # 테스트할 FRD 파일
-    frd_file = "frd/C000001/2025061215.frd"
+def test_frd_files():
+    """frd 디렉토리의 모든 FRD 파일을 테스트합니다."""
+    frd_dir = "frd"
+    if not os.path.exists(frd_dir):
+        print(f"frd 디렉토리가 없습니다: {frd_dir}")
+        return
     
-    if os.path.exists(frd_file):
-        print(f"파일 테스트: {frd_file}")
-        result = read_frd_stress_data(frd_file)
-        
-        if result:
-            print(f"\n=== 파싱 결과 ===")
-            print(f"시간: {result['times']}")
-            print(f"노드 수: {len(result['nodes'])}")
-            print(f"좌표 수: {len(result['coordinates'])}")
-            print(f"응력 값 수: {len(result['stress_values'][0]) if result['stress_values'] else 0}")
-            
-            if result['stress_values'] and result['stress_values'][0]:
-                stress_vals = list(result['stress_values'][0].values())
-                print(f"응력 범위: {min(stress_vals):.6f} ~ {max(stress_vals):.6f}")
-                print(f"응력 평균: {np.mean(stress_vals):.6f}")
-                print(f"샘플 응력 값들: {stress_vals[:5]}")
-        else:
-            print("파싱 실패")
-    else:
-        print(f"파일이 존재하지 않습니다: {frd_file}") 
+    # 모든 하위 디렉토리 검색
+    for root, dirs, files in os.walk(frd_dir):
+        for file in files:
+            if file.endswith('.frd'):
+                frd_path = os.path.join(root, file)
+                print(f"\n{'='*60}")
+                print(f"테스트 파일: {frd_path}")
+                print(f"{'='*60}")
+                
+                result = read_frd_stress_data(frd_path)
+                if result:
+                    print(f"✅ 파싱 성공!")
+                else:
+                    print(f"❌ 파싱 실패!")
+
+if __name__ == "__main__":
+    test_frd_files() 

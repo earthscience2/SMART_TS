@@ -312,19 +312,28 @@ def read_frd_stress_data(frd_path):
                         except:
                             continue
                     # 응력: -1, node_id, sxx, syy, szz, sxy, syz, sxz
-                    elif current_block == 'stress' and len(nums) == 8:
+                    elif current_block == 'stress':
                         try:
-                            sxx = float(nums[2])
-                            syy = float(nums[3])
-                            szz = float(nums[4])
-                            sxy = float(nums[5])
-                            syz = float(nums[6])
-                            sxz = float(nums[7])
-                            # von Mises 응력 계산
-                            von_mises = np.sqrt(0.5 * ((sxx - syy)**2 + (syy - szz)**2 + (szz - sxx)**2 + 6 * (sxy**2 + syz**2 + sxz**2)))
-                            stress_values[node_id] = von_mises
+                            # 응력 값들이 붙어있을 수 있으므로 더 정확한 파싱
+                            # 라인에서 노드 ID 이후의 모든 숫자를 추출
+                            stress_nums = re.findall(r'-?\d+(?:\.\d+)?(?:[Ee][-+]?\d+)?', line[line.find(str(node_id)) + len(str(node_id)):])
+                            
+                            if len(stress_nums) >= 6:
+                                sxx = float(stress_nums[0])
+                                syy = float(stress_nums[1])
+                                szz = float(stress_nums[2])
+                                sxy = float(stress_nums[3])
+                                syz = float(stress_nums[4])
+                                sxz = float(stress_nums[5])
+                                
+                                # von Mises 응력 계산
+                                von_mises = np.sqrt(0.5 * ((sxx - syy)**2 + (syy - szz)**2 + (szz - sxx)**2 + 6 * (sxy**2 + syz**2 + sxz**2)))
+                                stress_values[node_id] = von_mises
+                                print(f"라인 {i+1}: 응력 파싱 성공 - 노드 {node_id}: von Mises = {von_mises:.2e} Pa")
+                            else:
+                                print(f"라인 {i+1}: 응력 값 개수 부족 - {len(stress_nums)}개, 라인: {line}")
                         except Exception as e:
-                            print(f"응력 파싱 오류 (라인 {i+1}): {e}, 라인: {line}")
+                            print(f"라인 {i+1}: 응력 파싱 오류 - {e}, 라인: {line}")
                             continue
         
         # 좌표와 응력 값의 노드 ID를 맞춤
