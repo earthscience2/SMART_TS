@@ -582,7 +582,7 @@ layout = dbc.Container(
     Output("project-info-store-stress", "data", allow_duplicate=True),
     Input("project-url", "search"),
     Input("project-url", "pathname"),
-    prevent_initial_call=False,
+    prevent_initial_call=True,
 )
 def load_concrete_data_stress(search, pathname):
     """프로젝트 정보를 로드하고 콘크리트 목록을 표시합니다."""
