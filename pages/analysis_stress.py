@@ -311,7 +311,7 @@ def read_frd_stress_data(frd_path):
                             node_coords[node_id] = [x, y, z]
                         except:
                             continue
-                    # 응력: -1, node_id, sxx, syy, szz, sxy, syz, sxz
+                    # 응력: -1, node_id, sxx, syy, szz, sxy, syz, sxz 또는 -1, node_id, von_mises
                     elif current_block == 'stress':
                         try:
                             # 응력 값들이 붙어있을 수 있으므로 더 정확한 파싱
@@ -319,6 +319,7 @@ def read_frd_stress_data(frd_path):
                             stress_nums = re.findall(r'-?\d+(?:\.\d+)?(?:[Ee][-+]?\d+)?', line[line.find(str(node_id)) + len(str(node_id)):])
                             
                             if len(stress_nums) >= 6:
+                                # 6개 응력 성분이 있는 경우 (SXX, SYY, SZZ, SXY, SYZ, SZX)
                                 sxx = float(stress_nums[0])
                                 syy = float(stress_nums[1])
                                 szz = float(stress_nums[2])
@@ -329,7 +330,12 @@ def read_frd_stress_data(frd_path):
                                 # von Mises 응력 계산
                                 von_mises = np.sqrt(0.5 * ((sxx - syy)**2 + (syy - szz)**2 + (szz - sxx)**2 + 6 * (sxy**2 + syz**2 + sxz**2)))
                                 stress_values[node_id] = von_mises
-                                print(f"라인 {i+1}: 응력 파싱 성공 - 노드 {node_id}: von Mises = {von_mises:.2e} Pa")
+                                print(f"라인 {i+1}: 응력 파싱 성공 (6성분) - 노드 {node_id}: von Mises = {von_mises:.2e} Pa")
+                            elif len(stress_nums) == 1:
+                                # 단일 응력 값인 경우 (이미 von Mises 응력일 가능성)
+                                von_mises = float(stress_nums[0])
+                                stress_values[node_id] = von_mises
+                                print(f"라인 {i+1}: 응력 파싱 성공 (단일값) - 노드 {node_id}: 응력 = {von_mises:.2e} Pa")
                             else:
                                 print(f"라인 {i+1}: 응력 값 개수 부족 - {len(stress_nums)}개, 라인: {line}")
                         except Exception as e:
