@@ -972,9 +972,10 @@ def update_project_info_tmp(project_info, pathname):
 def on_concrete_select_tmp(selected_rows, pathname, tbl_data):
     # 온도 분석 페이지에서만 실행
     if '/temp' not in pathname:
+        print(f"DEBUG: 온도분석 페이지가 아님 (pathname={pathname}), PreventUpdate")
         raise PreventUpdate
     
-    print(f"on_concrete_select 시작 - 입력값:")
+    print(f"DEBUG: 온도분석 페이지 on_concrete_select 실행")
     print(f"  selected_rows: {selected_rows} ({type(selected_rows)})")
     print(f"  tbl_data: {len(tbl_data) if tbl_data else None} ({type(tbl_data)})")
     
