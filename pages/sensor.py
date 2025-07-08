@@ -1002,7 +1002,7 @@ def add_sensor_preview(_, conc_pk, sensor_selection, x_val, y_val, z_val, show_l
 
     # 콘크리트 내부에 있는지 확인
     if not is_point_in_concrete(x_val, y_val, z_val, conc_nodes, conc_h):
-        return dash.no_update, "센서 위치가 콘크리트 내부에 있어야 합니다", "danger", True
+        return dash.no_update, "센서 위치가 콘크리트 내부에 있어야 합니다", True
 
     # 2) 현재 콘크리트에 속한 기존 센서 정보를 모두 가져와서 그리기 (파란 점, 크기 4)
     all_xs, all_ys, all_zs = [], [], []
@@ -1388,7 +1388,7 @@ def edit_sensor_preview(n_clicks, x_val, y_val, z_val, conc_pk, sensor_pk):
 
     # 콘크리트 내부에 있는지 확인
     if not is_point_in_concrete(x_val, y_val, z_val, conc_nodes, conc_h):
-        return dash.no_update, "센서 위치가 콘크리트 내부에 있어야 합니다", "danger", True
+        return dash.no_update, "센서 위치가 콘크리트 내부에 있어야 합니다", True
 
     # 2) 수정 중인 센서를 제외한 "나머지 센서들"을 파란 점으로 먼저 그리기
     df_sensor_full = api_db.get_sensors_data()
