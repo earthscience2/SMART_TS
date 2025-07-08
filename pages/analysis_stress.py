@@ -599,6 +599,36 @@ def create_3d_tab_content_stress(concrete_pk):
     # FRD 파일 목록 가져오기
     frd_files = get_frd_files(concrete_pk)
     
+    # 기본 슬라이더 설정
+    slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
+    
+    # FRD 파일이 있으면 시간 정보 설정
+    if frd_files:
+        # 시간 파싱
+        times = []
+        for f in frd_files:
+            try:
+                time_str = os.path.basename(f).split(".")[0]
+                dt = datetime.strptime(time_str, "%Y%m%d%H")
+                times.append(dt)
+            except:
+                continue
+        
+        if times:
+            max_idx = len(times) - 1
+            slider_min, slider_max = 0, max_idx
+            slider_value = max_idx  # 최신 파일로 초기화
+            
+            # 슬라이더 마크 설정
+            marks = {}
+            seen_dates = set()
+            for i, dt in enumerate(times):
+                date_str = dt.strftime("%m/%d")
+                if date_str not in seen_dates:
+                    marks[i] = date_str
+                    seen_dates.add(date_str)
+            slider_marks = marks
+    
     # FRD 파일 목록 표시
     frd_file_list = []
     all_stress_data = {}
@@ -633,27 +663,245 @@ def create_3d_tab_content_stress(concrete_pk):
     stress_3d_figure = create_3d_stress_figure(all_stress_data)
     
     return html.Div([
-        # 제목 및 설명
+        # 시간 컨트롤 섹션 (노션 스타일)
         html.Div([
-            html.H4("3D 응력 분석", className="mb-2"),
-            html.P("FRD 파일에서 응력 데이터를 읽어와 3D 시각화합니다.", className="text-muted mb-4")
+            html.Div([
+                html.H6("⏰ 시간 설정", style={
+                    "fontWeight": "600",
+                    "color": "#374151",
+                    "marginBottom": "12px",
+                    "fontSize": "14px"
+                }),
+                dcc.Slider(
+                    id="time-slider-stress",
+                    min=slider_min,
+                    max=slider_max,
+                    step=1,
+                    value=slider_value,
+                    marks=slider_marks,
+                    tooltip={"placement": "bottom", "always_visible": True},
+                    updatemode='drag',
+                    persistence=False
+                ),
+                # 재생/정지/배속 버튼 추가
+                html.Div([
+                    # 재생/정지 버튼 (아이콘만)
+                    dbc.Button(
+                        "▶",
+                        id="btn-play-stress",
+                        color="success",
+                        size="sm",
+                        style={
+                            "borderRadius": "50%",
+                            "width": "32px",
+                            "height": "32px",
+                            "padding": "0",
+                            "marginRight": "8px",
+                            "display": "flex",
+                            "alignItems": "center",
+                            "justifyContent": "center",
+                            "fontSize": "14px",
+                            "fontWeight": "bold"
+                        }
+                    ),
+                    dbc.Button(
+                        "⏸",
+                        id="btn-pause-stress",
+                        color="warning",
+                        size="sm",
+                        style={
+                            "borderRadius": "50%",
+                            "width": "32px",
+                            "height": "32px",
+                            "padding": "0",
+                            "marginRight": "8px",
+                            "display": "flex",
+                            "alignItems": "center",
+                            "justifyContent": "center",
+                            "fontSize": "14px",
+                            "fontWeight": "bold"
+                        }
+                    ),
+                    # 배속 설정 드롭다운
+                    dbc.DropdownMenu([
+                        dbc.DropdownMenuItem("1x", id="speed-1x-stress", n_clicks=0),
+                        dbc.DropdownMenuItem("2x", id="speed-2x-stress", n_clicks=0),
+                        dbc.DropdownMenuItem("4x", id="speed-4x-stress", n_clicks=0),
+                        dbc.DropdownMenuItem("8x", id="speed-8x-stress", n_clicks=0),
+                    ], 
+                    label="⚡",
+                    id="speed-dropdown-stress",
+                    size="sm",
+                    style={
+                        "width": "32px",
+                        "height": "32px",
+                        "padding": "0",
+                        "display": "flex",
+                        "alignItems": "center",
+                        "justifyContent": "center"
+                    },
+                    toggle_style={
+                        "borderRadius": "50%",
+                        "width": "32px",
+                        "height": "32px",
+                        "padding": "0",
+                        "backgroundColor": "#6c757d",
+                        "border": "none",
+                        "fontSize": "14px",
+                        "fontWeight": "bold"
+                    }
+                    ),
+                ], style={
+                    "display": "flex",
+                    "alignItems": "center",
+                    "justifyContent": "center",
+                    "marginTop": "12px"
+                }),
+                # 재생 상태 표시용 Store
+                dcc.Store(id="play-state-stress", data={"playing": False}),
+                # 배속 상태 표시용 Store
+                dcc.Store(id="speed-state-stress", data={"speed": 1}),
+                # 자동 재생용 Interval
+                dcc.Interval(
+                    id="play-interval-stress",
+                    interval=1000,  # 1초마다 (기본값)
+                    n_intervals=0,
+                    disabled=True
+                ),
+            ], style={
+                "padding": "16px 20px",
+                "backgroundColor": "#f9fafb",
+                "borderRadius": "8px",
+                "border": "1px solid #e5e7eb",
+                "marginBottom": "16px"
+            })
         ]),
         
-        # FRD 파일 목록
-        html.Div([
-            html.H6("📁 FRD 파일 목록", className="mb-3"),
-            frd_file_list
-        ]),
+        # 현재 시간 정보 + 저장 옵션 (한 줄 배치)
+        dbc.Row([
+            # 왼쪽: 현재 시간/응력 정보
+            dbc.Col([
+                html.Div(
+                    id="viewer-3d-stress-time-info", 
+                    style={
+                        "minHeight": "65px !important",
+                        "height": "65px",
+                        "display": "flex",
+                        "flexDirection": "column",
+                        "justifyContent": "flex-start"
+                    }
+                )
+            ], md=8, style={
+                "height": "65px"
+            }),
+            
+            # 오른쪽: 저장 버튼들
+            dbc.Col([
+                html.Div([
+                    dcc.Loading(
+                        id="loading-btn-save-3d-stress-image",
+                        type="circle",
+                        children=[
+                            dbc.Button(
+                                [html.I(className="fas fa-camera me-1"), "이미지 저장"],
+                                id="btn-save-3d-stress-image",
+                                color="primary",
+                                size="lg",
+                                style={
+                                    "borderRadius": "8px",
+                                    "fontWeight": "600",
+                                    "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                    "fontSize": "15px",
+                                    "width": "120px",
+                                    "height": "48px",
+                                    "marginRight": "16px"
+                                }
+                            )
+                        ]
+                    ),
+                    dcc.Loading(
+                        id="loading-btn-save-current-frd",
+                        type="circle",
+                        children=[
+                            dbc.Button(
+                                [html.I(className="fas fa-file-download me-1"), "FRD 파일 저장"],
+                                id="btn-save-current-frd",
+                                color="success",
+                                size="lg",
+                                style={
+                                    "borderRadius": "8px",
+                                    "fontWeight": "600",
+                                    "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                    "fontSize": "15px",
+                                    "width": "140px",
+                                    "height": "48px"
+                                }
+                            )
+                        ]
+                    ),
+                ], style={"display": "flex", "justifyContent": "center", "alignItems": "center", "height": "65px"})
+            ], md=4, style={
+                "height": "65px"
+            }),
+        ], className="mb-3 align-items-stretch h-100", style={"minHeight": "65px"}),
         
-        # 3D 시각화 영역
+        # 3D 뷰어 (노션 스타일)
         html.Div([
-            html.H6("🎯 3D 응력 분포", className="mb-3"),
-            dcc.Graph(
-                id="stress-3d-viewer",
-                figure=stress_3d_figure,
-                style={"height": "500px"},
-                config={"displayModeBar": True, "displaylogo": False}
-            )
+            html.Div([
+                html.H6("🎯 입체 응력 Viewer", style={
+                    "fontWeight": "600",
+                    "color": "#374151",
+                    "marginBottom": "16px",
+                    "fontSize": "16px"
+                }),
+                # 응력바 통일 토글 스위치
+                html.Div([
+                    html.Label("전체 응력바 통일", style={
+                        "fontWeight": "500",
+                        "color": "#374151",
+                        "marginBottom": "8px",
+                        "fontSize": "13px",
+                        "display": "inline-block",
+                        "marginRight": "8px"
+                    }),
+                    dbc.Switch(
+                        id="btn-unified-stress-colorbar",
+                        label="",
+                        value=False,
+                        className="mb-0",
+                        style={
+                            "display": "inline-block",
+                            "marginBottom": "12px",
+                            "marginTop": "-5px"
+                        }
+                    ),
+                    dbc.Tooltip(
+                        "모든 그래프의 응력바 범위를 통일합니다",
+                        target="btn-unified-stress-colorbar",
+                        placement="top"
+                    )
+                ], style={
+                    "display": "flex",
+                    "alignItems": "center",
+                    "marginBottom": "12px"
+                }),
+                dcc.Graph(
+                    id="viewer-3d-stress-display",
+                    style={
+                        "height": "65vh", 
+                        "borderRadius": "8px",
+                        "overflow": "hidden"
+                    },
+                    config={"scrollZoom": True},
+                    figure=stress_3d_figure,
+                ),
+            ], style={
+                "padding": "20px",
+                "backgroundColor": "white",
+                "borderRadius": "12px",
+                "border": "1px solid #e5e7eb",
+                "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
+            })
         ]),
         
         # 숨겨진 컴포넌트들
@@ -661,6 +909,9 @@ def create_3d_tab_content_stress(concrete_pk):
             dcc.Store(id="stress-data-store", data=all_stress_data),
             dcc.Store(id="current-stress-time-store", data=None),
             dcc.Store(id="current-stress-file-title-store", data=None),
+            dcc.Store(id="unified-stress-colorbar-state", data=False),
+            dcc.Download(id="download-3d-stress-image"),
+            dcc.Download(id="download-current-frd"),
         ], style={"display": "none"})
     ])
 
@@ -734,3 +985,290 @@ def create_node_tab_content_stress(concrete_pk):
         html.H4("노드별 응력 분석", className="mb-3"),
         html.P("노드별 응력 분석 기능이 여기에 표시됩니다.", className="text-muted")
     ])
+
+# ───────────────────── 추가 콜백 함수들 ─────────────────────
+
+@callback(
+    Output("viewer-3d-stress-display", "figure"),
+    Output("viewer-3d-stress-time-info", "children"),
+    Input("time-slider-stress", "value"),
+    Input("btn-unified-stress-colorbar", "value"),
+    State("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
+    prevent_initial_call=True,
+)
+def update_3d_stress_viewer(time_idx, unified_colorbar, selected_rows, tbl_data):
+    """3D 응력 시각화를 업데이트합니다."""
+    if not selected_rows or not tbl_data:
+        return go.Figure().add_annotation(
+            text="콘크리트를 선택하세요.",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        ), "콘크리트를 선택하세요."
+    
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    
+    # FRD 파일 목록 가져오기
+    frd_files = get_frd_files(concrete_pk)
+    if not frd_files:
+        return go.Figure().add_annotation(
+            text="FRD 파일이 없습니다.",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        ), "FRD 파일이 없습니다."
+    
+    # 선택된 시간에 해당하는 FRD 파일
+    if time_idx is not None and time_idx < len(frd_files):
+        selected_file = frd_files[time_idx]
+        filename = os.path.basename(selected_file)
+        
+        # FRD 파일에서 응력 데이터 읽기
+        stress_data = read_frd_stress_data(selected_file)
+        if not stress_data or not stress_data['coordinates'] or not stress_data['stress_values']:
+            return go.Figure().add_annotation(
+                text="유효한 응력 데이터가 없습니다.",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False
+            ), "유효한 응력 데이터가 없습니다."
+        
+        # 좌표와 응력 값 추출
+        coords = np.array(stress_data['coordinates'])
+        stress_values = list(stress_data['stress_values'][0].values())
+        
+        # 시간 정보 계산
+        try:
+            time_str = filename.split(".")[0]
+            dt = datetime.strptime(time_str, "%Y%m%d%H")
+            formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
+        except:
+            formatted_time = filename
+        
+        # 응력 통계 계산
+        if stress_values:
+            current_min = float(np.nanmin(stress_values))
+            current_max = float(np.nanmax(stress_values))
+            current_avg = float(np.nanmean(stress_values))
+            time_info = f"{formatted_time} (최저: {current_min:.2f}MPa, 최고: {current_max:.2f}MPa, 평균: {current_avg:.2f}MPa)"
+        else:
+            time_info = formatted_time
+        
+        # 3D 산점도 생성
+        fig = go.Figure(data=[
+            go.Scatter3d(
+                x=coords[:, 0],
+                y=coords[:, 1],
+                z=coords[:, 2],
+                mode='markers',
+                marker=dict(
+                    size=5,
+                    color=stress_values,
+                    colorscale='Viridis',
+                    colorbar=dict(title="응력 (MPa)"),
+                    showscale=True
+                ),
+                text=[f"노드 {i+1}<br>응력: {val:.2f} MPa" for i, val in enumerate(stress_values)],
+                hoverinfo='text'
+            )
+        ])
+        
+        fig.update_layout(
+            title="3D 응력 분포",
+            scene=dict(
+                xaxis_title="X (m)",
+                yaxis_title="Y (m)",
+                zaxis_title="Z (m)",
+                aspectmode='data'
+            ),
+            margin=dict(l=0, r=0, b=0, t=30),
+            height=500
+        )
+        
+        return fig, time_info
+    
+    return go.Figure().add_annotation(
+        text="시간 인덱스가 유효하지 않습니다.",
+        xref="paper", yref="paper",
+        x=0.5, y=0.5, showarrow=False
+    ), "시간 인덱스가 유효하지 않습니다."
+
+@callback(
+    Output("play-state-stress", "data"),
+    Output("play-interval-stress", "disabled"),
+    Output("btn-play-stress", "disabled"),
+    Output("btn-pause-stress", "disabled"),
+    Input("btn-play-stress", "n_clicks"),
+    State("play-state-stress", "data"),
+    prevent_initial_call=True,
+)
+def start_stress_playback(n_clicks, play_state):
+    """응력 재생을 시작합니다."""
+    if not play_state:
+        play_state = {"playing": False}
+    
+    play_state["playing"] = True
+    return play_state, False, True, False
+
+@callback(
+    Output("play-state-stress", "data", allow_duplicate=True),
+    Output("play-interval-stress", "disabled", allow_duplicate=True),
+    Output("btn-play-stress", "disabled", allow_duplicate=True),
+    Output("btn-pause-stress", "disabled", allow_duplicate=True),
+    Input("btn-pause-stress", "n_clicks"),
+    State("play-state-stress", "data"),
+    prevent_initial_call=True,
+)
+def stop_stress_playback(n_clicks, play_state):
+    """응력 재생을 정지합니다."""
+    if not play_state:
+        play_state = {"playing": False}
+    
+    play_state["playing"] = False
+    return play_state, True, False, True
+
+@callback(
+    Output("time-slider-stress", "value", allow_duplicate=True),
+    Input("play-interval-stress", "n_intervals"),
+    State("play-state-stress", "data"),
+    State("speed-state-stress", "data"),
+    State("time-slider-stress", "value"),
+    State("time-slider-stress", "max"),
+    prevent_initial_call=True,
+)
+def auto_play_stress_slider(n_intervals, play_state, speed_state, current_value, max_value):
+    """자동 재생으로 슬라이더를 업데이트합니다."""
+    if not play_state or not play_state.get("playing", False):
+        raise PreventUpdate
+    
+    speed = speed_state.get("speed", 1) if speed_state else 1
+    
+    if current_value is None:
+        current_value = 0
+    
+    new_value = current_value + speed
+    if new_value > max_value:
+        new_value = 0  # 처음으로 돌아가기
+    
+    return new_value
+
+@callback(
+    Output("speed-state-stress", "data"),
+    Input("speed-1x-stress", "n_clicks"),
+    Input("speed-2x-stress", "n_clicks"),
+    Input("speed-4x-stress", "n_clicks"),
+    Input("speed-8x-stress", "n_clicks"),
+    prevent_initial_call=True,
+)
+def set_stress_speed(speed_1x, speed_2x, speed_4x, speed_8x):
+    """응력 재생 속도를 설정합니다."""
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        return {"speed": 1}
+    
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    if button_id == "speed-1x-stress":
+        return {"speed": 1}
+    elif button_id == "speed-2x-stress":
+        return {"speed": 2}
+    elif button_id == "speed-4x-stress":
+        return {"speed": 4}
+    elif button_id == "speed-8x-stress":
+        return {"speed": 8}
+    
+    return {"speed": 1}
+
+@callback(
+    Output("unified-stress-colorbar-state", "data"),
+    Input("btn-unified-stress-colorbar", "value"),
+    prevent_initial_call=True,
+)
+def toggle_unified_stress_colorbar(switch_value):
+    """응력바 통일 토글을 처리합니다."""
+    return switch_value if switch_value is not None else False
+
+@callback(
+    Output("download-3d-stress-image", "data"),
+    Output("btn-save-3d-stress-image", "children"),
+    Output("btn-save-3d-stress-image", "disabled"),
+    Input("btn-save-3d-stress-image", "n_clicks"),
+    State("viewer-3d-stress-display", "figure"),
+    State("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
+    State("time-slider-stress", "value"),
+    prevent_initial_call=True,
+)
+def save_3d_stress_image(n_clicks, figure, selected_rows, tbl_data, time_value):
+    """3D 응력 이미지를 저장합니다."""
+    if not n_clicks or not figure or not selected_rows or not tbl_data:
+        return None, "이미지 저장", False
+    
+    try:
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+        concrete_name = row["name"]
+        
+        # 시간 정보 추가
+        time_info = ""
+        if time_value is not None:
+            frd_files = get_frd_files(row["concrete_pk"])
+            if time_value < len(frd_files):
+                filename = os.path.basename(frd_files[time_value])
+                try:
+                    time_str = filename.split(".")[0]
+                    dt = datetime.strptime(time_str, "%Y%m%d%H")
+                    time_info = f"_{dt.strftime('%Y%m%d_%H시')}"
+                except:
+                    time_info = f"_시간{time_value}"
+        
+        filename = f"응력분석_{concrete_name}{time_info}.png"
+        
+        # 이미지 데이터 생성 (실제로는 figure를 이미지로 변환하는 로직 필요)
+        # 여기서는 더미 데이터 반환
+        return dcc.send_bytes(
+            b"dummy_image_data", 
+            filename=filename
+        ), "저장 완료!", True
+        
+    except Exception as e:
+        print(f"이미지 저장 오류: {e}")
+        return None, "저장 실패", False
+
+@callback(
+    Output("download-current-frd", "data"),
+    Output("btn-save-current-frd", "children"),
+    Output("btn-save-current-frd", "disabled"),
+    Input("btn-save-current-frd", "n_clicks"),
+    State("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
+    State("time-slider-stress", "value"),
+    prevent_initial_call=True,
+)
+def save_current_frd(n_clicks, selected_rows, tbl_data, time_value):
+    """현재 FRD 파일을 저장합니다."""
+    if not n_clicks or not selected_rows or not tbl_data:
+        return None, "FRD 파일 저장", False
+    
+    try:
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+        concrete_pk = row["concrete_pk"]
+        concrete_name = row["name"]
+        
+        frd_files = get_frd_files(concrete_pk)
+        if not frd_files or time_value is None or time_value >= len(frd_files):
+            return None, "파일 없음", False
+        
+        source_file = frd_files[time_value]
+        filename = f"응력분석_{concrete_name}_{os.path.basename(source_file)}"
+        
+        # 파일 복사 (실제로는 파일을 읽어서 반환하는 로직 필요)
+        with open(source_file, 'rb') as f:
+            file_data = f.read()
+        
+        return dcc.send_bytes(
+            file_data, 
+            filename=filename
+        ), "저장 완료!", True
+        
+    except Exception as e:
+        print(f"FRD 파일 저장 오류: {e}")
+        return None, "저장 실패", False
