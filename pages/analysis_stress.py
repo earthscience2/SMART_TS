@@ -282,72 +282,67 @@ def read_frd_stress_data(frd_path):
             'stress_values': []
         }
         
-        current_time = None
-        reading_nodes = False
-        reading_stress = False
         node_coords = {}
-        current_stress_values = {}
+        stress_values = {}
+        
+        # 좌표 블록과 응력 블록을 구분하여 파싱
+        in_coord_block = False
+        in_stress_block = False
+        coord_count = 0
+        stress_count = 0
         
         for line in lines:
             line = line.strip()
             
-            # 시간 스텝 찾기 (1C로 시작하는 라인)
-            if line.startswith('    1C'):
-                try:
-                    # 시간 정보가 있는 경우 추출
-                    if len(line) > 6:
-                        time_str = line[6:].strip()
-                        if time_str and time_str != 'Concrete Curing Thermal Stress Analysis':
-                            current_time = float(time_str)
-                            stress_data['times'].append(current_time)
-                except:
-                    pass
-            
-            # 노드 좌표 읽기 (-1로 시작하는 라인들)
-            elif line.startswith(' -1') and len(line) > 10:
+            # 좌표 블록 시작 확인 (5개 값: -1, 노드ID, x, y, z)
+            if line.startswith(' -1') and len(line.split()) == 5:
+                in_coord_block = True
+                in_stress_block = False
+                coord_count += 1
                 try:
                     parts = line.split()
-                    if len(parts) >= 4:
-                        # 첫 번째 숫자가 노드 ID, 나머지 3개가 x, y, z 좌표
-                        node_id = int(parts[1])
-                        x, y, z = float(parts[2]), float(parts[3]), float(parts[4])
-                        node_coords[node_id] = [x, y, z]
+                    node_id = int(parts[1])
+                    x, y, z = float(parts[2]), float(parts[3]), float(parts[4])
+                    node_coords[node_id] = [x, y, z]
                 except:
-                    pass
+                    continue
             
-            # 응력 데이터 읽기 (숫자로 시작하는 라인들)
-            elif line and line[0].isdigit() and len(line) > 20:
+            # 응력 블록 시작 확인 (8개 값: -1, 노드ID, sxx, syy, szz, sxy, syz, sxz)
+            elif line.startswith(' -1') and len(line.split()) == 8:
+                in_coord_block = False
+                in_stress_block = True
+                stress_count += 1
                 try:
                     parts = line.split()
-                    if len(parts) >= 7:
-                        node_id = int(parts[0])
-                        # von Mises 응력 계산 (6개 응력 성분으로부터)
-                        sxx = float(parts[1])
-                        syy = float(parts[2])
-                        szz = float(parts[3])
-                        sxy = float(parts[4])
-                        syz = float(parts[5])
-                        sxz = float(parts[6])
-                        
-                        # von Mises 응력 계산
-                        von_mises = np.sqrt(0.5 * ((sxx - syy)**2 + (syy - szz)**2 + (szz - sxx)**2 + 
-                                                   6 * (sxy**2 + syz**2 + sxz**2)))
-                        
-                        current_stress_values[node_id] = von_mises
+                    node_id = int(parts[1])
+                    sxx = float(parts[2])
+                    syy = float(parts[3])
+                    szz = float(parts[4])
+                    sxy = float(parts[5])
+                    syz = float(parts[6])
+                    sxz = float(parts[7])
+                    von_mises = np.sqrt(0.5 * ((sxx - syy)**2 + (syy - szz)**2 + (szz - sxx)**2 + 6 * (sxy**2 + syz**2 + sxz**2)))
+                    stress_values[node_id] = von_mises
                 except:
-                    pass
+                    continue
         
-        # 노드 좌표를 순서대로 정렬
+        # 파싱된 데이터 정리
         if node_coords:
             stress_data['coordinates'] = [node_coords[i] for i in sorted(node_coords.keys())]
             stress_data['nodes'] = sorted(node_coords.keys())
+        if stress_values:
+            stress_data['stress_values'].append(stress_values)
         
-        # 응력 값이 있으면 추가
-        if current_stress_values:
-            stress_data['stress_values'].append(current_stress_values)
+        # 시간 정보 파싱
+        try:
+            filename = os.path.basename(frd_path)
+            time_str = filename.split(".")[0]
+            dt = datetime.strptime(time_str, "%Y%m%d%H")
+            stress_data['times'].append(dt)
+        except:
+            stress_data['times'].append(0)
         
         return stress_data
-        
     except Exception as e:
         print(f"FRD 파일 읽기 오류: {e}")
         return None
