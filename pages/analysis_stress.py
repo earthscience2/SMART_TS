@@ -1444,7 +1444,7 @@ def ask_delete_concrete_stress(n, pathname, sel):
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def delete_concrete_confirm(_click, pathname, sel, tbl_data):
+def delete_concrete_confirm_stress(_click, pathname, sel, tbl_data):
     """콘크리트 삭제를 확인합니다."""
     # 응력 분석 페이지에서만 실행
     if '/stress' not in pathname:
