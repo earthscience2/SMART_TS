@@ -420,9 +420,7 @@ def _build_analysis_navbar(pathname=None, search=None):
     if search:
         project_pk = parse_project_key_from_url(search)
     
-    # 디버깅: 프로젝트 키와 URL 확인
-    print(f"DEBUG: pathname={pathname}, search={search}, project_pk={project_pk}")
-    print(f"DEBUG: 응력 URL = {create_project_url('/stress', project_pk)}")
+
     
     # 현재 페이지 확인
     current_path = pathname or "/"
@@ -610,13 +608,9 @@ app.layout = serve_layout
 def handle_url_redirects(pathname):
     """모든 URL 리다이렉트 로직을 처리합니다."""
     
-    # 디버깅: URL 리다이렉트 확인
-    print(f"DEBUG URL REDIRECT: pathname={pathname}")
-    
     # 관리자 페이지에서 일반 페이지 접근 차단
     admin_user = flask_request.cookies.get("admin_user")
     if admin_user and pathname in ["/", "/project", "/sensor", "/concrete", "/download", "/tci_analysis"]:
-        print(f"DEBUG: 관리자 리다이렉트 /admin_dashboard")
         return "/admin_dashboard"
     
     # 로그인 페이지 리다이렉트

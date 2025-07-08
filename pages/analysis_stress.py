@@ -615,9 +615,11 @@ def load_concrete_data_stress(search, pathname):
         try:
             project_pk = parse_project_key_from_url(search)
         except Exception as e:
+            print(f"DEBUG: 프로젝트 키 파싱 오류: {e}")
             pass
     
     if not project_pk:
+        print(f"DEBUG: 프로젝트 키가 없음, 기본값 반환")
         # 타입 검증 및 안전한 값 설정
         slider_min = 0
         slider_max = 5
@@ -1629,14 +1631,33 @@ def on_concrete_select_stress(pathname, selected_rows, tbl_data):
     """콘크리트 선택 시 슬라이더를 초기화합니다."""
     # 응력 분석 페이지에서만 실행
     if '/stress' not in pathname:
+        print(f"DEBUG: 응력분석 페이지가 아님 (on_concrete_select_stress), PreventUpdate")
         raise PreventUpdate
     
+    print(f"DEBUG: 응력분석 페이지 on_concrete_select_stress 실행")
+    print(f"  selected_rows: {selected_rows} ({type(selected_rows)})")
+    print(f"  tbl_data: {len(tbl_data) if tbl_data else None} ({type(tbl_data)})")
+    
     if not selected_rows or not tbl_data:
+        print("DEBUG: selected_rows 또는 tbl_data가 없음")
         return False, False, "", 0, 1, 0, {}
     
-    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-    concrete_pk = row["concrete_pk"]
-    frd_dir = f"frd/{concrete_pk}"
+    # 안전한 배열 접근
+    if len(selected_rows) == 0:
+        print("DEBUG: selected_rows가 비어있음")
+        return False, False, "", 0, 1, 0, {}
+    
+    if len(tbl_data) == 0:
+        print("DEBUG: tbl_data가 비어있음")
+        return False, False, "", 0, 1, 0, {}
+    
+    try:
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+        concrete_pk = row["concrete_pk"]
+        frd_dir = f"frd/{concrete_pk}"
+    except (IndexError, KeyError) as e:
+        print(f"DEBUG: 데이터 접근 오류: {e}")
+        return False, False, "", 0, 1, 0, {}
     
     if not os.path.exists(frd_dir):
         return False, False, "", 0, 1, 0, {}
