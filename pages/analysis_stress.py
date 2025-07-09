@@ -3794,16 +3794,18 @@ def stop_section_playback_stress(n_clicks, play_state, active_tab):
     prevent_initial_call=True,
 )
 def auto_play_section_slider_stress(n_intervals, play_state, speed_state, current_value, max_value, active_tab):
+    import dash
     """단면도 자동 재생 슬라이더를 업데이트합니다."""
+    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
     if active_tab != "tab-section-stress":
-        raise PreventUpdate
+        return dash.no_update
     
     if not play_state or not play_state.get("playing", False):
-        raise PreventUpdate
+        return dash.no_update
     
     # n_intervals가 0이면 초기 상태이므로 업데이트하지 않음
     if n_intervals == 0:
-        raise PreventUpdate
+        return dash.no_update
     
     speed = speed_state.get("speed", 1) if speed_state else 1
     
@@ -3823,11 +3825,12 @@ def auto_play_section_slider_stress(n_intervals, play_state, speed_state, curren
 )
 def reset_section_play_state_on_tab_change_stress(active_tab):
     """탭 변경 시 단면도 재생 상태를 리셋합니다."""
+    import dash
     # 단면 탭이 아닌 다른 탭으로 변경될 때만 재생 상태 리셋
     if active_tab != "tab-section-stress":
         return {"playing": False}
     else:
-        raise PreventUpdate
+        return dash.no_update
 
 @callback(
     Output("speed-state-section-stress", "data"),
@@ -3837,8 +3840,9 @@ def reset_section_play_state_on_tab_change_stress(active_tab):
 )
 def set_speed_section_stress(speed_value, active_tab):
     """단면도 재생 속도를 설정합니다."""
+    import dash
     if active_tab != "tab-section-stress":
-        raise PreventUpdate
+        return dash.no_update
     
     if speed_value == "1x":
         return {"speed": 1}
@@ -3858,11 +3862,12 @@ def set_speed_section_stress(speed_value, active_tab):
 )
 def reset_speed_section_on_tab_change_stress(active_tab):
     """탭 변경 시 단면도 속도를 리셋합니다."""
+    import dash
     # 단면 탭이 아닌 다른 탭으로 변경될 때만 속도 리셋
     if active_tab != "tab-section-stress":
         return {"speed": 1}
     else:
-        raise PreventUpdate
+        return dash.no_update
 
 @callback(
     Output("unified-stress-colorbar-section-state", "data"),
@@ -3872,8 +3877,9 @@ def reset_speed_section_on_tab_change_stress(active_tab):
 )
 def toggle_unified_stress_colorbar_section_stress(switch_value, active_tab):
     """단면도 통합 컬러바를 토글합니다."""
+    import dash
     if active_tab != "tab-section-stress":
-        raise PreventUpdate
+        return dash.no_update
     
     return {"unified": switch_value} if switch_value is not None else {"unified": False}
 
@@ -4553,7 +4559,7 @@ def save_node_data_stress(n_clicks, selected_rows, tbl_data, x, y, z, selected_c
 )
 def sync_slider_value(max_value, active_tab, selected_rows, tbl_data):
     import dash
-    # 컴포넌트가 존재하지 않을 때 dash.no_update 반환
+    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
     if active_tab != "tab-section-stress":
         return dash.no_update
     if max_value is None:
@@ -4565,9 +4571,14 @@ def sync_slider_value(max_value, active_tab, selected_rows, tbl_data):
 @callback(
     Output("section-slider-value-store", "data", allow_duplicate=True),
     Input("section-slider-ui", "value"),
+    Input("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def user_move_slider(value):
+def user_move_slider(value, active_tab):
+    import dash
+    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
+    if active_tab != "tab-section-stress":
+        return dash.no_update
     if value is None:
         return dash.no_update
     return value
@@ -4576,10 +4587,15 @@ def user_move_slider(value):
 @callback(
     Output("time-slider-section-stress", "value", allow_duplicate=True),
     Input("section-slider-ui", "value"),
+    Input("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def sync_ui_slider_to_hidden(ui_value):
+def sync_ui_slider_to_hidden(ui_value, active_tab):
     """UI 슬라이더 값을 숨겨진 슬라이더에 동기화"""
+    import dash
+    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
+    if active_tab != "tab-section-stress":
+        return dash.no_update
     if ui_value is None:
         return dash.no_update
     return ui_value
@@ -4593,19 +4609,29 @@ def sync_ui_slider_to_hidden(ui_value):
     Input("time-slider-section-stress", "min"),
     Input("time-slider-section-stress", "max"),
     Input("time-slider-section-stress", "marks"),
+    Input("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def sync_hidden_slider_to_ui(value, min_val, max_val, marks):
+def sync_hidden_slider_to_ui(value, min_val, max_val, marks, active_tab):
     """숨겨진 슬라이더 값을 UI 슬라이더에 동기화"""
+    import dash
+    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
+    if active_tab != "tab-section-stress":
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
     return value, min_val, max_val, marks
 
 @callback(
     Output("section-x-input-stress", "value", allow_duplicate=True),
     Input("section-x-input-ui", "value"),
+    Input("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def sync_ui_x_input_to_hidden(ui_value):
+def sync_ui_x_input_to_hidden(ui_value, active_tab):
     """UI X 입력값을 숨겨진 입력창에 동기화"""
+    import dash
+    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
+    if active_tab != "tab-section-stress":
+        return dash.no_update
     if ui_value is None:
         return dash.no_update
     return ui_value
@@ -4613,19 +4639,29 @@ def sync_ui_x_input_to_hidden(ui_value):
 @callback(
     Output("section-x-input-ui", "value", allow_duplicate=True),
     Input("section-x-input-stress", "value"),
+    Input("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def sync_hidden_x_input_to_ui(value):
+def sync_hidden_x_input_to_ui(value, active_tab):
     """숨겨진 X 입력값을 UI 입력창에 동기화"""
+    import dash
+    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
+    if active_tab != "tab-section-stress":
+        return dash.no_update
     return value
 
 @callback(
     Output("section-y-input-stress", "value", allow_duplicate=True),
     Input("section-y-input-ui", "value"),
+    Input("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def sync_ui_y_input_to_hidden(ui_value):
+def sync_ui_y_input_to_hidden(ui_value, active_tab):
     """UI Y 입력값을 숨겨진 입력창에 동기화"""
+    import dash
+    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
+    if active_tab != "tab-section-stress":
+        return dash.no_update
     if ui_value is None:
         return dash.no_update
     return ui_value
@@ -4633,19 +4669,29 @@ def sync_ui_y_input_to_hidden(ui_value):
 @callback(
     Output("section-y-input-ui", "value", allow_duplicate=True),
     Input("section-y-input-stress", "value"),
+    Input("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def sync_hidden_y_input_to_ui(value):
+def sync_hidden_y_input_to_ui(value, active_tab):
     """숨겨진 Y 입력값을 UI 입력창에 동기화"""
+    import dash
+    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
+    if active_tab != "tab-section-stress":
+        return dash.no_update
     return value
 
 @callback(
     Output("section-z-input-stress", "value", allow_duplicate=True),
     Input("section-z-input-ui", "value"),
+    Input("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def sync_ui_z_input_to_hidden(ui_value):
+def sync_ui_z_input_to_hidden(ui_value, active_tab):
     """UI Z 입력값을 숨겨진 입력창에 동기화"""
+    import dash
+    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
+    if active_tab != "tab-section-stress":
+        return dash.no_update
     if ui_value is None:
         return dash.no_update
     return ui_value
@@ -4653,19 +4699,29 @@ def sync_ui_z_input_to_hidden(ui_value):
 @callback(
     Output("section-z-input-ui", "value", allow_duplicate=True),
     Input("section-z-input-stress", "value"),
+    Input("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def sync_hidden_z_input_to_ui(value):
+def sync_hidden_z_input_to_ui(value, active_tab):
     """숨겨진 Z 입력값을 UI 입력창에 동기화"""
+    import dash
+    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
+    if active_tab != "tab-section-stress":
+        return dash.no_update
     return value
 
 @callback(
     Output("stress-component-selector-section", "value", allow_duplicate=True),
     Input("stress-component-selector-ui", "value"),
+    Input("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def sync_ui_component_to_hidden(ui_value):
+def sync_ui_component_to_hidden(ui_value, active_tab):
     """UI 응력 종류 선택값을 숨겨진 드롭다운에 동기화"""
+    import dash
+    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
+    if active_tab != "tab-section-stress":
+        return dash.no_update
     if ui_value is None:
         return dash.no_update
     return ui_value
@@ -4673,10 +4729,15 @@ def sync_ui_component_to_hidden(ui_value):
 @callback(
     Output("stress-component-selector-ui", "value", allow_duplicate=True),
     Input("stress-component-selector-section", "value"),
+    Input("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def sync_hidden_component_to_ui(value):
+def sync_hidden_component_to_ui(value, active_tab):
     """숨겨진 응력 종류 선택값을 UI 드롭다운에 동기화"""
+    import dash
+    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
+    if active_tab != "tab-section-stress":
+        return dash.no_update
     return value
 
 
