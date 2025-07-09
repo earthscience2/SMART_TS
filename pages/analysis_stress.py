@@ -46,6 +46,18 @@ layout = dbc.Container(
         dcc.Store(id="speed-state-section-stress", data={"speed": 1}),
         dcc.Store(id="unified-stress-colorbar-section-state", data={"unified": False}),
         
+        # ── 다운로드 컴포넌트들
+        dcc.Download(id="download-3d-stress-image"),
+        dcc.Download(id="download-current-frd"),
+        dcc.Download(id="download-section-image-stress"),
+        dcc.Download(id="download-section-frd-stress"),
+        
+        # ── 컨펌 다이얼로그
+        dcc.ConfirmDialog(
+            id="confirm-del-stress",
+            message="선택한 콘크리트를 정말 삭제하시겠습니까?\n\n※ 관련 FRD 파일도 함께 삭제됩니다."
+        ),
+        
         # 메인 콘텐츠 영역
         dbc.Row([
             # 왼쪽 사이드바 - 콘크리트 목록
@@ -290,6 +302,13 @@ layout = dbc.Container(
             dcc.Graph(id="viewer-section-x-stress"),
             dcc.Graph(id="viewer-section-y-stress"),
             dcc.Graph(id="viewer-section-z-stress"),
+            # 단면 탭 버튼들
+            dbc.Button(id="btn-play-section-stress", n_clicks=0),
+            dbc.Button(id="btn-pause-section-stress", n_clicks=0),
+            dcc.Dropdown(id="speed-dropdown-section-stress", value="1x"),
+            dbc.Switch(id="btn-unified-stress-colorbar-section", value=False),
+            # 시간 정보 표시
+            html.Div(id="section-time-info-stress"),
         ], style={"display": "none"})
     ]
 )
