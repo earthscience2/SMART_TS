@@ -226,73 +226,6 @@ def parse_material_info_from_inp(lines):
 
     return ", ".join(parts) if parts else "물성치 정보 없음"
 
-def calculate_global_temp_ranges(concrete_pk):
-    """콘크리트의 모든 INP 파일에서 전체 온도 범위를 미리 계산합니다."""
-    global _global_temp_ranges
-    
-    if concrete_pk in _global_temp_ranges:
-        return _global_temp_ranges[concrete_pk]
-    
-    inp_dir = f"inp/{concrete_pk}"
-    if not os.path.exists(inp_dir):
-        return None, None
-    
-    inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
-    if not inp_files:
-        return None, None
-    
-    # 전체 온도 범위 계산
-    global_temp_min = float('inf')
-    global_temp_max = float('-inf')
-    
-    for inp_file in inp_files:
-        try:
-            with open(inp_file, 'r') as f:
-                lines = f.readlines()
-            
-            # 온도 섹션 파싱
-            temp_section = False
-            for line in lines:
-                if line.startswith('*TEMPERATURE'):
-                    temp_section = True
-                    continue
-                elif line.startswith('*'):
-                    temp_section = False
-                    continue
-                
-                if temp_section and ',' in line:
-                    parts = line.strip().split(',')
-                    if len(parts) >= 2:
-                        try:
-                            temp = float(parts[1])
-                            global_temp_min = min(global_temp_min, temp)
-                            global_temp_max = max(global_temp_max, temp)
-                        except ValueError:
-                            continue
-        except Exception:
-            continue
-    
-    # 무한대 값이 있으면 None으로 설정
-    if global_temp_min == float('inf'):
-        global_temp_min = None
-    if global_temp_max == float('-inf'):
-        global_temp_max = None
-    
-    _global_temp_ranges[concrete_pk] = (global_temp_min, global_temp_max)
-    return global_temp_min, global_temp_max
-
-def clear_temp_cache(concrete_pk=None):
-    """온도 데이터 캐시를 정리합니다."""
-    global _global_temp_ranges
-    
-    if concrete_pk:
-        # 특정 콘크리트의 캐시만 정리
-        if concrete_pk in _global_temp_ranges:
-            del _global_temp_ranges[concrete_pk]
-    else:
-        # 전체 캐시 정리
-        _global_temp_ranges.clear()
-
 # ────────────────────────────── 레이아웃 ────────────────────────────
 layout = dbc.Container(
     fluid=True,
@@ -1078,12 +1011,6 @@ def on_concrete_select_tmp(selected_rows, pathname, tbl_data):
     has_sensors = row["has_sensors"]
     concrete_pk = row["concrete_pk"]
     
-    # 전체 온도 범위 미리 계산
-    try:
-        calculate_global_temp_ranges(concrete_pk)
-    except Exception as e:
-        print(f"전체 온도 범위 계산 중 오류: {e}")
-    
     # 버튼 상태 결정
     # 분석중 (activate == 0): 분석 시작(비활성화), 삭제(활성화)
     # 설정중(센서있음) (activate == 1, has_sensors == True): 분석 시작(활성화), 삭제(비활성화)
@@ -1285,39 +1212,60 @@ def update_heatmap_tmp(time_idx, section_coord, unified_colorbar, selected_rows,
         current_file = inp_files[min(value, len(inp_files) - 1)]
         # 온도바 통일 여부에 따른 온도 범위 계산
         if unified_colorbar:
-            global_temp_min, global_temp_max = _global_temp_ranges.get(concrete_pk, (None, None))
-            if global_temp_min is not None and global_temp_max is not None:
-                tmin, tmax = global_temp_min, global_temp_max
+            all_temps = []
+            for f in inp_files:
+                try:
+                    with open(f, 'r') as file:
+                        lines = file.readlines()
+                    temp_section = False
+                    for line in lines:
+                        if line.startswith('*TEMPERATURE'):
+                            temp_section = True
+                            continue
+                        elif line.startswith('*'):
+                            temp_section = False
+                            continue
+                        if temp_section and ',' in line:
+                            parts = line.strip().split(',')
+                            if len(parts) >= 2:
+                                try:
+                                    temp = float(parts[1])
+                                    all_temps.append(temp)
+                                except (ValueError, TypeError):
+                                    continue
+                except (IOError, OSError) as e:
+                    continue
+            if all_temps:
+                tmin, tmax = float(np.nanmin(all_temps)), float(np.nanmax(all_temps))
             else:
-                all_temps = []
-                for f in inp_files:
-                    try:
-                        with open(f, 'r') as file:
-                            lines = file.readlines()
-                        temp_section = False
-                        for line in lines:
-                            if line.startswith('*TEMPERATURE'):
-                                temp_section = True
-                                continue
-                            elif line.startswith('*'):
-                                temp_section = False
-                                continue
-                            if temp_section and ',' in line:
-                                parts = line.strip().split(',')
-                                if len(parts) >= 2:
-                                    try:
-                                        temp = float(parts[1])
-                                        all_temps.append(temp)
-                                    except:
-                                        continue
-                    except (IOError, OSError) as e:
-                        continue
-                if all_temps:
-                    tmin, tmax = float(np.nanmin(all_temps)), float(np.nanmax(all_temps))
-                else:
-                    tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
+                tmin, tmax = 0, 100
         else:
-            tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
+            current_temps = []
+            try:
+                with open(current_file, 'r') as f:
+                    lines = f.readlines()
+                temp_section = False
+                for line in lines:
+                    if line.startswith('*TEMPERATURE'):
+                        temp_section = True
+                        continue
+                    elif line.startswith('*'):
+                        temp_section = False
+                        continue
+                    if temp_section and ',' in line:
+                        parts = line.strip().split(',')
+                        if len(parts) >= 2:
+                            try:
+                                temp = float(parts[1])
+                                current_temps.append(temp)
+                            except (ValueError, TypeError):
+                                continue
+            except (IOError, OSError) as e:
+                current_temps = []
+            if current_temps:
+                tmin, tmax = float(np.nanmin(current_temps)), float(np.nanmax(current_temps))
+            else:
+                tmin, tmax = 0, 100
         current_time = os.path.basename(current_file).split(".")[0]
         try:
             dt = datetime.strptime(current_time, "%Y%m%d%H")
