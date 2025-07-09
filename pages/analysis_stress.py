@@ -4552,10 +4552,13 @@ def save_node_data_stress(n_clicks, selected_rows, tbl_data, x, y, z, selected_c
     Input("tbl-concrete-stress", "data"),
 )
 def sync_slider_value(max_value, active_tab, selected_rows, tbl_data):
-    # 컴포넌트가 존재하지 않을 때 기본값 처리
+    import dash
+    # 컴포넌트가 존재하지 않을 때 dash.no_update 반환
+    if active_tab != "tab-section-stress":
+        return dash.no_update
     if max_value is None:
         max_value = 5
-    if active_tab != "tab-section-stress" or not selected_rows or not tbl_data:
+    if not selected_rows or not tbl_data:
         return 0
     return max_value
 
