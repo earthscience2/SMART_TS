@@ -2974,20 +2974,20 @@ def on_concrete_select_stress(selected_rows, pathname, tbl_data):
         return True, True
     
     is_active = row["activate"] == "활성"
-    has_sensors = row["has_sensors"]
+    has_frd = row["has_frd"]
     concrete_pk = row["concrete_pk"]
     
-    # 버튼 상태 결정
+    # 버튼 상태 결정 (온도분석과 동일한 로직)
     # 분석중 (activate == 0): 분석 시작(비활성화), 삭제(활성화)
-    # 설정중(센서있음) (activate == 1, has_sensors == True): 분석 시작(활성화), 삭제(비활성화)
-    # 설정중(센서부족) (activate == 1, has_sensors == False): 분석 시작(비활성화), 삭제(비활성화)
+    # 설정중(FRD있음) (activate == 1, has_frd == True): 분석 시작(활성화), 삭제(비활성화)
+    # 설정중(FRD부족) (activate == 1, has_frd == False): 분석 시작(비활성화), 삭제(비활성화)
     if not is_active:  # 분석중
         analyze_disabled = True
         delete_disabled = False
-    elif is_active and has_sensors:  # 설정중(센서있음)
+    elif is_active and has_frd:  # 설정중(FRD있음)
         analyze_disabled = False
         delete_disabled = True
-    else:  # 설정중(센서부족)
+    else:  # 설정중(FRD부족)
         analyze_disabled = True
         delete_disabled = True
     
