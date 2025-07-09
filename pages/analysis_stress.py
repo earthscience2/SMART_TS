@@ -271,8 +271,16 @@ layout = dbc.Container(
 
 # ───────────────────── FRD 파일 처리 함수들 ─────────────────────
 
+# 데이터 캐시 (메모리 최적화)
+_stress_data_cache = {}
+_material_info_cache = {}
+
 def read_frd_stress_data(frd_path):
-    """FRD 파일에서 응력 데이터를 읽어옵니다."""
+    """FRD 파일에서 응력 데이터를 읽어옵니다. (캐싱 적용)"""
+    # 캐시 확인
+    if frd_path in _stress_data_cache:
+        return _stress_data_cache[frd_path]
+    
     try:
         with open(frd_path, 'r') as f:
             lines = f.readlines()
@@ -393,6 +401,13 @@ def read_frd_stress_data(frd_path):
         except:
             stress_data['times'].append(0)
         
+        # 캐시에 저장 (최대 10개 파일까지만 캐시)
+        if len(_stress_data_cache) >= 10:
+            # 가장 오래된 항목 제거
+            oldest_key = next(iter(_stress_data_cache))
+            del _stress_data_cache[oldest_key]
+        
+        _stress_data_cache[frd_path] = stress_data
         return stress_data
     except Exception:
         return None
@@ -405,6 +420,27 @@ def get_frd_files(concrete_pk):
     
     frd_files = glob.glob(f"{frd_dir}/*.frd")
     return sorted(frd_files)
+
+def parse_material_info_from_inp_cached(inp_file_path):
+    """INP 파일에서 물성치 정보를 캐싱하여 추출합니다."""
+    # 캐시 확인
+    if inp_file_path in _material_info_cache:
+        return _material_info_cache[inp_file_path]
+    
+    try:
+        with open(inp_file_path, 'r') as f:
+            lines = f.readlines()
+        material_info = parse_material_info_from_inp(lines)
+        
+        # 캐시에 저장 (최대 20개 파일까지만 캐시)
+        if len(_material_info_cache) >= 20:
+            oldest_key = next(iter(_material_info_cache))
+            del _material_info_cache[oldest_key]
+        
+        _material_info_cache[inp_file_path] = material_info
+        return material_info
+    except:
+        return "물성치 정보 없음"
 
 # ───────────────────── 콜백 함수들 ─────────────────────
 
@@ -716,11 +752,13 @@ def create_3d_tab_content_stress(concrete_pk):
             dbc.Alert("FRD 파일이 없습니다.", color="warning", className="mb-3")
         ], className="mb-4")
     else:
-        for i, frd_file in enumerate(frd_files):
-            filename = os.path.basename(frd_file)
+        # 지연 로딩: 첫 번째 파일만 먼저 로드
+        if frd_files:
+            first_file = frd_files[0]
+            filename = os.path.basename(first_file)
             
-            # FRD 파일에서 응력 데이터 읽기
-            stress_data = read_frd_stress_data(frd_file)
+            # 첫 번째 FRD 파일에서 응력 데이터 읽기
+            stress_data = read_frd_stress_data(first_file)
             if stress_data:
                 all_stress_data[filename] = stress_data
                 
@@ -734,6 +772,14 @@ def create_3d_tab_content_stress(concrete_pk):
                         ])
                     ], className="mb-2")
                 )
+        
+        # 나머지 파일들은 백그라운드에서 로드 (지연 로딩)
+        if len(frd_files) > 1:
+            frd_file_list.append(
+                html.Div([
+                    html.Small(f"📁 총 {len(frd_files)}개 파일 (나머지는 필요시 로드)", className="text-muted")
+                ], className="mt-2")
+            )
         
         frd_file_list = html.Div(frd_file_list)
     
@@ -755,9 +801,7 @@ def create_3d_tab_content_stress(concrete_pk):
                     inp_dir = f"inp/{concrete_pk}"
                     inp_file_path = f"{inp_dir}/{first_filename.split('.')[0]}.inp"
                     if os.path.exists(inp_file_path):
-                        with open(inp_file_path, 'r') as f:
-                            inp_lines = f.readlines()
-                        material_info = parse_material_info_from_inp(inp_lines)
+                        material_info = parse_material_info_from_inp_cached(inp_file_path)
                 except:
                     material_info = ""
                 
@@ -824,6 +868,7 @@ def create_3d_tab_content_stress(concrete_pk):
                                 ], style={
                                     "display": "flex",
                                     "alignItems": "flex-start",
+                                    "justifyContent": "center",
                                     "gap": "8px",
                                     "flexWrap": "wrap",
                                     "marginBottom": "12px"
@@ -1370,9 +1415,7 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
             inp_dir = f"inp/{concrete_pk}"
             inp_file_path = f"{inp_dir}/{filename.split('.')[0]}.inp"
             if os.path.exists(inp_file_path):
-                with open(inp_file_path, 'r') as f:
-                    inp_lines = f.readlines()
-                material_info = parse_material_info_from_inp(inp_lines)
+                material_info = parse_material_info_from_inp_cached(inp_file_path)
         except:
             material_info = ""
         
@@ -1439,6 +1482,7 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
                     ], style={
                         "display": "flex",
                         "alignItems": "flex-start",
+                        "justifyContent": "center",
                         "gap": "8px",
                         "flexWrap": "wrap",
                         "marginBottom": "12px"
