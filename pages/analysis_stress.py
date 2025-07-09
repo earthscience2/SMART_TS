@@ -337,6 +337,7 @@ layout = dbc.Container(
             
             # 입체 탭 관련 컴포넌트들
             dcc.Graph(id="viewer-3d-stress-display"),
+            dcc.Store(id="section-slider-value-store", data=None),
         ], style={"display": "none"})
     ]
 )
@@ -1567,15 +1568,12 @@ def create_section_tab_content_stress(concrete_pk):
                     "marginBottom": "12px",
                     "fontSize": "14px"
                 }),
-
-                
-                # 시간 슬라이더
                 dcc.Slider(
                     id="time-slider-section-stress",
                     min=0,
                     max=5,
                     step=1,
-                    value=0,
+                    value=None,  # value는 Store에서 콜백으로 세팅
                     marks={},
                     updatemode='drag',
                     persistence=False,
@@ -3116,24 +3114,19 @@ def delete_concrete_confirm_stress(_click, sel, tbl_data):
     Output("section-y-input-stress", "min"), Output("section-y-input-stress", "max"), Output("section-y-input-stress", "value"),
     Output("section-z-input-stress", "min"), Output("section-z-input-stress", "max"), Output("section-z-input-stress", "value"),
     Output("current-stress-file-title-store", "data", allow_duplicate=True),
-    Input("time-slider-section-stress", "value"),  # 단면도용 독립 슬라이더 사용
+    Input("section-slider-value-store", "data"),  # Store에서 value를 받음
     Input("section-x-input-stress", "value"),
     Input("section-y-input-stress", "value"),
     Input("section-z-input-stress", "value"),
-    Input("btn-unified-stress-colorbar-section", "value"),  # 직접 토글 값 사용
-    Input("stress-component-selector-section", "value"),  # 응력 종류 선택
+    Input("btn-unified-stress-colorbar-section", "value"),
+    Input("stress-component-selector-section", "value"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar, selected_component, selected_rows, tbl_data):
-    """단면도 뷰어들을 업데이트합니다."""
-    import plotly.graph_objects as go
-    import numpy as np
-    from scipy.interpolate import griddata
-    import glob, os
-    from datetime import datetime as dt_import
-    
+def update_section_views_stress(store_value, x_val, y_val, z_val, unified_colorbar, selected_component, selected_rows, tbl_data):
+    time_idx = store_value if store_value is not None else 0
+    # 이하 기존 코드 동일하게 유지
     if not selected_rows or not tbl_data:
         empty_fig = go.Figure().add_annotation(
             text="콘크리트를 선택하세요.",
@@ -3228,7 +3221,7 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
     # 시간 정보 계산 (입체 탭과 동일)
     try:
         time_str = filename.split(".")[0]
-        dt = dt_import.strptime(time_str, "%Y%m%d%H")
+        dt = datetime.strptime(time_str, "%Y%m%d%H")
         formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
     except:
         formatted_time = filename
@@ -4525,5 +4518,25 @@ def save_node_data_stress(n_clicks, selected_rows, tbl_data, x, y, z, selected_c
     except Exception as e:
         print(f"데이터 저장 오류: {e}")
         return None
+
+@callback(
+    Output("section-slider-value-store", "data"),
+    Input("time-slider-section-stress", "max"),
+    Input("tabs-main-stress", "active_tab"),
+    Input("tbl-concrete-stress", "selected_rows"),
+    Input("tbl-concrete-stress", "data"),
+)
+def sync_slider_value(max_value, active_tab, selected_rows, tbl_data):
+    if active_tab != "tab-section-stress" or not selected_rows or not tbl_data:
+        return 0
+    return max_value
+
+@callback(
+    Output("section-slider-value-store", "data", allow_duplicate=True),
+    Input("time-slider-section-stress", "value"),
+    prevent_initial_call=True,
+)
+def user_move_slider(value):
+    return value
 
 
