@@ -134,7 +134,7 @@ layout = dbc.Container(
                                             'if': {'column_id': 'name'},
                                             'fontWeight': '600',
                                             'color': '#111827',
-                                            'textAlign': 'left',
+                                            'textAlign': 'center',
                                             'paddingLeft': '16px'
                                         }
                                     ],
@@ -620,7 +620,7 @@ def load_concrete_data_stress(search, pathname):
             'if': {'column_id': 'name'},
             'fontWeight': '600',
             'color': '#111827',
-            'textAlign': 'left',
+            'textAlign': 'center',
             'paddingLeft': '16px'
         }
     ]
@@ -1108,26 +1108,36 @@ def create_3d_tab_content_stress(concrete_pk):
         # 3D 뷰어 (노션 스타일)
         html.Div([
             html.Div([
-                html.H6("🎯 입체 응력 Viewer", style={
-                    "fontWeight": "600",
-                    "color": "#374151",
-                    "marginBottom": "16px",
-                    "fontSize": "16px"
-                }),
                 # 응력 성분 선택 및 응력바 통일 설정
                 html.Div([
-                    # 응력 성분 선택
+                    # 제목과 응력 성분 선택을 한 줄에 배치
                     html.Div([
-                        html.Label("응력 성분 선택", style={
-                            "fontWeight": "500",
+                        html.H6("🎯 입체 응력 Viewer", style={
+                            "fontWeight": "600",
                             "color": "#374151",
-                            "marginBottom": "8px",
-                            "fontSize": "13px",
-                            "display": "block"
+                            "fontSize": "16px",
+                            "margin": "0",
+                            "display": "inline-block",
+                            "marginRight": "20px"
                         }),
-                        stress_component_dropdown,
+                        html.Div([
+                            html.Label("응력 성분:", style={
+                                "fontWeight": "500",
+                                "color": "#374151",
+                                "fontSize": "13px",
+                                "display": "inline-block",
+                                "marginRight": "8px",
+                                "marginBottom": "0"
+                            }),
+                            stress_component_dropdown,
+                        ], style={
+                            "display": "inline-block",
+                            "verticalAlign": "top"
+                        }),
                     ], style={
-                        "marginBottom": "16px"
+                        "marginBottom": "16px",
+                        "display": "flex",
+                        "alignItems": "center"
                     }),
                     
                     # 응력바 통일 토글 스위치
@@ -1190,7 +1200,7 @@ def create_3d_tab_content_stress(concrete_pk):
             dcc.Download(id="download-3d-stress-image"),
             dcc.Download(id="download-current-frd"),
             # 삭제 확인 다이얼로그
-            dbc.ConfirmDialog(
+            dcc.ConfirmDialog(
                 id="confirm-del-stress", 
                 message="선택한 콘크리트를 정말 삭제하시겠습니까?\n\n※ 관련 FRD 파일도 함께 삭제됩니다."
             ),
