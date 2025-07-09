@@ -330,12 +330,39 @@ layout = dbc.Container(
             dcc.Dropdown(id="stress-component-selector-section"),
             dcc.Store(id="play-state-section-stress", data={"playing": False}),
             dcc.Store(id="speed-state-section-stress", data={"speed": 1}),
+            dcc.Store(id="unified-stress-colorbar-section-state", data={"unified": False}),
             dcc.Interval(id="play-interval-section-stress", interval=1000, n_intervals=0, disabled=True),
             dbc.Button(id="btn-save-section-image-stress"),
             dbc.Button(id="btn-save-section-frd-stress"),
             dcc.Download(id="download-section-image-stress"),
             dcc.Download(id="download-section-frd-stress"),
             html.Div(id="section-time-info-stress"),
+            # 로딩 컴포넌트들 추가
+            dcc.Loading(id="loading-btn-save-section-image-stress", type="circle"),
+            dcc.Loading(id="loading-btn-save-section-frd-stress", type="circle"),
+            # 입체 탭 컴포넌트들도 추가 (콜백 오류 방지)
+            dcc.Slider(id="time-slider-stress", min=0, max=5, step=1, value=0, marks={}),
+            dbc.Button(id="btn-play-stress"),
+            dbc.Button(id="btn-pause-stress"),
+            dcc.Dropdown(id="speed-dropdown-stress"),
+            dbc.Switch(id="btn-unified-stress-colorbar"),
+            dcc.Dropdown(id="stress-component-selector"),
+            dcc.Store(id="play-state-stress", data={"playing": False}),
+            dcc.Store(id="speed-state-stress", data={"speed": 1}),
+            dcc.Store(id="unified-stress-colorbar-state", data={"unified": False}),
+            dcc.Interval(id="play-interval-stress", interval=1000, n_intervals=0, disabled=True),
+            dbc.Button(id="btn-save-3d-stress-image"),
+            dbc.Button(id="btn-save-current-frd"),
+            dcc.Graph(id="viewer-3d-stress-display"),
+            html.Div(id="viewer-3d-stress-time-info"),
+            # 배속 버튼들 추가
+            dbc.DropdownMenuItem(id="speed-1x-stress"),
+            dbc.DropdownMenuItem(id="speed-2x-stress"),
+            dbc.DropdownMenuItem(id="speed-4x-stress"),
+            dbc.DropdownMenuItem(id="speed-8x-stress"),
+            # 로딩 컴포넌트들
+            dcc.Loading(id="loading-btn-save-3d-stress-image", type="circle"),
+            dcc.Loading(id="loading-btn-save-current-frd", type="circle"),
         ], style={"display": "none"}),
         
         # 콜백 오류 해결을 위한 필수 컴포넌트들 (제거됨 - 실제 탭에 포함됨)
@@ -3748,11 +3775,12 @@ def toggle_unified_stress_colorbar_section_stress(switch_value, active_tab):
 @callback(
     Output("node-coord-store-stress", "data"),
     Input("tbl-concrete-stress", "selected_rows"),
+    Input("tabs-main-stress", "active_tab"),  # 탭 변경도 트리거로 추가
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def store_node_coord_stress(selected_rows, tbl_data):
-    """콘크리트 선택 시 노드별 기본 좌표를 설정합니다."""
+def store_node_coord_stress(selected_rows, active_tab, tbl_data):
+    """콘크리트 선택 또는 노드 탭 진입 시 기본 좌표를 설정합니다."""
     if selected_rows and len(selected_rows) > 0 and tbl_data:
         row = tbl_data[selected_rows[0]]
         try:
@@ -3779,7 +3807,7 @@ def store_node_coord_stress(selected_rows, tbl_data):
 )
 def init_node_inputs_stress(active_tab, selected_rows, tbl_data):
     """노드 탭이 활성화될 때 입력 필드를 초기화합니다."""
-    if active_tab == "node-tab-stress" and selected_rows and len(selected_rows) > 0 and tbl_data:
+    if active_tab == "tab-node-stress" and selected_rows and len(selected_rows) > 0 and tbl_data:
         row = tbl_data[selected_rows[0]]
         try:
             dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
@@ -3802,11 +3830,12 @@ def init_node_inputs_stress(active_tab, selected_rows, tbl_data):
     Input("node-y-input-stress", "value"),
     Input("node-z-input-stress", "value"),
     Input("stress-component-selector-node", "value"),
+    Input("tabs-main-stress", "active_tab"),  # 탭 활성화를 트리거로 추가
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
-    prevent_initial_call=True,
+    prevent_initial_call=False,  # 즉시 실행 허용
 )
-def update_node_tab_stress(store_data, x, y, z, selected_component, selected_rows, tbl_data):
+def update_node_tab_stress(store_data, x, y, z, selected_component, active_tab, selected_rows, tbl_data):
     """노드별 탭의 3D 뷰와 시간별 응력 변화를 업데이트합니다."""
     import plotly.graph_objects as go
     import numpy as np
@@ -3820,6 +3849,10 @@ def update_node_tab_stress(store_data, x, y, z, selected_component, selected_row
     
     # 좌표 값 결정을 위한 변수들
     coord_x, coord_y, coord_z = None, None, None
+    
+    # 노드 탭이 활성화되어 있지 않으면 기본 빈 그래프 반환
+    if active_tab != "tab-node-stress":
+        return go.Figure(), go.Figure()
     
     # 선택된 응력 성분 확인 (기본값: von_mises)
     if selected_component is None:
