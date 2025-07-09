@@ -2183,6 +2183,38 @@ def create_node_tab_content_stress(concrete_pk):
                     "padding": "8px 12px",
                     "backgroundColor": "#f8fafc",
                     "borderRadius": "6px",
+                    "border": "1px solid #e2e8f0",
+                    "marginBottom": "12px"
+                }),
+                
+                # 응력 범위 필터
+                html.Div([
+                    html.H6("📊 날짜 범위 필터", style={
+                        "fontWeight": "600",
+                        "color": "#374151",
+                        "marginBottom": "8px",
+                        "fontSize": "13px"
+                    }),
+                    dcc.Dropdown(
+                        id="stress-range-filter",
+                        options=[
+                            {"label": "전체", "value": "all"},
+                            {"label": "28일", "value": "28"},
+                            {"label": "21일", "value": "21"},
+                            {"label": "14일", "value": "14"},
+                            {"label": "7일", "value": "7"}
+                        ],
+                        value="all",
+                        clearable=False,
+                        style={
+                            "fontSize": "12px",
+                            "borderRadius": "6px"
+                        }
+                    )
+                ], style={
+                    "padding": "8px 12px",
+                    "backgroundColor": "#f8fafc",
+                    "borderRadius": "6px",
                     "border": "1px solid #e2e8f0"
                 })
             ], md=4),
@@ -3995,13 +4027,157 @@ def update_node_tab_stress(store_data, x, y, z, selected_component, selected_row
     
     return fig_3d, fig_stress
 
-
-
-
-
-
-
-
+# 응력 범위 필터 콜백 (노드별 탭에서만 작동)
+@callback(
+    Output("viewer-stress-time-stress", "figure", allow_duplicate=True),
+    Input("stress-range-filter", "value"),
+    State("viewer-3d-node-stress", "figure"),
+    State("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
+    State("node-x-input-stress", "value"),
+    State("node-y-input-stress", "value"),
+    State("node-z-input-stress", "value"),
+    State("stress-component-selector-node", "value"),
+    prevent_initial_call=True,
+)
+def update_stress_range_filter_stress(range_filter, fig_3d, selected_rows, tbl_data, x, y, z, selected_component):
+    """응력 범위 필터 변경 시 응력 변화 그래프만 업데이트"""
+    if not selected_rows or not tbl_data:
+        raise PreventUpdate
+    
+    # range_filter가 None이면 기본값 "all" 사용
+    if range_filter is None:
+        range_filter = "all"
+    
+    # selected_component가 None이면 기본값 "von_mises" 사용
+    if selected_component is None:
+        selected_component = "von_mises"
+    
+    import plotly.graph_objects as go
+    import numpy as np
+    import glob, os
+    from datetime import datetime as dt_import
+    
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    frd_files = get_frd_files(concrete_pk)
+    
+    # 응력 데이터 수집
+    stress_times = []
+    stress_values = []
+    
+    for f in frd_files:
+        try:
+            time_str = os.path.basename(f).split(".")[0]
+            dt = dt_import.strptime(time_str, "%Y%m%d%H")
+        except:
+            continue
+        
+        # 캐시된 응력 데이터 사용
+        stress_data = get_cached_stress_data(f)
+        if not stress_data or not stress_data.get('coordinates') or not stress_data.get('stress_values'):
+            continue
+        
+        # 좌표와 응력 값 추출
+        coords = np.array(stress_data['coordinates'])
+        
+        # 선택된 응력 성분에 따라 값 추출
+        if selected_component == "von_mises":
+            stress_values_dict = stress_data['stress_values'][0]
+        else:
+            stress_values_dict = stress_data.get('stress_components', {}).get(selected_component, {})
+        
+        if not stress_values_dict:
+            continue
+        
+        # 입력 위치와 가장 가까운 노드 찾기
+        if x is not None and y is not None and z is not None and len(coords) > 0:
+            target_coord = np.array([x, y, z])
+            dists = np.linalg.norm(coords - target_coord, axis=1)
+            min_idx = np.argmin(dists)
+            
+            # 노드 ID 매핑 최적화
+            node_ids = stress_data['nodes']
+            if min_idx < len(node_ids):
+                closest_node_id = node_ids[min_idx]
+                stress_val = stress_values_dict.get(closest_node_id)
+                
+                if stress_val is not None:
+                    stress_times.append(dt)
+                    stress_values.append(stress_val / 1e9)  # Pa → GPa 변환
+    
+    # 응력 범위 필터링 적용
+    if range_filter and range_filter != "all" and stress_times:
+        try:
+            from datetime import timedelta
+            latest_time = max(stress_times)
+            days_back = int(range_filter)
+            cutoff_time = latest_time - timedelta(days=days_back)
+            
+            filtered_times = []
+            filtered_values = []
+            for i, dt in enumerate(stress_times):
+                if dt >= cutoff_time:
+                    filtered_times.append(dt)
+                    filtered_values.append(stress_values[i])
+            
+            stress_times = filtered_times
+            stress_values = filtered_values
+        except Exception as e:
+            pass
+    
+    # 그래프 생성
+    fig_stress = go.Figure()
+    if stress_times and stress_values:
+        # 응력 성분 이름
+        component_names = {
+            "von_mises": "von Mises 응력",
+            "SXX": "SXX (X방향 정응력)",
+            "SYY": "SYY (Y방향 정응력)",
+            "SZZ": "SZZ (Z방향 정응력)",
+            "SXY": "SXY (XY면 전단응력)",
+            "SYZ": "SYZ (YZ면 전단응력)",
+            "SZX": "SZX (ZX면 전단응력)"
+        }
+        component_name = component_names.get(selected_component, "응력")
+        
+        # x축 라벨 최적화 (날짜가 바뀌는 지점만 표시)
+        x_labels = []
+        prev_date = None
+        for dt in stress_times:
+            current_date = dt.strftime('%-m/%-d')
+            if current_date != prev_date:
+                x_labels.append(current_date)
+                prev_date = current_date
+            else:
+                x_labels.append("")
+        
+        # 제목에 기간 정보 추가
+        title_text = f"시간에 따른 {component_name} 정보"
+        if range_filter and range_filter != "all":
+            title_text += f" (최근 {range_filter}일)"
+        
+        fig_stress.add_trace(go.Scatter(
+            x=stress_times, 
+            y=stress_values, 
+            mode='lines+markers', 
+            name=component_name,
+            line=dict(color='#3b82f6', width=2),
+            marker=dict(size=4, color='#3b82f6')
+        ))
+        
+        fig_stress.update_layout(
+            title=title_text,
+            xaxis_title="시간",
+            yaxis_title=f"{component_name} (GPa)",
+            xaxis=dict(
+                tickmode='array',
+                tickvals=stress_times,
+                ticktext=x_labels
+            )
+        )
+    
+    return fig_stress
 
 # 노드별 탭 저장 기능 콜백들
 @callback(
@@ -4078,9 +4254,10 @@ def save_node_image_stress(n_clicks, fig_3d, fig_stress, selected_rows, tbl_data
     State("node-y-input-stress", "value"),
     State("node-z-input-stress", "value"),
     State("stress-component-selector-node", "value"),
+    State("stress-range-filter", "value"),
     prevent_initial_call=True,
 )
-def save_node_data_stress(n_clicks, selected_rows, tbl_data, x, y, z, selected_component):
+def save_node_data_stress(n_clicks, selected_rows, tbl_data, x, y, z, selected_component, range_filter):
     """노드별 응력 데이터를 CSV로 저장합니다."""
     if not n_clicks or not selected_rows or not tbl_data:
         raise PreventUpdate
@@ -4106,16 +4283,39 @@ def save_node_data_stress(n_clicks, selected_rows, tbl_data, x, y, z, selected_c
     }
     component_name = component_names.get(selected_component, "응력")
     
+    # 기본값으로 "all" 사용 (stress-range-filter가 없을 때)
+    if range_filter is None:
+        range_filter = "all"
+    
     # 데이터 수집
     stress_times = []
     stress_values = []
     
     frd_files = get_frd_files(concrete_pk)
+    
+    # 기간 필터 적용
+    if range_filter and range_filter != "all":
+        try:
+            # 현재 시간에서 지정된 일수만큼 이전 시간 계산
+            from datetime import timedelta
+            current_time = datetime.now()
+            filter_days = int(range_filter)
+            cutoff_time = current_time - timedelta(days=filter_days)
+        except:
+            cutoff_time = None
+    else:
+        cutoff_time = None
+    
     for f in frd_files:
         # 시간 파싱
         try:
             time_str = os.path.basename(f).split(".")[0]
             dt = datetime.strptime(time_str, "%Y%m%d%H")
+            
+            # 기간 필터 적용
+            if cutoff_time and dt < cutoff_time:
+                continue
+                
         except:
             continue
         
@@ -4172,7 +4372,12 @@ def save_node_data_stress(n_clicks, selected_rows, tbl_data, x, y, z, selected_c
         csv_content = output.getvalue()
         output.close()
         
-        filename = f"node_stress_{concrete_name}_{component_name}{position_info}.csv"
+        # 기간 정보 추가
+        period_info = ""
+        if range_filter and range_filter != "all":
+            period_info = f"_최근{range_filter}일"
+        
+        filename = f"node_stress_{concrete_name}_{component_name}{position_info}{period_info}.csv"
         
         return dcc.send_bytes(csv_content.encode('utf-8'), filename=filename)
     
