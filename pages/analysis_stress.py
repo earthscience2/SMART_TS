@@ -2567,7 +2567,7 @@ def show_delete_confirm_stress(n_clicks):
     Input("section-x-input-stress", "value"),
     Input("section-y-input-stress", "value"),
     Input("section-z-input-stress", "value"),
-    Input("unified-stress-colorbar-section-state", "data"),
+    Input("btn-unified-stress-colorbar-section", "value"),  # 직접 토글 값 사용
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
@@ -2602,8 +2602,8 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
         )
         return empty_fig, empty_fig, empty_fig, empty_fig, 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, "FRD 파일이 없습니다."
     
-    # 응력바 통일 상태 확인
-    use_unified_colorbar = unified_colorbar or (isinstance(unified_colorbar, dict) and unified_colorbar.get("unified", False))
+    # 응력바 통일 상태 확인 (직접 토글 값 사용)
+    use_unified_colorbar = unified_colorbar if unified_colorbar is not None else False
     
     # 미리 계산된 전체 응력 범위 사용 (von Mises 응력 기준)
     global_stress_min = None
@@ -2738,12 +2738,22 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
     tol = max(dx, dy, dz) * 0.02  # 전체 치수의 약 2%
     tol = max(tol, 0.01)  # 최소 1 cm 보장
     
+    # 성능 최적화: 데이터 포인트 수 제한
+    max_points = 1000  # 최대 1000개 포인트만 사용
+    
     mask_x = np.abs(x_coords - x0) < tol
     if np.any(mask_x):
         yb, zb, sb = y_coords[mask_x], z_coords[mask_x], stress_values_gpa[mask_x]
         if len(yb) > 3:
-            y_bins = np.linspace(yb.min(), yb.max(), 40)
-            z_bins = np.linspace(zb.min(), zb.max(), 40)
+            # 데이터 포인트 수 제한
+            if len(yb) > max_points:
+                indices = np.random.choice(len(yb), max_points, replace=False)
+                yb, zb, sb = yb[indices], zb[indices], sb[indices]
+            
+            # 그리드 해상도 조정 (성능 최적화)
+            grid_resolution = min(30, max(10, int(np.sqrt(len(yb)))))
+            y_bins = np.linspace(yb.min(), yb.max(), grid_resolution)
+            z_bins = np.linspace(zb.min(), zb.max(), grid_resolution)
             yy, zz = np.meshgrid(y_bins, z_bins)
             points = np.column_stack([yb, zb])
             values = sb
@@ -2768,8 +2778,15 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
     if np.any(mask_y):
         xb, zb, sb = x_coords[mask_y], z_coords[mask_y], stress_values_gpa[mask_y]
         if len(xb) > 3:
-            x_bins = np.linspace(xb.min(), xb.max(), 40)
-            z_bins = np.linspace(zb.min(), zb.max(), 40)
+            # 데이터 포인트 수 제한
+            if len(xb) > max_points:
+                indices = np.random.choice(len(xb), max_points, replace=False)
+                xb, zb, sb = xb[indices], zb[indices], sb[indices]
+            
+            # 그리드 해상도 조정 (성능 최적화)
+            grid_resolution = min(30, max(10, int(np.sqrt(len(xb)))))
+            x_bins = np.linspace(xb.min(), xb.max(), grid_resolution)
+            z_bins = np.linspace(zb.min(), zb.max(), grid_resolution)
             xx, zz = np.meshgrid(x_bins, z_bins)
             points = np.column_stack([xb, zb])
             values = sb
@@ -2794,8 +2811,15 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
     if np.any(mask_z):
         xb, yb, sb = x_coords[mask_z], y_coords[mask_z], stress_values_gpa[mask_z]
         if len(xb) > 3:
-            x_bins = np.linspace(xb.min(), xb.max(), 40)
-            y_bins = np.linspace(yb.min(), yb.max(), 40)
+            # 데이터 포인트 수 제한
+            if len(xb) > max_points:
+                indices = np.random.choice(len(xb), max_points, replace=False)
+                xb, yb, sb = xb[indices], yb[indices], sb[indices]
+            
+            # 그리드 해상도 조정 (성능 최적화)
+            grid_resolution = min(30, max(10, int(np.sqrt(len(xb)))))
+            x_bins = np.linspace(xb.min(), xb.max(), grid_resolution)
+            y_bins = np.linspace(yb.min(), yb.max(), grid_resolution)
             xx, yy = np.meshgrid(x_bins, y_bins)
             points = np.column_stack([xb, yb])
             values = sb
@@ -2815,12 +2839,41 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
         yaxis=dict(constrain='domain')
     )
     
+    # 물성치 정보 가져오기 (동일한 시간의 INP 파일에서)
+    material_info = ""
+    try:
+        inp_dir = f"inp/{concrete_pk}"
+        inp_file_path = f"{inp_dir}/{filename.split('.')[0]}.inp"
+        if os.path.exists(inp_file_path):
+            material_info = parse_material_info_from_inp_cached(inp_file_path)
+    except:
+        material_info = ""
+    
+    # 센서 정보 가져오기
+    sensor_info = ""
+    try:
+        sensor_positions = get_sensor_positions(concrete_pk)
+        if sensor_positions:
+            sensor_count = len(sensor_positions)
+            sensor_info = f"센서: {sensor_count}개"
+    except:
+        sensor_info = ""
+    
     # 현재 파일명/응력 통계 계산 (입체 탭과 동일한 방식)
     try:
         current_min = float(np.nanmin(stress_values_gpa))
         current_max = float(np.nanmax(stress_values_gpa))
         current_avg = float(np.nanmean(stress_values_gpa))
-        current_file_title = f"{formatted_time} (최저: {current_min:.0f}GPa, 최고: {current_max:.0f}GPa, 평균: {current_avg:.0f}GPa)"
+        
+        # 물성치 정보와 센서 정보를 포함한 제목 생성
+        info_parts = [formatted_time]
+        if material_info and material_info != "물성치 정보 없음":
+            info_parts.append(material_info)
+        if sensor_info:
+            info_parts.append(sensor_info)
+        info_parts.append(f"(최저: {current_min:.0f}GPa, 최고: {current_max:.0f}GPa, 평균: {current_avg:.0f}GPa)")
+        
+        current_file_title = " | ".join(info_parts)
     except Exception:
         current_file_title = f"{formatted_time}"
     
@@ -2849,30 +2902,104 @@ def update_section_time_info_stress(current_file_title, active_tab):
             })
         ])
     
+    # 제목을 파싱하여 구조화된 정보로 표시
+    try:
+        if " | " in current_file_title:
+            parts = current_file_title.split(" | ")
+            time_info = parts[0]
+            material_info = parts[1] if len(parts) > 1 and "탄성계수" in parts[1] else ""
+            sensor_info = parts[1] if len(parts) > 1 and "센서" in parts[1] else ""
+            stress_stats = parts[-1] if len(parts) > 1 else ""
+            
+            # 센서 정보가 별도로 있는 경우
+            if len(parts) > 2 and "센서" in parts[2]:
+                sensor_info = parts[2]
+                stress_stats = parts[-1] if len(parts) > 2 else ""
+        else:
+            time_info = current_file_title
+            material_info = ""
+            sensor_info = ""
+            stress_stats = ""
+    except:
+        time_info = current_file_title
+        material_info = ""
+        sensor_info = ""
+        stress_stats = ""
+    
     return html.Div([
         # 통합 정보 카드 (노션 스타일)
         html.Div([
             # 시간 정보와 응력 통계를 한 줄에 표시
             html.Div([
                 html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "14px"}),
-                html.Span(current_file_title, style={
+                html.Span(time_info, style={
                     "fontWeight": "600",
                     "color": "#1f2937",
                     "fontSize": "14px",
                     "marginLeft": "8px",
                     "marginRight": "16px"
                 }),
+                html.Span(stress_stats, style={
+                    "color": "#6b7280",
+                    "fontSize": "14px",
+                    "fontWeight": "600"
+                }),
             ], style={
                 "display": "flex",
                 "alignItems": "center",
-                "justifyContent": "flex-start"
+                "justifyContent": "flex-start",
+                "marginBottom": "8px" if material_info or sensor_info else "0"
             }),
+            
+            # 물성치 정보와 센서 정보를 한 줄에 표시
+            html.Div([
+                # 물성치 정보 (있는 경우만)
+                html.Div([
+                    html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "14px"}),
+                    *[html.Div([
+                        html.Span(f"{prop.split(':')[0]}:", style={
+                            "color": "#6b7280",
+                            "fontSize": "12px",
+                            "marginRight": "4px"
+                        }),
+                        html.Span(prop.split(":", 1)[1].strip(), style={
+                            "color": "#111827",
+                            "fontSize": "12px",
+                            "fontWeight": "500",
+                            "marginRight": "12px"
+                        })
+                    ], style={"display": "inline"})
+                    for prop in material_info.split(", ") if material_info]
+                ], style={"display": "inline"}) if material_info else html.Div(),
+                
+                # 센서 정보 (있는 경우만)
+                html.Div([
+                    html.I(className="fas fa-microchip", style={"color": "#10b981", "fontSize": "14px"}),
+                    html.Span(sensor_info, style={
+                        "color": "#111827",
+                        "fontSize": "12px",
+                        "fontWeight": "500",
+                        "marginLeft": "4px"
+                    })
+                ], style={"display": "inline"}) if sensor_info else html.Div()
+            ], style={
+                "display": "flex",
+                "alignItems": "center",
+                "justifyContent": "flex-start",
+                "gap": "16px",
+                "flexWrap": "wrap"
+            }) if material_info or sensor_info else html.Div()
+            
         ], style={
             "padding": "12px 16px",
             "backgroundColor": "#f8fafc",
             "borderRadius": "8px",
             "border": "1px solid #e2e8f0",
-            "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
+            "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
+            "minHeight": "65px",
+            "display": "flex",
+            "flexDirection": "column",
+            "justifyContent": "center"
         })
     ])
 
@@ -3111,7 +3238,11 @@ def stop_section_playback_stress(n_clicks, play_state):
 )
 def auto_play_section_slider_stress(n_intervals, play_state, speed_state, current_value, max_value, active_tab):
     """단면도 자동 재생으로 슬라이더를 업데이트합니다."""
-    if active_tab != "tab-section-stress" or not play_state or not play_state.get("playing", False):
+    # 단면 탭이 활성화되어 있고, 재생 상태가 True일 때만 실행
+    if active_tab != "tab-section-stress":
+        raise PreventUpdate
+    
+    if not play_state or not play_state.get("playing", False):
         raise PreventUpdate
     
     speed = speed_state.get("speed", 1) if speed_state else 1
@@ -3135,7 +3266,11 @@ def auto_play_section_slider_stress(n_intervals, play_state, speed_state, curren
 )
 def reset_section_play_state_on_tab_change_stress(active_tab):
     """탭 변경 시 단면도 재생 상태를 리셋합니다."""
-    return {"playing": False}, True, False, True
+    # 단면 탭이 아닌 다른 탭으로 변경될 때만 재생 상태 리셋
+    if active_tab != "tab-section-stress":
+        return {"playing": False}, True, False, True
+    else:
+        raise PreventUpdate
 
 @callback(
     Output("speed-state-section-stress", "data"),
@@ -3162,7 +3297,11 @@ def set_speed_section_stress(speed_value):
 )
 def reset_speed_section_on_tab_change_stress(active_tab):
     """탭 변경 시 단면도 속도를 리셋합니다."""
-    return {"speed": 1}
+    # 단면 탭이 아닌 다른 탭으로 변경될 때만 속도 리셋
+    if active_tab != "tab-section-stress":
+        return {"speed": 1}
+    else:
+        raise PreventUpdate
 
 @callback(
     Output("unified-stress-colorbar-section-state", "data"),
