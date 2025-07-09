@@ -209,16 +209,15 @@ layout = dbc.Container(
                                 dbc.Button("삭제", id="btn-concrete-del-stress", color="danger", size="sm", className="px-3", disabled=True),
                             ], className="d-flex justify-content-center gap-2 mt-2"),
                         ])
-                    ]),
-                ])
-            ], style={
-                "backgroundColor": "white",
-                "padding": "20px",
-                "borderRadius": "12px",
-                "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
-                "border": "1px solid #e2e8f0",
-                "height": "fit-content"
-            })
+                    ])
+                ], style={
+                    "backgroundColor": "white",
+                    "padding": "20px",
+                    "borderRadius": "12px",
+                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
+                    "border": "1px solid #e2e8f0",
+                    "height": "fit-content"
+                })
             ], md=4),
             
             # 오른쪽 메인 콘텐츠 영역
@@ -309,9 +308,14 @@ layout = dbc.Container(
             ], md=8)
         ], className="g-4"),
         
-        # 숨겨진 컴포넌트들 (콜백 오류 방지용)
+        # 숨겨진 컴포넌트들 (콜백용) - 온도분석과 동일하게 처리
         html.Div([
-            dcc.Slider(id="time-slider-section-stress", min=0, max=5, step=1, value=0, marks={}),
+            # 단면도 탭 컴포넌트들 (온도분석과 동일)
+            dcc.Slider(
+                id="time-slider-section-stress", 
+                min=0, max=5, step=1, value=0, marks={},
+                updatemode='drag', persistence=False
+            ),
             dbc.Input(id="section-x-input-stress", type="number", value=None),
             dbc.Input(id="section-y-input-stress", type="number", value=None),
             dbc.Input(id="section-z-input-stress", type="number", value=None),
@@ -330,9 +334,13 @@ layout = dbc.Container(
             dcc.Interval(id="play-interval-section-stress", interval=1000, n_intervals=0, disabled=True),
             dbc.Button(id="btn-save-section-image-stress"),
             dbc.Button(id="btn-save-section-frd-stress"),
+            dcc.Download(id="download-section-image-stress"),
+            dcc.Download(id="download-section-frd-stress"),
             html.Div(id="section-time-info-stress"),
+            # 로딩 컴포넌트들 추가
             dcc.Loading(id="loading-btn-save-section-image-stress", type="circle"),
             dcc.Loading(id="loading-btn-save-section-frd-stress", type="circle"),
+            # 입체 탭 컴포넌트들도 추가 (콜백 오류 방지)
             dcc.Slider(id="time-slider-stress", min=0, max=5, step=1, value=0, marks={}),
             dbc.Button(id="btn-play-stress"),
             dbc.Button(id="btn-pause-stress"),
@@ -347,13 +355,32 @@ layout = dbc.Container(
             dbc.Button(id="btn-save-current-frd"),
             dcc.Graph(id="viewer-3d-stress-display"),
             html.Div(id="viewer-3d-stress-time-info"),
+            # 배속 버튼들 추가
             dbc.DropdownMenuItem(id="speed-1x-stress"),
             dbc.DropdownMenuItem(id="speed-2x-stress"),
             dbc.DropdownMenuItem(id="speed-4x-stress"),
             dbc.DropdownMenuItem(id="speed-8x-stress"),
+            # 로딩 컴포넌트들
             dcc.Loading(id="loading-btn-save-3d-stress-image", type="circle"),
             dcc.Loading(id="loading-btn-save-current-frd", type="circle"),
+            # 노드별 탭 컴포넌트들 추가 (콜백 오류 방지)
+            dbc.Input(id="node-x-input-stress", type="number"),
+            dbc.Input(id="node-y-input-stress", type="number"),
+            dbc.Input(id="node-z-input-stress", type="number"),
+            dcc.Loading(id="loading-btn-save-node-image-stress", type="circle"),
+            dbc.Button(id="btn-save-node-image-stress"),
+            dcc.Loading(id="loading-btn-save-node-data-stress", type="circle"),
+            dbc.Button(id="btn-save-node-data-stress"),
+            dcc.Dropdown(id="stress-component-selector-node"),
+            dcc.Dropdown(id="stress-range-filter"),
+            dcc.Graph(id="viewer-3d-node-stress"),
+            dcc.Graph(id="viewer-stress-time-stress"),
+            dcc.Download(id="download-node-image-stress"),
+            dcc.Download(id="download-node-data-stress"),
+            dcc.Store(id="node-coord-store-stress", data=None),
         ], style={"display": "none"}),
+        
+        # 콜백 오류 해결을 위한 필수 컴포넌트들 (제거됨 - 실제 탭에 포함됨)
     ]
 )
 
@@ -2999,7 +3026,14 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
     import dash
     # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
     if active_tab != "tab-section-stress":
-        raise PreventUpdate
+        empty_fig = go.Figure().add_annotation(
+            text="단면도 탭을 선택하세요.",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+        return (empty_fig, empty_fig, empty_fig, empty_fig, 
+                0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, 
+                "단면도 탭을 선택하세요.")
     
     # 컴포넌트가 존재하지 않을 때 기본값 처리
     if selected_component is None:
@@ -3135,9 +3169,9 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
         z_mid = float(poly_h/2)
     except Exception:
         # fallback to coordinate median
-        x_mid = float(np.median(x_coords))
-        y_mid = float(np.median(y_coords))
-        z_mid = float(np.median(z_coords))
+    x_mid = float(np.median(x_coords))
+    y_mid = float(np.median(y_coords))
+    z_mid = float(np.median(z_coords))
     
     def round01(val):
         return round(val * 10) / 10 if val is not None else None
@@ -4077,10 +4111,15 @@ def update_node_tab_stress(store_data, x, y, z, selected_component, active_tab, 
     State("node-y-input-stress", "value"),
     State("node-z-input-stress", "value"),
     State("stress-component-selector-node", "value"),
+    State("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def update_stress_range_filter_stress(range_filter, fig_3d, selected_rows, tbl_data, x, y, z, selected_component):
+def update_stress_range_filter_stress(range_filter, fig_3d, selected_rows, tbl_data, x, y, z, selected_component, active_tab):
     """응력 범위 필터 변경 시 응력 변화 그래프만 업데이트"""
+    # 노드별 탭이 활성화되어 있지 않으면 실행하지 않음
+    if active_tab != "tab-node-stress":
+        raise PreventUpdate
+        
     if not selected_rows or not tbl_data:
         raise PreventUpdate
     
@@ -4231,10 +4270,15 @@ def update_stress_range_filter_stress(range_filter, fig_3d, selected_rows, tbl_d
     State("node-x-input-stress", "value"),
     State("node-y-input-stress", "value"),
     State("node-z-input-stress", "value"),
+    State("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def save_node_image_stress(n_clicks, fig_3d, fig_stress, selected_rows, tbl_data, x, y, z):
+def save_node_image_stress(n_clicks, fig_3d, fig_stress, selected_rows, tbl_data, x, y, z, active_tab):
     """노드별 이미지를 저장합니다."""
+    # 노드별 탭이 활성화되어 있지 않으면 실행하지 않음
+    if active_tab != "tab-node-stress":
+        raise PreventUpdate
+        
     if not n_clicks or not selected_rows or not tbl_data:
         raise PreventUpdate
     
@@ -4294,10 +4338,15 @@ def save_node_image_stress(n_clicks, fig_3d, fig_stress, selected_rows, tbl_data
     State("node-z-input-stress", "value"),
     State("stress-component-selector-node", "value"),
     State("stress-range-filter", "value"),
+    State("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def save_node_data_stress(n_clicks, selected_rows, tbl_data, x, y, z, selected_component, range_filter):
+def save_node_data_stress(n_clicks, selected_rows, tbl_data, x, y, z, selected_component, range_filter, active_tab):
     """노드별 응력 데이터를 CSV로 저장합니다."""
+    # 노드별 탭이 활성화되어 있지 않으면 실행하지 않음
+    if active_tab != "tab-node-stress":
+        raise PreventUpdate
+        
     if not n_clicks or not selected_rows or not tbl_data:
         raise PreventUpdate
     
