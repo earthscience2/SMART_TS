@@ -61,6 +61,60 @@ layout = dbc.Container(
         dcc.Download(id="download-current-frd"),
         dcc.Download(id="download-section-image-stress"),
         dcc.Download(id="download-section-frd-stress"),
+        dcc.Download(id="download-node-image-stress"),
+        dcc.Download(id="download-node-data-stress"),
+        
+        # ── 숨겨진 단면 탭 컴포넌트들 (콜백용)
+        html.Div([
+            dcc.Interval(id="play-interval-section-stress", interval=1000, disabled=True, n_intervals=0),
+            dbc.Button(id="btn-play-section-stress", style={"display": "none"}),
+            dbc.Button(id="btn-pause-section-stress", style={"display": "none"}),
+            dcc.Dropdown(id="speed-dropdown-section-stress", style={"display": "none"}),
+            dbc.Switch(id="btn-unified-stress-colorbar-section", style={"display": "none"}),
+            dcc.Slider(id="time-slider-section-stress", style={"display": "none"}),
+            dbc.Input(id="section-x-input-stress", style={"display": "none"}),
+            dbc.Input(id="section-y-input-stress", style={"display": "none"}),
+            dbc.Input(id="section-z-input-stress", style={"display": "none"}),
+            dcc.Dropdown(id="stress-component-selector-section", style={"display": "none"}),
+            html.Div(id="section-time-info-stress", style={"display": "none"}),
+            dcc.Graph(id="viewer-3d-section-stress", style={"display": "none"}),
+            dcc.Graph(id="viewer-section-x-stress", style={"display": "none"}),
+            dcc.Graph(id="viewer-section-y-stress", style={"display": "none"}),
+            dcc.Graph(id="viewer-section-z-stress", style={"display": "none"}),
+            dbc.Button(id="btn-save-section-image-stress", style={"display": "none"}),
+            dbc.Button(id="btn-save-section-frd-stress", style={"display": "none"}),
+        ], style={"display": "none"}),
+        
+        # ── 숨겨진 노드 탭 컴포넌트들 (콜백용)
+        html.Div([
+            dbc.Input(id="node-x-input-stress", style={"display": "none"}),
+            dbc.Input(id="node-y-input-stress", style={"display": "none"}),
+            dbc.Input(id="node-z-input-stress", style={"display": "none"}),
+            dcc.Dropdown(id="stress-component-selector-node", style={"display": "none"}),
+            dcc.Graph(id="viewer-3d-node-stress", style={"display": "none"}),
+            dcc.Graph(id="viewer-stress-time-stress", style={"display": "none"}),
+            dbc.Button(id="btn-save-node-image-stress", style={"display": "none"}),
+            dbc.Button(id="btn-save-node-data-stress", style={"display": "none"}),
+            dcc.Dropdown(id="stress-range-filter", style={"display": "none"}),
+        ], style={"display": "none"}),
+        
+        # ── 숨겨진 3D 탭 컴포넌트들 (콜백용)
+        html.Div([
+            dcc.Slider(id="time-slider-stress", style={"display": "none"}),
+            dbc.Switch(id="btn-unified-stress-colorbar", style={"display": "none"}),
+            dcc.Dropdown(id="stress-component-selector", style={"display": "none"}),
+            dcc.Graph(id="viewer-3d-stress-display", style={"display": "none"}),
+            html.Div(id="viewer-3d-stress-time-info", style={"display": "none"}),
+            dbc.Button(id="btn-play-stress", style={"display": "none"}),
+            dbc.Button(id="btn-pause-stress", style={"display": "none"}),
+            dcc.Interval(id="play-interval-stress", style={"display": "none"}),
+            dbc.Button(id="speed-1x-stress", style={"display": "none"}),
+            dbc.Button(id="speed-2x-stress", style={"display": "none"}),
+            dbc.Button(id="speed-4x-stress", style={"display": "none"}),
+            dbc.Button(id="speed-8x-stress", style={"display": "none"}),
+            dbc.Button(id="btn-save-3d-stress-image", style={"display": "none"}),
+            dbc.Button(id="btn-save-current-frd", style={"display": "none"}),
+        ], style={"display": "none"}),
         
         # ── 알림 컴포넌트
         dbc.Alert(id="stress-project-alert", is_open=False, duration=4000),
