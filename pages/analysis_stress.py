@@ -1121,14 +1121,6 @@ def create_3d_tab_content_stress(concrete_pk):
                             "marginRight": "20px"
                         }),
                         html.Div([
-                            html.Label("응력 성분:", style={
-                                "fontWeight": "500",
-                                "color": "#374151",
-                                "fontSize": "13px",
-                                "display": "inline-block",
-                                "marginRight": "8px",
-                                "marginBottom": "0"
-                            }),
                             stress_component_dropdown,
                         ], style={
                             "display": "inline-block",
@@ -1302,7 +1294,7 @@ def create_3d_stress_figure(stress_data, selected_component="von_mises"):
     ))
     
     fig.update_layout(
-        title=f"3D 응력 분포 (등응력면){title_suffix}",
+        title="",
         uirevision='constant',
         scene=dict(
             aspectmode='data',
@@ -1366,7 +1358,7 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
         ), "FRD 파일이 없습니다."
     
     # 전체 응력바 통일 상태 확인
-    use_unified_colorbar = unified_colorbar or (unified_state and unified_state.get("unified", False))
+    use_unified_colorbar = unified_colorbar or (isinstance(unified_state, dict) and unified_state.get("unified", False))
     
     # 통일된 응력바 범위 계산 (모든 파일의 응력값을 고려)
     global_stress_min = float('inf')
