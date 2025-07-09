@@ -949,23 +949,12 @@ def create_3d_tab_content_stress(concrete_pk):
                                         "marginLeft": "8px",
                                         "marginRight": "16px"
                                     }),
-                                    html.Span(f"최저: {current_min:.0f}GPa", style={
+                                    html.Span(f"(최저: {current_min:.0f}GPa, 최고: {current_max:.0f}GPa, 평균: {current_avg:.0f}GPa)", style={
                                         "color": "#6b7280",
-                                        "fontSize": "12px",
-                                        "fontWeight": "500",
-                                        "marginRight": "12px"
+                                        "fontSize": "14px",
+                                        "fontWeight": "600",
+                                        "marginLeft": "8px"
                                     }),
-                                    html.Span(f"최고: {current_max:.0f}GPa", style={
-                                        "color": "#6b7280",
-                                        "fontSize": "12px",
-                                        "fontWeight": "500",
-                                        "marginRight": "12px"
-                                    }),
-                                    html.Span(f"평균: {current_avg:.0f}GPa", style={
-                                        "color": "#6b7280",
-                                        "fontSize": "12px",
-                                        "fontWeight": "500"
-                                    })
                                 ], style={
                                     "display": "flex",
                                     "alignItems": "center",
@@ -1240,7 +1229,7 @@ def create_3d_tab_content_stress(concrete_pk):
             html.Div([
                 # 응력 성분 선택 및 응력바 통일 설정
                 html.Div([
-                    # 제목과 응력 성분 선택을 한 줄에 배치
+                    # 제목과 토글/드롭박스 한 줄 배치 (토글 왼쪽, 드롭박스 오른쪽)
                     html.Div([
                         html.H6("🎯 입체 응력 Viewer", style={
                             "fontWeight": "600",
@@ -1250,6 +1239,38 @@ def create_3d_tab_content_stress(concrete_pk):
                             "display": "inline-block",
                             "marginRight": "20px"
                         }),
+                        # 토글
+                        html.Div([
+                            html.Label("전체 응력바 통일", style={
+                                "fontWeight": "500",
+                                "color": "#374151",
+                                "marginBottom": "8px",
+                                "fontSize": "13px",
+                                "display": "inline-block",
+                                "marginRight": "8px"
+                            }),
+                            dbc.Switch(
+                                id="btn-unified-stress-colorbar",
+                                label="",
+                                value=False,
+                                className="mb-0",
+                                style={
+                                    "display": "inline-block",
+                                    "marginBottom": "12px",
+                                    "marginTop": "-5px"
+                                }
+                            ),
+                            dbc.Tooltip(
+                                "모든 그래프의 응력바 범위를 통일합니다",
+                                target="btn-unified-stress-colorbar",
+                                placement="top"
+                            )
+                        ], style={
+                            "display": "inline-block",
+                            "verticalAlign": "top",
+                            "marginRight": "16px"
+                        }),
+                        # 드롭박스
                         html.Div([
                             stress_component_dropdown,
                         ], style={
@@ -1260,38 +1281,6 @@ def create_3d_tab_content_stress(concrete_pk):
                         "marginBottom": "16px",
                         "display": "flex",
                         "alignItems": "center"
-                    }),
-                    
-                    # 응력바 통일 토글 스위치
-                    html.Div([
-                        html.Label("전체 응력바 통일", style={
-                            "fontWeight": "500",
-                            "color": "#374151",
-                            "marginBottom": "8px",
-                            "fontSize": "13px",
-                            "display": "inline-block",
-                            "marginRight": "8px"
-                        }),
-                        dbc.Switch(
-                            id="btn-unified-stress-colorbar",
-                            label="",
-                            value=False,
-                            className="mb-0",
-                            style={
-                                "display": "inline-block",
-                                "marginBottom": "12px",
-                                "marginTop": "-5px"
-                            }
-                        ),
-                        dbc.Tooltip(
-                            "모든 그래프의 응력바 범위를 통일합니다",
-                            target="btn-unified-stress-colorbar",
-                            placement="top"
-                        )
-                    ], style={
-                        "display": "flex",
-                        "alignItems": "center",
-                        "marginBottom": "12px"
                     }),
                 ]),
                 dcc.Graph(
@@ -1629,23 +1618,12 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
                             "marginLeft": "8px",
                             "marginRight": "16px"
                         }),
-                        html.Span(f"최저: {current_min:.0f}GPa", style={
-                            "color": "#6b7280",
-                            "fontSize": "12px",
-                            "fontWeight": "500",
-                            "marginRight": "12px"
-                        }),
-                        html.Span(f"최고: {current_max:.0f}GPa", style={
-                            "color": "#6b7280",
-                            "fontSize": "12px",
-                            "fontWeight": "500",
-                            "marginRight": "12px"
-                        }),
-                        html.Span(f"평균: {current_avg:.0f}GPa", style={
-                            "color": "#6b7280",
-                            "fontSize": "12px",
-                            "fontWeight": "500"
-                        })
+                        html.Span(f"(최저: {current_min:.0f}GPa, 최고: {current_max:.0f}GPa, 평균: {current_avg:.0f}GPa)", style={
+                    "color": "#6b7280",
+                    "fontSize": "14px",
+                    "fontWeight": "600",
+                    "marginLeft": "8px"
+                }),
                     ], style={
                         "display": "flex",
                         "alignItems": "center",
@@ -1830,34 +1808,29 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
             sensor_positions = get_sensor_positions(concrete_pk)
             if sensor_positions:
                 sensor_xs, sensor_ys, sensor_zs, sensor_names = [], [], [], []
-                
                 for sensor in sensor_positions:
                     # 센서 좌표도 정규화
                     if orig_x_max > orig_x_min:
                         sensor_x_norm = (sensor["x"] - orig_x_min) / (orig_x_max - orig_x_min)
                     else:
                         sensor_x_norm = sensor["x"]
-                        
                     if orig_y_max > orig_y_min:
                         sensor_y_norm = (sensor["y"] - orig_y_min) / (orig_y_max - orig_y_min)
                     else:
                         sensor_y_norm = sensor["y"]
-                        
                     if orig_z_max > orig_z_min:
                         sensor_z_norm = (sensor["z"] - orig_z_min) / (orig_z_max - orig_z_min)
                     else:
                         sensor_z_norm = sensor["z"]
-                    
                     sensor_xs.append(sensor_x_norm)
                     sensor_ys.append(sensor_y_norm)
                     sensor_zs.append(sensor_z_norm)
                     sensor_names.append(sensor["device_id"])
-                
-                # 센서 위치를 빨간 점으로 표시
+                # 센서 위치를 빨간 점으로 표시 (크기 4)
                 fig.add_trace(go.Scatter3d(
                     x=sensor_xs, y=sensor_ys, z=sensor_zs,
                     mode='markers',
-                    marker=dict(size=6, color='red', symbol='circle'),
+                    marker=dict(size=4, color='red', symbol='circle'),
                     text=sensor_names,
                     hoverinfo='text',
                     name='센서',
