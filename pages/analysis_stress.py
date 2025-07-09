@@ -167,6 +167,12 @@ layout = dbc.Container(
                                 "border": "1px solid #e5e5e4",
                                 "boxShadow": "0 1px 3px rgba(0, 0, 0, 0.05)"
                             }),
+                            
+                            # 액션 버튼들
+                            html.Div([
+                                dbc.Button("분석 시작", id="btn-concrete-analyze-stress", color="success", size="sm", className="px-3", disabled=True),
+                                dbc.Button("삭제", id="btn-concrete-del-stress", color="danger", size="sm", className="px-3", disabled=True),
+                            ], className="d-flex justify-content-center gap-2 mt-2"),
                         ])
                     ])
                 ], style={
@@ -829,17 +835,20 @@ def create_3d_tab_content_stress(concrete_pk):
                                     }),
                                     html.Span(f"최저: {current_min:.0f}GPa", style={
                                         "color": "#6b7280",
-                                        "fontSize": "11px",
+                                        "fontSize": "12px",
+                                        "fontWeight": "500",
                                         "marginRight": "12px"
                                     }),
                                     html.Span(f"최고: {current_max:.0f}GPa", style={
                                         "color": "#6b7280",
-                                        "fontSize": "11px",
+                                        "fontSize": "12px",
+                                        "fontWeight": "500",
                                         "marginRight": "12px"
                                     }),
                                     html.Span(f"평균: {current_avg:.0f}GPa", style={
                                         "color": "#6b7280",
-                                        "fontSize": "11px"
+                                        "fontSize": "12px",
+                                        "fontWeight": "500"
                                     })
                                 ], style={
                                     "display": "flex",
@@ -1180,6 +1189,11 @@ def create_3d_tab_content_stress(concrete_pk):
             dcc.Store(id="unified-stress-colorbar-state", data=False),
             dcc.Download(id="download-3d-stress-image"),
             dcc.Download(id="download-current-frd"),
+            # 삭제 확인 다이얼로그
+            dbc.ConfirmDialog(
+                id="confirm-del-stress", 
+                message="선택한 콘크리트를 정말 삭제하시겠습니까?\n\n※ 관련 FRD 파일도 함께 삭제됩니다."
+            ),
         ], style={"display": "none"})
     ])
 
@@ -1316,9 +1330,10 @@ def create_node_tab_content_stress(concrete_pk):
     Input("stress-component-selector", "value"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
+    State("unified-stress-colorbar-state", "data"),
     prevent_initial_call=True,
 )
-def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, selected_rows, tbl_data):
+def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, selected_rows, tbl_data, unified_state):
     """3D 응력 시각화를 업데이트합니다."""
     if not selected_rows or not tbl_data:
         return go.Figure().add_annotation(
@@ -1339,6 +1354,31 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
             xref="paper", yref="paper",
             x=0.5, y=0.5, showarrow=False
         ), "FRD 파일이 없습니다."
+    
+    # 전체 응력바 통일 상태 확인
+    use_unified_colorbar = unified_colorbar or (unified_state and unified_state.get("unified", False))
+    
+    # 통일된 응력바 범위 계산 (모든 파일의 응력값을 고려)
+    global_stress_min = float('inf')
+    global_stress_max = float('-inf')
+    
+    if use_unified_colorbar:
+        for frd_file in frd_files:
+            stress_data = read_frd_stress_data(frd_file)
+            if stress_data and stress_data['stress_values']:
+                # 선택된 응력 성분에 따라 값 추출
+                if selected_component == "von_mises":
+                    stress_values = list(stress_data['stress_values'][0].values())
+                else:
+                    if selected_component in stress_data.get('stress_components', {}):
+                        stress_values = list(stress_data['stress_components'][selected_component].values())
+                    else:
+                        stress_values = list(stress_data['stress_values'][0].values())
+                
+                stress_values_gpa = np.array(stress_values) / 1e9
+                file_min, file_max = np.nanmin(stress_values_gpa), np.nanmax(stress_values_gpa)
+                global_stress_min = min(global_stress_min, file_min)
+                global_stress_max = max(global_stress_max, file_max)
     
     # 선택된 시간에 해당하는 FRD 파일
     if time_idx is not None and time_idx < len(frd_files):
@@ -1427,7 +1467,12 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
         
         # 단위 변환: Pa → GPa
         stress_values_gpa = np.array(stress_values) / 1e9
-        stress_min, stress_max = np.nanmin(stress_values_gpa), np.nanmax(stress_values_gpa)
+        
+        # 응력 범위 설정 (통일 여부에 따라)
+        if use_unified_colorbar and global_stress_min != float('inf') and global_stress_max != float('-inf'):
+            stress_min, stress_max = global_stress_min, global_stress_max
+        else:
+            stress_min, stress_max = np.nanmin(stress_values_gpa), np.nanmax(stress_values_gpa)
         
         # 응력 통계 계산 (GPa 단위)
         if stress_values:
@@ -1449,17 +1494,20 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
                         }),
                         html.Span(f"최저: {current_min:.0f}GPa", style={
                             "color": "#6b7280",
-                            "fontSize": "11px",
+                            "fontSize": "12px",
+                            "fontWeight": "500",
                             "marginRight": "12px"
                         }),
                         html.Span(f"최고: {current_max:.0f}GPa", style={
                             "color": "#6b7280",
-                            "fontSize": "11px",
+                            "fontSize": "12px",
+                            "fontWeight": "500",
                             "marginRight": "12px"
                         }),
                         html.Span(f"평균: {current_avg:.0f}GPa", style={
                             "color": "#6b7280",
-                            "fontSize": "11px"
+                            "fontSize": "12px",
+                            "fontWeight": "500"
                         })
                     ], style={
                         "display": "flex",
@@ -1886,5 +1934,36 @@ def parse_material_info_from_inp(lines):
         parts.append(f"열팽창: {expansion:.1f}×10⁻⁵/°C")
 
     return ", ".join(parts) if parts else "물성치 정보 없음"
+
+@callback(
+    Output("btn-concrete-analyze-stress", "disabled"),
+    Output("btn-concrete-del-stress", "disabled"),
+    Input("tbl-concrete-stress", "selected_rows"),
+    Input("project-url", "pathname"),
+    State("tbl-concrete-stress", "data"),
+    prevent_initial_call=True,
+)
+def on_concrete_select_stress(selected_rows, pathname, tbl_data):
+    """콘크리트 선택 시 버튼 상태를 업데이트합니다."""
+    # 응력 분석 페이지에서만 실행
+    if '/stress' not in pathname:
+        raise PreventUpdate
+    
+    if not selected_rows or not tbl_data:
+        return True, True
+    
+    # 선택된 콘크리트가 있으면 버튼 활성화
+    return False, False
+
+@callback(
+    Output("confirm-del-stress", "displayed"),
+    Input("btn-concrete-del-stress", "n_clicks"),
+    prevent_initial_call=True,
+)
+def show_delete_confirm_stress(n_clicks):
+    """삭제 확인 다이얼로그를 표시합니다."""
+    if n_clicks:
+        return True
+    return False
 
 
