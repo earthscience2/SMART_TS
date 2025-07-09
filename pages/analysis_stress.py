@@ -67,7 +67,7 @@ layout = dbc.Container(
         
         # ── 컨펌 다이얼로그
         dcc.ConfirmDialog(
-            id="confirm-del-stress",
+            id="confirm-del-concrete-stress",
             message="선택한 콘크리트를 정말 삭제하시겠습니까?\n\n※ 관련 FRD 파일도 함께 삭제됩니다."
         ),
         
@@ -3014,7 +3014,7 @@ def on_concrete_select_stress(selected_rows, pathname, tbl_data):
     return analyze_disabled, delete_disabled
 
 @callback(
-    Output("confirm-del-stress", "displayed"),
+    Output("confirm-del-concrete-stress", "displayed"),
     Input("btn-concrete-del-stress", "n_clicks"),
     State("tbl-concrete-stress", "selected_rows"),
     prevent_initial_call=True
@@ -3067,7 +3067,7 @@ def start_analysis_stress(n_clicks, selected_rows, tbl_data):
     Output("stress-project-alert", "color", allow_duplicate=True),
     Output("stress-project-alert", "is_open", allow_duplicate=True),
     Output("tbl-concrete-stress", "data", allow_duplicate=True),
-    Input("confirm-del-stress", "submit_n_clicks"),
+    Input("confirm-del-concrete-stress", "submit_n_clicks"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
