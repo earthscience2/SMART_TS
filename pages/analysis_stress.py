@@ -303,25 +303,21 @@ def read_frd_stress_data(frd_path):
             # 노드 좌표 섹션 시작 확인 (-1로 시작하는 첫 번째 라인)
             if line.startswith('-1') and not coord_section_ended and not parsing_coords:
                 parsing_coords = True
-                print(f"좌표 섹션 시작: 라인 {i+1}")
             
             # 좌표 섹션 종료 확인 (첫 번째 -3)
             if line.strip() == '-3' and parsing_coords and not coord_section_ended:
                 parsing_coords = False
                 coord_section_ended = True
-                print(f"좌표 섹션 종료: 라인 {i+1}")
                 continue
             
             # 응력 섹션 시작 확인 (-4 STRESS 라인)
             if '-4  STRESS' in line and coord_section_ended:
                 parsing_stress = True
-                print(f"응력 섹션 시작: 라인 {i+1}")
                 continue
             
             # 응력 섹션 종료 확인 (응력 섹션 시작 후 첫 번째 -3)
             if line.strip() == '-3' and parsing_stress:
                 parsing_stress = False
-                print(f"응력 섹션 종료: 라인 {i+1}")
                 break
             
             # 노드 좌표 파싱
@@ -333,10 +329,8 @@ def read_frd_stress_data(frd_path):
                         node_id = int(nums[1])
                         x, y, z = float(nums[2]), float(nums[3]), float(nums[4])
                         node_coords[node_id] = [x, y, z]
-                        if len(node_coords) % 100 == 0:  # 진행 상황 출력
-                            print(f"좌표 파싱 진행: {len(node_coords)}개 노드 완료")
-                    except Exception as e:
-                        print(f"라인 {i+1}: 좌표 파싱 오류 - {e}")
+                    except Exception:
+                        pass
             
             # 응력 데이터 파싱
             elif parsing_stress and line.startswith('-1'):
@@ -364,12 +358,8 @@ def read_frd_stress_data(frd_path):
                         von_mises = np.sqrt(0.5 * ((sxx - syy)**2 + (syy - szz)**2 + (szz - sxx)**2 + 6 * (sxy**2 + syz**2 + sxz**2)))
                         stress_values[node_id] = von_mises
                         
-                        if len(stress_values) % 100 == 0:  # 진행 상황 출력
-                            print(f"응력 파싱 진행: {len(stress_values)}개 노드 완료")
-                    except Exception as e:
-                        print(f"라인 {i+1}: 응력 파싱 오류 - {e}")
-        
-        print(f"파싱 완료: 좌표 {len(node_coords)}개, 응력 {len(stress_values)}개 노드")
+                    except Exception:
+                        pass
         
         # 좌표와 응력 값의 노드 ID를 맞춤
         if node_coords and stress_values:
@@ -393,8 +383,6 @@ def read_frd_stress_data(frd_path):
                         if node_id in stress_components[component]:
                             component_data[node_id] = stress_components[component][node_id]
                     stress_data['stress_components'][component] = component_data
-                
-                print(f"최종 공통 노드: {len(sorted_node_ids)}개")
         
         # 시간 정보 파싱
         try:
@@ -406,8 +394,7 @@ def read_frd_stress_data(frd_path):
             stress_data['times'].append(0)
         
         return stress_data
-    except Exception as e:
-        print(f"FRD 파일 읽기 오류: {e}")
+    except Exception:
         return None
 
 def get_frd_files(concrete_pk):
@@ -898,28 +885,6 @@ def create_3d_tab_content_stress(concrete_pk):
                     ),
                     html.Br(),
                     dcc.Loading(
-                        id="loading-btn-save-all-stress-images",
-                        type="circle",
-                        children=[
-                            dbc.Button(
-                                [html.I(className="fas fa-images me-1"), "6가지 응력"],
-                                id="btn-save-all-stress-images",
-                                color="warning",
-                                size="sm",
-                                style={
-                                    "borderRadius": "8px",
-                                    "fontWeight": "500",
-                                    "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                    "fontSize": "12px",
-                                    "width": "100px",
-                                    "height": "32px",
-                                    "marginBottom": "8px"
-                                }
-                            )
-                        ]
-                    ),
-                    html.Br(),
-                    dcc.Loading(
                         id="loading-btn-save-current-frd",
                         type="circle",
                         children=[
@@ -1028,7 +993,6 @@ def create_3d_tab_content_stress(concrete_pk):
             dcc.Store(id="current-stress-file-title-store", data=None),
             dcc.Store(id="unified-stress-colorbar-state", data=False),
             dcc.Download(id="download-3d-stress-image"),
-            dcc.Download(id="download-all-stress-images"),
             dcc.Download(id="download-current-frd"),
         ], style={"display": "none"})
     ])
@@ -1170,12 +1134,7 @@ def create_node_tab_content_stress(concrete_pk):
 )
 def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, selected_rows, tbl_data):
     """3D 응력 시각화를 업데이트합니다."""
-    print(f"=== 3D 응력 뷰어 업데이트 시작 ===")
-    print(f"time_idx: {time_idx}, selected_component: {selected_component}")
-    print(f"selected_rows: {selected_rows}, tbl_data 길이: {len(tbl_data) if tbl_data else 0}")
-    
     if not selected_rows or not tbl_data:
-        print("콘크리트가 선택되지 않음")
         return go.Figure().add_annotation(
             text="콘크리트를 선택하세요.",
             xref="paper", yref="paper",
@@ -1185,13 +1144,10 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
     concrete_name = row["name"]
-    print(f"선택된 콘크리트: {concrete_name} (PK: {concrete_pk})")
     
     # FRD 파일 목록 가져오기
     frd_files = get_frd_files(concrete_pk)
-    print(f"FRD 파일 개수: {len(frd_files)}")
     if not frd_files:
-        print("FRD 파일이 없음")
         return go.Figure().add_annotation(
             text="FRD 파일이 없습니다.",
             xref="paper", yref="paper",
@@ -1202,18 +1158,11 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
     if time_idx is not None and time_idx < len(frd_files):
         selected_file = frd_files[time_idx]
         filename = os.path.basename(selected_file)
-        print(f"선택된 파일: {filename}")
         
         # FRD 파일에서 응력 데이터 읽기
         stress_data = read_frd_stress_data(selected_file)
-        print(f"응력 데이터 읽기 결과: {stress_data is not None}")
-        if stress_data:
-            print(f"좌표 개수: {len(stress_data.get('coordinates', []))}")
-            print(f"응력 값 개수: {len(stress_data.get('stress_values', []))}")
-            print(f"응력 성분: {list(stress_data.get('stress_components', {}).keys())}")
         
         if not stress_data or not stress_data['coordinates'] or not stress_data['stress_values']:
-            print("유효한 응력 데이터가 없음")
             return go.Figure().add_annotation(
                 text="유효한 응력 데이터가 없습니다.",
                 xref="paper", yref="paper",
@@ -1222,10 +1171,6 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
         
         # 좌표와 응력 값 추출
         coords = np.array(stress_data['coordinates'])
-        print(f"좌표 배열 형태: {coords.shape}")
-        print(f"좌표 범위 - X: {coords[:, 0].min():.3f} ~ {coords[:, 0].max():.3f}")
-        print(f"좌표 범위 - Y: {coords[:, 1].min():.3f} ~ {coords[:, 1].max():.3f}")
-        print(f"좌표 범위 - Z: {coords[:, 2].min():.3f} ~ {coords[:, 2].max():.3f}")
         
         # 선택된 응력 성분에 따라 값 추출 (노드 ID 순서 보장)
         if selected_component == "von_mises":
@@ -1242,19 +1187,8 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
                 stress_values = [stress_data['stress_values'][0][node_id] for node_id in stress_data['nodes']]
                 component_name = "von Mises 응력"
         
-        print(f"선택된 응력 성분: {component_name}")
-        print(f"응력 값 개수: {len(stress_values)}")
-        print(f"응력 값 범위 (Pa): {min(stress_values):.2e} ~ {max(stress_values):.2e}")
-        
-        # 노드 ID 매칭 검증
-        print(f"노드 ID 개수: {len(stress_data['nodes'])}")
-        print(f"첫 5개 노드 ID: {stress_data['nodes'][:5]}")
-        print(f"첫 5개 좌표: {coords[:5]}")
-        print(f"첫 5개 응력 값: {stress_values[:5]}")
-        
         # 데이터 검증: 좌표와 응력 값의 개수가 일치하는지 확인
         if len(coords) != len(stress_values):
-            print(f"데이터 불일치: 좌표 {len(coords)}개, 응력 값 {len(stress_values)}개")
             # 산점도로 대체
             fig = go.Figure(data=[
                 go.Scatter3d(
@@ -1295,17 +1229,79 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
         except:
             formatted_time = filename
         
+        # 물성치 정보 가져오기 (동일한 시간의 INP 파일에서)
+        material_info = ""
+        try:
+            inp_dir = f"inp/{concrete_pk}"
+            inp_file_path = f"{inp_dir}/{filename.split('.')[0]}.inp"
+            if os.path.exists(inp_file_path):
+                with open(inp_file_path, 'r') as f:
+                    inp_lines = f.readlines()
+                material_info = parse_material_info_from_inp(inp_lines)
+        except:
+            material_info = ""
+        
         # 단위 변환: Pa → GPa
         stress_values_gpa = np.array(stress_values) / 1e9
         stress_min, stress_max = np.nanmin(stress_values_gpa), np.nanmax(stress_values_gpa)
-        print(f"응력 값 범위 (GPa): {stress_min:.6f} ~ {stress_max:.6f}")
         
         # 응력 통계 계산 (GPa 단위)
         if stress_values:
             current_min = float(np.nanmin(stress_values_gpa))
             current_max = float(np.nanmax(stress_values_gpa))
             current_avg = float(np.nanmean(stress_values_gpa))
-            time_info = f"{formatted_time} - {component_name} (최저: {current_min:.2f}GPa, 최고: {current_max:.2f}GPa, 평균: {current_avg:.2f}GPa)"
+            time_info = html.Div([
+                # 통합 정보 카드 (노션 스타일)
+                html.Div([
+                    # 시간 정보 섹션
+                    html.Div([
+                        html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "14px"}),
+                        html.Span(f"{formatted_time} - {component_name} (최저: {current_min:.2f}GPa, 최고: {current_max:.2f}GPa, 평균: {current_avg:.2f}GPa)", style={
+                            "fontWeight": "600",
+                            "color": "#1f2937",
+                            "fontSize": "14px",
+                            "marginLeft": "8px"
+                        })
+                    ], style={
+                        "display": "flex",
+                        "alignItems": "center",
+                        "marginBottom": "1px" if material_info and material_info != "물성치 정보 없음" else "0",
+                        "marginTop": "12px"
+                    }),
+                    
+                    # 물성치 정보 섹션 (있는 경우만, 인라인 형태)
+                    html.Div([
+                        html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "14px"}),
+                        *[html.Div([
+                            html.Span(f"{prop.split(':')[0]}:", style={
+                                "color": "#6b7280",
+                                "fontSize": "12px",
+                                "marginRight": "4px"
+                            }),
+                            html.Span(prop.split(":", 1)[1].strip(), style={
+                                "color": "#111827",
+                                "fontSize": "12px",
+                                "fontWeight": "500",
+                                "marginRight": "12px"
+                            })
+                        ], style={"display": "inline"})
+                        for prop in material_info.split(", ") if material_info and material_info != "물성치 정보 없음"]
+                    ], style={
+                        "display": "flex",
+                        "alignItems": "flex-start",
+                        "gap": "8px",
+                        "flexWrap": "wrap",
+                        "marginBottom": "12px"
+                    }) if material_info and material_info != "물성치 정보 없음" else html.Div()
+                    
+                ], style={
+                    "backgroundColor": "#f8fafc",
+                    "padding": "12px 16px",
+                    "borderRadius": "8px",
+                    "border": "1px solid #e2e8f0",
+                    "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
+                })
+            ])
         else:
             time_info = formatted_time
         
@@ -1317,10 +1313,6 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
             axis_min, axis_max = coords[:, axis].min(), coords[:, axis].max()
             if axis_max > axis_min:
                 coords_normalized[:, axis] = (coords[:, axis] - axis_min) / (axis_max - axis_min)
-        
-        print(f"정규화된 좌표 범위 - X: {coords_normalized[:, 0].min():.3f} ~ {coords_normalized[:, 0].max():.3f}")
-        print(f"정규화된 좌표 범위 - Y: {coords_normalized[:, 1].min():.3f} ~ {coords_normalized[:, 1].max():.3f}")
-        print(f"정규화된 좌표 범위 - Z: {coords_normalized[:, 2].min():.3f} ~ {coords_normalized[:, 2].max():.3f}")
         
         # 3D 시각화 생성 (Volume 또는 Scatter3d 선택)
         # Volume이 보이지 않는 경우를 대비해 Scatter3d도 준비
@@ -1341,9 +1333,7 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
                 hoverinfo='skip',
                 name=f'{component_name} 볼륨'
             ))
-            print("Volume 시각화 생성 성공")
-        except Exception as e:
-            print(f"Volume 시각화 실패, Scatter3d로 대체: {e}")
+        except Exception:
             # Volume이 실패하면 Scatter3d로 대체
             fig = go.Figure(data=go.Scatter3d(
                 x=coords_normalized[:, 0],
@@ -1363,7 +1353,6 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
                 hoverinfo='text',
                 name=f'{component_name} 산점도'
             ))
-            print("Scatter3d 시각화 생성 성공")
         
         fig.update_layout(
             uirevision='constant',
@@ -1428,14 +1417,11 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
                 fig.add_trace(go.Scatter3d(
                     x=[x0_norm[i], x1_norm[i]], y=[y0_norm[i], y1_norm[i]], z=[z0_norm[i], z1_norm[i]],
                     mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
-        except Exception as e:
-            print(f"외곽선 추가 오류: {e}")
+        except Exception:
             pass
         
-        print("=== 3D 응력 뷰어 업데이트 완료 ===")
         return fig, time_info
     
-    print("시간 인덱스가 유효하지 않음")
     return go.Figure().add_annotation(
         text="시간 인덱스가 유효하지 않습니다.",
         xref="paper", yref="paper",
@@ -1579,8 +1565,7 @@ def save_3d_stress_image(n_clicks, figure, selected_rows, tbl_data, time_value):
             filename=filename
         ), "저장 완료!", True
         
-    except Exception as e:
-        print(f"이미지 저장 오류: {e}")
+    except Exception:
         return None, "저장 실패", False
 
 @callback(
@@ -1619,217 +1604,81 @@ def save_current_frd(n_clicks, selected_rows, tbl_data, time_value):
             filename=filename
         ), "저장 완료!", True
         
-    except Exception as e:
-        print(f"FRD 파일 저장 오류: {e}")
+    except Exception:
         return None, "저장 실패", False
 
-@callback(
-    Output("download-all-stress-images", "data"),
-    Output("btn-save-all-stress-images", "children"),
-    Output("btn-save-all-stress-images", "disabled"),
-    Input("btn-save-all-stress-images", "n_clicks"),
-    State("tbl-concrete-stress", "selected_rows"),
-    State("tbl-concrete-stress", "data"),
-    State("time-slider-stress", "value"),
-    prevent_initial_call=True,
-)
-def save_all_stress_images(n_clicks, selected_rows, tbl_data, time_value):
-    """6가지 응력 성분 이미지를 일괄 저장합니다."""
-    if not n_clicks or not selected_rows or not tbl_data:
-        return None, "6가지 응력", False
-    
-    try:
-        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-        concrete_pk = row["concrete_pk"]
-        concrete_name = row["name"]
-        
-        # FRD 파일 목록 가져오기
-        frd_files = get_frd_files(concrete_pk)
-        if not frd_files or time_value is None or time_value >= len(frd_files):
-            return None, "파일 없음", False
-        
-        # 선택된 시간에 해당하는 FRD 파일에서 응력 데이터 읽기
-        selected_file = frd_files[time_value]
-        filename = os.path.basename(selected_file)
-        stress_data = read_frd_stress_data(selected_file)
-        
-        if not stress_data or not stress_data['coordinates'] or not stress_data['stress_values']:
-            return None, "데이터 없음", False
-        
-        # 시간 정보 추가
-        time_info = ""
+
+# 물성치 정보 파싱 함수 (온도분석 페이지에서 가져옴)
+def parse_material_info_from_inp(lines):
+    """INP 파일 라인 리스트에서 물성치 정보를 추출하여 문자열로 반환합니다.
+
+    반환 형식 예시: "탄성계수: 30000MPa, 포아송비: 0.200, 밀도: 2500kg/m³, 열팽창: 1.0×10⁻⁵/°C"
+    해당 값이 없으면 항목을 건너뛴다. 아무 항목도 없으면 "물성치 정보 없음" 반환.
+    """
+    elastic_modulus = None  # MPa
+    poisson_ratio = None
+    density = None          # kg/m³
+    expansion = None        # 1/°C
+
+    section = None  # 현재 파싱 중인 섹션 이름
+    for raw in lines:
+        line = raw.strip()
+
+        # 섹션 식별
+        if line.startswith("*"):
+            u = line.upper()
+            if u.startswith("*ELASTIC"):
+                section = "elastic"
+            elif u.startswith("*DENSITY"):
+                section = "density"
+            elif u.startswith("*EXPANSION"):
+                section = "expansion"
+            else:
+                section = None
+            continue
+
+        if not section or not line:
+            continue
+
+        tokens = [tok.strip() for tok in line.split(',') if tok.strip()]
+        if not tokens:
+            continue
+
         try:
-            time_str = filename.split(".")[0]
-            dt = datetime.strptime(time_str, "%Y%m%d%H")
-            time_info = f"_{dt.strftime('%Y%m%d_%H시')}"
-        except:
-            time_info = f"_시간{time_value}"
-        
-        # 좌표와 응력 값 추출
-        coords = np.array(stress_data['coordinates'])
-        
-        # 좌표 정규화
-        coords_normalized = coords.copy()
-        for axis in range(3):
-            axis_min, axis_max = coords[:, axis].min(), coords[:, axis].max()
-            if axis_max > axis_min:
-                coords_normalized[:, axis] = (coords[:, axis] - axis_min) / (axis_max - axis_min)
-        
-        # 6가지 응력 성분 정의
-        stress_components = [
-            ("von_mises", "von Mises 응력"),
-            ("SXX", "SXX (X방향 정응력)"),
-            ("SYY", "SYY (Y방향 정응력)"),
-            ("SZZ", "SZZ (Z방향 정응력)"),
-            ("SXY", "SXY (XY면 전단응력)"),
-            ("SYZ", "SYZ (YZ면 전단응력)"),
-            ("SZX", "SZX (ZX면 전단응력)")
-        ]
-        
-        # ZIP 파일 생성을 위한 메모리 버퍼
-        import io
-        import zipfile
-        import base64
-        
-        zip_buffer = io.BytesIO()
-        
-        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            for component_id, component_name in stress_components:
-                try:
-                    # 응력 성분에 따라 값 추출
-                    if component_id == "von_mises":
-                        stress_values = [stress_data['stress_values'][0][node_id] for node_id in stress_data['nodes']]
-                    else:
-                        if component_id in stress_data.get('stress_components', {}):
-                            stress_values = [stress_data['stress_components'][component_id][node_id] for node_id in stress_data['nodes']]
-                        else:
-                            continue  # 해당 성분이 없으면 건너뛰기
-                    
-                    # 단위 변환: Pa → GPa
-                    stress_values_gpa = np.array(stress_values) / 1e9
-                    stress_min, stress_max = np.nanmin(stress_values_gpa), np.nanmax(stress_values_gpa)
-                    
-                    # 3D 시각화 생성
-                    try:
-                        # Volume 시각화 시도
-                        fig = go.Figure(data=go.Volume(
-                            x=coords_normalized[:, 0], 
-                            y=coords_normalized[:, 1], 
-                            z=coords_normalized[:, 2], 
-                            value=stress_values_gpa,
-                            opacity=0.1, 
-                            surface_count=15, 
-                            colorscale=[[0, 'blue'], [1, 'red']],
-                            colorbar=dict(title=f'{component_name} (GPa)', thickness=10),
-                            cmin=stress_min, 
-                            cmax=stress_max,
-                            showscale=True,
-                            hoverinfo='skip',
-                            name=f'{component_name} 볼륨'
-                        ))
-                    except Exception:
-                        # Volume 실패 시 Scatter3d로 대체
-                        fig = go.Figure(data=go.Scatter3d(
-                            x=coords_normalized[:, 0],
-                            y=coords_normalized[:, 1],
-                            z=coords_normalized[:, 2],
-                            mode='markers',
-                            marker=dict(
-                                size=3,
-                                color=stress_values_gpa,
-                                colorscale=[[0, 'blue'], [1, 'red']],
-                                colorbar=dict(title=f'{component_name} (GPa)', thickness=10),
-                                cmin=stress_min,
-                                cmax=stress_max,
-                                showscale=True
-                            ),
-                            text=[f"노드 {i+1}<br>{component_name}: {val:.4f} GPa" for i, val in enumerate(stress_values_gpa)],
-                            hoverinfo='text',
-                            name=f'{component_name} 산점도'
-                        ))
-                    
-                    fig.update_layout(
-                        title=f"3D 응력 분포 - {component_name}",
-                        scene=dict(
-                            aspectmode='data',
-                            bgcolor='white',
-                            xaxis=dict(showgrid=True, gridcolor='lightgray'),
-                            yaxis=dict(showgrid=True, gridcolor='lightgray'),
-                            zaxis=dict(showgrid=True, gridcolor='lightgray'),
-                        ),
-                        margin=dict(l=0, r=0, t=30, b=0),
-                        width=800,
-                        height=600
-                    )
-                    
-                    # 콘크리트 외곽선 추가
-                    try:
-                        dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
-                        poly_nodes = np.array(dims["nodes"])
-                        poly_h = float(dims["h"])
-                        
-                        # 원본 좌표 범위
-                        orig_x_min, orig_x_max = coords[:, 0].min(), coords[:, 0].max()
-                        orig_y_min, orig_y_max = coords[:, 1].min(), coords[:, 1].max()
-                        orig_z_min, orig_z_max = coords[:, 2].min(), coords[:, 2].max()
-                        
-                        n = len(poly_nodes)
-                        x0, y0 = poly_nodes[:,0], poly_nodes[:,1]
-                        z0 = np.zeros(n)
-                        x1, y1 = x0, y0
-                        z1 = np.full(n, poly_h)
-                        
-                        # 외곽선 좌표도 정규화
-                        if orig_x_max > orig_x_min:
-                            x0_norm = (x0 - orig_x_min) / (orig_x_max - orig_x_min)
-                            x1_norm = (x1 - orig_x_min) / (orig_x_max - orig_x_min)
-                        else:
-                            x0_norm, x1_norm = x0, x1
-                            
-                        if orig_y_max > orig_y_min:
-                            y0_norm = (y0 - orig_y_min) / (orig_y_max - orig_y_min)
-                            y1_norm = (y1 - orig_y_min) / (orig_y_max - orig_y_min)
-                        else:
-                            y0_norm, y1_norm = y0, y1
-                            
-                        if orig_z_max > orig_z_min:
-                            z0_norm = (z0 - orig_z_min) / (orig_z_max - orig_z_min)
-                            z1_norm = (z1 - orig_z_min) / (orig_z_max - orig_z_min)
-                        else:
-                            z0_norm, z1_norm = z0, z1
-                        
-                        # 외곽선 추가
-                        fig.add_trace(go.Scatter3d(
-                            x=np.append(x0_norm, x0_norm[0]), y=np.append(y0_norm, y0_norm[0]), z=np.append(z0_norm, z0_norm[0]),
-                            mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
-                        fig.add_trace(go.Scatter3d(
-                            x=np.append(x1_norm, x1_norm[0]), y=np.append(y1_norm, y1_norm[0]), z=np.append(z1_norm, z1_norm[0]),
-                            mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
-                        for i in range(n):
-                            fig.add_trace(go.Scatter3d(
-                                x=[x0_norm[i], x1_norm[i]], y=[y0_norm[i], y1_norm[i]], z=[z0_norm[i], z1_norm[i]],
-                                mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
-                    except Exception:
-                        pass  # 외곽선 추가 실패는 무시
-                    
-                    # 이미지로 변환하여 ZIP에 추가
-                    # 실제 구현에서는 fig.to_image()를 사용해야 하지만, 여기서는 더미 데이터 사용
-                    image_filename = f"응력분석_{concrete_name}{time_info}_{component_id}.png"
-                    dummy_image_data = f"Dummy image data for {component_name}".encode('utf-8')
-                    zip_file.writestr(image_filename, dummy_image_data)
-                    
-                except Exception as e:
-                    print(f"{component_name} 이미지 생성 오류: {e}")
-                    continue
-        
-        zip_buffer.seek(0)
-        zip_filename = f"응력분석_6가지_{concrete_name}{time_info}.zip"
-        
-        return dcc.send_bytes(
-            zip_buffer.getvalue(), 
-            filename=zip_filename
-        ), "저장 완료!", True
-        
-    except Exception as e:
-        print(f"6가지 응력 이미지 저장 오류: {e}")
-        return None, "저장 실패", False
+            if section == "elastic":
+                elastic_modulus = float(tokens[0])
+                if len(tokens) >= 2:
+                    poisson_ratio = float(tokens[1])
+                # Pa → GPa 변환
+                elastic_modulus /= 1e9
+                section = None  # 한 줄만 사용
+
+            elif section == "density":
+                density = float(tokens[0])
+                # 단위 자동 변환
+                if density < 1e-3:      # tonne/mm^3 (예: 2.40e-9)
+                    density *= 1e12     # 1 tonne/mm³ = 1e12 kg/m³
+                elif density < 10:      # g/cm³ (예: 2.4)
+                    density *= 1000     # g/cm³ → kg/m³
+                section = None
+
+            elif section == "expansion":
+                expansion = float(tokens[0])
+                section = None
+        except ValueError:
+            # 숫자 파싱 실패 시 해당 항목 무시
+            continue
+
+    parts = []
+    if elastic_modulus is not None:
+        parts.append(f"탄성계수: {elastic_modulus:.1f}GPa")
+    if poisson_ratio is not None:
+        parts.append(f"포아송비: {poisson_ratio:.1f}")
+    if density is not None:
+        parts.append(f"밀도: {density:.0f}kg/m³")
+    if expansion is not None:
+        parts.append(f"열팽창: {expansion:.1f}×10⁻⁵/°C")
+
+    return ", ".join(parts) if parts else "물성치 정보 없음"
+
+
