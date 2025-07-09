@@ -1216,40 +1216,35 @@ def update_heatmap_tmp(time_idx, section_coord, unified_colorbar, selected_rows,
         current_file = inp_files[min(value, len(inp_files) - 1)]
         # 온도바 통일 여부에 따른 온도 범위 계산
         if unified_colorbar:
-            # 미리 계산된 전체 온도 범위 사용
-            global_temp_min, global_temp_max = _global_temp_ranges.get(concrete_pk, (None, None))
-            if global_temp_min is not None and global_temp_max is not None:
-                tmin, tmax = global_temp_min, global_temp_max
+            # 전체 파일의 온도 범위 사용 (통일 모드)
+            all_temps = []
+            for f in inp_files:
+                try:
+                    with open(f, 'r') as file:
+                        lines = file.readlines()
+                    temp_section = False
+                    for line in lines:
+                        if line.startswith('*TEMPERATURE'):
+                            temp_section = True
+                            continue
+                        elif line.startswith('*'):
+                            temp_section = False
+                            continue
+                        if temp_section and ',' in line:
+                            parts = line.strip().split(',')
+                            if len(parts) >= 2:
+                                try:
+                                    temp = float(parts[1])
+                                    all_temps.append(temp)
+                                except:
+                                    continue
+                except (IOError, OSError) as e:
+                    continue
+            if all_temps:
+                tmin, tmax = float(np.nanmin(all_temps)), float(np.nanmax(all_temps))
             else:
-                # 캐시에 없으면 즉시 계산
-                all_temps = []
-                for f in inp_files:
-                    try:
-                        with open(f, 'r') as file:
-                            lines = file.readlines()
-                        temp_section = False
-                        for line in lines:
-                            if line.startswith('*TEMPERATURE'):
-                                temp_section = True
-                                continue
-                            elif line.startswith('*'):
-                                temp_section = False
-                                continue
-                            if temp_section and ',' in line:
-                                parts = line.strip().split(',')
-                                if len(parts) >= 2:
-                                    try:
-                                        temp = float(parts[1])
-                                        all_temps.append(temp)
-                                    except:
-                                        continue
-                    except (IOError, OSError) as e:
-                        continue
-                if all_temps:
-                    tmin, tmax = float(np.nanmin(all_temps)), float(np.nanmax(all_temps))
-                else:
-                    # 현재 파일의 온도만 사용
-                    tmin, tmax = 0, 100  # 기본값
+                # 현재 파일의 온도만 사용
+                tmin, tmax = 0, 100  # 기본값
         else:
             # 현재 파일의 온도 범위만 사용
             if current_temps:
