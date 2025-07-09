@@ -3551,9 +3551,10 @@ def update_section_time_info_stress(current_file_title, active_tab):
     Input("tabs-main-stress", "active_tab"),
     Input("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
+    State("project-url", "pathname"),
     prevent_initial_call=True,
 )
-def init_section_slider_independent_stress(active_tab, selected_rows, tbl_data):
+def init_section_slider_independent_stress(active_tab, selected_rows, tbl_data, pathname):
     """단면도용 독립 슬라이더를 초기화합니다."""
     if active_tab != "tab-section-stress":
         raise PreventUpdate
@@ -3563,35 +3564,108 @@ def init_section_slider_independent_stress(active_tab, selected_rows, tbl_data):
     
     # 선택된 콘크리트가 있으면 해당 FRD 파일 기반으로 슬라이더 설정
     if selected_rows and tbl_data and len(selected_rows) > 0:
-        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-        concrete_pk = row["concrete_pk"]
-        frd_files = get_frd_files(concrete_pk)
-        
-        if frd_files:
-            # 시간 파싱
-            times = []
-            for f in frd_files:
-                try:
-                    time_str = os.path.basename(f).split(".")[0]
-                    dt = datetime.strptime(time_str, "%Y%m%d%H")
-                    times.append(dt)
-                except:
-                    continue
+        try:
+            # tbl_data가 리스트인지 딕셔너리인지 확인
+            if isinstance(tbl_data, list):
+                row = tbl_data[selected_rows[0]]
+            else:
+                # 딕셔너리 형태인 경우
+                row = tbl_data
+            concrete_pk = row["concrete_pk"]
+            frd_files = get_frd_files(concrete_pk)
             
-            if times:
-                max_idx = len(times) - 1
-                slider_min, slider_max = 0, max_idx
-                slider_value = max_idx  # 최신 파일로 초기화
+            if frd_files:
+                # 시간 파싱
+                times = []
+                for f in frd_files:
+                    try:
+                        time_str = os.path.basename(f).split(".")[0]
+                        dt = datetime.strptime(time_str, "%Y%m%d%H")
+                        times.append(dt)
+                    except:
+                        continue
                 
-                # 슬라이더 마크 설정
-                marks = {}
-                seen_dates = set()
-                for i, dt in enumerate(times):
-                    date_str = dt.strftime("%m/%d")
-                    if date_str not in seen_dates:
-                        marks[i] = date_str
-                        seen_dates.add(date_str)
-                slider_marks = marks
+                if times:
+                    max_idx = len(times) - 1
+                    slider_min, slider_max = 0, max_idx
+                    slider_value = max_idx  # 최신 파일로 초기화
+                    
+                    # 슬라이더 마크 설정
+                    marks = {}
+                    seen_dates = set()
+                    for i, dt in enumerate(times):
+                        date_str = dt.strftime("%m/%d")
+                        if date_str not in seen_dates:
+                            marks[i] = date_str
+                            seen_dates.add(date_str)
+                    slider_marks = marks
+                    
+                    print(f"단면 슬라이더 초기화: min={slider_min}, max={slider_max}, value={slider_value}, marks={slider_marks}")
+        except Exception as e:
+            print(f"단면 슬라이더 초기화 오류: {e}")
+    
+    return slider_min, slider_max, slider_value, slider_marks
+
+# 단면 탭 활성화 시 슬라이더 강제 초기화
+@callback(
+    Output("time-slider-section-stress", "min", allow_duplicate=True),
+    Output("time-slider-section-stress", "max", allow_duplicate=True), 
+    Output("time-slider-section-stress", "value", allow_duplicate=True),
+    Output("time-slider-section-stress", "marks", allow_duplicate=True),
+    Input("tabs-main-stress", "active_tab"),
+    State("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
+    prevent_initial_call=True,
+)
+def force_init_section_slider_stress(active_tab, selected_rows, tbl_data):
+    """단면 탭 활성화 시 슬라이더를 강제로 초기화합니다."""
+    if active_tab != "tab-section-stress":
+        raise PreventUpdate
+    
+    # 기본값
+    slider_min, slider_max, slider_marks, slider_value = 0, 0, {}, 0
+    
+    # 선택된 콘크리트가 있으면 해당 FRD 파일 기반으로 슬라이더 설정
+    if selected_rows and tbl_data and len(selected_rows) > 0:
+        try:
+            # tbl_data가 리스트인지 딕셔너리인지 확인
+            if isinstance(tbl_data, list):
+                row = tbl_data[selected_rows[0]]
+            else:
+                # 딕셔너리 형태인 경우
+                row = tbl_data
+            concrete_pk = row["concrete_pk"]
+            frd_files = get_frd_files(concrete_pk)
+            
+            if frd_files:
+                # 시간 파싱
+                times = []
+                for f in frd_files:
+                    try:
+                        time_str = os.path.basename(f).split(".")[0]
+                        dt = datetime.strptime(time_str, "%Y%m%d%H")
+                        times.append(dt)
+                    except:
+                        continue
+                
+                if times:
+                    max_idx = len(times) - 1
+                    slider_min, slider_max = 0, max_idx
+                    slider_value = max_idx  # 최신 파일로 초기화
+                    
+                    # 슬라이더 마크 설정
+                    marks = {}
+                    seen_dates = set()
+                    for i, dt in enumerate(times):
+                        date_str = dt.strftime("%m/%d")
+                        if date_str not in seen_dates:
+                            marks[i] = date_str
+                            seen_dates.add(date_str)
+                    slider_marks = marks
+                    
+                    print(f"단면 슬라이더 강제 초기화: min={slider_min}, max={slider_max}, value={slider_value}, marks={slider_marks}")
+        except Exception as e:
+            print(f"단면 슬라이더 강제 초기화 오류: {e}")
     
     return slider_min, slider_max, slider_value, slider_marks
 
