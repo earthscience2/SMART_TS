@@ -1471,22 +1471,7 @@ def create_section_tab_content_stress(concrete_pk):
                     "marginBottom": "12px",
                     "fontSize": "14px"
                 }),
-                # 단면도 응력바 통일 토글 스위치
-                html.Div([
-                    html.Label("단면도 응력바 통일", style={
-                        "fontWeight": "500",
-                        "color": "#374151",
-                        "marginBottom": "8px",
-                        "fontSize": "13px",
-                        "display": "inline-block",
-                        "marginRight": "12px"
-                    }),
-                    dbc.Switch(
-                        id="btn-unified-stress-colorbar-section",
-                        value=False,
-                        style={"display": "inline-block"}
-                    ),
-                ], style={"marginBottom": "16px"}),
+
                 
                 # 시간 슬라이더
                 dcc.Slider(
@@ -1755,11 +1740,73 @@ def create_section_tab_content_stress(concrete_pk):
         
         # 단면도 뷰어 그리드 (노션 스타일)
         html.Div([
-            html.H6("📊 단면도 뷰어", style={
-                "fontWeight": "600",
-                "color": "#374151",
+            # 제목과 컨트롤을 한 줄에 배치
+            html.Div([
+                html.H6("📊 단면도 뷰어", style={
+                    "fontWeight": "600",
+                    "color": "#374151",
+                    "marginBottom": "0",
+                    "fontSize": "16px",
+                    "display": "inline-block",
+                    "marginRight": "20px"
+                }),
+                # 단면도 응력바 통일 토글 (오른쪽으로 이동)
+                html.Div([
+                    html.Label("단면도 응력바 통일", style={
+                        "fontWeight": "500",
+                        "color": "#374151",
+                        "marginBottom": "8px",
+                        "fontSize": "13px",
+                        "display": "inline-block",
+                        "marginRight": "8px"
+                    }),
+                    dbc.Switch(
+                        id="btn-unified-stress-colorbar-section",
+                        value=False,
+                        style={"display": "inline-block"}
+                    ),
+                ], style={
+                    "display": "inline-block",
+                    "verticalAlign": "top",
+                    "marginRight": "16px"
+                }),
+                # 응력 종류 드롭박스 추가
+                html.Div([
+                    html.Label("응력 종류", style={
+                        "fontWeight": "500",
+                        "color": "#374151",
+                        "marginBottom": "8px",
+                        "fontSize": "13px",
+                        "display": "inline-block",
+                        "marginRight": "8px"
+                    }),
+                    dcc.Dropdown(
+                        id="stress-component-selector-section",
+                        options=[
+                            {"label": "von Mises 응력", "value": "von_mises"},
+                            {"label": "SXX (X방향 정응력)", "value": "SXX"},
+                            {"label": "SYY (Y방향 정응력)", "value": "SYY"},
+                            {"label": "SZZ (Z방향 정응력)", "value": "SZZ"},
+                            {"label": "SXY (XY면 전단응력)", "value": "SXY"},
+                            {"label": "SYZ (YZ면 전단응력)", "value": "SYZ"},
+                            {"label": "SZX (ZX면 전단응력)", "value": "SZX"},
+                        ],
+                        value="von_mises",
+                        style={
+                            "width": "180px",
+                            "display": "inline-block"
+                        },
+                        clearable=False,
+                        searchable=False
+                    ),
+                ], style={
+                    "display": "inline-block",
+                    "verticalAlign": "top"
+                }),
+            ], style={
                 "marginBottom": "16px",
-                "fontSize": "16px"
+                "display": "flex",
+                "alignItems": "center"
             }),
             dbc.Row([
                 dbc.Col([
@@ -2569,11 +2616,12 @@ def show_delete_confirm_stress(n_clicks):
     Input("section-y-input-stress", "value"),
     Input("section-z-input-stress", "value"),
     Input("btn-unified-stress-colorbar-section", "value"),  # 직접 토글 값 사용
+    Input("stress-component-selector-section", "value"),  # 응력 종류 선택
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar, selected_rows, tbl_data):
+def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar, selected_component, selected_rows, tbl_data):
     """단면도 뷰어들을 업데이트합니다."""
     import plotly.graph_objects as go
     import numpy as np
@@ -2606,22 +2654,26 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
     # 응력바 통일 상태 확인 (직접 토글 값 사용)
     use_unified_colorbar = unified_colorbar if unified_colorbar is not None else False
     
-    # 미리 계산된 전체 응력 범위 사용 (von Mises 응력 기준)
+    # 선택된 응력 성분 확인 (기본값: von_mises)
+    if selected_component is None:
+        selected_component = "von_mises"
+    
+    # 미리 계산된 전체 응력 범위 사용 (선택된 응력 성분 기준)
     global_stress_min = None
     global_stress_max = None
     
     if use_unified_colorbar:
         # 미리 계산된 전체 범위 가져오기
         global_ranges = _global_stress_ranges.get(concrete_pk, {})
-        if 'von_mises' in global_ranges:
-            global_stress_min = global_ranges['von_mises']['min']
-            global_stress_max = global_ranges['von_mises']['max']
+        if selected_component in global_ranges:
+            global_stress_min = global_ranges[selected_component]['min']
+            global_stress_max = global_ranges[selected_component]['max']
         else:
             # 캐시에 없으면 즉시 계산
             global_ranges = calculate_global_stress_ranges(concrete_pk)
-            if 'von_mises' in global_ranges:
-                global_stress_min = global_ranges['von_mises']['min']
-                global_stress_max = global_ranges['von_mises']['max']
+            if selected_component in global_ranges:
+                global_stress_min = global_ranges[selected_component]['min']
+                global_stress_max = global_ranges[selected_component]['max']
     
     # 선택된 시간에 해당하는 FRD 파일
     if time_idx is None or time_idx >= len(frd_files):
@@ -2644,9 +2696,20 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
     # 좌표와 응력 값 추출 (입체 탭과 동일한 방식)
     coords = np.array(stress_data['coordinates'])
     
-    # von Mises 응력: 노드 ID 순서대로 추출 (입체 탭과 동일)
-    stress_values = [stress_data['stress_values'][0][node_id] for node_id in stress_data['nodes']]
-    component_name = "von Mises 응력"
+    # 선택된 응력 성분에 따라 값 추출 (노드 ID 순서 보장)
+    if selected_component == "von_mises":
+        # von Mises 응력: 노드 ID 순서대로 추출
+        stress_values = [stress_data['stress_values'][0][node_id] for node_id in stress_data['nodes']]
+        component_name = "von Mises 응력"
+    else:
+        # 특정 응력 성분 선택
+        if selected_component in stress_data.get('stress_components', {}):
+            stress_values = [stress_data['stress_components'][selected_component][node_id] for node_id in stress_data['nodes']]
+            component_name = f"{selected_component} 응력"
+        else:
+            # fallback to von Mises
+            stress_values = [stress_data['stress_values'][0][node_id] for node_id in stress_data['nodes']]
+            component_name = "von Mises 응력"
     
     # 데이터 검증: 좌표와 응력 값의 개수가 일치하는지 확인
     if len(coords) != len(stress_values):
@@ -2768,7 +2831,7 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
         fig_x = go.Figure()
     
     fig_x.update_layout(
-        title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", 
+        title=f"X={x0:.2f}m 단면 ({component_name})", xaxis_title="Y (m)", yaxis_title="Z (m)", 
         margin=dict(l=0, r=0, b=0, t=30),
         xaxis=dict(scaleanchor="y", scaleratio=1),
         yaxis=dict(constrain='domain')
@@ -2801,7 +2864,7 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
         fig_y = go.Figure()
     
     fig_y.update_layout(
-        title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", 
+        title=f"Y={y0:.2f}m 단면 ({component_name})", xaxis_title="X (m)", yaxis_title="Z (m)", 
         margin=dict(l=0, r=0, b=0, t=30),
         xaxis=dict(scaleanchor="y", scaleratio=1),
         yaxis=dict(constrain='domain')
@@ -2834,7 +2897,7 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
         fig_z = go.Figure()
     
     fig_z.update_layout(
-        title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", 
+        title=f"Z={z0:.2f}m 단면 ({component_name})", xaxis_title="X (m)", yaxis_title="Y (m)", 
         margin=dict(l=0, r=0, b=0, t=30),
         xaxis=dict(scaleanchor="y", scaleratio=1),
         yaxis=dict(constrain='domain')
