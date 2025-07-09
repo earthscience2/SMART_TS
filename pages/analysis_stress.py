@@ -137,9 +137,9 @@ layout = dbc.Container(
                                         },
                                         {
                                             'if': {'column_id': 'name'},
-                                            'fontWeight': '600',
+                                            'fontWeight': '500',
                                             'color': '#111827',
-                                            'textAlign': 'center',
+                                            'textAlign': 'left',
                                             'paddingLeft': '16px'
                                         }
                                     ],
@@ -727,9 +727,9 @@ def load_concrete_data_stress(search, pathname):
         # 이름 컬럼 스타일 추가
         {
             'if': {'column_id': 'name'},
-            'fontWeight': '600',
+            'fontWeight': '500',
             'color': '#111827',
-            'textAlign': 'center',
+            'textAlign': 'left',
             'paddingLeft': '16px'
         }
     ]
@@ -1514,16 +1514,15 @@ def create_section_tab_content_stress(concrete_pk):
                         }
                     ),
                     # 배속 설정 드롭다운
-                    dbc.Dropdown(
+                    dcc.Dropdown(
                         options=[
-                            dbc.DropdownMenuItem("1x", id="speed-1x-section-stress", n_clicks=0),
-                            dbc.DropdownMenuItem("2x", id="speed-2x-section-stress", n_clicks=0),
-                            dbc.DropdownMenuItem("4x", id="speed-4x-section-stress", n_clicks=0),
-                            dbc.DropdownMenuItem("8x", id="speed-8x-section-stress", n_clicks=0),
+                            {"label": "1x", "value": "1x"},
+                            {"label": "2x", "value": "2x"},
+                            {"label": "4x", "value": "4x"},
+                            {"label": "8x", "value": "8x"},
                         ], 
-                        label="⚡",
+                        value="1x",
                         id="speed-dropdown-section-stress",
-                        size="sm",
                         style={
                             "width": "32px",
                             "height": "32px",
@@ -1532,16 +1531,8 @@ def create_section_tab_content_stress(concrete_pk):
                             "alignItems": "center",
                             "justifyContent": "center"
                         },
-                        toggle_style={
-                            "borderRadius": "50%",
-                            "width": "32px",
-                            "height": "32px",
-                            "padding": "0",
-                            "backgroundColor": "#6c757d",
-                            "border": "none",
-                            "fontSize": "14px",
-                            "fontWeight": "bold"
-                        }
+                        clearable=False,
+                        searchable=False
                     ),
                 ], style={
                     "display": "flex",
@@ -1556,11 +1547,6 @@ def create_section_tab_content_stress(concrete_pk):
                     interval=1000,
                     disabled=True
                 ),
-                
-                # 재생 상태 저장
-                dcc.Store(id="play-state-section-stress", data={"playing": False}),
-                dcc.Store(id="speed-state-section-stress", data={"speed": 1}),
-                dcc.Store(id="unified-stress-colorbar-section-state", data={"unified": False}),
             ], style={
                 "padding": "20px",
                 "backgroundColor": "#f9fafb",
@@ -3114,27 +3100,18 @@ def reset_section_play_state_on_tab_change_stress(active_tab):
 
 @callback(
     Output("speed-state-section-stress", "data"),
-    Input("speed-1x-section-stress", "n_clicks"),
-    Input("speed-2x-section-stress", "n_clicks"),
-    Input("speed-4x-section-stress", "n_clicks"),
-    Input("speed-8x-section-stress", "n_clicks"),
+    Input("speed-dropdown-section-stress", "value"),
     prevent_initial_call=True,
 )
-def set_speed_section_stress(speed_1x, speed_2x, speed_4x, speed_8x):
+def set_speed_section_stress(speed_value):
     """단면도 재생 속도를 설정합니다."""
-    ctx = dash.callback_context
-    if not ctx.triggered:
+    if speed_value == "1x":
         return {"speed": 1}
-    
-    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    
-    if button_id == "speed-1x-section-stress":
-        return {"speed": 1}
-    elif button_id == "speed-2x-section-stress":
+    elif speed_value == "2x":
         return {"speed": 2}
-    elif button_id == "speed-4x-section-stress":
+    elif speed_value == "4x":
         return {"speed": 4}
-    elif button_id == "speed-8x-section-stress":
+    elif speed_value == "8x":
         return {"speed": 8}
     
     return {"speed": 1}
