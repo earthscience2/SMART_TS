@@ -856,11 +856,13 @@ def create_3d_tab_content_stress(concrete_pk):
     # FRD 파일 목록 표시
     frd_file_list = []
     all_stress_data = {}
+    initial_time_info = ""  # 오류 방지: 항상 초기화
     
     if not frd_files:
         frd_file_list = html.Div([
             dbc.Alert("FRD 파일이 없습니다.", color="warning", className="mb-3")
         ], className="mb-4")
+        initial_time_info = "FRD 파일이 없습니다."
     else:
         # 지연 로딩: 첫 번째 파일만 먼저 로드
         if frd_files:
