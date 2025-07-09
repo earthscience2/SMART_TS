@@ -1568,11 +1568,12 @@ def create_section_tab_content_stress(concrete_pk):
                     "marginTop": "12px"
                 }),
                 
-                # 자동 재생 인터벌
+                # 자동 재생 인터벌 (기본적으로 비활성화)
                 dcc.Interval(
                     id="play-interval-section-stress",
                     interval=1000,
-                    disabled=True
+                    disabled=True,
+                    n_intervals=0
                 ),
             ], style={
                 "padding": "20px",
@@ -2849,28 +2850,16 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
     except:
         material_info = ""
     
-    # 센서 정보 가져오기
-    sensor_info = ""
-    try:
-        sensor_positions = get_sensor_positions(concrete_pk)
-        if sensor_positions:
-            sensor_count = len(sensor_positions)
-            sensor_info = f"센서: {sensor_count}개"
-    except:
-        sensor_info = ""
-    
     # 현재 파일명/응력 통계 계산 (입체 탭과 동일한 방식)
     try:
         current_min = float(np.nanmin(stress_values_gpa))
         current_max = float(np.nanmax(stress_values_gpa))
         current_avg = float(np.nanmean(stress_values_gpa))
         
-        # 물성치 정보와 센서 정보를 포함한 제목 생성
+        # 물성치 정보만 포함한 제목 생성 (센서 정보 제외)
         info_parts = [formatted_time]
         if material_info and material_info != "물성치 정보 없음":
             info_parts.append(material_info)
-        if sensor_info:
-            info_parts.append(sensor_info)
         info_parts.append(f"(최저: {current_min:.0f}GPa, 최고: {current_max:.0f}GPa, 평균: {current_avg:.0f}GPa)")
         
         current_file_title = " | ".join(info_parts)
@@ -2908,22 +2897,14 @@ def update_section_time_info_stress(current_file_title, active_tab):
             parts = current_file_title.split(" | ")
             time_info = parts[0]
             material_info = parts[1] if len(parts) > 1 and "탄성계수" in parts[1] else ""
-            sensor_info = parts[1] if len(parts) > 1 and "센서" in parts[1] else ""
             stress_stats = parts[-1] if len(parts) > 1 else ""
-            
-            # 센서 정보가 별도로 있는 경우
-            if len(parts) > 2 and "센서" in parts[2]:
-                sensor_info = parts[2]
-                stress_stats = parts[-1] if len(parts) > 2 else ""
         else:
             time_info = current_file_title
             material_info = ""
-            sensor_info = ""
             stress_stats = ""
     except:
         time_info = current_file_title
         material_info = ""
-        sensor_info = ""
         stress_stats = ""
     
     return html.Div([
@@ -2948,10 +2929,10 @@ def update_section_time_info_stress(current_file_title, active_tab):
                 "display": "flex",
                 "alignItems": "center",
                 "justifyContent": "flex-start",
-                "marginBottom": "8px" if material_info or sensor_info else "0"
+                "marginBottom": "8px" if material_info else "0"
             }),
             
-            # 물성치 정보와 센서 정보를 한 줄에 표시
+            # 물성치 정보만 표시
             html.Div([
                 # 물성치 정보 (있는 경우만)
                 html.Div([
@@ -2970,25 +2951,14 @@ def update_section_time_info_stress(current_file_title, active_tab):
                         })
                     ], style={"display": "inline"})
                     for prop in material_info.split(", ") if material_info]
-                ], style={"display": "inline"}) if material_info else html.Div(),
-                
-                # 센서 정보 (있는 경우만)
-                html.Div([
-                    html.I(className="fas fa-microchip", style={"color": "#10b981", "fontSize": "14px"}),
-                    html.Span(sensor_info, style={
-                        "color": "#111827",
-                        "fontSize": "12px",
-                        "fontWeight": "500",
-                        "marginLeft": "4px"
-                    })
-                ], style={"display": "inline"}) if sensor_info else html.Div()
+                ], style={"display": "inline"}) if material_info else html.Div()
             ], style={
                 "display": "flex",
                 "alignItems": "center",
                 "justifyContent": "flex-start",
                 "gap": "16px",
                 "flexWrap": "wrap"
-            }) if material_info or sensor_info else html.Div()
+            }) if material_info else html.Div()
             
         ], style={
             "padding": "12px 16px",
@@ -3019,7 +2989,7 @@ def init_section_slider_independent_stress(active_tab, selected_rows, tbl_data):
         raise PreventUpdate
     
     # 기본값
-    slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
+    slider_min, slider_max, slider_marks, slider_value = 0, 0, {}, 0
     
     # 선택된 콘크리트가 있으면 해당 FRD 파일 기반으로 슬라이더 설정
     if selected_rows and tbl_data and len(selected_rows) > 0:
@@ -3033,7 +3003,7 @@ def init_section_slider_independent_stress(active_tab, selected_rows, tbl_data):
             for f in frd_files:
                 try:
                     time_str = os.path.basename(f).split(".")[0]
-                    dt = dt_import.strptime(time_str, "%Y%m%d%H")
+                    dt = datetime.strptime(time_str, "%Y%m%d%H")
                     times.append(dt)
                 except:
                     continue
@@ -3243,6 +3213,10 @@ def auto_play_section_slider_stress(n_intervals, play_state, speed_state, curren
         raise PreventUpdate
     
     if not play_state or not play_state.get("playing", False):
+        raise PreventUpdate
+    
+    # n_intervals가 0이면 초기 상태이므로 업데이트하지 않음
+    if n_intervals == 0:
         raise PreventUpdate
     
     speed = speed_state.get("speed", 1) if speed_state else 1
