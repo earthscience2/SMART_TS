@@ -21,6 +21,7 @@ from plotly.subplots import make_subplots
 import json
 import ast
 import re
+import time
 
 import api_db
 from utils.encryption import parse_project_key_from_url
@@ -541,19 +542,19 @@ def clear_stress_cache(concrete_pk=None):
     """응력 데이터 캐시를 정리합니다."""
     global _stress_data_cache, _material_info_cache, _global_stress_ranges
     
-    if concrete_pk:
-        # 특정 콘크리트의 캐시만 정리
-        keys_to_remove = [k for k in _stress_data_cache.keys() if concrete_pk in k]
-        for key in keys_to_remove:
-            del _stress_data_cache[key]
-        
-        if concrete_pk in _global_stress_ranges:
-            del _global_stress_ranges[concrete_pk]
-    else:
+    if concrete_pk is None:
         # 전체 캐시 정리
         _stress_data_cache.clear()
         _material_info_cache.clear()
         _global_stress_ranges.clear()
+    else:
+        # 특정 콘크리트 관련 캐시만 정리
+        frd_files = get_frd_files(concrete_pk)
+        for frd_file in frd_files:
+            if frd_file in _stress_data_cache:
+                del _stress_data_cache[frd_file]
+            if frd_file in _stress_cache_timestamps:
+                del _stress_cache_timestamps[frd_file]
 
 def get_sensor_positions(concrete_pk):
     """콘크리트에 속한 센서들의 위치 정보를 가져옵니다."""
@@ -601,6 +602,51 @@ def parse_material_info_from_inp_cached(inp_file_path):
         return material_info
     except:
         return "물성치 정보 없음"
+
+# 응력 데이터 캐싱을 위한 전역 변수
+_stress_cache = {}
+_stress_cache_timestamps = {}
+
+def get_cached_stress_data(frd_file, max_age_seconds=300):
+    """캐시된 응력 데이터를 가져오거나 새로 로드합니다."""
+    import time
+    import os
+    
+    current_time = time.time()
+    file_mtime = os.path.getmtime(frd_file)
+    
+    # 캐시에 있고 파일이 변경되지 않았으면 캐시 사용
+    if frd_file in _stress_cache:
+        cache_time = _stress_cache_timestamps.get(frd_file, 0)
+        if current_time - cache_time < max_age_seconds and file_mtime <= cache_time:
+            return _stress_cache[frd_file]
+    
+    # 새로 로드하고 캐시에 저장
+    try:
+        data = read_frd_stress_data(frd_file)
+        _stress_cache[frd_file] = data
+        _stress_cache_timestamps[frd_file] = current_time
+        return data
+    except Exception as e:
+        print(f"FRD 파일 로드 오류 {frd_file}: {e}")
+        return None
+
+def clear_stress_cache(concrete_pk=None):
+    """응력 데이터 캐시를 정리합니다."""
+    global _stress_cache, _stress_cache_timestamps
+    
+    if concrete_pk is None:
+        # 전체 캐시 정리
+        _stress_cache.clear()
+        _stress_cache_timestamps.clear()
+    else:
+        # 특정 콘크리트 관련 캐시만 정리
+        frd_files = get_frd_files(concrete_pk)
+        for frd_file in frd_files:
+            if frd_file in _stress_cache:
+                del _stress_cache[frd_file]
+            if frd_file in _stress_cache_timestamps:
+                del _stress_cache_timestamps[frd_file]
 
 # ───────────────────── 콜백 함수들 ─────────────────────
 
@@ -3845,21 +3891,27 @@ def update_node_tab_stress(store_data, x, y, z, selected_component, selected_row
             title=f"3D 뷰 생성 오류: {str(e)}"
         )
     
-    # 시간별 응력 변화 그래프 생성
+    # 시간별 응력 변화 그래프 생성 (최적화된 버전)
     stress_times = []
     stress_values = []
     
+    # 배치 처리를 위해 모든 파일의 시간 정보를 먼저 수집
+    file_time_map = {}
     for frd_file in frd_files:
-        # 시간 파싱
         try:
             time_str = os.path.basename(frd_file).split(".")[0]
             dt = datetime.strptime(time_str, "%Y%m%d%H")
+            file_time_map[frd_file] = dt
         except:
             continue
-        
-        # FRD 파일에서 응력 데이터 읽기
-        stress_data = read_frd_stress_data(frd_file)
-        if not stress_data:
+    
+    # 시간순으로 정렬
+    sorted_files = sorted(file_time_map.items(), key=lambda x: x[1])
+    
+    for frd_file, dt in sorted_files:
+        # 캐시된 응력 데이터 사용
+        stress_data = get_cached_stress_data(frd_file)
+        if not stress_data or not stress_data.get('coordinates'):
             continue
         
         # 좌표와 응력 값 추출
@@ -3874,40 +3926,24 @@ def update_node_tab_stress(store_data, x, y, z, selected_component, selected_row
         if not stress_values_dict:
             continue
         
-        # 입력 위치와 가장 가까운 노드 찾기
+        # 입력 위치와 가장 가까운 노드 찾기 (최적화)
         if coord_x is not None and coord_y is not None and coord_z is not None and len(coords) > 0:
-            dists = np.linalg.norm(coords - np.array([coord_x, coord_y, coord_z]), axis=1)
+            target_coord = np.array([coord_x, coord_y, coord_z])
+            dists = np.linalg.norm(coords - target_coord, axis=1)
             min_idx = np.argmin(dists)
-            closest_coord = coords[min_idx]
             
-            # 가장 가까운 노드의 응력 값 찾기
-            stress_val = None
-            for node_id, stress_val_temp in stress_values_dict.items():
-                node_idx = stress_data['nodes'].index(node_id) if node_id in stress_data['nodes'] else -1
-                if node_idx == min_idx:
-                    stress_val = stress_val_temp
-                    break
-            
-            if stress_val is not None:
-                stress_times.append(dt)
-                stress_values.append(stress_val / 1e9)  # Pa → GPa 변환
+            # 노드 ID 매핑 최적화
+            node_ids = stress_data['nodes']
+            if min_idx < len(node_ids):
+                closest_node_id = node_ids[min_idx]
+                stress_val = stress_values_dict.get(closest_node_id)
+                
+                if stress_val is not None:
+                    stress_times.append(dt)
+                    stress_values.append(stress_val / 1e9)  # Pa → GPa 변환
     
-    # 그래프 생성
+    # 그래프 생성 (최적화된 버전)
     if stress_times and stress_values:
-        # x축 값: 시간별 실제 datetime 객체
-        x_values = stress_times
-        
-        # x축 라벨: 날짜가 바뀌는 첫 번째만 날짜, 나머지는 빈 문자열
-        x_labels = []
-        prev_date = None
-        for dt in stress_times:
-            current_date = dt.strftime('%-m/%-d')
-            if current_date != prev_date:
-                x_labels.append(current_date)
-                prev_date = current_date
-            else:
-                x_labels.append("")
-        
         # 응력 성분 이름
         component_names = {
             "von_mises": "von Mises 응력",
@@ -3920,17 +3956,33 @@ def update_node_tab_stress(store_data, x, y, z, selected_component, selected_row
         }
         component_name = component_names.get(selected_component, "응력")
         
-        # 기본 제목
-        title_text = f"시간에 따른 {component_name} 정보"
+        # x축 라벨 최적화 (날짜가 바뀌는 지점만 표시)
+        x_labels = []
+        prev_date = None
+        for dt in stress_times:
+            current_date = dt.strftime('%-m/%-d')
+            if current_date != prev_date:
+                x_labels.append(current_date)
+                prev_date = current_date
+            else:
+                x_labels.append("")
         
-        fig_stress.add_trace(go.Scatter(x=x_values, y=stress_values, mode='lines+markers', name=component_name))
+        fig_stress.add_trace(go.Scatter(
+            x=stress_times, 
+            y=stress_values, 
+            mode='lines+markers', 
+            name=component_name,
+            line=dict(color='#3b82f6', width=2),
+            marker=dict(size=4, color='#3b82f6')
+        ))
+        
         fig_stress.update_layout(
-            title=title_text,
-            xaxis_title="날짜",
+            title=f"{concrete_name} - {component_name} 변화",
+            xaxis_title="시간",
             yaxis_title=f"{component_name} (GPa)",
             xaxis=dict(
                 tickmode='array',
-                tickvals=x_values,
+                tickvals=stress_times,
                 ticktext=x_labels
             )
         )
@@ -4067,9 +4119,9 @@ def save_node_data_stress(n_clicks, selected_rows, tbl_data, x, y, z, selected_c
         except:
             continue
         
-        # FRD 파일에서 응력 데이터 읽기
-        stress_data = read_frd_stress_data(f)
-        if not stress_data or not stress_data['coordinates'] or not stress_data['stress_values']:
+        # 캐시된 응력 데이터 사용
+        stress_data = get_cached_stress_data(f)
+        if not stress_data or not stress_data.get('coordinates') or not stress_data.get('stress_values'):
             continue
         
         # 좌표와 응력 값 추출
