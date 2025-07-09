@@ -324,7 +324,6 @@ layout = dbc.Container(
             dbc.Button(id="btn-play-section-stress", n_clicks=0),
             dbc.Button(id="btn-pause-section-stress", n_clicks=0),
             dcc.Dropdown(id="speed-dropdown-section-stress", value="1x"),
-            dbc.Switch(id="btn-unified-stress-colorbar-section", value=False),
             dcc.Dropdown(id="stress-component-selector-section", value="von_mises"),
             # 시간 정보 표시
             html.Div(id="section-time-info-stress"),
@@ -347,6 +346,7 @@ layout = dbc.Container(
             dbc.Input(id="section-y-input-ui", type="number", value=None),
             dbc.Input(id="section-z-input-ui", type="number", value=None),
             dcc.Dropdown(id="stress-component-selector-ui", value="von_mises"),
+            dbc.Switch(id="btn-unified-stress-colorbar-section", value=False),
         ], style={"display": "none"})
     ]
 )
