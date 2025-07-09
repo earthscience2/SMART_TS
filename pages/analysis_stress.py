@@ -902,7 +902,290 @@ def switch_tab_stress(active_tab, selected_rows, pathname, tbl_data):
     if active_tab == "tab-3d-stress":
         return create_3d_tab_content_stress(concrete_pk)
     elif active_tab == "tab-section-stress":
-        return create_section_tab_content_stress(concrete_pk)
+        # 단면도 탭: 온도분석과 동일한 방식으로 동적 생성
+        # 기본 슬라이더 설정
+        slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
+        
+        # FRD 파일이 있으면 시간 정보 설정
+        frd_files = get_frd_files(concrete_pk)
+        if frd_files:
+            times = []
+            for f in frd_files:
+                try:
+                    time_str = os.path.basename(f).split(".")[0]
+                    dt = datetime.strptime(time_str, "%Y%m%d%H")
+                    times.append(dt)
+                except:
+                    continue
+            
+            if times:
+                max_idx = len(times) - 1
+                slider_min, slider_max = 0, max_idx
+                slider_value = max_idx
+                
+                marks = {}
+                seen_dates = set()
+                for i, dt in enumerate(times):
+                    date_str = dt.strftime("%m/%d")
+                    if date_str not in seen_dates:
+                        marks[i] = date_str
+                        seen_dates.add(date_str)
+                slider_marks = marks
+        
+        return html.Div([
+            # 시간 컨트롤 섹션 (온도분석과 동일)
+            html.Div([
+                html.Div([
+                    html.H6("⏰ 시간 설정", style={
+                        "fontWeight": "600",
+                        "color": "#374151",
+                        "marginBottom": "12px",
+                        "fontSize": "14px"
+                    }),
+                    dcc.Slider(
+                        id="time-slider-section-stress",
+                        min=slider_min if slider_min is not None else 0,
+                        max=slider_max if slider_max is not None and slider_max > 0 else 5,
+                        step=1,
+                        value=slider_value if slider_value is not None else 0,
+                        marks=slider_marks if isinstance(slider_marks, dict) else {},
+                        tooltip={"placement": "bottom", "always_visible": True},
+                        updatemode='drag',
+                        persistence=False
+                    ),
+                    # 재생/정지/배속 버튼들
+                    html.Div([
+                        dbc.Button("▶", id="btn-play-section-stress", color="success", size="sm", style={
+                            "borderRadius": "50%", "width": "32px", "height": "32px", "padding": "0",
+                            "marginRight": "8px", "display": "flex", "alignItems": "center", 
+                            "justifyContent": "center", "fontSize": "14px", "fontWeight": "bold"
+                        }),
+                        dbc.Button("⏸", id="btn-pause-section-stress", color="warning", size="sm", style={
+                            "borderRadius": "50%", "width": "32px", "height": "32px", "padding": "0",
+                            "marginRight": "8px", "display": "flex", "alignItems": "center", 
+                            "justifyContent": "center", "fontSize": "14px", "fontWeight": "bold"
+                        }),
+                        dcc.Dropdown(
+                            options=[
+                                {"label": "1x", "value": "1x"}, {"label": "2x", "value": "2x"},
+                                {"label": "4x", "value": "4x"}, {"label": "8x", "value": "8x"},
+                            ], 
+                            value="1x", id="speed-dropdown-section-stress",
+                            style={"width": "60px", "fontSize": "12px"},
+                            clearable=False, searchable=False
+                        ),
+                    ], style={
+                        "display": "flex", "alignItems": "center", "justifyContent": "center", "marginTop": "12px"
+                    }),
+                    # Store들
+                    dcc.Store(id="play-state-section-stress", data={"playing": False}),
+                    dcc.Store(id="speed-state-section-stress", data={"speed": 1}),
+                    dcc.Interval(id="play-interval-section-stress", interval=1000, n_intervals=0, disabled=True),
+                ], style={
+                    "padding": "16px 20px", "backgroundColor": "#f9fafb", "borderRadius": "8px",
+                    "border": "1px solid #e5e7eb", "marginBottom": "16px"
+                })
+            ]),
+            
+            # 현재 시간 정보 + 저장 옵션
+            dbc.Row([
+                dbc.Col([
+                    html.Div(id="section-time-info-stress")
+                ], md=8, style={"height": "65px"}),
+                dbc.Col([
+                    html.Div([
+                        dcc.Loading(
+                            id="loading-btn-save-section-image-stress", type="circle",
+                            children=[
+                                dbc.Button(
+                                    [html.I(className="fas fa-camera me-1"), "이미지 저장"],
+                                    id="btn-save-section-image-stress", color="primary", size="lg",
+                                    style={
+                                        "borderRadius": "8px", "fontWeight": "600", "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                        "fontSize": "15px", "width": "120px", "height": "48px", "marginRight": "16px"
+                                    }
+                                )
+                            ]
+                        ),
+                        dcc.Loading(
+                            id="loading-btn-save-section-frd-stress", type="circle",
+                            children=[
+                                dbc.Button(
+                                    [html.I(className="fas fa-file-download me-1"), "FRD 저장"],
+                                    id="btn-save-section-frd-stress", color="secondary", size="lg",
+                                    style={
+                                        "borderRadius": "8px", "fontWeight": "600", "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                        "fontSize": "15px", "width": "120px", "height": "48px"
+                                    }
+                                )
+                            ]
+                        ),
+                        dcc.Download(id="download-section-image-stress"),
+                        dcc.Download(id="download-section-frd-stress"),
+                    ], style={"display": "flex", "justifyContent": "center", "alignItems": "center", "height": "65px"})
+                ], md=4, style={"height": "65px"}),
+            ], className="mb-4 align-items-stretch h-100", style={"minHeight": "65px"}),
+            
+            # 단면 위치 설정 섹션
+            html.Div([
+                html.Div([
+                    html.H6("📍 단면 위치 설정", style={
+                        "fontWeight": "600", "color": "#374151", "marginBottom": "12px", "fontSize": "14px"
+                    }),
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Card([
+                                dbc.CardBody([
+                                    html.Div([
+                                        html.I(className="fas fa-arrows-alt-h", style={
+                                            "color": "#ef4444", "fontSize": "14px", "marginRight": "6px"
+                                        }),
+                                        html.Span("X축", style={
+                                            "fontWeight": "600", "color": "#ef4444", "fontSize": "13px"
+                                        })
+                                    ], style={"marginBottom": "4px"}),
+                                    dbc.Input(
+                                        id="section-x-input-stress", type="number", step=0.1, value=None,
+                                        placeholder="X 좌표", style={"width": "100%"}
+                                    )
+                                ], style={"padding": "8px"})
+                            ], style={"border": "1px solid #fecaca", "backgroundColor": "#fef2f2"})
+                        ], md=4),
+                        dbc.Col([
+                            dbc.Card([
+                                dbc.CardBody([
+                                    html.Div([
+                                        html.I(className="fas fa-arrows-alt-v", style={
+                                            "color": "#3b82f6", "fontSize": "14px", "marginRight": "6px"
+                                        }),
+                                        html.Span("Y축", style={
+                                            "fontWeight": "600", "color": "#3b82f6", "fontSize": "13px"
+                                        })
+                                    ], style={"marginBottom": "4px"}),
+                                    dbc.Input(
+                                        id="section-y-input-stress", type="number", step=0.1, value=None,
+                                        placeholder="Y 좌표", style={"width": "100%"}
+                                    )
+                                ], style={"padding": "8px"})
+                            ], style={"border": "1px solid #bfdbfe", "backgroundColor": "#eff6ff"})
+                        ], md=4),
+                        dbc.Col([
+                            dbc.Card([
+                                dbc.CardBody([
+                                    html.Div([
+                                        html.I(className="fas fa-arrows-alt", style={
+                                            "color": "#22c55e", "fontSize": "14px", "marginRight": "6px"
+                                        }),
+                                        html.Span("Z축", style={
+                                            "fontWeight": "600", "color": "#22c55e", "fontSize": "13px"
+                                        })
+                                    ], style={"marginBottom": "4px"}),
+                                    dbc.Input(
+                                        id="section-z-input-stress", type="number", step=0.1, value=None,
+                                        placeholder="Z 좌표", style={"width": "100%"}
+                                    )
+                                ], style={"padding": "8px"})
+                            ], style={"border": "1px solid #bbf7d0", "backgroundColor": "#f0fdf4"})
+                        ], md=4),
+                    ], className="g-3"),
+                ], style={
+                    "padding": "16px 20px", "backgroundColor": "#f9fafb", "borderRadius": "8px",
+                    "border": "1px solid #e5e7eb", "marginBottom": "20px"
+                })
+            ]),
+            
+            # 단면도 뷰어 그리드
+            html.Div([
+                html.Div([
+                    html.H6("📊 단면도 뷰어", style={
+                        "fontWeight": "600", "color": "#374151", "marginBottom": "0", "fontSize": "16px",
+                        "display": "inline-block", "marginRight": "20px"
+                    }),
+                    html.Div([
+                        html.Label("단면도 응력바 통일", style={
+                            "fontWeight": "500", "color": "#374151", "marginBottom": "8px", "fontSize": "13px",
+                            "display": "inline-block", "marginRight": "8px"
+                        }),
+                        dbc.Switch(id="btn-unified-stress-colorbar-section", value=False, style={"display": "inline-block"}),
+                    ], style={"display": "inline-block", "verticalAlign": "top", "marginRight": "16px"}),
+                    html.Div([
+                        html.Label("응력 종류", style={
+                            "fontWeight": "500", "color": "#374151", "marginBottom": "8px", "fontSize": "13px",
+                            "display": "inline-block", "marginRight": "8px"
+                        }),
+                        dcc.Dropdown(
+                            id="stress-component-selector-section",
+                            options=[
+                                {"label": "von Mises 응력", "value": "von_mises"},
+                                {"label": "SXX (X방향 정응력)", "value": "SXX"},
+                                {"label": "SYY (Y방향 정응력)", "value": "SYY"},
+                                {"label": "SZZ (Z방향 정응력)", "value": "SZZ"},
+                                {"label": "SXY (XY면 전단응력)", "value": "SXY"},
+                                {"label": "SYZ (YZ면 전단응력)", "value": "SYZ"},
+                                {"label": "SZX (ZX면 전단응력)", "value": "SZX"},
+                            ],
+                            value="von_mises", style={"width": "180px", "display": "inline-block"},
+                            clearable=False, searchable=False
+                        ),
+                    ], style={"display": "inline-block", "verticalAlign": "top"}),
+                ], style={"marginBottom": "16px", "display": "flex", "alignItems": "center"}),
+                dbc.Row([
+                    dbc.Col([
+                        html.Div([
+                            html.P("3D 뷰", style={
+                                "fontSize": "12px", "fontWeight": "600", "color": "#6b7280", 
+                                "marginBottom": "8px", "textAlign": "center"
+                            }),
+                            dcc.Graph(id="viewer-3d-section-stress", style={"height": "30vh", "borderRadius": "6px"}, 
+                                     config={"scrollZoom": True}),
+                        ], style={
+                            "backgroundColor": "white", "padding": "12px", "borderRadius": "8px",
+                            "border": "1px solid #e5e7eb", "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
+                        })
+                    ], md=6),
+                    dbc.Col([
+                        html.Div([
+                            html.P("X 단면도", style={
+                                "fontSize": "12px", "fontWeight": "600", "color": "#ef4444", 
+                                "marginBottom": "8px", "textAlign": "center"
+                            }),
+                            dcc.Graph(id="viewer-section-x-stress", style={"height": "30vh"}),
+                        ], style={
+                            "backgroundColor": "white", "padding": "12px", "borderRadius": "8px",
+                            "border": "1px solid #e5e7eb", "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
+                        })
+                    ], md=6),
+                ], className="mb-3"),
+                dbc.Row([
+                    dbc.Col([
+                        html.Div([
+                            html.P("Y 단면도", style={
+                                "fontSize": "12px", "fontWeight": "600", "color": "#3b82f6", 
+                                "marginBottom": "8px", "textAlign": "center"
+                            }),
+                            dcc.Graph(id="viewer-section-y-stress", style={"height": "30vh"}),
+                        ], style={
+                            "backgroundColor": "white", "padding": "12px", "borderRadius": "8px",
+                            "border": "1px solid #e5e7eb", "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
+                        })
+                    ], md=6),
+                    dbc.Col([
+                        html.Div([
+                            html.P("Z 단면도", style={
+                                "fontSize": "12px", "fontWeight": "600", "color": "#22c55e", 
+                                "marginBottom": "8px", "textAlign": "center"
+                            }),
+                            dcc.Graph(id="viewer-section-z-stress", style={"height": "30vh"}),
+                        ], style={
+                            "backgroundColor": "white", "padding": "12px", "borderRadius": "8px",
+                            "border": "1px solid #e5e7eb", "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
+                        })
+                    ], md=6),
+                ]),
+            ], style={
+                "padding": "20px", "backgroundColor": "#f9fafb", "borderRadius": "8px", "border": "1px solid #e5e7eb"
+            })
+        ])
     elif active_tab == "tab-node-stress":
         return create_node_tab_content_stress(concrete_pk)
     else:
@@ -1534,468 +1817,7 @@ def create_3d_stress_figure(stress_data, selected_component="von_mises"):
     )
     return fig
 
-def create_section_tab_content_stress(concrete_pk):
-    """단면 탭 콘텐츠를 생성합니다."""
-    # 기본 슬라이더 설정
-    slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
-    
-    # FRD 파일이 있으면 시간 정보 설정
-    frd_files = get_frd_files(concrete_pk)
-    if frd_files:
-        # 시간 파싱
-        times = []
-        for f in frd_files:
-            try:
-                time_str = os.path.basename(f).split(".")[0]
-                dt = datetime.strptime(time_str, "%Y%m%d%H")
-                times.append(dt)
-            except:
-                continue
-        
-        if times:
-            max_idx = len(times) - 1
-            slider_min, slider_max = 0, max_idx
-            slider_value = max_idx  # 최신 파일로 초기화
-            
-            # 슬라이더 마크 설정
-            marks = {}
-            seen_dates = set()
-            for i, dt in enumerate(times):
-                date_str = dt.strftime("%m/%d")
-                if date_str not in seen_dates:
-                    marks[i] = date_str
-                    seen_dates.add(date_str)
-            slider_marks = marks
-    
-    return html.Div([
-        # 시간 컨트롤 섹션 (노션 스타일) - 독립적인 단면도용 슬라이더
-        html.Div([
-            html.Div([
-                html.H6("⏰ 시간 설정", style={
-                    "fontWeight": "600",
-                    "color": "#374151",
-                    "marginBottom": "12px",
-                    "fontSize": "14px"
-                }),
-                dcc.Slider(
-                    id="time-slider-section-stress",
-                    min=slider_min if slider_min is not None else 0,
-                    max=slider_max if slider_max is not None and slider_max > 0 else 5,
-                    step=1,
-                    value=slider_value if slider_value is not None else 0,
-                    marks=slider_marks if isinstance(slider_marks, dict) else {},
-                    tooltip={"placement": "bottom", "always_visible": True},
-                    updatemode='drag',
-                    persistence=False
-                ),
-                # 재생/정지/배속 버튼 추가 (단면도용)
-                html.Div([
-                    # 재생/정지 버튼 (아이콘만)
-                    dbc.Button(
-                        "▶",
-                        id="btn-play-section-stress",
-                        color="success",
-                        size="sm",
-                        style={
-                            "borderRadius": "50%",
-                            "width": "32px",
-                            "height": "32px",
-                            "padding": "0",
-                            "marginRight": "8px",
-                            "display": "flex",
-                            "alignItems": "center",
-                            "justifyContent": "center",
-                            "fontSize": "14px",
-                            "fontWeight": "bold"
-                        }
-                    ),
-                    dbc.Button(
-                        "⏸",
-                        id="btn-pause-section-stress",
-                        color="warning",
-                        size="sm",
-                        style={
-                            "borderRadius": "50%",
-                            "width": "32px",
-                            "height": "32px",
-                            "padding": "0",
-                            "marginRight": "8px",
-                            "display": "flex",
-                            "alignItems": "center",
-                            "justifyContent": "center",
-                            "fontSize": "14px",
-                            "fontWeight": "bold"
-                        }
-                    ),
-                    # 배속 설정 드롭다운
-                    dcc.Dropdown(
-                        options=[
-                            {"label": "1x", "value": "1x"},
-                            {"label": "2x", "value": "2x"},
-                            {"label": "4x", "value": "4x"},
-                            {"label": "8x", "value": "8x"},
-                        ], 
-                        value="1x",
-                        id="speed-dropdown-section-stress",
-                        style={
-                            "width": "60px",
-                            "fontSize": "12px"
-                        },
-                        clearable=False,
-                        searchable=False
-                    ),
-                ], style={
-                    "display": "flex",
-                    "alignItems": "center",
-                    "justifyContent": "center",
-                    "marginTop": "12px"
-                }),
-                # 재생 상태 표시용 Store (단면도용)
-                dcc.Store(id="play-state-section-stress", data={"playing": False}),
-                # 배속 상태 표시용 Store (단면도용)
-                dcc.Store(id="speed-state-section-stress", data={"speed": 1}),
-                # 자동 재생용 Interval (단면도용)
-                dcc.Interval(
-                    id="play-interval-section-stress",
-                    interval=1000,  # 1초마다 (기본값)
-                    n_intervals=0,
-                    disabled=True
-                ),
-            ], style={
-                "padding": "16px 20px",
-                "backgroundColor": "#f9fafb",
-                "borderRadius": "8px",
-                "border": "1px solid #e5e7eb",
-                "marginBottom": "16px"
-            })
-        ]),
-        
-        # 현재 시간 정보 + 저장 옵션 (한 줄 배치)
-        dbc.Row([
-            # 왼쪽: 현재 시간/물성치 정보
-            dbc.Col([
-                html.Div(id="section-time-info-stress")
-            ], md=8, style={
-                "height": "65px"
-            }),
-            
-            # 오른쪽: 저장 버튼들
-            dbc.Col([
-                html.Div([
-                    dcc.Loading(
-                        id="loading-btn-save-section-image-stress",
-                        type="circle",
-                        children=[
-                            dbc.Button(
-                                [html.I(className="fas fa-camera me-1"), "이미지 저장"],
-                                id="btn-save-section-image-stress",
-                                color="primary",
-                                size="lg",
-                                style={
-                                    "borderRadius": "8px",
-                                    "fontWeight": "600",
-                                    "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                    "fontSize": "15px",
-                                    "width": "120px",
-                                    "height": "48px",
-                                    "marginRight": "16px"
-                                }
-                            )
-                        ]
-                    ),
-                    dcc.Loading(
-                        id="loading-btn-save-section-frd-stress",
-                        type="circle",
-                        children=[
-                            dbc.Button(
-                                [html.I(className="fas fa-file-download me-1"), "FRD 저장"],
-                                id="btn-save-section-frd-stress",
-                                color="secondary",
-                                size="lg",
-                                style={
-                                    "borderRadius": "8px",
-                                    "fontWeight": "600",
-                                    "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                    "fontSize": "15px",
-                                    "width": "120px",
-                                    "height": "48px"
-                                }
-                            )
-                        ]
-                    ),
-                    # 다운로드 컴포넌트들
-                    dcc.Download(id="download-section-image-stress"),
-                    dcc.Download(id="download-section-frd-stress"),
-                ], style={"display": "flex", "justifyContent": "center", "alignItems": "center", "height": "65px"})
-            ], md=4, style={
-                "height": "65px"
-            }),
-        ], className="mb-4 align-items-stretch h-100", style={"minHeight": "65px"}),
-        
-        # 단면 위치 설정 섹션 (노션 스타일)
-        html.Div([
-            html.Div([
-                html.H6("📍 단면 위치 설정", style={
-                    "fontWeight": "600",
-                    "color": "#374151",
-                    "marginBottom": "12px",
-                    "fontSize": "14px"
-                }),
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Card([
-                            dbc.CardBody([
-                                html.Div([
-                                    html.I(className="fas fa-arrows-alt-h", style={
-                                        "color": "#ef4444", 
-                                        "fontSize": "14px", 
-                                        "marginRight": "6px"
-                                    }),
-                                    html.Span("X축", style={
-                                        "fontWeight": "600",
-                                        "color": "#ef4444",
-                                        "fontSize": "13px"
-                                    })
-                                ], style={"marginBottom": "4px"}),
-                                dbc.Input(
-                                    id="section-x-input-stress",
-                                    type="number", 
-                                    step=0.1, 
-                                    value=None,
-                                    placeholder="X 좌표",
-                                    style={"width": "100%"}
-                                )
-                            ], style={"padding": "8px"})
-                        ], style={
-                            "border": "1px solid #fecaca",
-                            "backgroundColor": "#fef2f2"
-                        })
-                    ], md=4),
-                    dbc.Col([
-                        dbc.Card([
-                            dbc.CardBody([
-                                html.Div([
-                                    html.I(className="fas fa-arrows-alt-v", style={
-                                        "color": "#3b82f6", 
-                                        "fontSize": "14px", 
-                                        "marginRight": "6px"
-                                    }),
-                                    html.Span("Y축", style={
-                                        "fontWeight": "600",
-                                        "color": "#3b82f6",
-                                        "fontSize": "13px"
-                                    })
-                                ], style={"marginBottom": "4px"}),
-                                dbc.Input(
-                                    id="section-y-input-stress",
-                                    type="number", 
-                                    step=0.1, 
-                                    value=None,
-                                    placeholder="Y 좌표",
-                                    style={"width": "100%"}
-                                )
-                            ], style={"padding": "8px"})
-                        ], style={
-                            "border": "1px solid #bfdbfe",
-                            "backgroundColor": "#eff6ff"
-                        })
-                    ], md=4),
-                    dbc.Col([
-                        dbc.Card([
-                            dbc.CardBody([
-                                html.Div([
-                                    html.I(className="fas fa-arrows-alt", style={
-                                        "color": "#22c55e", 
-                                        "fontSize": "14px", 
-                                        "marginRight": "6px"
-                                    }),
-                                    html.Span("Z축", style={
-                                        "fontWeight": "600",
-                                        "color": "#22c55e",
-                                        "fontSize": "13px"
-                                    })
-                                ], style={"marginBottom": "4px"}),
-                                dbc.Input(
-                                    id="section-z-input-stress",
-                                    type="number", 
-                                    step=0.1,
-                                    value=None,
-                                    placeholder="Z 좌표",
-                                    style={"width": "100%"}
-                                )
-                            ], style={"padding": "8px"})
-                        ], style={
-                            "border": "1px solid #bbf7d0",
-                            "backgroundColor": "#f0fdf4"
-                        })
-                    ], md=4),
-                ], className="g-3"),
-            ], style={
-                "padding": "16px 20px",
-                "backgroundColor": "#f9fafb",
-                "borderRadius": "8px",
-                "border": "1px solid #e5e7eb",
-                "marginBottom": "20px"
-            })
-        ]),
-        
-        # 단면도 뷰어 그리드 (노션 스타일)
-        html.Div([
-            # 제목과 컨트롤을 한 줄에 배치
-            html.Div([
-                html.H6("📊 단면도 뷰어", style={
-                    "fontWeight": "600",
-                    "color": "#374151",
-                    "marginBottom": "0",
-                    "fontSize": "16px",
-                    "display": "inline-block",
-                    "marginRight": "20px"
-                }),
-                # 단면도 응력바 통일 토글 (오른쪽으로 이동)
-                html.Div([
-                    html.Label("단면도 응력바 통일", style={
-                        "fontWeight": "500",
-                        "color": "#374151",
-                        "marginBottom": "8px",
-                        "fontSize": "13px",
-                        "display": "inline-block",
-                        "marginRight": "8px"
-                    }),
-                    dbc.Switch(
-                        id="btn-unified-stress-colorbar-section",
-                        value=False,
-                        style={"display": "inline-block"}
-                    ),
-                ], style={
-                    "display": "inline-block",
-                    "verticalAlign": "top",
-                    "marginRight": "16px"
-                }),
-                # 응력 종류 드롭박스 추가
-                html.Div([
-                    html.Label("응력 종류", style={
-                        "fontWeight": "500",
-                        "color": "#374151",
-                        "marginBottom": "8px",
-                        "fontSize": "13px",
-                        "display": "inline-block",
-                        "marginRight": "8px"
-                    }),
-                    dcc.Dropdown(
-                        id="stress-component-selector-section",
-                        options=[
-                            {"label": "von Mises 응력", "value": "von_mises"},
-                            {"label": "SXX (X방향 정응력)", "value": "SXX"},
-                            {"label": "SYY (Y방향 정응력)", "value": "SYY"},
-                            {"label": "SZZ (Z방향 정응력)", "value": "SZZ"},
-                            {"label": "SXY (XY면 전단응력)", "value": "SXY"},
-                            {"label": "SYZ (YZ면 전단응력)", "value": "SYZ"},
-                            {"label": "SZX (ZX면 전단응력)", "value": "SZX"},
-                        ],
-                        value="von_mises",
-                        style={
-                            "width": "180px",
-                            "display": "inline-block"
-                        },
-                        clearable=False,
-                        searchable=False
-                    ),
-                ], style={
-                    "display": "inline-block",
-                    "verticalAlign": "top"
-                }),
-            ], style={
-                "marginBottom": "16px",
-                "display": "flex",
-                "alignItems": "center"
-            }),
-            dbc.Row([
-                dbc.Col([
-                    html.Div([
-                        html.P("3D 뷰", style={
-                            "fontSize": "12px", 
-                            "fontWeight": "600", 
-                            "color": "#6b7280", 
-                            "marginBottom": "8px",
-                            "textAlign": "center"
-                        }),
-                        dcc.Graph(
-                            id="viewer-3d-section-stress", 
-                            style={"height": "30vh", "borderRadius": "6px"}, 
-                            config={"scrollZoom": True}
-                        ),
-                    ], style={
-                        "backgroundColor": "white",
-                        "padding": "12px",
-                        "borderRadius": "8px",
-                        "border": "1px solid #e5e7eb",
-                        "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
-                    })
-                ], md=6),
-                dbc.Col([
-                    html.Div([
-                        html.P("X 단면도", style={
-                            "fontSize": "12px", 
-                            "fontWeight": "600", 
-                            "color": "#ef4444", 
-                            "marginBottom": "8px",
-                            "textAlign": "center"
-                        }),
-                        dcc.Graph(id="viewer-section-x-stress", style={"height": "30vh"}),
-                    ], style={
-                        "backgroundColor": "white",
-                        "padding": "12px",
-                        "borderRadius": "8px",
-                        "border": "1px solid #e5e7eb",
-                        "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
-                    })
-                ], md=6),
-            ], className="mb-3"),
-            dbc.Row([
-                dbc.Col([
-                    html.Div([
-                        html.P("Y 단면도", style={
-                            "fontSize": "12px", 
-                            "fontWeight": "600", 
-                            "color": "#3b82f6", 
-                            "marginBottom": "8px",
-                            "textAlign": "center"
-                        }),
-                        dcc.Graph(id="viewer-section-y-stress", style={"height": "30vh"}),
-                    ], style={
-                        "backgroundColor": "white",
-                        "padding": "12px",
-                        "borderRadius": "8px",
-                        "border": "1px solid #e5e7eb",
-                        "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
-                    })
-                ], md=6),
-                dbc.Col([
-                    html.Div([
-                        html.P("Z 단면도", style={
-                            "fontSize": "12px", 
-                            "fontWeight": "600", 
-                            "color": "#22c55e", 
-                            "marginBottom": "8px",
-                            "textAlign": "center"
-                        }),
-                        dcc.Graph(id="viewer-section-z-stress", style={"height": "30vh"}),
-                    ], style={
-                        "backgroundColor": "white",
-                        "padding": "12px",
-                        "borderRadius": "8px",
-                        "border": "1px solid #e5e7eb",
-                        "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
-                    })
-                ], md=6),
-            ]),
-        ], style={
-            "padding": "20px",
-            "backgroundColor": "#f9fafb",
-            "borderRadius": "8px",
-            "border": "1px solid #e5e7eb"
-        })
-    ])
+
 
 def create_node_tab_content_stress(concrete_pk):
     """노드별 탭 콘텐츠를 생성합니다."""
@@ -3125,13 +2947,13 @@ def delete_concrete_confirm_stress(_click, sel, tbl_data):
     Output("section-y-input-stress", "min"), Output("section-y-input-stress", "max"), Output("section-y-input-stress", "value"),
     Output("section-z-input-stress", "min"), Output("section-z-input-stress", "max"), Output("section-z-input-stress", "value"),
     Output("current-stress-file-title-store", "data", allow_duplicate=True),
-    Input("time-slider-section-stress", "value"),  # 실제 슬라이더 ID 사용
+    Input("time-slider-section-stress", "value"),
     Input("section-x-input-stress", "value"),
     Input("section-y-input-stress", "value"),
     Input("section-z-input-stress", "value"),
     Input("btn-unified-stress-colorbar-section", "value"),
     Input("stress-component-selector-section", "value"),
-    Input("tabs-main-stress", "active_tab"),
+    Input("tabs-main-stress", "active_tab"),  # 탭 활성화를 트리거로 추가
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
@@ -3150,12 +2972,6 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
                 "단면도 탭을 선택하세요.")
     
     # 컴포넌트가 존재하지 않을 때 기본값 처리
-    if x_val is None:
-        x_val = 0
-    if y_val is None:
-        y_val = 0
-    if z_val is None:
-        z_val = 0
     if selected_component is None:
         selected_component = "von_mises"
     if unified_colorbar is None:
@@ -3270,7 +3086,7 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
     else:
         stress_min, stress_max = np.nanmin(stress_values_gpa), np.nanmax(stress_values_gpa)
     
-    # 입력창 min/max/기본값 자동 설정
+    # 입력창 min/max/기본값 자동 설정 (콘크리트 차원 정보 기반)
     x_coords = coords[:, 0]
     y_coords = coords[:, 1]
     z_coords = coords[:, 2]
@@ -3278,16 +3094,28 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
     x_min, x_max = float(np.min(x_coords)), float(np.max(x_coords))
     y_min, y_max = float(np.min(y_coords)), float(np.max(y_coords))
     z_min, z_max = float(np.min(z_coords)), float(np.max(z_coords))
-    x_mid = float(np.median(x_coords))
-    y_mid = float(np.median(y_coords))
-    z_mid = float(np.median(z_coords))
+    
+    # 콘크리트 차원 정보로부터 중심 좌표 계산 (온도분석과 동일)
+    try:
+        dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
+        poly_nodes = np.array(dims["nodes"])
+        poly_h = float(dims["h"])
+        x_mid = float(np.mean(poly_nodes[:,0]))
+        y_mid = float(np.mean(poly_nodes[:,1]))
+        z_mid = float(poly_h/2)
+    except Exception:
+        # fallback to coordinate median
+        x_mid = float(np.median(x_coords))
+        y_mid = float(np.median(y_coords))
+        z_mid = float(np.median(z_coords))
     
     def round01(val):
         return round(val * 10) / 10 if val is not None else None
     
-    x0 = round01(x_val) if x_val is not None else round01(x_mid)
-    y0 = round01(y_val) if y_val is not None else round01(y_mid)
-    z0 = round01(z_val) if z_val is not None else round01(z_mid)
+    # 입력값이 있으면 사용, 없으면 콘크리트 중심 좌표 사용
+    x0 = round01(x_val) if x_val is not None and x_val != 0 else round01(x_mid)
+    y0 = round01(y_val) if y_val is not None and y_val != 0 else round01(y_mid)
+    z0 = round01(z_val) if z_val is not None and z_val != 0 else round01(z_mid)
     
     # 3D 뷰(작게) - GPa 단위 사용
     fig_3d = go.Figure(data=go.Volume(
