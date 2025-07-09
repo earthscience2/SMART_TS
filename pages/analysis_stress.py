@@ -324,6 +324,7 @@ layout = dbc.Container(
             dbc.Button(id="btn-pause-section-stress", n_clicks=0),
             dcc.Dropdown(id="speed-dropdown-section-stress", value="1x"),
             dbc.Switch(id="btn-unified-stress-colorbar-section", value=False),
+            dcc.Dropdown(id="stress-component-selector-section", value="von_mises"),
             # 시간 정보 표시
             html.Div(id="section-time-info-stress"),
             
@@ -1569,7 +1570,7 @@ def create_section_tab_content_stress(concrete_pk):
                     "fontSize": "14px"
                 }),
                 dcc.Slider(
-                    id="time-slider-section-stress",
+                    id="section-slider-ui",  # UI용 슬라이더
                     min=0,
                     max=5,
                     step=1,
@@ -1751,7 +1752,7 @@ def create_section_tab_content_stress(concrete_pk):
                                     })
                                 ], style={"marginBottom": "4px"}),
                                 dbc.Input(
-                                    id="section-x-input-stress", 
+                                    id="section-x-input-ui",  # UI용 입력창
                                     type="number", 
                                     step=0.1, 
                                     value=None,
@@ -1780,7 +1781,7 @@ def create_section_tab_content_stress(concrete_pk):
                                     })
                                 ], style={"marginBottom": "4px"}),
                                 dbc.Input(
-                                    id="section-y-input-stress", 
+                                    id="section-y-input-ui",  # UI용 입력창
                                     type="number", 
                                     step=0.1, 
                                     value=None,
@@ -1809,7 +1810,7 @@ def create_section_tab_content_stress(concrete_pk):
                                     })
                                 ], style={"marginBottom": "4px"}),
                                 dbc.Input(
-                                    id="section-z-input-stress", 
+                                    id="section-z-input-ui",  # UI용 입력창
                                     type="number", 
                                     step=0.1,
                                     value=None,
@@ -1875,7 +1876,7 @@ def create_section_tab_content_stress(concrete_pk):
                         "marginRight": "8px"
                     }),
                     dcc.Dropdown(
-                        id="stress-component-selector-section",
+                        id="stress-component-selector-ui",  # UI용 드롭다운
                         options=[
                             {"label": "von Mises 응력", "value": "von_mises"},
                             {"label": "SXX (X방향 정응력)", "value": "SXX"},
@@ -1982,7 +1983,12 @@ def create_section_tab_content_stress(concrete_pk):
                     })
                 ], md=6),
             ]),
-        ])
+        ], style={
+            "padding": "20px",
+            "backgroundColor": "#f9fafb",
+            "borderRadius": "8px",
+            "border": "1px solid #e5e7eb"
+        })
     ])
 
 def create_node_tab_content_stress(concrete_pk):
@@ -3110,16 +3116,16 @@ def delete_concrete_confirm_stress(_click, sel, tbl_data):
     Output("viewer-section-x-stress", "figure"),
     Output("viewer-section-y-stress", "figure"),
     Output("viewer-section-z-stress", "figure"),
-    Output("section-x-input-stress", "min"), Output("section-x-input-stress", "max"), Output("section-x-input-stress", "value"),
-    Output("section-y-input-stress", "min"), Output("section-y-input-stress", "max"), Output("section-y-input-stress", "value"),
-    Output("section-z-input-stress", "min"), Output("section-z-input-stress", "max"), Output("section-z-input-stress", "value"),
+    Output("section-x-input-ui", "min"), Output("section-x-input-ui", "max"), Output("section-x-input-ui", "value"),
+    Output("section-y-input-ui", "min"), Output("section-y-input-ui", "max"), Output("section-y-input-ui", "value"),
+    Output("section-z-input-ui", "min"), Output("section-z-input-ui", "max"), Output("section-z-input-ui", "value"),
     Output("current-stress-file-title-store", "data", allow_duplicate=True),
     Input("section-slider-value-store", "data"),  # Store에서 value를 받음
-    Input("section-x-input-stress", "value"),
-    Input("section-y-input-stress", "value"),
-    Input("section-z-input-stress", "value"),
+    Input("section-x-input-ui", "value"),
+    Input("section-y-input-ui", "value"),
+    Input("section-z-input-ui", "value"),
     Input("btn-unified-stress-colorbar-section", "value"),
-    Input("stress-component-selector-section", "value"),
+    Input("stress-component-selector-ui", "value"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
@@ -3596,7 +3602,7 @@ def update_section_slider_stress(active_tab, selected_rows, tbl_data):
     State("viewer-section-z-stress", "figure"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
-    State("time-slider-section-stress", "value"),
+    State("section-slider-ui", "value"),
     prevent_initial_call=True,
 )
 def save_section_image_stress(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl_data, time_value):
@@ -3668,7 +3674,7 @@ def save_section_image_stress(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_ro
     Input("btn-save-section-frd-stress", "n_clicks"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
-    State("time-slider-section-stress", "value"),
+    State("section-slider-ui", "value"),
     prevent_initial_call=True,
 )
 def save_section_frd_stress(n_clicks, selected_rows, tbl_data, time_value):
@@ -3759,12 +3765,12 @@ def stop_section_playback_stress(n_clicks, play_state, active_tab):
     return play_state
 
 @callback(
-    Output("time-slider-section-stress", "value", allow_duplicate=True),
+    Output("section-slider-ui", "value", allow_duplicate=True),
     Input("play-interval-section-stress", "n_intervals"),
     State("play-state-section-stress", "data"),
     State("speed-state-section-stress", "data"),
-    State("time-slider-section-stress", "value"),
-    State("time-slider-section-stress", "max"),
+    State("section-slider-ui", "value"),
+    State("section-slider-ui", "max"),
     State("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
@@ -4521,7 +4527,7 @@ def save_node_data_stress(n_clicks, selected_rows, tbl_data, x, y, z, selected_c
 
 @callback(
     Output("section-slider-value-store", "data"),
-    Input("time-slider-section-stress", "max"),
+    Input("section-slider-ui", "max"),
     Input("tabs-main-stress", "active_tab"),
     Input("tbl-concrete-stress", "selected_rows"),
     Input("tbl-concrete-stress", "data"),
@@ -4533,10 +4539,107 @@ def sync_slider_value(max_value, active_tab, selected_rows, tbl_data):
 
 @callback(
     Output("section-slider-value-store", "data", allow_duplicate=True),
-    Input("time-slider-section-stress", "value"),
+    Input("section-slider-ui", "value"),
     prevent_initial_call=True,
 )
 def user_move_slider(value):
+    return value
+
+# UI 컴포넌트와 숨겨진 컴포넌트 동기화 콜백들
+@callback(
+    Output("time-slider-section-stress", "value"),
+    Input("section-slider-ui", "value"),
+    prevent_initial_call=True,
+)
+def sync_ui_slider_to_hidden(ui_value):
+    """UI 슬라이더 값을 숨겨진 슬라이더에 동기화"""
+    return ui_value
+
+@callback(
+    Output("section-slider-ui", "value"),
+    Output("section-slider-ui", "min"),
+    Output("section-slider-ui", "max"),
+    Output("section-slider-ui", "marks"),
+    Input("time-slider-section-stress", "value"),
+    Input("time-slider-section-stress", "min"),
+    Input("time-slider-section-stress", "max"),
+    Input("time-slider-section-stress", "marks"),
+    prevent_initial_call=True,
+)
+def sync_hidden_slider_to_ui(value, min_val, max_val, marks):
+    """숨겨진 슬라이더 값을 UI 슬라이더에 동기화"""
+    return value, min_val, max_val, marks
+
+@callback(
+    Output("section-x-input-stress", "value"),
+    Input("section-x-input-ui", "value"),
+    prevent_initial_call=True,
+)
+def sync_ui_x_input_to_hidden(ui_value):
+    """UI X 입력값을 숨겨진 입력창에 동기화"""
+    return ui_value
+
+@callback(
+    Output("section-x-input-ui", "value"),
+    Input("section-x-input-stress", "value"),
+    prevent_initial_call=True,
+)
+def sync_hidden_x_input_to_ui(value):
+    """숨겨진 X 입력값을 UI 입력창에 동기화"""
+    return value
+
+@callback(
+    Output("section-y-input-stress", "value"),
+    Input("section-y-input-ui", "value"),
+    prevent_initial_call=True,
+)
+def sync_ui_y_input_to_hidden(ui_value):
+    """UI Y 입력값을 숨겨진 입력창에 동기화"""
+    return ui_value
+
+@callback(
+    Output("section-y-input-ui", "value"),
+    Input("section-y-input-stress", "value"),
+    prevent_initial_call=True,
+)
+def sync_hidden_y_input_to_ui(value):
+    """숨겨진 Y 입력값을 UI 입력창에 동기화"""
+    return value
+
+@callback(
+    Output("section-z-input-stress", "value"),
+    Input("section-z-input-ui", "value"),
+    prevent_initial_call=True,
+)
+def sync_ui_z_input_to_hidden(ui_value):
+    """UI Z 입력값을 숨겨진 입력창에 동기화"""
+    return ui_value
+
+@callback(
+    Output("section-z-input-ui", "value"),
+    Input("section-z-input-stress", "value"),
+    prevent_initial_call=True,
+)
+def sync_hidden_z_input_to_ui(value):
+    """숨겨진 Z 입력값을 UI 입력창에 동기화"""
+    return value
+
+@callback(
+    Output("stress-component-selector-section", "value"),
+    Input("stress-component-selector-ui", "value"),
+    prevent_initial_call=True,
+)
+def sync_ui_component_to_hidden(ui_value):
+    """UI 응력 종류 선택값을 숨겨진 드롭다운에 동기화"""
+    return ui_value
+
+@callback(
+    Output("stress-component-selector-ui", "value"),
+    Input("stress-component-selector-section", "value"),
+    prevent_initial_call=True,
+)
+def sync_hidden_component_to_ui(value):
+    """숨겨진 응력 종류 선택값을 UI 드롭다운에 동기화"""
     return value
 
 
