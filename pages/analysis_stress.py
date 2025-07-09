@@ -3169,9 +3169,9 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
         z_mid = float(poly_h/2)
     except Exception:
         # fallback to coordinate median
-    x_mid = float(np.median(x_coords))
-    y_mid = float(np.median(y_coords))
-    z_mid = float(np.median(z_coords))
+        x_mid = float(np.median(x_coords))
+        y_mid = float(np.median(y_coords))
+        z_mid = float(np.median(z_coords))
     
     def round01(val):
         return round(val * 10) / 10 if val is not None else None
