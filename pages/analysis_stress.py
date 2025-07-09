@@ -322,6 +322,10 @@ layout = dbc.Container(
             dbc.Input(id="node-z-input-stress", type="number", value=None),
             dcc.Graph(id="viewer-3d-node-stress"),
             dcc.Graph(id="viewer-stress-time-stress"),
+            dcc.Dropdown(id="stress-component-selector-node", value="von_mises"),
+            
+            # 입체 탭 관련 컴포넌트들
+            dcc.Graph(id="viewer-3d-stress-display"),
         ], style={"display": "none"})
     ]
 )
@@ -3640,29 +3644,14 @@ def toggle_unified_stress_colorbar_section_stress(switch_value):
 
 @callback(
     Output("node-coord-store-stress", "data"),
-    Input("viewer-3d-stress-display", "clickData"),
     Input("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def store_node_coord_stress(clickData, selected_rows, tbl_data):
-    """3D 뷰어 클릭 시 노드별 좌표를 저장하거나 콘크리트 선택 시 기본값을 설정합니다."""
-    ctx = dash.callback_context
-    if not ctx.triggered:
-        return None
-    
-    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    
-    if trigger_id == "viewer-3d-stress-display" and clickData and 'points' in clickData and len(clickData['points']) > 0:
-        point = clickData['points'][0]
-        return {
-            'x': point.get('x'),
-            'y': point.get('y'),
-            'z': point.get('z')
-        }
-    elif trigger_id == "tbl-concrete-stress" and selected_rows and tbl_data:
-        # 콘크리트 선택 시 기본 좌표 설정
-        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+def store_node_coord_stress(selected_rows, tbl_data):
+    """콘크리트 선택 시 노드별 기본 좌표를 설정합니다."""
+    if selected_rows and len(selected_rows) > 0 and tbl_data:
+        row = tbl_data[selected_rows[0]]
         try:
             dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
             poly_nodes = np.array(dims["nodes"])
@@ -3677,11 +3666,34 @@ def store_node_coord_stress(clickData, selected_rows, tbl_data):
     return None
 
 @callback(
-    Output("viewer-3d-node-stress", "figure"),
-    Output("viewer-stress-time-stress", "figure"),
     Output("node-x-input-stress", "value"),
     Output("node-y-input-stress", "value"),
     Output("node-z-input-stress", "value"),
+    Input("tabs-main-stress", "active_tab"),
+    Input("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
+    prevent_initial_call=True,
+)
+def init_node_inputs_stress(active_tab, selected_rows, tbl_data):
+    """노드 탭이 활성화될 때 입력 필드를 초기화합니다."""
+    if active_tab == "node-tab-stress" and selected_rows and len(selected_rows) > 0 and tbl_data:
+        row = tbl_data[selected_rows[0]]
+        try:
+            dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
+            poly_nodes = np.array(dims["nodes"])
+            poly_h = float(dims["h"])
+            x_mid = float(np.mean(poly_nodes[:,0]))
+            y_mid = float(np.mean(poly_nodes[:,1]))
+            z_mid = float(poly_h/2)
+            return round(x_mid,1), round(y_mid,1), round(z_mid,1)
+        except Exception:
+            return 0.5, 0.5, 0.5
+    
+    return None, None, None
+
+@callback(
+    Output("viewer-3d-node-stress", "figure"),
+    Output("viewer-stress-time-stress", "figure"),
     Input("node-coord-store-stress", "data"),
     Input("node-x-input-stress", "value"),
     Input("node-y-input-stress", "value"),
@@ -3689,7 +3701,7 @@ def store_node_coord_stress(clickData, selected_rows, tbl_data):
     Input("stress-component-selector-node", "value"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
-    prevent_initial_call=False,
+    prevent_initial_call=True,
 )
 def update_node_tab_stress(store_data, x, y, z, selected_component, selected_rows, tbl_data):
     """노드별 탭의 3D 뷰와 시간별 응력 변화를 업데이트합니다."""
@@ -3703,8 +3715,8 @@ def update_node_tab_stress(store_data, x, y, z, selected_component, selected_row
     fig_3d = go.Figure()
     fig_stress = go.Figure()
     
-    # 입력 필드 업데이트를 위한 변수들
-    input_x, input_y, input_z = x, y, z
+    # 좌표 값 결정을 위한 변수들
+    coord_x, coord_y, coord_z = None, None, None
     
     # 선택된 응력 성분 확인 (기본값: von_mises)
     if selected_component is None:
@@ -3733,15 +3745,11 @@ def update_node_tab_stress(store_data, x, y, z, selected_component, selected_row
         coord_x = store_data.get('x', 0.5)
         coord_y = store_data.get('y', 0.5)
         coord_z = store_data.get('z', 0.5)
-        # 저장된 값으로 입력 필드 업데이트
-        if input_x is None:
-            input_x = coord_x
-        if input_y is None:
-            input_y = coord_y
-        if input_z is None:
-            input_z = coord_z
-    else:
-        # 기본값 계산
+    # 콘크리트 정보 가져오기
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    
+    # 기본값이 필요한 경우 계산
+    if coord_x is None or coord_y is None or coord_z is None:
         try:
             dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
             poly_nodes = np.array(dims["nodes"])
@@ -3749,24 +3757,8 @@ def update_node_tab_stress(store_data, x, y, z, selected_component, selected_row
             coord_x = float(np.mean(poly_nodes[:,0]))
             coord_y = float(np.mean(poly_nodes[:,1]))
             coord_z = float(poly_h/2)
-            # 기본값으로 입력 필드 업데이트
-            if input_x is None:
-                input_x = coord_x
-            if input_y is None:
-                input_y = coord_y
-            if input_z is None:
-                input_z = coord_z
         except Exception:
             coord_x, coord_y, coord_z = 0.5, 0.5, 0.5
-            if input_x is None:
-                input_x = 0.5
-            if input_y is None:
-                input_y = 0.5
-            if input_z is None:
-                input_z = 0.5
-    
-    # 콘크리트 정보 가져오기
-    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
     concrete_name = row["name"]
     
@@ -3788,17 +3780,9 @@ def update_node_tab_stress(store_data, x, y, z, selected_component, selected_row
         )
         return fig_3d, fig_stress
     
-    try:
-        dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
-        poly_nodes = np.array(dims["nodes"])
-        poly_h = float(dims["h"])
-    except Exception:
-        poly_nodes = np.array([[0,0]])
-        poly_h = 1.0
-    
     # 3D 뷰 생성 (콘크리트 외곽선 및 선택 위치/보조선 표시)
     try:
-        # 콘크리트 차원 정보 가져오기
+        # 콘크리트 차원 정보 가져오기 (이미 위에서 파싱됨)
         dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
         poly_nodes = np.array(dims["nodes"])
         poly_h = float(dims["h"])
@@ -3957,7 +3941,7 @@ def update_node_tab_stress(store_data, x, y, z, selected_component, selected_row
             yaxis_title="응력 (GPa)"
         )
     
-    return fig_3d, fig_stress, input_x, input_y, input_z
+    return fig_3d, fig_stress
 
 
 
