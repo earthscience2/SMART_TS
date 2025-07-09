@@ -3545,41 +3545,29 @@ def update_section_time_info_stress(current_file_title, active_tab):
 
 @callback(
     Output("time-slider-section-stress", "min"),
-    Output("time-slider-section-stress", "max"), 
+    Output("time-slider-section-stress", "max"),
     Output("time-slider-section-stress", "value"),
     Output("time-slider-section-stress", "marks"),
     Input("tabs-main-stress", "active_tab"),
     Input("tbl-concrete-stress", "selected_rows"),
-    State("tbl-concrete-stress", "data"),
-    State("project-url", "pathname"),
+    Input("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def init_section_slider_independent_stress(active_tab, selected_rows, tbl_data, pathname):
-    """단면도용 독립 슬라이더를 초기화합니다."""
-    from datetime import datetime as dt_import  # 명시적 import로 충돌 방지
-    
-    # 단면도 탭이 아니면 기본값 유지
+def update_section_slider_stress(active_tab, selected_rows, tbl_data):
+    from datetime import datetime as dt_import
     if active_tab != "tab-section-stress":
         return dash.no_update, dash.no_update, dash.no_update, dash.no_update
-        
     if not selected_rows or not tbl_data:
         return 0, 5, 0, {}
-    
     try:
-        # tbl_data가 리스트인지 딕셔너리인지 확인
         if isinstance(tbl_data, list):
             row = tbl_data[selected_rows[0]]
         else:
-            # 딕셔너리 형태인 경우
             row = tbl_data
-        
         concrete_pk = row["concrete_pk"]
         frd_files = get_frd_files(concrete_pk)
-        
         if not frd_files:
             return 0, 5, 0, {}
-        
-        # 시간 파싱
         times = []
         for f in frd_files:
             try:
@@ -3588,13 +3576,9 @@ def init_section_slider_independent_stress(active_tab, selected_rows, tbl_data, 
                 times.append(dt)
             except:
                 continue
-        
         if not times:
             return 0, 5, 0, {}
-        
         max_idx = len(times) - 1
-        
-        # 슬라이더 마크 생성
         marks = {}
         seen_dates = set()
         for i, dt in enumerate(times):
@@ -3602,77 +3586,9 @@ def init_section_slider_independent_stress(active_tab, selected_rows, tbl_data, 
             if date_str not in seen_dates:
                 marks[i] = date_str
                 seen_dates.add(date_str)
-        
         return 0, max_idx, max_idx, marks
-        
     except Exception as e:
-        print(f"단면 슬라이더 초기화 오류: {e}")
-        return 0, 5, 0, {}
-
-# 단면 탭 활성화 시 슬라이더 강제 초기화
-@callback(
-    Output("time-slider-section-stress", "min", allow_duplicate=True),
-    Output("time-slider-section-stress", "max", allow_duplicate=True), 
-    Output("time-slider-section-stress", "value", allow_duplicate=True),
-    Output("time-slider-section-stress", "marks", allow_duplicate=True),
-    Input("tabs-main-stress", "active_tab"),
-    State("tbl-concrete-stress", "selected_rows"),
-    State("tbl-concrete-stress", "data"),
-    prevent_initial_call=True,
-)
-def force_init_section_slider_stress(active_tab, selected_rows, tbl_data):
-    """단면 탭 활성화 시 슬라이더를 강제로 초기화합니다."""
-    from datetime import datetime as dt_import  # 명시적 import로 충돌 방지
-    
-    # 단면도 탭이 아니면 기본값 유지
-    if active_tab != "tab-section-stress":
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
-        
-    if not selected_rows or not tbl_data:
-        return 0, 5, 0, {}
-    
-    try:
-        # tbl_data가 리스트인지 딕셔너리인지 확인
-        if isinstance(tbl_data, list):
-            row = tbl_data[selected_rows[0]]
-        else:
-            # 딕셔너리 형태인 경우
-            row = tbl_data
-        
-        concrete_pk = row["concrete_pk"]
-        frd_files = get_frd_files(concrete_pk)
-        
-        if not frd_files:
-            return 0, 5, 0, {}
-        
-        # 시간 파싱
-        times = []
-        for f in frd_files:
-            try:
-                time_str = os.path.basename(f).split(".")[0]
-                dt = dt_import.strptime(time_str, "%Y%m%d%H")
-                times.append(dt)
-            except:
-                continue
-        
-        if not times:
-            return 0, 5, 0, {}
-        
-        max_idx = len(times) - 1
-        
-        # 슬라이더 마크 생성
-        marks = {}
-        seen_dates = set()
-        for i, dt in enumerate(times):
-            date_str = dt.strftime("%m/%d")
-            if date_str not in seen_dates:
-                marks[i] = date_str
-                seen_dates.add(date_str)
-        
-        return 0, max_idx, max_idx, marks
-        
-    except Exception as e:
-        print(f"강제 초기화 - 단면 슬라이더 초기화 오류: {e}")
+        print(f"슬라이더 초기화 오류: {e}")
         return 0, 5, 0, {}
 
 @callback(
