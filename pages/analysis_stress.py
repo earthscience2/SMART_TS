@@ -22,8 +22,11 @@ import json
 import ast
 import re
 import time
+import shutil
 
 import api_db
+import auto_sensor
+import auto_inp
 from utils.encryption import parse_project_key_from_url
 
 register_page(__name__, path="/stress", title="응력 분석")
@@ -58,6 +61,9 @@ layout = dbc.Container(
         dcc.Download(id="download-current-frd"),
         dcc.Download(id="download-section-image-stress"),
         dcc.Download(id="download-section-frd-stress"),
+        
+        # ── 알림 컴포넌트
+        dbc.Alert(id="stress-project-alert", is_open=False, duration=4000),
         
         # ── 컨펌 다이얼로그
         dcc.ConfirmDialog(
@@ -2103,7 +2109,10 @@ def create_node_tab_content_stress(concrete_pk):
                     "backgroundColor": "#f9fafb",
                     "borderRadius": "8px",
                     "border": "1px solid #e5e7eb",
-                    "height": "100%"
+                    "height": "100%",
+                    "display": "flex",
+                    "flexDirection": "column",
+                    "justifyContent": "center"
                 })
             ], md=8),
             
@@ -2936,38 +2945,141 @@ def parse_material_info_from_inp(lines):
     prevent_initial_call=True,
 )
 def on_concrete_select_stress(selected_rows, pathname, tbl_data):
-    """콘크리트 선택 시 버튼 상태를 업데이트하고 전체 응력 범위를 미리 계산합니다."""
     # 응력 분석 페이지에서만 실행
     if '/stress' not in pathname:
+        print(f"DEBUG: 응력분석 페이지가 아님 (pathname={pathname}), PreventUpdate")
         raise PreventUpdate
     
+    print(f"DEBUG: 응력분석 페이지 on_concrete_select 실행")
+    print(f"  selected_rows: {selected_rows} ({type(selected_rows)})")
+    print(f"  tbl_data: {len(tbl_data) if tbl_data else None} ({type(tbl_data)})")
+    
     if not selected_rows or not tbl_data:
+        print("on_concrete_select - selected_rows 또는 tbl_data가 없음")
         return True, True
     
-    # 선택된 콘크리트의 전체 응력 범위 미리 계산
-    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    # 안전한 배열 접근
+    if len(selected_rows) == 0:
+        print("DEBUG: selected_rows가 비어있음")
+        return True, True
+    
+    if len(tbl_data) == 0:
+        print("DEBUG: tbl_data가 비어있음")
+        return True, True
+    
+    try:
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    except (IndexError, KeyError) as e:
+        print(f"DEBUG: 데이터 접근 오류: {e}")
+        return True, True
+    
+    is_active = row["activate"] == "활성"
+    has_sensors = row["has_sensors"]
     concrete_pk = row["concrete_pk"]
     
-    # 백그라운드에서 전체 범위 계산 (캐시에 저장됨)
-    try:
-        global_ranges = calculate_global_stress_ranges(concrete_pk)
-        print(f"전체 응력 범위 계산 완료 - {concrete_pk}: {len(global_ranges)}개 성분")
-    except Exception as e:
-        print(f"전체 응력 범위 계산 중 오류: {e}")
+    # 버튼 상태 결정
+    # 분석중 (activate == 0): 분석 시작(비활성화), 삭제(활성화)
+    # 설정중(센서있음) (activate == 1, has_sensors == True): 분석 시작(활성화), 삭제(비활성화)
+    # 설정중(센서부족) (activate == 1, has_sensors == False): 분석 시작(비활성화), 삭제(비활성화)
+    if not is_active:  # 분석중
+        analyze_disabled = True
+        delete_disabled = False
+    elif is_active and has_sensors:  # 설정중(센서있음)
+        analyze_disabled = False
+        delete_disabled = True
+    else:  # 설정중(센서부족)
+        analyze_disabled = True
+        delete_disabled = True
     
-    # 선택된 콘크리트가 있으면 버튼 활성화
-    return False, False
+    return analyze_disabled, delete_disabled
 
 @callback(
     Output("confirm-del-stress", "displayed"),
     Input("btn-concrete-del-stress", "n_clicks"),
+    State("tbl-concrete-stress", "selected_rows"),
+    prevent_initial_call=True
+)
+def ask_delete_concrete_stress(n, sel):
+    return bool(n and sel)
+
+# ───────────────────── ⑤ 분석 시작 콜백 ─────────────────────
+@callback(
+    Output("stress-project-alert", "children", allow_duplicate=True),
+    Output("stress-project-alert", "color", allow_duplicate=True),
+    Output("stress-project-alert", "is_open", allow_duplicate=True),
+    Output("tbl-concrete-stress", "data", allow_duplicate=True),
+    Output("btn-concrete-analyze-stress", "disabled", allow_duplicate=True),
+    Output("btn-concrete-del-stress", "disabled", allow_duplicate=True),
+    Input("btn-concrete-analyze-stress", "n_clicks"),
+    State("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def show_delete_confirm_stress(n_clicks):
-    """삭제 확인 다이얼로그를 표시합니다."""
-    if n_clicks:
-        return True
-    return False
+def start_analysis_stress(n_clicks, selected_rows, tbl_data):
+    if not selected_rows or not tbl_data:
+        return "콘크리트를 선택하세요", "warning", True, dash.no_update, dash.no_update, dash.no_update
+
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+
+    try:
+        # activate를 0으로 변경
+        api_db.update_concrete_data(concrete_pk=concrete_pk, activate=0)
+        
+        # (1) 센서 데이터 자동 저장
+        auto_sensor.auto_sensor_data()
+        # (2) 1초 대기 후 INP 자동 생성
+        time.sleep(1)
+        auto_inp.auto_inp()
+        
+        # 테이블 데이터 업데이트
+        updated_data = tbl_data.copy()
+        updated_data[selected_rows[0]]["activate"] = "비활성"
+        updated_data[selected_rows[0]]["status"] = "분석중"
+        
+        return f"{concrete_pk} 분석이 시작되었습니다", "success", True, updated_data, True, False
+    except Exception as e:
+        return f"분석 시작 실패: {e}", "danger", True, dash.no_update, dash.no_update, dash.no_update
+
+# ───────────────────── ⑥ 삭제 실행 콜백 ─────────────────────
+@callback(
+    Output("stress-project-alert", "children", allow_duplicate=True),
+    Output("stress-project-alert", "color", allow_duplicate=True),
+    Output("stress-project-alert", "is_open", allow_duplicate=True),
+    Output("tbl-concrete-stress", "data", allow_duplicate=True),
+    Input("confirm-del-stress", "submit_n_clicks"),
+    State("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
+    prevent_initial_call=True,
+)
+def delete_concrete_confirm_stress(_click, sel, tbl_data):
+    if not sel or not tbl_data:
+        raise PreventUpdate
+
+    row = pd.DataFrame(tbl_data).iloc[sel[0]]
+    concrete_pk = row["concrete_pk"]
+
+    try:
+        # 1) /inp/{concrete_pk} 디렉토리 삭제
+        inp_dir = f"inp/{concrete_pk}"
+        if os.path.exists(inp_dir):
+            shutil.rmtree(inp_dir)
+
+        # 2) 센서 데이터 삭제
+        df_sensors = api_db.get_sensors_data(concrete_pk=concrete_pk)
+        for _, sensor in df_sensors.iterrows():
+            api_db.delete_sensors_data(sensor["sensor_pk"])
+
+        # 3) 콘크리트 삭제
+        api_db.delete_concrete_data(concrete_pk)
+
+        # 4) 테이블에서 해당 행 제거
+        updated_data = tbl_data.copy()
+        updated_data.pop(sel[0])
+
+        return f"{concrete_pk} 삭제 완료", "success", True, updated_data
+    except Exception as e:
+        return f"삭제 실패: {e}", "danger", True, dash.no_update
 
 # ───────────────────── 단면 탭 관련 콜백 함수들 ─────────────────────
 
