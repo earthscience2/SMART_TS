@@ -1002,7 +1002,7 @@ def create_3d_tab_content_stress(concrete_pk):
         
         frd_file_list = html.Div(frd_file_list)
     
-            # 3D 시각화 생성
+        # 3D 시각화 생성
         stress_3d_figure = create_3d_stress_figure(all_stress_data)
         
         # 초기 시간 정보와 물성치 정보 생성 (첫 번째 파일 기준)
@@ -1129,6 +1129,25 @@ def create_3d_tab_content_stress(concrete_pk):
             initial_time_info = "FRD 파일이 없습니다."
         
         # 응력 성분 선택 드롭다운
+        stress_component_dropdown = dbc.Select(
+            id="stress-component-selector",
+            options=[
+                {"label": "von Mises 응력", "value": "von_mises"},
+                {"label": "SXX (X방향 정응력)", "value": "SXX"},
+                {"label": "SYY (Y방향 정응력)", "value": "SYY"},
+                {"label": "SZZ (Z방향 정응력)", "value": "SZZ"},
+                {"label": "SXY (XY면 전단응력)", "value": "SXY"},
+                {"label": "SYZ (YZ면 전단응력)", "value": "SYZ"},
+                {"label": "SZX (ZX면 전단응력)", "value": "SZX"},
+            ],
+            value="von_mises",
+            style={
+                "width": "200px",
+                "marginBottom": "12px"
+            }
+        )
+    else:
+        # FRD 파일이 없을 때도 기본 드롭다운 생성
         stress_component_dropdown = dbc.Select(
             id="stress-component-selector",
             options=[
@@ -1414,7 +1433,7 @@ def create_3d_tab_content_stress(concrete_pk):
             # 삭제 확인 다이얼로그
             dcc.ConfirmDialog(
                 id="confirm-del-stress", 
-                message="선택한 콘크리트를 정말 삭제하시겠습니까?\n\n※ 관련 FRD 파일도 함께 삭제됩니다."
+                message="선택한 콘크리트를 정말 삭제하시겠습니다?\n\n※ 관련 FRD 파일도 함께 삭제됩니다."
             ),
         ], style={"display": "none"})
     ])
@@ -2332,248 +2351,63 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
                 global_stress_max = global_ranges[selected_component]['max']
     
     # 선택된 시간에 해당하는 FRD 파일
-    if time_idx is not None and time_idx < len(frd_files):
-        selected_file = frd_files[time_idx]
-        filename = os.path.basename(selected_file)
-        
-        # FRD 파일에서 응력 데이터 읽기
-        stress_data = read_frd_stress_data(selected_file)
-        
-        if not stress_data or not stress_data['coordinates'] or not stress_data['stress_values']:
-            return go.Figure().add_annotation(
-                text="유효한 응력 데이터가 없습니다.",
-                xref="paper", yref="paper",
-                x=0.5, y=0.5, showarrow=False
-            ), "유효한 응력 데이터가 없습니다."
-        
-        # 좌표와 응력 값 추출
-        coords = np.array(stress_data['coordinates'])
-        
-        # 선택된 응력 성분에 따라 값 추출 (노드 ID 순서 보장)
-        if selected_component == "von_mises":
-            # von Mises 응력: 노드 ID 순서대로 추출
+    if time_idx is None or time_idx >= len(frd_files):
+        time_idx = len(frd_files) - 1  # 마지막 파일로 설정
+    
+    selected_file = frd_files[time_idx]
+    filename = os.path.basename(selected_file)
+    
+    # FRD 파일에서 응력 데이터 읽기
+    stress_data = read_frd_stress_data(selected_file)
+    
+    if not stress_data or not stress_data['coordinates'] or not stress_data['stress_values']:
+        empty_fig = go.Figure().add_annotation(
+            text="유효한 응력 데이터가 없습니다.",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+        return empty_fig, "유효한 응력 데이터가 없습니다."
+    
+    # 좌표와 응력 값 추출
+    coords = np.array(stress_data['coordinates'])
+    
+    # 선택된 응력 성분에 따라 값 추출 (노드 ID 순서 보장)
+    if selected_component == "von_mises":
+        # von Mises 응력: 노드 ID 순서대로 추출
+        stress_values = [stress_data['stress_values'][0][node_id] for node_id in stress_data['nodes']]
+        component_name = "von Mises 응력"
+    else:
+        # 특정 응력 성분 선택
+        if selected_component in stress_data.get('stress_components', {}):
+            stress_values = [stress_data['stress_components'][selected_component][node_id] for node_id in stress_data['nodes']]
+            component_name = f"{selected_component} 응력"
+        else:
+            # fallback to von Mises
             stress_values = [stress_data['stress_values'][0][node_id] for node_id in stress_data['nodes']]
             component_name = "von Mises 응력"
-        else:
-            # 특정 응력 성분 선택
-            if selected_component in stress_data.get('stress_components', {}):
-                stress_values = [stress_data['stress_components'][selected_component][node_id] for node_id in stress_data['nodes']]
-                component_name = f"{selected_component} 응력"
-            else:
-                # fallback to von Mises
-                stress_values = [stress_data['stress_values'][0][node_id] for node_id in stress_data['nodes']]
-                component_name = "von Mises 응력"
-        
-        # 데이터 검증: 좌표와 응력 값의 개수가 일치하는지 확인
-        if len(coords) != len(stress_values):
-            # 산점도로 대체
-            fig = go.Figure(data=[
-                go.Scatter3d(
-                    x=coords[:, 0],
-                    y=coords[:, 1],
-                    z=coords[:, 2],
-                    mode='markers',
-                    marker=dict(
-                        size=5,
-                        color=[v/1000 for v in (stress_values[:len(coords)] if len(stress_values) > len(coords) else stress_values)],
-                        colorscale=[[0, 'blue'], [1, 'red']],
-                        colorbar=dict(title="Stress (GPa)", thickness=10),
-                        showscale=True
-                    ),
-                    text=[f"노드 {i+1}<br>응력: {val/1000:.4f} GPa" for i, val in enumerate(stress_values[:len(coords)] if len(stress_values) > len(coords) else stress_values)],
-                    hoverinfo='text'
-                )
-            ])
-            fig.update_layout(
-                title="3D 응력 분포 (산점도 - 데이터 불일치)",
-                scene=dict(
-                    aspectmode='data',
-                    bgcolor='white',
-                    xaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
-                    yaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
-                    zaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
-                ),
-                margin=dict(l=0, r=0, t=30, b=0),
-                height=500
-            )
-            return fig, "콘크리트를 선택하세요."
-        
-        # 시간 정보 계산
-        try:
-            time_str = filename.split(".")[0]
-            dt = datetime.strptime(time_str, "%Y%m%d%H")
-            formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
-        except:
-            formatted_time = filename
-        
-        # 물성치 정보 가져오기 (동일한 시간의 INP 파일에서)
-        material_info = ""
-        try:
-            inp_dir = f"inp/{concrete_pk}"
-            inp_file_path = f"{inp_dir}/{filename.split('.')[0]}.inp"
-            if os.path.exists(inp_file_path):
-                material_info = parse_material_info_from_inp_cached(inp_file_path)
-        except:
-            material_info = ""
-        
-        # 센서 정보 가져오기
-        sensor_info = ""
-        try:
-            sensor_positions = get_sensor_positions(concrete_pk)
-            if sensor_positions:
-                sensor_count = len(sensor_positions)
-                sensor_info = f"센서: {sensor_count}개"
-        except:
-            sensor_info = ""
-        
-        # 단위 변환: Pa → GPa
-        stress_values_gpa = np.array(stress_values) / 1e9
-        
-        # 응력 범위 설정 (통일 여부에 따라)
-        if use_unified_colorbar and global_stress_min is not None and global_stress_max is not None:
-            stress_min, stress_max = global_stress_min, global_stress_max
-        else:
-            stress_min, stress_max = np.nanmin(stress_values_gpa), np.nanmax(stress_values_gpa)
-        
-        # 응력 통계 계산 (GPa 단위)
-        if stress_values:
-            current_min = float(np.nanmin(stress_values_gpa))
-            current_max = float(np.nanmax(stress_values_gpa))
-            current_avg = float(np.nanmean(stress_values_gpa))
-            time_info = html.Div([
-                # 통합 정보 카드 (노션 스타일)
-                html.Div([
-                    # 시간 정보와 응력 통계를 한 줄에 표시
-                    html.Div([
-                        html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "14px"}),
-                        html.Span(formatted_time, style={
-                            "fontWeight": "600",
-                            "color": "#1f2937",
-                            "fontSize": "14px",
-                            "marginLeft": "8px",
-                            "marginRight": "16px"
-                        }),
-                        html.Span(f"(최저: {current_min:.0f}GPa, 최고: {current_max:.0f}GPa, 평균: {current_avg:.0f}GPa)", style={
-                    "color": "#6b7280",
-                    "fontSize": "14px",
-                    "fontWeight": "600",
-                    "marginLeft": "8px"
-                }),
-                    ], style={
-                        "display": "flex",
-                        "alignItems": "center",
-                        "justifyContent": "center",
-                        "marginBottom": "8px" if (material_info and material_info != "물성치 정보 없음") or sensor_info else "0",
-                        "marginTop": "12px"
-                    }),
-                    
-                    # 물성치 정보와 센서 정보를 한 줄에 표시
-                    html.Div([
-                        # 물성치 정보 (있는 경우만)
-                        html.Div([
-                            html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "14px"}),
-                            *[html.Div([
-                                html.Span(f"{prop.split(':')[0]}:", style={
-                                    "color": "#6b7280",
-                                    "fontSize": "12px",
-                                    "marginRight": "4px"
-                                }),
-                                html.Span(prop.split(":", 1)[1].strip(), style={
-                                    "color": "#111827",
-                                    "fontSize": "12px",
-                                    "fontWeight": "500",
-                                    "marginRight": "12px"
-                                })
-                            ], style={"display": "inline"})
-                            for prop in material_info.split(", ") if material_info and material_info != "물성치 정보 없음"]
-                        ], style={"display": "inline"}) if material_info and material_info != "물성치 정보 없음" else html.Div(),
-                        
-                        # 센서 정보 (있는 경우만)
-                        html.Div([
-                            html.I(className="fas fa-microchip", style={"color": "#10b981", "fontSize": "14px"}),
-                            html.Span(sensor_info, style={
-                                "color": "#111827",
-                                "fontSize": "12px",
-                                "fontWeight": "500",
-                                "marginLeft": "4px"
-                            })
-                        ], style={"display": "inline"}) if sensor_info else html.Div()
-                    ], style={
-                        "display": "flex",
-                        "alignItems": "center",
-                        "justifyContent": "center",
-                        "gap": "16px",
-                        "flexWrap": "wrap",
-                        "marginBottom": "12px"
-                    }) if (material_info and material_info != "물성치 정보 없음") or sensor_info else html.Div()
-                    
-                ], style={
-                    "backgroundColor": "#f8fafc",
-                    "padding": "12px 16px",
-                    "borderRadius": "8px",
-                    "border": "1px solid #e2e8f0",
-                    "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
-                    "height": "65px",
-                    "display": "flex",
-                    "flexDirection": "column",
-                    "justifyContent": "center",
-                    "alignItems": "center"
-                })
-            ])
-        else:
-            time_info = formatted_time
-        
-        # 좌표 정규화 (모델링 비율 문제 해결)
-        coords_normalized = coords.copy()
-        
-        # 각 축별로 정규화
-        for axis in range(3):
-            axis_min, axis_max = coords[:, axis].min(), coords[:, axis].max()
-            if axis_max > axis_min:
-                coords_normalized[:, axis] = (coords[:, axis] - axis_min) / (axis_max - axis_min)
-        
-        # 3D 시각화 생성 (Volume 또는 Scatter3d 선택)
-        # Volume이 보이지 않는 경우를 대비해 Scatter3d도 준비
-        try:
-            # 먼저 Volume으로 시도
-            fig = go.Figure(data=go.Volume(
-                x=coords_normalized[:, 0], 
-                y=coords_normalized[:, 1], 
-                z=coords_normalized[:, 2], 
-                value=stress_values_gpa,
-                opacity=0.1, 
-                surface_count=15, 
-                colorscale=[[0, 'blue'], [1, 'red']],
-                colorbar=dict(title=f'{component_name} (GPa)', thickness=10),
-                cmin=stress_min, 
-                cmax=stress_max,
-                showscale=True,
-                hoverinfo='skip',
-                name=f'{component_name} 볼륨'
-            ))
-        except Exception:
-            # Volume이 실패하면 Scatter3d로 대체
-            fig = go.Figure(data=go.Scatter3d(
-                x=coords_normalized[:, 0],
-                y=coords_normalized[:, 1],
-                z=coords_normalized[:, 2],
+    
+    # 데이터 검증: 좌표와 응력 값의 개수가 일치하는지 확인
+    if len(coords) != len(stress_values):
+        # 산점도로 대체
+        fig = go.Figure(data=[
+            go.Scatter3d(
+                x=coords[:, 0],
+                y=coords[:, 1],
+                z=coords[:, 2],
                 mode='markers',
                 marker=dict(
-                    size=3,
-                    color=stress_values_gpa,
+                    size=5,
+                    color=[v/1000 for v in (stress_values[:len(coords)] if len(stress_values) > len(coords) else stress_values)],
                     colorscale=[[0, 'blue'], [1, 'red']],
-                    colorbar=dict(title=f'{component_name} (GPa)', thickness=10),
-                    cmin=stress_min,
-                    cmax=stress_max,
+                    colorbar=dict(title="Stress (GPa)", thickness=10),
                     showscale=True
                 ),
-                text=[f"노드 {i+1}<br>{component_name}: {val:.4f} GPa" for i, val in enumerate(stress_values_gpa)],
-                hoverinfo='text',
-                name=f'{component_name} 산점도'
-            ))
-        
+                text=[f"노드 {i+1}<br>응력: {val/1000:.4f} GPa" for i, val in enumerate(stress_values[:len(coords)] if len(stress_values) > len(coords) else stress_values)],
+                hoverinfo='text'
+            )
+        ])
         fig.update_layout(
-            uirevision='constant',
+            title="3D 응력 분포 (산점도 - 데이터 불일치)",
             scene=dict(
                 aspectmode='data',
                 bgcolor='white',
@@ -2581,107 +2415,289 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
                 yaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
                 zaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
             ),
-            margin=dict(l=0, r=0, t=0, b=0)
+            margin=dict(l=0, r=0, t=30, b=0),
+            height=500
         )
-        
-        # 콘크리트 외곽선 추가 (정규화된 좌표에 맞게)
-        try:
-            dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
-            poly_nodes = np.array(dims["nodes"])
-            poly_h = float(dims["h"])
-            
-            # 원본 좌표 범위
-            orig_x_min, orig_x_max = coords[:, 0].min(), coords[:, 0].max()
-            orig_y_min, orig_y_max = coords[:, 1].min(), coords[:, 1].max()
-            orig_z_min, orig_z_max = coords[:, 2].min(), coords[:, 2].max()
-            
-            n = len(poly_nodes)
-            x0, y0 = poly_nodes[:,0], poly_nodes[:,1]
-            z0 = np.zeros(n)
-            x1, y1 = x0, y0
-            z1 = np.full(n, poly_h)
-            
-            # 외곽선 좌표도 정규화
-            if orig_x_max > orig_x_min:
-                x0_norm = (x0 - orig_x_min) / (orig_x_max - orig_x_min)
-                x1_norm = (x1 - orig_x_min) / (orig_x_max - orig_x_min)
-            else:
-                x0_norm, x1_norm = x0, x1
-                
-            if orig_y_max > orig_y_min:
-                y0_norm = (y0 - orig_y_min) / (orig_y_max - orig_y_min)
-                y1_norm = (y1 - orig_y_min) / (orig_y_max - orig_y_min)
-            else:
-                y0_norm, y1_norm = y0, y1
-                
-            if orig_z_max > orig_z_min:
-                z0_norm = (z0 - orig_z_min) / (orig_z_max - orig_z_min)
-                z1_norm = (z1 - orig_z_min) / (orig_z_max - orig_z_min)
-            else:
-                z0_norm, z1_norm = z0, z1
-            
-            # 하단 외곽선
-            fig.add_trace(go.Scatter3d(
-                x=np.append(x0_norm, x0_norm[0]), y=np.append(y0_norm, y0_norm[0]), z=np.append(z0_norm, z0_norm[0]),
-                mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
-            
-            # 상단 외곽선
-            fig.add_trace(go.Scatter3d(
-                x=np.append(x1_norm, x1_norm[0]), y=np.append(y1_norm, y1_norm[0]), z=np.append(z1_norm, z1_norm[0]),
-                mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
-            
-            # 세로 연결선
-            for i in range(n):
-                fig.add_trace(go.Scatter3d(
-                    x=[x0_norm[i], x1_norm[i]], y=[y0_norm[i], y1_norm[i]], z=[z0_norm[i], z1_norm[i]],
-                    mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
-        except Exception:
-            pass
-        
-        # 센서 위치 추가 (온도분석 페이지와 동일한 방식)
-        try:
-            sensor_positions = get_sensor_positions(concrete_pk)
-            if sensor_positions:
-                sensor_xs, sensor_ys, sensor_zs, sensor_names = [], [], [], []
-                for sensor in sensor_positions:
-                    # 센서 좌표도 정규화
-                    if orig_x_max > orig_x_min:
-                        sensor_x_norm = (sensor["x"] - orig_x_min) / (orig_x_max - orig_x_min)
-                    else:
-                        sensor_x_norm = sensor["x"]
-                    if orig_y_max > orig_y_min:
-                        sensor_y_norm = (sensor["y"] - orig_y_min) / (orig_y_max - orig_y_min)
-                    else:
-                        sensor_y_norm = sensor["y"]
-                    if orig_z_max > orig_z_min:
-                        sensor_z_norm = (sensor["z"] - orig_z_min) / (orig_z_max - orig_z_min)
-                    else:
-                        sensor_z_norm = sensor["z"]
-                    sensor_xs.append(sensor_x_norm)
-                    sensor_ys.append(sensor_y_norm)
-                    sensor_zs.append(sensor_z_norm)
-                    sensor_names.append(sensor["device_id"])
-                # 센서 위치를 빨간 점으로 표시 (크기 4)
-                fig.add_trace(go.Scatter3d(
-                    x=sensor_xs, y=sensor_ys, z=sensor_zs,
-                    mode='markers',
-                    marker=dict(size=4, color='red', symbol='circle'),
-                    text=sensor_names,
-                    hoverinfo='text',
-                    name='센서',
-                    showlegend=False
-                ))
-        except Exception as e:
-            print(f"센서 위치 표기 중 오류: {e}")
-            pass
-        
-        return fig, time_info
+        return fig, "콘크리트를 선택하세요."
     
-    return go.Figure().add_annotation(
-        text="시간 인덱스가 유효하지 않습니다.",
-        xref="paper", yref="paper",
-        x=0.5, y=0.5, showarrow=False
-    ), "시간 인덱스가 유효하지 않습니다."
+    # 시간 정보 계산
+    try:
+        time_str = filename.split(".")[0]
+        dt = datetime.strptime(time_str, "%Y%m%d%H")
+        formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
+    except:
+        formatted_time = filename
+    
+    # 물성치 정보 가져오기 (동일한 시간의 INP 파일에서)
+    material_info = ""
+    try:
+        inp_dir = f"inp/{concrete_pk}"
+        inp_file_path = f"{inp_dir}/{filename.split('.')[0]}.inp"
+        if os.path.exists(inp_file_path):
+            material_info = parse_material_info_from_inp_cached(inp_file_path)
+    except:
+        material_info = ""
+    
+    # 센서 정보 가져오기
+    sensor_info = ""
+    try:
+        sensor_positions = get_sensor_positions(concrete_pk)
+        if sensor_positions:
+            sensor_count = len(sensor_positions)
+            sensor_info = f"센서: {sensor_count}개"
+    except:
+        sensor_info = ""
+    
+    # 단위 변환: Pa → GPa
+    stress_values_gpa = np.array(stress_values) / 1e9
+    
+    # 응력 범위 설정 (통일 여부에 따라)
+    if use_unified_colorbar and global_stress_min is not None and global_stress_max is not None:
+        stress_min, stress_max = global_stress_min, global_stress_max
+    else:
+        stress_min, stress_max = np.nanmin(stress_values_gpa), np.nanmax(stress_values_gpa)
+    
+    # 응력 통계 계산 (GPa 단위)
+    if stress_values:
+        current_min = float(np.nanmin(stress_values_gpa))
+        current_max = float(np.nanmax(stress_values_gpa))
+        current_avg = float(np.nanmean(stress_values_gpa))
+        time_info = html.Div([
+            # 통합 정보 카드 (노션 스타일)
+            html.Div([
+                # 시간 정보와 응력 통계를 한 줄에 표시
+                html.Div([
+                    html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "14px"}),
+                    html.Span(formatted_time, style={
+                        "fontWeight": "600",
+                        "color": "#1f2937",
+                        "fontSize": "14px",
+                        "marginLeft": "8px",
+                        "marginRight": "16px"
+                    }),
+                    html.Span(f"(최저: {current_min:.0f}GPa, 최고: {current_max:.0f}GPa, 평균: {current_avg:.0f}GPa)", style={
+                "color": "#6b7280",
+                "fontSize": "14px",
+                "fontWeight": "600",
+                "marginLeft": "8px"
+            }),
+                ], style={
+                    "display": "flex",
+                    "alignItems": "center",
+                    "justifyContent": "center",
+                    "marginBottom": "8px" if (material_info and material_info != "물성치 정보 없음") or sensor_info else "0",
+                    "marginTop": "12px"
+                }),
+                
+                # 물성치 정보와 센서 정보를 한 줄에 표시
+                html.Div([
+                    # 물성치 정보 (있는 경우만)
+                    html.Div([
+                        html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "14px"}),
+                        *[html.Div([
+                            html.Span(f"{prop.split(':')[0]}:", style={
+                                "color": "#6b7280",
+                                "fontSize": "12px",
+                                "marginRight": "4px"
+                            }),
+                            html.Span(prop.split(":", 1)[1].strip(), style={
+                                "color": "#111827",
+                                "fontSize": "12px",
+                                "fontWeight": "500",
+                                "marginRight": "12px"
+                            })
+                        ], style={"display": "inline"})
+                        for prop in material_info.split(", ") if material_info and material_info != "물성치 정보 없음"]
+                    ], style={"display": "inline"}) if material_info and material_info != "물성치 정보 없음" else html.Div(),
+                    
+                    # 센서 정보 (있는 경우만)
+                    html.Div([
+                        html.I(className="fas fa-microchip", style={"color": "#10b981", "fontSize": "14px"}),
+                        html.Span(sensor_info, style={
+                            "color": "#111827",
+                            "fontSize": "12px",
+                            "fontWeight": "500",
+                            "marginLeft": "4px"
+                        })
+                    ], style={"display": "inline"}) if sensor_info else html.Div()
+                ], style={
+                    "display": "flex",
+                    "alignItems": "center",
+                    "justifyContent": "center",
+                    "gap": "16px",
+                    "flexWrap": "wrap",
+                    "marginBottom": "12px"
+                }) if (material_info and material_info != "물성치 정보 없음") or sensor_info else html.Div()
+                
+            ], style={
+                "backgroundColor": "#f8fafc",
+                "padding": "12px 16px",
+                "borderRadius": "8px",
+                "border": "1px solid #e2e8f0",
+                "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
+                "height": "65px",
+                "display": "flex",
+                "flexDirection": "column",
+                "justifyContent": "center",
+                "alignItems": "center"
+            })
+        ])
+    else:
+        time_info = formatted_time
+    
+    # 좌표 정규화 (모델링 비율 문제 해결)
+    coords_normalized = coords.copy()
+    
+    # 각 축별로 정규화
+    for axis in range(3):
+        axis_min, axis_max = coords[:, axis].min(), coords[:, axis].max()
+        if axis_max > axis_min:
+            coords_normalized[:, axis] = (coords[:, axis] - axis_min) / (axis_max - axis_min)
+    
+    # 3D 시각화 생성 (Volume 또는 Scatter3d 선택)
+    # Volume이 보이지 않는 경우를 대비해 Scatter3d도 준비
+    try:
+        # 먼저 Volume으로 시도
+        fig = go.Figure(data=go.Volume(
+            x=coords_normalized[:, 0], 
+            y=coords_normalized[:, 1], 
+            z=coords_normalized[:, 2], 
+            value=stress_values_gpa,
+            opacity=0.1, 
+            surface_count=15, 
+            colorscale=[[0, 'blue'], [1, 'red']],
+            colorbar=dict(title=f'{component_name} (GPa)', thickness=10),
+            cmin=stress_min, 
+            cmax=stress_max,
+            showscale=True,
+            hoverinfo='skip',
+            name=f'{component_name} 볼륨'
+        ))
+    except Exception:
+        # Volume이 실패하면 Scatter3d로 대체
+        fig = go.Figure(data=go.Scatter3d(
+            x=coords_normalized[:, 0],
+            y=coords_normalized[:, 1],
+            z=coords_normalized[:, 2],
+            mode='markers',
+            marker=dict(
+                size=3,
+                color=stress_values_gpa,
+                colorscale=[[0, 'blue'], [1, 'red']],
+                colorbar=dict(title=f'{component_name} (GPa)', thickness=10),
+                cmin=stress_min,
+                cmax=stress_max,
+                showscale=True
+            ),
+            text=[f"노드 {i+1}<br>{component_name}: {val:.4f} GPa" for i, val in enumerate(stress_values_gpa)],
+            hoverinfo='text',
+            name=f'{component_name} 산점도'
+        ))
+    
+    fig.update_layout(
+        uirevision='constant',
+        scene=dict(
+            aspectmode='data',
+            bgcolor='white',
+            xaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
+            yaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
+            zaxis=dict(showgrid=True, gridcolor='lightgray', showline=True, linecolor='black'),
+        ),
+        margin=dict(l=0, r=0, t=0, b=0)
+    )
+    
+    # 콘크리트 외곽선 추가 (정규화된 좌표에 맞게)
+    try:
+        dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
+        poly_nodes = np.array(dims["nodes"])
+        poly_h = float(dims["h"])
+        
+        # 원본 좌표 범위
+        orig_x_min, orig_x_max = coords[:, 0].min(), coords[:, 0].max()
+        orig_y_min, orig_y_max = coords[:, 1].min(), coords[:, 1].max()
+        orig_z_min, orig_z_max = coords[:, 2].min(), coords[:, 2].max()
+        
+        n = len(poly_nodes)
+        x0, y0 = poly_nodes[:,0], poly_nodes[:,1]
+        z0 = np.zeros(n)
+        x1, y1 = x0, y0
+        z1 = np.full(n, poly_h)
+        
+        # 외곽선 좌표도 정규화
+        if orig_x_max > orig_x_min:
+            x0_norm = (x0 - orig_x_min) / (orig_x_max - orig_x_min)
+            x1_norm = (x1 - orig_x_min) / (orig_x_max - orig_x_min)
+        else:
+            x0_norm, x1_norm = x0, x1
+            
+        if orig_y_max > orig_y_min:
+            y0_norm = (y0 - orig_y_min) / (orig_y_max - orig_y_min)
+            y1_norm = (y1 - orig_y_min) / (orig_y_max - orig_y_min)
+        else:
+            y0_norm, y1_norm = y0, y1
+            
+        if orig_z_max > orig_z_min:
+            z0_norm = (z0 - orig_z_min) / (orig_z_max - orig_z_min)
+            z1_norm = (z1 - orig_z_min) / (orig_z_max - orig_z_min)
+        else:
+            z0_norm, z1_norm = z0, z1
+        
+        # 하단 외곽선
+        fig.add_trace(go.Scatter3d(
+            x=np.append(x0_norm, x0_norm[0]), y=np.append(y0_norm, y0_norm[0]), z=np.append(z0_norm, z0_norm[0]),
+            mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
+        
+        # 상단 외곽선
+        fig.add_trace(go.Scatter3d(
+            x=np.append(x1_norm, x1_norm[0]), y=np.append(y1_norm, y1_norm[0]), z=np.append(z1_norm, z1_norm[0]),
+            mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
+        
+        # 세로 연결선
+        for i in range(n):
+            fig.add_trace(go.Scatter3d(
+                x=[x0_norm[i], x1_norm[i]], y=[y0_norm[i], y1_norm[i]], z=[z0_norm[i], z1_norm[i]],
+                mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
+    except Exception:
+        pass
+    
+    # 센서 위치 추가 (온도분석 페이지와 동일한 방식)
+    try:
+        sensor_positions = get_sensor_positions(concrete_pk)
+        if sensor_positions:
+            sensor_xs, sensor_ys, sensor_zs, sensor_names = [], [], [], []
+            for sensor in sensor_positions:
+                # 센서 좌표도 정규화
+                if orig_x_max > orig_x_min:
+                    sensor_x_norm = (sensor["x"] - orig_x_min) / (orig_x_max - orig_x_min)
+                else:
+                    sensor_x_norm = sensor["x"]
+                if orig_y_max > orig_y_min:
+                    sensor_y_norm = (sensor["y"] - orig_y_min) / (orig_y_max - orig_y_min)
+                else:
+                    sensor_y_norm = sensor["y"]
+                if orig_z_max > orig_z_min:
+                    sensor_z_norm = (sensor["z"] - orig_z_min) / (orig_z_max - orig_z_min)
+                else:
+                    sensor_z_norm = sensor["z"]
+                sensor_xs.append(sensor_x_norm)
+                sensor_ys.append(sensor_y_norm)
+                sensor_zs.append(sensor_z_norm)
+                sensor_names.append(sensor["device_id"])
+            # 센서 위치를 빨간 점으로 표시 (크기 4)
+            fig.add_trace(go.Scatter3d(
+                x=sensor_xs, y=sensor_ys, z=sensor_zs,
+                mode='markers',
+                marker=dict(size=4, color='red', symbol='circle'),
+                text=sensor_names,
+                hoverinfo='text',
+                name='센서',
+                showlegend=False
+            ))
+    except Exception as e:
+        print(f"센서 위치 표기 중 오류: {e}")
+        pass
+    
+    return fig, time_info
 
 @callback(
     Output("play-state-stress", "data"),
@@ -3495,7 +3511,16 @@ def update_section_time_info_stress(current_file_title, active_tab):
                         })
                     ], style={"display": "inline"})
                     for prop in material_info.split(", ") if material_info]
-                ], style={"display": "inline"}) if material_info else html.Div()
+                ], style={"display": "inline"}) if material_info else html.Div(),
+                html.Div([
+                    html.I(className="fas fa-microchip", style={"color": "#10b981", "fontSize": "14px"}),
+                    html.Span(sensor_info, style={
+                        "color": "#111827",
+                        "fontSize": "12px",
+                        "fontWeight": "500",
+                        "marginLeft": "4px"
+                    })
+                ], style={"display": "inline"}) if sensor_info else html.Div()
             ], style={
                 "display": "flex",
                 "alignItems": "center",
