@@ -3796,35 +3796,51 @@ def update_node_tab_stress(store_data, x, y, z, selected_component, selected_row
         poly_nodes = np.array([[0,0]])
         poly_h = 1.0
     
-    # 3D 뷰 생성 (콘크리트 외곽선만 표시)
+    # 3D 뷰 생성 (콘크리트 외곽선 및 선택 위치/보조선 표시)
     try:
         # 콘크리트 차원 정보 가져오기
         dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
         poly_nodes = np.array(dims["nodes"])
         poly_h = float(dims["h"])
-        
-        # 콘크리트 외곽선 그리기
+        n = len(poly_nodes)
+        x0s, y0s = poly_nodes[:,0], poly_nodes[:,1]
+        z0s = np.zeros(n)
+        z1 = np.full(n, poly_h)
+        fig_3d = go.Figure()
+        # 아랫면
         fig_3d.add_trace(go.Scatter3d(
-            x=poly_nodes[:, 0],
-            y=poly_nodes[:, 1],
-            z=[0] * len(poly_nodes),
-            mode='lines',
-            line=dict(color='gray', width=2),
-            name='콘크리트 외곽선',
-            showlegend=False
-        ))
-        
-        # 선택된 위치 표시
+            x=np.append(x0s, x0s[0]), y=np.append(y0s, y0s[0]), z=np.append(z0s, z0s[0]),
+            mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
+        # 윗면
         fig_3d.add_trace(go.Scatter3d(
-            x=[coord_x],
-            y=[coord_y],
-            z=[coord_z],
-            mode='markers',
-            marker=dict(color='red', size=8),
-            name='선택 위치',
-            showlegend=False
-        ))
-        
+            x=np.append(x0s, x0s[0]), y=np.append(y0s, y0s[0]), z=np.append(z1, z1[0]),
+            mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
+        # 기둥
+        for i in range(n):
+            fig_3d.add_trace(go.Scatter3d(
+                x=[x0s[i], x0s[i]], y=[y0s[i], y0s[i]], z=[z0s[i], z1[i]],
+                mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
+        # 선택 위치 표시 + 보조선
+        if coord_x is not None and coord_y is not None and coord_z is not None:
+            # 점
+            fig_3d.add_trace(go.Scatter3d(
+                x=[coord_x], y=[coord_y], z=[coord_z],
+                mode='markers', marker=dict(size=6, color='red', symbol='circle'),
+                name='위치', showlegend=False, hoverinfo='text', text=['선택 위치']
+            ))
+            # 보조선: x/y/z축 평면까지
+            fig_3d.add_trace(go.Scatter3d(
+                x=[coord_x, coord_x], y=[coord_y, coord_y], z=[0, coord_z],
+                mode='lines', line=dict(width=2, color='gray', dash='dash'), showlegend=False, hoverinfo='skip'))
+            fig_3d.add_trace(go.Scatter3d(
+                x=[coord_x, coord_x], y=[coord_y, coord_y], z=[coord_z, poly_h],
+                mode='lines', line=dict(width=2, color='gray', dash='dash'), showlegend=False, hoverinfo='skip'))
+            fig_3d.add_trace(go.Scatter3d(
+                x=[coord_x, coord_x], y=[min(y0s), max(y0s)], z=[coord_z, coord_z],
+                mode='lines', line=dict(width=2, color='gray', dash='dash'), showlegend=False, hoverinfo='skip'))
+            fig_3d.add_trace(go.Scatter3d(
+                x=[min(x0s), max(x0s)], y=[coord_y, coord_y], z=[coord_z, coord_z],
+                mode='lines', line=dict(width=2, color='gray', dash='dash'), showlegend=False, hoverinfo='skip'))
         fig_3d.update_layout(
             scene=dict(
                 xaxis=dict(title="X (m)"),
