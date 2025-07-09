@@ -1342,12 +1342,6 @@ def create_3d_tab_content_stress(concrete_pk):
         
         # 숨겨진 컴포넌트들
         html.Div([
-            dcc.Store(id="stress-data-store", data=all_stress_data),
-            dcc.Store(id="current-stress-time-store", data=None),
-            dcc.Store(id="current-stress-file-title-store", data=None),
-            dcc.Store(id="unified-stress-colorbar-state", data=False),
-            dcc.Download(id="download-3d-stress-image"),
-            dcc.Download(id="download-current-frd"),
             # 삭제 확인 다이얼로그
             dcc.ConfirmDialog(
                 id="confirm-del-stress", 
