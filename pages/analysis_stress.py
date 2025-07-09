@@ -3139,6 +3139,17 @@ def delete_concrete_confirm_stress(_click, sel, tbl_data):
     prevent_initial_call=True,
 )
 def update_section_views_stress(store_value, x_val, y_val, z_val, unified_colorbar, selected_component, selected_rows, tbl_data):
+    # 컴포넌트가 존재하지 않을 때 기본값 처리
+    if x_val is None:
+        x_val = 0
+    if y_val is None:
+        y_val = 0
+    if z_val is None:
+        z_val = 0
+    if selected_component is None:
+        selected_component = "von_mises"
+    if unified_colorbar is None:
+        unified_colorbar = False
     time_idx = store_value if store_value is not None else 0
     # 이하 기존 코드 동일하게 유지
     if not selected_rows or not tbl_data:
@@ -4541,6 +4552,9 @@ def save_node_data_stress(n_clicks, selected_rows, tbl_data, x, y, z, selected_c
     Input("tbl-concrete-stress", "data"),
 )
 def sync_slider_value(max_value, active_tab, selected_rows, tbl_data):
+    # 컴포넌트가 존재하지 않을 때 기본값 처리
+    if max_value is None:
+        max_value = 5
     if active_tab != "tab-section-stress" or not selected_rows or not tbl_data:
         return 0
     return max_value
@@ -4551,6 +4565,8 @@ def sync_slider_value(max_value, active_tab, selected_rows, tbl_data):
     prevent_initial_call=True,
 )
 def user_move_slider(value):
+    if value is None:
+        return dash.no_update
     return value
 
 # UI 컴포넌트와 숨겨진 컴포넌트 동기화 콜백들
@@ -4561,6 +4577,8 @@ def user_move_slider(value):
 )
 def sync_ui_slider_to_hidden(ui_value):
     """UI 슬라이더 값을 숨겨진 슬라이더에 동기화"""
+    if ui_value is None:
+        return dash.no_update
     return ui_value
 
 @callback(
@@ -4585,6 +4603,8 @@ def sync_hidden_slider_to_ui(value, min_val, max_val, marks):
 )
 def sync_ui_x_input_to_hidden(ui_value):
     """UI X 입력값을 숨겨진 입력창에 동기화"""
+    if ui_value is None:
+        return dash.no_update
     return ui_value
 
 @callback(
@@ -4603,6 +4623,8 @@ def sync_hidden_x_input_to_ui(value):
 )
 def sync_ui_y_input_to_hidden(ui_value):
     """UI Y 입력값을 숨겨진 입력창에 동기화"""
+    if ui_value is None:
+        return dash.no_update
     return ui_value
 
 @callback(
@@ -4621,6 +4643,8 @@ def sync_hidden_y_input_to_ui(value):
 )
 def sync_ui_z_input_to_hidden(ui_value):
     """UI Z 입력값을 숨겨진 입력창에 동기화"""
+    if ui_value is None:
+        return dash.no_update
     return ui_value
 
 @callback(
@@ -4639,6 +4663,8 @@ def sync_hidden_z_input_to_ui(value):
 )
 def sync_ui_component_to_hidden(ui_value):
     """UI 응력 종류 선택값을 숨겨진 드롭다운에 동기화"""
+    if ui_value is None:
+        return dash.no_update
     return ui_value
 
 @callback(
