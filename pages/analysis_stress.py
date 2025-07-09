@@ -209,15 +209,16 @@ layout = dbc.Container(
                                 dbc.Button("삭제", id="btn-concrete-del-stress", color="danger", size="sm", className="px-3", disabled=True),
                             ], className="d-flex justify-content-center gap-2 mt-2"),
                         ])
-                    ])
-                ], style={
-                    "backgroundColor": "white",
-                    "padding": "20px",
-                    "borderRadius": "12px",
-                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
-                    "border": "1px solid #e2e8f0",
-                    "height": "fit-content"
-                })
+                    ]),
+                ])
+            ], style={
+                "backgroundColor": "white",
+                "padding": "20px",
+                "borderRadius": "12px",
+                "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
+                "border": "1px solid #e2e8f0",
+                "height": "fit-content"
+            })
             ], md=4),
             
             # 오른쪽 메인 콘텐츠 영역
@@ -308,14 +309,9 @@ layout = dbc.Container(
             ], md=8)
         ], className="g-4"),
         
-        # 숨겨진 컴포넌트들 (콜백용) - 온도분석과 동일하게 처리
+        # 숨겨진 컴포넌트들 (콜백 오류 방지용)
         html.Div([
-            # 단면도 탭 컴포넌트들 (온도분석과 동일)
-            dcc.Slider(
-                id="time-slider-section-stress", 
-                min=0, max=5, step=1, value=0, marks={},
-                updatemode='drag', persistence=False
-            ),
+            dcc.Slider(id="time-slider-section-stress", min=0, max=5, step=1, value=0, marks={}),
             dbc.Input(id="section-x-input-stress", type="number", value=None),
             dbc.Input(id="section-y-input-stress", type="number", value=None),
             dbc.Input(id="section-z-input-stress", type="number", value=None),
@@ -334,13 +330,9 @@ layout = dbc.Container(
             dcc.Interval(id="play-interval-section-stress", interval=1000, n_intervals=0, disabled=True),
             dbc.Button(id="btn-save-section-image-stress"),
             dbc.Button(id="btn-save-section-frd-stress"),
-            dcc.Download(id="download-section-image-stress"),
-            dcc.Download(id="download-section-frd-stress"),
             html.Div(id="section-time-info-stress"),
-            # 로딩 컴포넌트들 추가
             dcc.Loading(id="loading-btn-save-section-image-stress", type="circle"),
             dcc.Loading(id="loading-btn-save-section-frd-stress", type="circle"),
-            # 입체 탭 컴포넌트들도 추가 (콜백 오류 방지)
             dcc.Slider(id="time-slider-stress", min=0, max=5, step=1, value=0, marks={}),
             dbc.Button(id="btn-play-stress"),
             dbc.Button(id="btn-pause-stress"),
@@ -355,17 +347,13 @@ layout = dbc.Container(
             dbc.Button(id="btn-save-current-frd"),
             dcc.Graph(id="viewer-3d-stress-display"),
             html.Div(id="viewer-3d-stress-time-info"),
-            # 배속 버튼들 추가
             dbc.DropdownMenuItem(id="speed-1x-stress"),
             dbc.DropdownMenuItem(id="speed-2x-stress"),
             dbc.DropdownMenuItem(id="speed-4x-stress"),
             dbc.DropdownMenuItem(id="speed-8x-stress"),
-            # 로딩 컴포넌트들
             dcc.Loading(id="loading-btn-save-3d-stress-image", type="circle"),
             dcc.Loading(id="loading-btn-save-current-frd", type="circle"),
         ], style={"display": "none"}),
-        
-        # 콜백 오류 해결을 위한 필수 컴포넌트들 (제거됨 - 실제 탭에 포함됨)
     ]
 )
 
@@ -3011,14 +2999,7 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
     import dash
     # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
     if active_tab != "tab-section-stress":
-        empty_fig = go.Figure().add_annotation(
-            text="단면도 탭을 선택하세요.",
-            xref="paper", yref="paper",
-            x=0.5, y=0.5, showarrow=False
-        )
-        return (empty_fig, empty_fig, empty_fig, empty_fig, 
-                0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, 
-                "단면도 탭을 선택하세요.")
+        raise PreventUpdate
     
     # 컴포넌트가 존재하지 않을 때 기본값 처리
     if selected_component is None:
