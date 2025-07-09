@@ -3640,19 +3640,15 @@ def save_section_frd_stress(n_clicks, selected_rows, tbl_data, time_value):
     Output("btn-pause-section-stress", "disabled"),
     Input("btn-play-section-stress", "n_clicks"),
     State("play-state-section-stress", "data"),
-    State("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def start_section_playback_stress(n_clicks, play_state, active_tab):
+def start_section_playback_stress(n_clicks, play_state):
     """단면도 재생을 시작합니다."""
-    if active_tab != "tab-section-stress":
-        raise PreventUpdate
-    
     if not play_state:
         play_state = {"playing": False}
     
     play_state["playing"] = True
-    return play_state, False, True, False  # interval 활성화, 재생 버튼 비활성화, 정지 버튼 활성화
+    return play_state, False, True, False
 
 @callback(
     Output("play-state-section-stress", "data", allow_duplicate=True),
@@ -3661,19 +3657,15 @@ def start_section_playback_stress(n_clicks, play_state, active_tab):
     Output("btn-pause-section-stress", "disabled", allow_duplicate=True),
     Input("btn-pause-section-stress", "n_clicks"),
     State("play-state-section-stress", "data"),
-    State("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def stop_section_playback_stress(n_clicks, play_state, active_tab):
+def stop_section_playback_stress(n_clicks, play_state):
     """단면도 재생을 정지합니다."""
-    if active_tab != "tab-section-stress":
-        raise PreventUpdate
-    
     if not play_state:
         play_state = {"playing": False}
     
     play_state["playing"] = False
-    return play_state, True, False, True  # interval 비활성화, 재생 버튼 활성화, 정지 버튼 비활성화
+    return play_state, True, False, True
 
 @callback(
     Output("time-slider-section-stress", "value", allow_duplicate=True),
@@ -3682,94 +3674,53 @@ def stop_section_playback_stress(n_clicks, play_state, active_tab):
     State("speed-state-section-stress", "data"),
     State("time-slider-section-stress", "value"),
     State("time-slider-section-stress", "max"),
-    State("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def auto_play_section_slider_stress(n_intervals, play_state, speed_state, current_value, max_value, active_tab):
-    import dash
+def auto_play_section_slider_stress(n_intervals, play_state, speed_state, current_value, max_value):
     """단면도 자동 재생 슬라이더를 업데이트합니다."""
-    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
-    if active_tab != "tab-section-stress":
-        return dash.no_update
-    
     if not play_state or not play_state.get("playing", False):
-        return dash.no_update
+        raise PreventUpdate
     
     speed = speed_state.get("speed", 1) if speed_state else 1
     
     if current_value is None:
         current_value = 0
     
-    new_value = current_value + 1  # 항상 1씩 증가 (배속은 interval 간격으로 제어)
+    new_value = current_value + speed
     if new_value > max_value:
         new_value = 0  # 처음으로 돌아가기
     
     return new_value
 
-@callback(
-    Output("play-state-section-stress", "data", allow_duplicate=True),
-    Input("tabs-main-stress", "active_tab"),
-    prevent_initial_call=True,
-)
-def reset_section_play_state_on_tab_change_stress(active_tab):
-    """탭 변경 시 단면도 재생 상태를 리셋합니다."""
-    import dash
-    # 단면 탭이 아닌 다른 탭으로 변경될 때만 재생 상태 리셋
-    if active_tab != "tab-section-stress":
-        return {"playing": False}
-    else:
-        return dash.no_update
+
 
 @callback(
     Output("speed-state-section-stress", "data"),
-    Output("play-interval-section-stress", "interval"),
     Input("speed-dropdown-section-stress", "value"),
-    State("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def set_speed_section_stress(speed_value, active_tab):
+def set_speed_section_stress(speed_value):
     """단면도 재생 속도를 설정합니다."""
-    import dash
-    if active_tab != "tab-section-stress":
-        return dash.no_update, dash.no_update
-    
     if speed_value == "1x":
-        return {"speed": 1}, 1000  # 1초 간격
-    elif speed_value == "2x":
-        return {"speed": 2}, 500   # 0.5초 간격
-    elif speed_value == "4x":
-        return {"speed": 4}, 250   # 0.25초 간격
-    elif speed_value == "8x":
-        return {"speed": 8}, 125   # 0.125초 간격
-    
-    return {"speed": 1}, 1000
-
-@callback(
-    Output("speed-state-section-stress", "data", allow_duplicate=True),
-    Input("tabs-main-stress", "active_tab"),
-    prevent_initial_call=True,
-)
-def reset_speed_section_on_tab_change_stress(active_tab):
-    """탭 변경 시 단면도 속도를 리셋합니다."""
-    import dash
-    # 단면 탭이 아닌 다른 탭으로 변경될 때만 속도 리셋
-    if active_tab != "tab-section-stress":
         return {"speed": 1}
-    else:
-        return dash.no_update
+    elif speed_value == "2x":
+        return {"speed": 2}
+    elif speed_value == "4x":
+        return {"speed": 4}
+    elif speed_value == "8x":
+        return {"speed": 8}
+    
+    return {"speed": 1}
+
+
 
 @callback(
     Output("unified-stress-colorbar-section-state", "data"),
     Input("btn-unified-stress-colorbar-section", "value"),
-    State("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def toggle_unified_stress_colorbar_section_stress(switch_value, active_tab):
+def toggle_unified_stress_colorbar_section_stress(switch_value):
     """단면도 통합 컬러바를 토글합니다."""
-    import dash
-    if active_tab != "tab-section-stress":
-        return dash.no_update
-    
     return {"unified": switch_value} if switch_value is not None else {"unified": False}
 
 # ───────────────────── 노드별 탭 관련 콜백 함수들 ─────────────────────
