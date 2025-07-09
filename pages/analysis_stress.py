@@ -281,6 +281,9 @@ layout = dbc.Container(
 _stress_data_cache = {}
 _material_info_cache = {}
 
+# 전체 응력 범위 저장 (페이지 로딩 시 미리 계산)
+_global_stress_ranges = {}  # {concrete_pk: {component: (min, max), ...}}
+
 def read_frd_stress_data(frd_path):
     """FRD 파일에서 응력 데이터를 읽어옵니다. (캐싱 적용)"""
     # 캐시 확인
@@ -426,6 +429,58 @@ def get_frd_files(concrete_pk):
     
     frd_files = glob.glob(f"{frd_dir}/*.frd")
     return sorted(frd_files)
+
+def calculate_global_stress_ranges(concrete_pk):
+    """콘크리트의 모든 FRD 파일에서 전체 응력 범위를 미리 계산합니다."""
+    if concrete_pk in _global_stress_ranges:
+        return _global_stress_ranges[concrete_pk]
+    
+    frd_files = get_frd_files(concrete_pk)
+    if not frd_files:
+        return {}
+    
+    # 각 응력 성분별 전체 범위 계산
+    global_ranges = {
+        'von_mises': {'min': float('inf'), 'max': float('-inf')},
+        'SXX': {'min': float('inf'), 'max': float('-inf')},
+        'SYY': {'min': float('inf'), 'max': float('-inf')},
+        'SZZ': {'min': float('inf'), 'max': float('-inf')},
+        'SXY': {'min': float('inf'), 'max': float('-inf')},
+        'SYZ': {'min': float('inf'), 'max': float('-inf')},
+        'SZX': {'min': float('inf'), 'max': float('-inf')}
+    }
+    
+    for frd_file in frd_files:
+        stress_data = read_frd_stress_data(frd_file)
+        if not stress_data or not stress_data['stress_values']:
+            continue
+        
+        # von Mises 응력 범위
+        if stress_data['stress_values']:
+            von_mises_values = list(stress_data['stress_values'][0].values())
+            von_mises_gpa = np.array(von_mises_values) / 1e9
+            file_min, file_max = np.nanmin(von_mises_gpa), np.nanmax(von_mises_gpa)
+            global_ranges['von_mises']['min'] = min(global_ranges['von_mises']['min'], file_min)
+            global_ranges['von_mises']['max'] = max(global_ranges['von_mises']['max'], file_max)
+        
+        # 각 응력 성분별 범위
+        for component in ['SXX', 'SYY', 'SZZ', 'SXY', 'SYZ', 'SZX']:
+            if component in stress_data.get('stress_components', {}):
+                component_values = list(stress_data['stress_components'][component].values())
+                component_gpa = np.array(component_values) / 1e9
+                file_min, file_max = np.nanmin(component_gpa), np.nanmax(component_gpa)
+                global_ranges[component]['min'] = min(global_ranges[component]['min'], file_min)
+                global_ranges[component]['max'] = max(global_ranges[component]['max'], file_max)
+    
+    # 무한대 값이 있으면 0으로 설정
+    for component in global_ranges:
+        if global_ranges[component]['min'] == float('inf'):
+            global_ranges[component]['min'] = 0
+        if global_ranges[component]['max'] == float('-inf'):
+            global_ranges[component]['max'] = 0
+    
+    _global_stress_ranges[concrete_pk] = global_ranges
+    return global_ranges
 
 def parse_material_info_from_inp_cached(inp_file_path):
     """INP 파일에서 물성치 정보를 캐싱하여 추출합니다."""
@@ -1360,27 +1415,22 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
     # 전체 응력바 통일 상태 확인
     use_unified_colorbar = unified_colorbar or (isinstance(unified_state, dict) and unified_state.get("unified", False))
     
-    # 통일된 응력바 범위 계산 (모든 파일의 응력값을 고려)
-    global_stress_min = float('inf')
-    global_stress_max = float('-inf')
+    # 미리 계산된 전체 응력 범위 사용
+    global_stress_min = None
+    global_stress_max = None
     
     if use_unified_colorbar:
-        for frd_file in frd_files:
-            stress_data = read_frd_stress_data(frd_file)
-            if stress_data and stress_data['stress_values']:
-                # 선택된 응력 성분에 따라 값 추출
-                if selected_component == "von_mises":
-                    stress_values = list(stress_data['stress_values'][0].values())
-                else:
-                    if selected_component in stress_data.get('stress_components', {}):
-                        stress_values = list(stress_data['stress_components'][selected_component].values())
-                    else:
-                        stress_values = list(stress_data['stress_values'][0].values())
-                
-                stress_values_gpa = np.array(stress_values) / 1e9
-                file_min, file_max = np.nanmin(stress_values_gpa), np.nanmax(stress_values_gpa)
-                global_stress_min = min(global_stress_min, file_min)
-                global_stress_max = max(global_stress_max, file_max)
+        # 미리 계산된 전체 범위 가져오기
+        global_ranges = _global_stress_ranges.get(concrete_pk, {})
+        if selected_component in global_ranges:
+            global_stress_min = global_ranges[selected_component]['min']
+            global_stress_max = global_ranges[selected_component]['max']
+        else:
+            # 캐시에 없으면 즉시 계산
+            global_ranges = calculate_global_stress_ranges(concrete_pk)
+            if selected_component in global_ranges:
+                global_stress_min = global_ranges[selected_component]['min']
+                global_stress_max = global_ranges[selected_component]['max']
     
     # 선택된 시간에 해당하는 FRD 파일
     if time_idx is not None and time_idx < len(frd_files):
@@ -1946,13 +1996,23 @@ def parse_material_info_from_inp(lines):
     prevent_initial_call=True,
 )
 def on_concrete_select_stress(selected_rows, pathname, tbl_data):
-    """콘크리트 선택 시 버튼 상태를 업데이트합니다."""
+    """콘크리트 선택 시 버튼 상태를 업데이트하고 전체 응력 범위를 미리 계산합니다."""
     # 응력 분석 페이지에서만 실행
     if '/stress' not in pathname:
         raise PreventUpdate
     
     if not selected_rows or not tbl_data:
         return True, True
+    
+    # 선택된 콘크리트의 전체 응력 범위 미리 계산
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    
+    # 백그라운드에서 전체 범위 계산 (캐시에 저장됨)
+    try:
+        calculate_global_stress_ranges(concrete_pk)
+    except Exception as e:
+        print(f"전체 응력 범위 계산 중 오류: {e}")
     
     # 선택된 콘크리트가 있으면 버튼 활성화
     return False, False
