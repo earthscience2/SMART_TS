@@ -3516,15 +3516,8 @@ def update_section_time_info_stress(current_file_title, active_tab):
                     ], style={"display": "inline"})
                     for prop in material_info.split(", ") if material_info]
                 ], style={"display": "inline"}) if material_info else html.Div(),
-                html.Div([
-                    html.I(className="fas fa-microchip", style={"color": "#10b981", "fontSize": "14px"}),
-                    html.Span(sensor_info, style={
-                        "color": "#111827",
-                        "fontSize": "12px",
-                        "fontWeight": "500",
-                        "marginLeft": "4px"
-                    })
-                ], style={"display": "inline"}) if sensor_info else html.Div()
+                # 센서 정보는 현재 구현되지 않으므로 제거
+                html.Div()
             ], style={
                 "display": "flex",
                 "alignItems": "center",
@@ -3742,10 +3735,14 @@ def save_section_frd_stress(n_clicks, selected_rows, tbl_data, time_value):
     Output("btn-pause-section-stress", "disabled"),
     Input("btn-play-section-stress", "n_clicks"),
     State("play-state-section-stress", "data"),
+    State("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def start_section_playback_stress(n_clicks, play_state):
+def start_section_playback_stress(n_clicks, play_state, active_tab):
     """단면도 재생을 시작합니다."""
+    if active_tab != "tab-section-stress":
+        raise PreventUpdate
+    
     if not play_state:
         play_state = {"playing": False}
     
@@ -3759,10 +3756,14 @@ def start_section_playback_stress(n_clicks, play_state):
     Output("btn-pause-section-stress", "disabled", allow_duplicate=True),
     Input("btn-pause-section-stress", "n_clicks"),
     State("play-state-section-stress", "data"),
+    State("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def stop_section_playback_stress(n_clicks, play_state):
+def stop_section_playback_stress(n_clicks, play_state, active_tab):
     """단면도 재생을 정지합니다."""
+    if active_tab != "tab-section-stress":
+        raise PreventUpdate
+    
     if not play_state:
         play_state = {"playing": False}
     
@@ -3780,8 +3781,7 @@ def stop_section_playback_stress(n_clicks, play_state):
     prevent_initial_call=True,
 )
 def auto_play_section_slider_stress(n_intervals, play_state, speed_state, current_value, max_value, active_tab):
-    """단면도 자동 재생으로 슬라이더를 업데이트합니다."""
-    # 단면 탭이 활성화되어 있고, 재생 상태가 True일 때만 실행
+    """단면도 자동 재생 슬라이더를 업데이트합니다."""
     if active_tab != "tab-section-stress":
         raise PreventUpdate
     
@@ -3822,10 +3822,14 @@ def reset_section_play_state_on_tab_change_stress(active_tab):
 @callback(
     Output("speed-state-section-stress", "data"),
     Input("speed-dropdown-section-stress", "value"),
+    State("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def set_speed_section_stress(speed_value):
+def set_speed_section_stress(speed_value, active_tab):
     """단면도 재생 속도를 설정합니다."""
+    if active_tab != "tab-section-stress":
+        raise PreventUpdate
+    
     if speed_value == "1x":
         return {"speed": 1}
     elif speed_value == "2x":
@@ -3853,10 +3857,14 @@ def reset_speed_section_on_tab_change_stress(active_tab):
 @callback(
     Output("unified-stress-colorbar-section-state", "data"),
     Input("btn-unified-stress-colorbar-section", "value"),
+    State("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
-def toggle_unified_stress_colorbar_section_stress(switch_value):
-    """단면도 응력바 통일 토글을 처리합니다."""
+def toggle_unified_stress_colorbar_section_stress(switch_value, active_tab):
+    """단면도 통합 컬러바를 토글합니다."""
+    if active_tab != "tab-section-stress":
+        raise PreventUpdate
+    
     return {"unified": switch_value} if switch_value is not None else {"unified": False}
 
 # ───────────────────── 노드별 탭 관련 콜백 함수들 ─────────────────────
