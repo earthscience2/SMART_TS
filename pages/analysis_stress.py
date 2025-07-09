@@ -276,7 +276,21 @@ layout = dbc.Container(
                     })
                 ])
             ], md=8)
-        ], className="g-4")
+        ], className="g-4"),
+        
+        # 숨겨진 컴포넌트들 (콜백용)
+        html.Div([
+            # 단면 탭 관련 컴포넌트들
+            dcc.Interval(id="play-interval-section-stress", interval=1000, disabled=True),
+            dcc.Slider(id="time-slider-section-stress", min=0, max=5, step=1, value=0, marks={}, updatemode='drag', persistence=False),
+            dbc.Input(id="section-x-input-stress", type="number", value=None),
+            dbc.Input(id="section-y-input-stress", type="number", value=None),
+            dbc.Input(id="section-z-input-stress", type="number", value=None),
+            dcc.Graph(id="viewer-3d-section-stress"),
+            dcc.Graph(id="viewer-section-x-stress"),
+            dcc.Graph(id="viewer-section-y-stress"),
+            dcc.Graph(id="viewer-section-z-stress"),
+        ], style={"display": "none"})
     ]
 )
 
