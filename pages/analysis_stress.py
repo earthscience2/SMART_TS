@@ -625,7 +625,40 @@ def switch_tab_stress(active_tab, selected_rows, pathname, tbl_data):
         raise PreventUpdate
     
     if not selected_rows or not tbl_data:
-        return html.Div("콘크리트를 선택하세요.", className="text-center text-muted mt-5")
+        return html.Div([
+            # 안내 메시지 (노션 스타일)
+            html.Div([
+                html.Div([
+                    html.I(className="fas fa-mouse-pointer fa-2x", style={"color": "#3b82f6", "marginBottom": "16px"}),
+                    html.H5("콘크리트를 선택해주세요", style={
+                        "color": "#1f2937",
+                        "fontWeight": "600",
+                        "lineHeight": "1.6",
+                        "margin": "0",
+                        "marginBottom": "8px"
+                    }),
+                    html.P("왼쪽 콘크리트 목록에서 분석할 콘크리트를 선택하시면", style={
+                        "color": "#6b7280",
+                        "fontSize": "14px",
+                        "margin": "0",
+                        "lineHeight": "1.5"
+                    }),
+                    html.P("분석 결과를 확인할 수 있습니다.", style={
+                        "color": "#6b7280",
+                        "fontSize": "14px",
+                        "margin": "0",
+                        "lineHeight": "1.5"
+                    })
+                ], style={
+                    "textAlign": "center",
+                    "padding": "80px 40px",
+                    "backgroundColor": "#f8fafc",
+                    "borderRadius": "12px",
+                    "border": "1px solid #e2e8f0",
+                    "marginTop": "40px"
+                })
+            ])
+        ])
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
@@ -740,23 +773,16 @@ def create_3d_tab_content_stress(concrete_pk):
                         
                         initial_time_info = html.Div([
                             html.Div([
+                                # 시간 정보와 응력 통계를 한 줄에 표시
                                 html.Div([
                                     html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "14px"}),
                                     html.Span(formatted_time, style={
                                         "fontWeight": "600",
                                         "color": "#1f2937",
                                         "fontSize": "14px",
-                                        "marginLeft": "8px"
-                                    })
-                                ], style={
-                                    "display": "flex",
-                                    "alignItems": "center",
-                                    "marginBottom": "1px" if material_info and material_info != "물성치 정보 없음" else "0",
-                                    "marginTop": "12px"
-                                }),
-                                
-                                # 응력 통계 정보 (작은 글씨로)
-                                html.Div([
+                                        "marginLeft": "8px",
+                                        "marginRight": "16px"
+                                    }),
                                     html.Span(f"최저: {current_min:.2f}GPa", style={
                                         "color": "#6b7280",
                                         "fontSize": "11px",
@@ -774,7 +800,8 @@ def create_3d_tab_content_stress(concrete_pk):
                                 ], style={
                                     "display": "flex",
                                     "alignItems": "center",
-                                    "marginBottom": "8px"
+                                    "marginBottom": "8px" if material_info and material_info != "물성치 정보 없음" else "0",
+                                    "marginTop": "12px"
                                 }),
                                 
                                 # 물성치 정보 섹션 (있는 경우만, 인라인 형태)
@@ -1361,24 +1388,16 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
             time_info = html.Div([
                 # 통합 정보 카드 (노션 스타일)
                 html.Div([
-                    # 시간 정보 섹션
+                    # 시간 정보와 응력 통계를 한 줄에 표시
                     html.Div([
                         html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "14px"}),
                         html.Span(formatted_time, style={
                             "fontWeight": "600",
                             "color": "#1f2937",
                             "fontSize": "14px",
-                            "marginLeft": "8px"
-                        })
-                    ], style={
-                        "display": "flex",
-                        "alignItems": "center",
-                        "marginBottom": "1px" if material_info and material_info != "물성치 정보 없음" else "0",
-                        "marginTop": "12px"
-                    }),
-                    
-                    # 응력 통계 정보 (작은 글씨로)
-                    html.Div([
+                            "marginLeft": "8px",
+                            "marginRight": "16px"
+                        }),
                         html.Span(f"최저: {current_min:.2f}GPa", style={
                             "color": "#6b7280",
                             "fontSize": "11px",
@@ -1396,7 +1415,8 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
                     ], style={
                         "display": "flex",
                         "alignItems": "center",
-                        "marginBottom": "8px"
+                        "marginBottom": "8px" if material_info and material_info != "물성치 정보 없음" else "0",
+                        "marginTop": "12px"
                     }),
                     
                     # 물성치 정보 섹션 (있는 경우만, 인라인 형태)
