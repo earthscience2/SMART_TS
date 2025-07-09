@@ -3550,7 +3550,7 @@ def update_section_time_info_stress(current_file_title, active_tab):
     Output("time-slider-section-stress", "marks"),
     Input("tabs-main-stress", "active_tab"),
     Input("tbl-concrete-stress", "selected_rows"),
-    Input("tbl-concrete-stress", "data"),
+    Input("tbl-concrete-stress", "data"),  # 반드시 Input으로 data를 받음
     prevent_initial_call=True,
 )
 def update_section_slider_stress(active_tab, selected_rows, tbl_data):
@@ -3586,6 +3586,7 @@ def update_section_slider_stress(active_tab, selected_rows, tbl_data):
             if date_str not in seen_dates:
                 marks[i] = date_str
                 seen_dates.add(date_str)
+        # value를 항상 max로 반환
         return 0, max_idx, max_idx, marks
     except Exception as e:
         print(f"슬라이더 초기화 오류: {e}")
