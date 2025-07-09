@@ -308,26 +308,8 @@ layout = dbc.Container(
             ], md=8)
         ], className="g-4"),
         
-        # 숨겨진 컴포넌트들 (콜백용)
+        # 숨겨진 컴포넌트들 (콜백용) - 단면 탭 컴포넌트들은 실제 탭에 포함됨
         html.Div([
-            # 단면 탭 관련 컴포넌트들
-            dcc.Interval(id="play-interval-section-stress", interval=1000, disabled=True),
-            dcc.Slider(id="time-slider-section-stress", min=0, max=5, step=1, value=0, marks={}, updatemode='drag', persistence=False),
-            dbc.Input(id="section-x-input-stress", type="number", value=None),
-            dbc.Input(id="section-y-input-stress", type="number", value=None),
-            dbc.Input(id="section-z-input-stress", type="number", value=None),
-            dcc.Graph(id="viewer-3d-section-stress"),
-            dcc.Graph(id="viewer-section-x-stress"),
-            dcc.Graph(id="viewer-section-y-stress"),
-            dcc.Graph(id="viewer-section-z-stress"),
-            # 단면 탭 버튼들
-            dbc.Button(id="btn-play-section-stress", n_clicks=0),
-            dbc.Button(id="btn-pause-section-stress", n_clicks=0),
-            dcc.Dropdown(id="speed-dropdown-section-stress", value="1x"),
-            dcc.Dropdown(id="stress-component-selector-section", value="von_mises"),
-            # 시간 정보 표시
-            html.Div(id="section-time-info-stress"),
-            
             # 노드별 탭 관련 컴포넌트들
             dbc.Input(id="node-x-input-stress", type="number", value=None),
             dbc.Input(id="node-y-input-stress", type="number", value=None),
@@ -338,20 +320,11 @@ layout = dbc.Container(
             
             # 입체 탭 관련 컴포넌트들
             dcc.Graph(id="viewer-3d-stress-display"),
-            dcc.Store(id="section-slider-value-store", data=None),
             
             # UI 컴포넌트들은 메인 레이아웃에 직접 추가됨
         ], style={"display": "none"}),
         
-        # 콜백 오류 해결을 위한 필수 컴포넌트들
-        html.Div([
-            dcc.Slider(id="section-slider-ui", min=0, max=5, step=1, value=0, marks={}),
-            dbc.Input(id="section-x-input-ui", type="number", value=None),
-            dbc.Input(id="section-y-input-ui", type="number", value=None),
-            dbc.Input(id="section-z-input-ui", type="number", value=None),
-            dcc.Dropdown(id="stress-component-selector-ui", value="von_mises"),
-            dbc.Switch(id="btn-unified-stress-colorbar-section", value=False)
-        ], style={"display": "none"})
+        # 콜백 오류 해결을 위한 필수 컴포넌트들 (제거됨 - 실제 탭에 포함됨)
     ]
 )
 
@@ -1571,6 +1544,37 @@ def create_3d_stress_figure(stress_data, selected_component="von_mises"):
 
 def create_section_tab_content_stress(concrete_pk):
     """단면 탭 콘텐츠를 생성합니다."""
+    # 기본 슬라이더 설정
+    slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
+    
+    # FRD 파일이 있으면 시간 정보 설정
+    frd_files = get_frd_files(concrete_pk)
+    if frd_files:
+        # 시간 파싱
+        times = []
+        for f in frd_files:
+            try:
+                time_str = os.path.basename(f).split(".")[0]
+                dt = datetime.strptime(time_str, "%Y%m%d%H")
+                times.append(dt)
+            except:
+                continue
+        
+        if times:
+            max_idx = len(times) - 1
+            slider_min, slider_max = 0, max_idx
+            slider_value = max_idx  # 최신 파일로 초기화
+            
+            # 슬라이더 마크 설정
+            marks = {}
+            seen_dates = set()
+            for i, dt in enumerate(times):
+                date_str = dt.strftime("%m/%d")
+                if date_str not in seen_dates:
+                    marks[i] = date_str
+                    seen_dates.add(date_str)
+            slider_marks = marks
+    
     return html.Div([
         # 시간 컨트롤 섹션 (노션 스타일) - 독립적인 단면도용 슬라이더
         html.Div([
@@ -1582,17 +1586,16 @@ def create_section_tab_content_stress(concrete_pk):
                     "fontSize": "14px"
                 }),
                 dcc.Slider(
-                    id="section-slider-ui",  # UI용 슬라이더
-                    min=0,
-                    max=5,
+                    id="time-slider-section-stress",
+                    min=slider_min if slider_min is not None else 0,
+                    max=slider_max if slider_max is not None and slider_max > 0 else 5,
                     step=1,
-                    value=None,  # value는 Store에서 콜백으로 세팅
-                    marks={},
+                    value=slider_value if slider_value is not None else 0,
+                    marks=slider_marks if isinstance(slider_marks, dict) else {},
+                    tooltip={"placement": "bottom", "always_visible": True},
                     updatemode='drag',
-                    persistence=False,
-                    tooltip={"placement": "bottom", "always_visible": True}
+                    persistence=False
                 ),
-                
                 # 재생/정지/배속 버튼 추가 (단면도용)
                 html.Div([
                     # 재생/정지 버튼 (아이콘만)
@@ -1643,12 +1646,8 @@ def create_section_tab_content_stress(concrete_pk):
                         value="1x",
                         id="speed-dropdown-section-stress",
                         style={
-                            "width": "32px",
-                            "height": "32px",
-                            "padding": "0",
-                            "display": "flex",
-                            "alignItems": "center",
-                            "justifyContent": "center"
+                            "width": "60px",
+                            "fontSize": "12px"
                         },
                         clearable=False,
                         searchable=False
@@ -1659,16 +1658,19 @@ def create_section_tab_content_stress(concrete_pk):
                     "justifyContent": "center",
                     "marginTop": "12px"
                 }),
-                
-                # 자동 재생 인터벌 (기본적으로 비활성화)
+                # 재생 상태 표시용 Store (단면도용)
+                dcc.Store(id="play-state-section-stress", data={"playing": False}),
+                # 배속 상태 표시용 Store (단면도용)
+                dcc.Store(id="speed-state-section-stress", data={"speed": 1}),
+                # 자동 재생용 Interval (단면도용)
                 dcc.Interval(
                     id="play-interval-section-stress",
-                    interval=1000,
-                    disabled=True,
-                    n_intervals=0
+                    interval=1000,  # 1초마다 (기본값)
+                    n_intervals=0,
+                    disabled=True
                 ),
             ], style={
-                "padding": "20px",
+                "padding": "16px 20px",
                 "backgroundColor": "#f9fafb",
                 "borderRadius": "8px",
                 "border": "1px solid #e5e7eb",
@@ -1764,7 +1766,7 @@ def create_section_tab_content_stress(concrete_pk):
                                     })
                                 ], style={"marginBottom": "4px"}),
                                 dbc.Input(
-                                    id="section-x-input-ui",  # UI용 입력창
+                                    id="section-x-input-stress",
                                     type="number", 
                                     step=0.1, 
                                     value=None,
@@ -1793,7 +1795,7 @@ def create_section_tab_content_stress(concrete_pk):
                                     })
                                 ], style={"marginBottom": "4px"}),
                                 dbc.Input(
-                                    id="section-y-input-ui",  # UI용 입력창
+                                    id="section-y-input-stress",
                                     type="number", 
                                     step=0.1, 
                                     value=None,
@@ -1822,7 +1824,7 @@ def create_section_tab_content_stress(concrete_pk):
                                     })
                                 ], style={"marginBottom": "4px"}),
                                 dbc.Input(
-                                    id="section-z-input-ui",  # UI용 입력창
+                                    id="section-z-input-stress",
                                     type="number", 
                                     step=0.1,
                                     value=None,
@@ -1888,7 +1890,7 @@ def create_section_tab_content_stress(concrete_pk):
                         "marginRight": "8px"
                     }),
                     dcc.Dropdown(
-                        id="stress-component-selector-ui",  # UI용 드롭다운
+                        id="stress-component-selector-section",
                         options=[
                             {"label": "von Mises 응력", "value": "von_mises"},
                             {"label": "SXX (X방향 정응력)", "value": "SXX"},
@@ -3120,7 +3122,6 @@ def delete_concrete_confirm_stress(_click, sel, tbl_data):
         return f"{concrete_pk} 삭제 완료", "success", True, updated_data
     except Exception as e:
         return f"삭제 실패: {e}", "danger", True, dash.no_update
-
 # ───────────────────── 단면 탭 관련 콜백 함수들 ─────────────────────
 
 @callback(
@@ -3132,7 +3133,7 @@ def delete_concrete_confirm_stress(_click, sel, tbl_data):
     Output("section-y-input-stress", "min"), Output("section-y-input-stress", "max"), Output("section-y-input-stress", "value"),
     Output("section-z-input-stress", "min"), Output("section-z-input-stress", "max"), Output("section-z-input-stress", "value"),
     Output("current-stress-file-title-store", "data", allow_duplicate=True),
-    Input("section-slider-value-store", "data"),  # Store에서 value를 받음
+    Input("time-slider-section-stress", "value"),  # 실제 슬라이더 ID 사용
     Input("section-x-input-stress", "value"),
     Input("section-y-input-stress", "value"),
     Input("section-z-input-stress", "value"),
@@ -3143,7 +3144,7 @@ def delete_concrete_confirm_stress(_click, sel, tbl_data):
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def update_section_views_stress(store_value, x_val, y_val, z_val, unified_colorbar, selected_component, active_tab, selected_rows, tbl_data):
+def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar, selected_component, active_tab, selected_rows, tbl_data):
     import dash
     # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
     if active_tab != "tab-section-stress":
@@ -3167,7 +3168,7 @@ def update_section_views_stress(store_value, x_val, y_val, z_val, unified_colorb
         selected_component = "von_mises"
     if unified_colorbar is None:
         unified_colorbar = False
-    time_idx = store_value if store_value is not None else 0
+    time_idx = time_idx if time_idx is not None else 0
     # 이하 기존 코드 동일하게 유지
     if not selected_rows or not tbl_data:
         empty_fig = go.Figure().add_annotation(
@@ -3585,7 +3586,7 @@ def update_section_time_info_stress(current_file_title, active_tab):
     Output("time-slider-section-stress", "marks"),
     Input("tabs-main-stress", "active_tab"),
     Input("tbl-concrete-stress", "selected_rows"),
-    Input("tbl-concrete-stress", "data"),  # 반드시 Input으로 data를 받음
+    State("tbl-concrete-stress", "data"),  # 안정성을 위해 State로 변경
     prevent_initial_call=True,
 )
 def update_section_slider_stress(active_tab, selected_rows, tbl_data):
@@ -3638,7 +3639,7 @@ def update_section_slider_stress(active_tab, selected_rows, tbl_data):
     State("viewer-section-z-stress", "figure"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
-    State("section-slider-ui", "value"),
+    State("time-slider-section-stress", "value"),
     prevent_initial_call=True,
 )
 def save_section_image_stress(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl_data, time_value):
@@ -3710,7 +3711,7 @@ def save_section_image_stress(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_ro
     Input("btn-save-section-frd-stress", "n_clicks"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
-    State("section-slider-ui", "value"),
+    State("time-slider-section-stress", "value"),
     prevent_initial_call=True,
 )
 def save_section_frd_stress(n_clicks, selected_rows, tbl_data, time_value):
@@ -3801,12 +3802,12 @@ def stop_section_playback_stress(n_clicks, play_state, active_tab):
     return play_state
 
 @callback(
-    Output("section-slider-ui", "value", allow_duplicate=True),
+    Output("time-slider-section-stress", "value", allow_duplicate=True),
     Input("play-interval-section-stress", "n_intervals"),
     State("play-state-section-stress", "data"),
     State("speed-state-section-stress", "data"),
-    State("section-slider-ui", "value"),
-    State("section-slider-ui", "max"),
+    State("time-slider-section-stress", "value"),
+    State("time-slider-section-stress", "max"),
     State("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
@@ -4567,194 +4568,9 @@ def save_node_data_stress(n_clicks, selected_rows, tbl_data, x, y, z, selected_c
         print(f"데이터 저장 오류: {e}")
         return None
 
-@callback(
-    Output("section-slider-value-store", "data"),
-    Input("section-slider-ui", "max"),
-    Input("tabs-main-stress", "active_tab"),
-    Input("tbl-concrete-stress", "selected_rows"),
-    Input("tbl-concrete-stress", "data"),
-)
-def sync_slider_value(max_value, active_tab, selected_rows, tbl_data):
-    import dash
-    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
-    if active_tab != "tab-section-stress":
-        return dash.no_update
-    if max_value is None:
-        max_value = 5
-    if not selected_rows or not tbl_data:
-        return 0
-    return max_value
+# Store 관련 콜백들 (제거됨 - 실제 탭에 컴포넌트들이 포함됨)
 
-@callback(
-    Output("section-slider-value-store", "data", allow_duplicate=True),
-    Input("section-slider-ui", "value"),
-    Input("tabs-main-stress", "active_tab"),
-    prevent_initial_call=True,
-)
-def user_move_slider(value, active_tab):
-    import dash
-    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
-    if active_tab != "tab-section-stress":
-        return dash.no_update
-    if value is None:
-        return dash.no_update
-    return value
+# UI 컴포넌트와 숨겨진 컴포넌트 동기화 콜백들 (제거됨 - 실제 탭에 컴포넌트들이 포함됨)
 
-# UI 컴포넌트와 숨겨진 컴포넌트 동기화 콜백들
-@callback(
-    Output("time-slider-section-stress", "value", allow_duplicate=True),
-    Input("section-slider-ui", "value"),
-    Input("tabs-main-stress", "active_tab"),
-    prevent_initial_call=True,
-)
-def sync_ui_slider_to_hidden(ui_value, active_tab):
-    """UI 슬라이더 값을 숨겨진 슬라이더에 동기화"""
-    import dash
-    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
-    if active_tab != "tab-section-stress":
-        return dash.no_update
-    if ui_value is None:
-        return dash.no_update
-    return ui_value
-
-@callback(
-    Output("section-slider-ui", "value", allow_duplicate=True),
-    Output("section-slider-ui", "min", allow_duplicate=True),
-    Output("section-slider-ui", "max", allow_duplicate=True),
-    Output("section-slider-ui", "marks", allow_duplicate=True),
-    Input("time-slider-section-stress", "value"),
-    Input("time-slider-section-stress", "min"),
-    Input("time-slider-section-stress", "max"),
-    Input("time-slider-section-stress", "marks"),
-    Input("tabs-main-stress", "active_tab"),
-    prevent_initial_call=True,
-)
-def sync_hidden_slider_to_ui(value, min_val, max_val, marks, active_tab):
-    """숨겨진 슬라이더 값을 UI 슬라이더에 동기화"""
-    import dash
-    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
-    if active_tab != "tab-section-stress":
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
-    return value, min_val, max_val, marks
-
-@callback(
-    Output("section-x-input-stress", "value", allow_duplicate=True),
-    Input("section-x-input-ui", "value"),
-    Input("tabs-main-stress", "active_tab"),
-    prevent_initial_call=True,
-)
-def sync_ui_x_input_to_hidden(ui_value, active_tab):
-    """UI X 입력값을 숨겨진 입력창에 동기화"""
-    import dash
-    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
-    if active_tab != "tab-section-stress":
-        return dash.no_update
-    if ui_value is None:
-        return dash.no_update
-    return ui_value
-
-@callback(
-    Output("section-x-input-ui", "value", allow_duplicate=True),
-    Input("section-x-input-stress", "value"),
-    Input("tabs-main-stress", "active_tab"),
-    prevent_initial_call=True,
-)
-def sync_hidden_x_input_to_ui(value, active_tab):
-    """숨겨진 X 입력값을 UI 입력창에 동기화"""
-    import dash
-    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
-    if active_tab != "tab-section-stress":
-        return dash.no_update
-    return value
-
-@callback(
-    Output("section-y-input-stress", "value", allow_duplicate=True),
-    Input("section-y-input-ui", "value"),
-    Input("tabs-main-stress", "active_tab"),
-    prevent_initial_call=True,
-)
-def sync_ui_y_input_to_hidden(ui_value, active_tab):
-    """UI Y 입력값을 숨겨진 입력창에 동기화"""
-    import dash
-    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
-    if active_tab != "tab-section-stress":
-        return dash.no_update
-    if ui_value is None:
-        return dash.no_update
-    return ui_value
-
-@callback(
-    Output("section-y-input-ui", "value", allow_duplicate=True),
-    Input("section-y-input-stress", "value"),
-    Input("tabs-main-stress", "active_tab"),
-    prevent_initial_call=True,
-)
-def sync_hidden_y_input_to_ui(value, active_tab):
-    """숨겨진 Y 입력값을 UI 입력창에 동기화"""
-    import dash
-    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
-    if active_tab != "tab-section-stress":
-        return dash.no_update
-    return value
-
-@callback(
-    Output("section-z-input-stress", "value", allow_duplicate=True),
-    Input("section-z-input-ui", "value"),
-    Input("tabs-main-stress", "active_tab"),
-    prevent_initial_call=True,
-)
-def sync_ui_z_input_to_hidden(ui_value, active_tab):
-    """UI Z 입력값을 숨겨진 입력창에 동기화"""
-    import dash
-    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
-    if active_tab != "tab-section-stress":
-        return dash.no_update
-    if ui_value is None:
-        return dash.no_update
-    return ui_value
-
-@callback(
-    Output("section-z-input-ui", "value", allow_duplicate=True),
-    Input("section-z-input-stress", "value"),
-    Input("tabs-main-stress", "active_tab"),
-    prevent_initial_call=True,
-)
-def sync_hidden_z_input_to_ui(value, active_tab):
-    """숨겨진 Z 입력값을 UI 입력창에 동기화"""
-    import dash
-    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
-    if active_tab != "tab-section-stress":
-        return dash.no_update
-    return value
-
-@callback(
-    Output("stress-component-selector-section", "value", allow_duplicate=True),
-    Input("stress-component-selector-ui", "value"),
-    Input("tabs-main-stress", "active_tab"),
-    prevent_initial_call=True,
-)
-def sync_ui_component_to_hidden(ui_value, active_tab):
-    """UI 응력 종류 선택값을 숨겨진 드롭다운에 동기화"""
-    import dash
-    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
-    if active_tab != "tab-section-stress":
-        return dash.no_update
-    if ui_value is None:
-        return dash.no_update
-    return ui_value
-
-@callback(
-    Output("stress-component-selector-ui", "value", allow_duplicate=True),
-    Input("stress-component-selector-section", "value"),
-    Input("tabs-main-stress", "active_tab"),
-    prevent_initial_call=True,
-)
-def sync_hidden_component_to_ui(value, active_tab):
-    """숨겨진 응력 종류 선택값을 UI 드롭다운에 동기화"""
-    import dash
-    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
-    if active_tab != "tab-section-stress":
-        return dash.no_update
-    return value
 
 
