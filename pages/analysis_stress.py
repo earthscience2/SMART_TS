@@ -3134,11 +3134,24 @@ def delete_concrete_confirm_stress(_click, sel, tbl_data):
     Input("section-z-input-ui", "value"),
     Input("btn-unified-stress-colorbar-section", "value"),
     Input("stress-component-selector-ui", "value"),
+    Input("tabs-main-stress", "active_tab"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def update_section_views_stress(store_value, x_val, y_val, z_val, unified_colorbar, selected_component, selected_rows, tbl_data):
+def update_section_views_stress(store_value, x_val, y_val, z_val, unified_colorbar, selected_component, active_tab, selected_rows, tbl_data):
+    import dash
+    # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
+    if active_tab != "tab-section-stress":
+        empty_fig = go.Figure().add_annotation(
+            text="단면도 탭을 선택하세요.",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+        return (empty_fig, empty_fig, empty_fig, empty_fig, 
+                0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, 
+                "단면도 탭을 선택하세요.")
+    
     # 컴포넌트가 존재하지 않을 때 기본값 처리
     if x_val is None:
         x_val = 0
