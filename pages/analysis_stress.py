@@ -46,6 +46,12 @@ layout = dbc.Container(
         dcc.Store(id="speed-state-section-stress", data={"speed": 1}),
         dcc.Store(id="unified-stress-colorbar-section-state", data={"unified": False}),
         
+        # 노드별 탭 관련 Store들
+        dcc.Store(id="node-coord-store-stress", data=None),
+        
+        # 응력바 통일 상태 Store
+        dcc.Store(id="unified-stress-colorbar-state", data={"unified": False}),
+        
         # ── 다운로드 컴포넌트들
         dcc.Download(id="download-3d-stress-image"),
         dcc.Download(id="download-current-frd"),
@@ -1936,8 +1942,6 @@ def create_node_tab_content_stress(concrete_pk):
     store_data = {'x': round(x_mid,1), 'y': round(y_mid,1), 'z': round(z_mid,1)}
     
     return html.Div([
-        dcc.Store(id="node-coord-store-stress", data=store_data),
-        
         # 위치 설정 + 저장 버튼 섹션 (한 줄 배치)
         dbc.Row([
             # 왼쪽: 측정 위치 설정
@@ -3637,22 +3641,47 @@ def toggle_unified_stress_colorbar_section_stress(switch_value):
 @callback(
     Output("node-coord-store-stress", "data"),
     Input("viewer-3d-stress-display", "clickData"),
+    Input("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def store_node_coord_stress(clickData):
-    """3D 뷰어 클릭 시 노드별 좌표를 저장합니다."""
-    if clickData and 'points' in clickData and len(clickData['points']) > 0:
+def store_node_coord_stress(clickData, selected_rows, tbl_data):
+    """3D 뷰어 클릭 시 노드별 좌표를 저장하거나 콘크리트 선택 시 기본값을 설정합니다."""
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        return None
+    
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    if trigger_id == "viewer-3d-stress-display" and clickData and 'points' in clickData and len(clickData['points']) > 0:
         point = clickData['points'][0]
         return {
             'x': point.get('x'),
             'y': point.get('y'),
             'z': point.get('z')
         }
+    elif trigger_id == "tbl-concrete-stress" and selected_rows and tbl_data:
+        # 콘크리트 선택 시 기본 좌표 설정
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+        try:
+            dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
+            poly_nodes = np.array(dims["nodes"])
+            poly_h = float(dims["h"])
+            x_mid = float(np.mean(poly_nodes[:,0]))
+            y_mid = float(np.mean(poly_nodes[:,1]))
+            z_mid = float(poly_h/2)
+            return {'x': round(x_mid,1), 'y': round(y_mid,1), 'z': round(z_mid,1)}
+        except Exception:
+            return {'x': 0.5, 'y': 0.5, 'z': 0.5}
+    
     return None
 
 @callback(
     Output("viewer-3d-node-stress", "figure"),
     Output("viewer-stress-time-stress", "figure"),
+    Output("node-x-input-stress", "value"),
+    Output("node-y-input-stress", "value"),
+    Output("node-z-input-stress", "value"),
     Input("node-coord-store-stress", "data"),
     Input("node-x-input-stress", "value"),
     Input("node-y-input-stress", "value"),
@@ -3673,6 +3702,9 @@ def update_node_tab_stress(store_data, x, y, z, selected_component, selected_row
     # 기본 빈 그래프
     fig_3d = go.Figure()
     fig_stress = go.Figure()
+    
+    # 입력 필드 업데이트를 위한 변수들
+    input_x, input_y, input_z = x, y, z
     
     # 선택된 응력 성분 확인 (기본값: von_mises)
     if selected_component is None:
@@ -3701,8 +3733,37 @@ def update_node_tab_stress(store_data, x, y, z, selected_component, selected_row
         coord_x = store_data.get('x', 0.5)
         coord_y = store_data.get('y', 0.5)
         coord_z = store_data.get('z', 0.5)
+        # 저장된 값으로 입력 필드 업데이트
+        if input_x is None:
+            input_x = coord_x
+        if input_y is None:
+            input_y = coord_y
+        if input_z is None:
+            input_z = coord_z
     else:
-        coord_x, coord_y, coord_z = 0.5, 0.5, 0.5
+        # 기본값 계산
+        try:
+            dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
+            poly_nodes = np.array(dims["nodes"])
+            poly_h = float(dims["h"])
+            coord_x = float(np.mean(poly_nodes[:,0]))
+            coord_y = float(np.mean(poly_nodes[:,1]))
+            coord_z = float(poly_h/2)
+            # 기본값으로 입력 필드 업데이트
+            if input_x is None:
+                input_x = coord_x
+            if input_y is None:
+                input_y = coord_y
+            if input_z is None:
+                input_z = coord_z
+        except Exception:
+            coord_x, coord_y, coord_z = 0.5, 0.5, 0.5
+            if input_x is None:
+                input_x = 0.5
+            if input_y is None:
+                input_y = 0.5
+            if input_z is None:
+                input_z = 0.5
     
     # 콘크리트 정보 가져오기
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
@@ -3880,7 +3941,7 @@ def update_node_tab_stress(store_data, x, y, z, selected_component, selected_row
             yaxis_title="응력 (GPa)"
         )
     
-    return fig_3d, fig_stress
+    return fig_3d, fig_stress, input_x, input_y, input_z
 
 
 
