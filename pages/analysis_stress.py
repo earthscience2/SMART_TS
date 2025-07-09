@@ -41,6 +41,11 @@ layout = dbc.Container(
         dcc.Store(id="current-stress-time-store", data=None),
         dcc.Store(id="current-stress-file-title-store", data=None),
         
+        # 단면 탭 관련 Store들
+        dcc.Store(id="play-state-section-stress", data={"playing": False}),
+        dcc.Store(id="speed-state-section-stress", data={"speed": 1}),
+        dcc.Store(id="unified-stress-colorbar-section-state", data={"unified": False}),
+        
         # 메인 콘텐츠 영역
         dbc.Row([
             # 왼쪽 사이드바 - 콘크리트 목록
@@ -1430,8 +1435,399 @@ def create_3d_stress_figure(stress_data, selected_component="von_mises"):
 def create_section_tab_content_stress(concrete_pk):
     """단면 탭 콘텐츠를 생성합니다."""
     return html.Div([
-        html.H4("단면 응력 분석", className="mb-3"),
-        html.P("단면 응력 분석 기능이 여기에 표시됩니다.", className="text-muted")
+        # 시간 컨트롤 섹션 (노션 스타일) - 독립적인 단면도용 슬라이더
+        html.Div([
+            html.Div([
+                html.H6("⏰ 시간 설정", style={
+                    "fontWeight": "600",
+                    "color": "#374151",
+                    "marginBottom": "12px",
+                    "fontSize": "14px"
+                }),
+                # 단면도 응력바 통일 토글 스위치
+                html.Div([
+                    html.Label("단면도 응력바 통일", style={
+                        "fontWeight": "500",
+                        "color": "#374151",
+                        "marginBottom": "8px",
+                        "fontSize": "13px",
+                        "display": "inline-block",
+                        "marginRight": "12px"
+                    }),
+                    dbc.Switch(
+                        id="btn-unified-stress-colorbar-section",
+                        value=False,
+                        style={"display": "inline-block"}
+                    ),
+                ], style={"marginBottom": "16px"}),
+                
+                # 시간 슬라이더
+                dcc.Slider(
+                    id="time-slider-section-stress",
+                    min=0,
+                    max=5,
+                    step=1,
+                    value=0,
+                    marks={},
+                    updatemode='drag',
+                    persistence=False,
+                    tooltip={"placement": "bottom", "always_visible": True}
+                ),
+                
+                # 재생/정지/배속 버튼 추가 (단면도용)
+                html.Div([
+                    # 재생/정지 버튼 (아이콘만)
+                    dbc.Button(
+                        "▶",
+                        id="btn-play-section-stress",
+                        color="success",
+                        size="sm",
+                        style={
+                            "borderRadius": "50%",
+                            "width": "32px",
+                            "height": "32px",
+                            "padding": "0",
+                            "marginRight": "8px",
+                            "display": "flex",
+                            "alignItems": "center",
+                            "justifyContent": "center",
+                            "fontSize": "14px",
+                            "fontWeight": "bold"
+                        }
+                    ),
+                    dbc.Button(
+                        "⏸",
+                        id="btn-pause-section-stress",
+                        color="warning",
+                        size="sm",
+                        style={
+                            "borderRadius": "50%",
+                            "width": "32px",
+                            "height": "32px",
+                            "padding": "0",
+                            "marginRight": "8px",
+                            "display": "flex",
+                            "alignItems": "center",
+                            "justifyContent": "center",
+                            "fontSize": "14px",
+                            "fontWeight": "bold"
+                        }
+                    ),
+                    # 배속 설정 드롭다운
+                    dbc.Dropdown(
+                        options=[
+                            dbc.DropdownMenuItem("1x", id="speed-1x-section-stress", n_clicks=0),
+                            dbc.DropdownMenuItem("2x", id="speed-2x-section-stress", n_clicks=0),
+                            dbc.DropdownMenuItem("4x", id="speed-4x-section-stress", n_clicks=0),
+                            dbc.DropdownMenuItem("8x", id="speed-8x-section-stress", n_clicks=0),
+                        ], 
+                        label="⚡",
+                        id="speed-dropdown-section-stress",
+                        size="sm",
+                        style={
+                            "width": "32px",
+                            "height": "32px",
+                            "padding": "0",
+                            "display": "flex",
+                            "alignItems": "center",
+                            "justifyContent": "center"
+                        },
+                        toggle_style={
+                            "borderRadius": "50%",
+                            "width": "32px",
+                            "height": "32px",
+                            "padding": "0",
+                            "backgroundColor": "#6c757d",
+                            "border": "none",
+                            "fontSize": "14px",
+                            "fontWeight": "bold"
+                        }
+                    ),
+                ], style={
+                    "display": "flex",
+                    "alignItems": "center",
+                    "justifyContent": "center",
+                    "marginTop": "12px"
+                }),
+                
+                # 자동 재생 인터벌
+                dcc.Interval(
+                    id="play-interval-section-stress",
+                    interval=1000,
+                    disabled=True
+                ),
+                
+                # 재생 상태 저장
+                dcc.Store(id="play-state-section-stress", data={"playing": False}),
+                dcc.Store(id="speed-state-section-stress", data={"speed": 1}),
+                dcc.Store(id="unified-stress-colorbar-section-state", data={"unified": False}),
+            ], style={
+                "padding": "20px",
+                "backgroundColor": "#f9fafb",
+                "borderRadius": "8px",
+                "border": "1px solid #e5e7eb",
+                "marginBottom": "16px"
+            })
+        ]),
+        
+        # 현재 시간 정보 + 저장 옵션 (한 줄 배치)
+        dbc.Row([
+            # 왼쪽: 현재 시간/물성치 정보
+            dbc.Col([
+                html.Div(id="section-time-info-stress")
+            ], md=8, style={
+                "height": "65px"
+            }),
+            
+            # 오른쪽: 저장 버튼들
+            dbc.Col([
+                html.Div([
+                    dcc.Loading(
+                        id="loading-btn-save-section-image-stress",
+                        type="circle",
+                        children=[
+                            dbc.Button(
+                                [html.I(className="fas fa-camera me-1"), "이미지 저장"],
+                                id="btn-save-section-image-stress",
+                                color="primary",
+                                size="lg",
+                                style={
+                                    "borderRadius": "8px",
+                                    "fontWeight": "600",
+                                    "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                    "fontSize": "15px",
+                                    "width": "120px",
+                                    "height": "48px",
+                                    "marginRight": "16px"
+                                }
+                            )
+                        ]
+                    ),
+                    dcc.Loading(
+                        id="loading-btn-save-section-frd-stress",
+                        type="circle",
+                        children=[
+                            dbc.Button(
+                                [html.I(className="fas fa-file-download me-1"), "FRD 저장"],
+                                id="btn-save-section-frd-stress",
+                                color="secondary",
+                                size="lg",
+                                style={
+                                    "borderRadius": "8px",
+                                    "fontWeight": "600",
+                                    "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                    "fontSize": "15px",
+                                    "width": "120px",
+                                    "height": "48px"
+                                }
+                            )
+                        ]
+                    ),
+                    # 다운로드 컴포넌트들
+                    dcc.Download(id="download-section-image-stress"),
+                    dcc.Download(id="download-section-frd-stress"),
+                ], style={"display": "flex", "justifyContent": "center", "alignItems": "center", "height": "65px"})
+            ], md=4, style={
+                "height": "65px"
+            }),
+        ], className="mb-4 align-items-stretch h-100", style={"minHeight": "65px"}),
+        
+        # 단면 위치 설정 섹션 (노션 스타일)
+        html.Div([
+            html.Div([
+                html.H6("📍 단면 위치 설정", style={
+                    "fontWeight": "600",
+                    "color": "#374151",
+                    "marginBottom": "12px",
+                    "fontSize": "14px"
+                }),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Card([
+                            dbc.CardBody([
+                                html.Div([
+                                    html.I(className="fas fa-arrows-alt-h", style={
+                                        "color": "#ef4444", 
+                                        "fontSize": "14px", 
+                                        "marginRight": "6px"
+                                    }),
+                                    html.Span("X축", style={
+                                        "fontWeight": "600",
+                                        "color": "#ef4444",
+                                        "fontSize": "13px"
+                                    })
+                                ], style={"marginBottom": "4px"}),
+                                dbc.Input(
+                                    id="section-x-input-stress", 
+                                    type="number", 
+                                    step=0.1, 
+                                    value=None,
+                                    placeholder="X 좌표",
+                                    style={"width": "100%"}
+                                )
+                            ], style={"padding": "8px"})
+                        ], style={
+                            "border": "1px solid #fecaca",
+                            "backgroundColor": "#fef2f2"
+                        })
+                    ], md=4),
+                    dbc.Col([
+                        dbc.Card([
+                            dbc.CardBody([
+                                html.Div([
+                                    html.I(className="fas fa-arrows-alt-v", style={
+                                        "color": "#3b82f6", 
+                                        "fontSize": "14px", 
+                                        "marginRight": "6px"
+                                    }),
+                                    html.Span("Y축", style={
+                                        "fontWeight": "600",
+                                        "color": "#3b82f6",
+                                        "fontSize": "13px"
+                                    })
+                                ], style={"marginBottom": "4px"}),
+                                dbc.Input(
+                                    id="section-y-input-stress", 
+                                    type="number", 
+                                    step=0.1, 
+                                    value=None,
+                                    placeholder="Y 좌표",
+                                    style={"width": "100%"}
+                                )
+                            ], style={"padding": "8px"})
+                        ], style={
+                            "border": "1px solid #bfdbfe",
+                            "backgroundColor": "#eff6ff"
+                        })
+                    ], md=4),
+                    dbc.Col([
+                        dbc.Card([
+                            dbc.CardBody([
+                                html.Div([
+                                    html.I(className="fas fa-arrows-alt", style={
+                                        "color": "#22c55e", 
+                                        "fontSize": "14px", 
+                                        "marginRight": "6px"
+                                    }),
+                                    html.Span("Z축", style={
+                                        "fontWeight": "600",
+                                        "color": "#22c55e",
+                                        "fontSize": "13px"
+                                    })
+                                ], style={"marginBottom": "4px"}),
+                                dbc.Input(
+                                    id="section-z-input-stress", 
+                                    type="number", 
+                                    step=0.1,
+                                    value=None,
+                                    placeholder="Z 좌표",
+                                    style={"width": "100%"}
+                                )
+                            ], style={"padding": "8px"})
+                        ], style={
+                            "border": "1px solid #bbf7d0",
+                            "backgroundColor": "#f0fdf4"
+                        })
+                    ], md=4),
+                ], className="g-3"),
+            ], style={
+                "padding": "16px 20px",
+                "backgroundColor": "#f9fafb",
+                "borderRadius": "8px",
+                "border": "1px solid #e5e7eb",
+                "marginBottom": "20px"
+            })
+        ]),
+        
+        # 단면도 뷰어 그리드 (노션 스타일)
+        html.Div([
+            html.H6("📊 단면도 뷰어", style={
+                "fontWeight": "600",
+                "color": "#374151",
+                "marginBottom": "16px",
+                "fontSize": "16px"
+            }),
+            dbc.Row([
+                dbc.Col([
+                    html.Div([
+                        html.P("3D 뷰", style={
+                            "fontSize": "12px", 
+                            "fontWeight": "600", 
+                            "color": "#6b7280", 
+                            "marginBottom": "8px",
+                            "textAlign": "center"
+                        }),
+                        dcc.Graph(
+                            id="viewer-3d-section-stress", 
+                            style={"height": "30vh", "borderRadius": "6px"}, 
+                            config={"scrollZoom": True}
+                        ),
+                    ], style={
+                        "backgroundColor": "white",
+                        "padding": "12px",
+                        "borderRadius": "8px",
+                        "border": "1px solid #e5e7eb",
+                        "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
+                    })
+                ], md=6),
+                dbc.Col([
+                    html.Div([
+                        html.P("X 단면도", style={
+                            "fontSize": "12px", 
+                            "fontWeight": "600", 
+                            "color": "#ef4444", 
+                            "marginBottom": "8px",
+                            "textAlign": "center"
+                        }),
+                        dcc.Graph(id="viewer-section-x-stress", style={"height": "30vh"}),
+                    ], style={
+                        "backgroundColor": "white",
+                        "padding": "12px",
+                        "borderRadius": "8px",
+                        "border": "1px solid #e5e7eb",
+                        "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
+                    })
+                ], md=6),
+            ], className="mb-3"),
+            dbc.Row([
+                dbc.Col([
+                    html.Div([
+                        html.P("Y 단면도", style={
+                            "fontSize": "12px", 
+                            "fontWeight": "600", 
+                            "color": "#3b82f6", 
+                            "marginBottom": "8px",
+                            "textAlign": "center"
+                        }),
+                        dcc.Graph(id="viewer-section-y-stress", style={"height": "30vh"}),
+                    ], style={
+                        "backgroundColor": "white",
+                        "padding": "12px",
+                        "borderRadius": "8px",
+                        "border": "1px solid #e5e7eb",
+                        "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
+                    })
+                ], md=6),
+                dbc.Col([
+                    html.Div([
+                        html.P("Z 단면도", style={
+                            "fontSize": "12px", 
+                            "fontWeight": "600", 
+                            "color": "#22c55e", 
+                            "marginBottom": "8px",
+                            "textAlign": "center"
+                        }),
+                        dcc.Graph(id="viewer-section-z-stress", style={"height": "30vh"}),
+                    ], style={
+                        "backgroundColor": "white",
+                        "padding": "12px",
+                        "borderRadius": "8px",
+                        "border": "1px solid #e5e7eb",
+                        "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
+                    })
+                ], md=6),
+            ]),
+        ])
     ])
 
 def create_node_tab_content_stress(concrete_pk):
@@ -2142,5 +2538,623 @@ def show_delete_confirm_stress(n_clicks):
     if n_clicks:
         return True
     return False
+
+# ───────────────────── 단면 탭 관련 콜백 함수들 ─────────────────────
+
+@callback(
+    Output("viewer-3d-section-stress", "figure"),
+    Output("viewer-section-x-stress", "figure"),
+    Output("viewer-section-y-stress", "figure"),
+    Output("viewer-section-z-stress", "figure"),
+    Output("section-x-input-stress", "min"), Output("section-x-input-stress", "max"), Output("section-x-input-stress", "value"),
+    Output("section-y-input-stress", "min"), Output("section-y-input-stress", "max"), Output("section-y-input-stress", "value"),
+    Output("section-z-input-stress", "min"), Output("section-z-input-stress", "max"), Output("section-z-input-stress", "value"),
+    Output("current-stress-file-title-store", "data", allow_duplicate=True),
+    Input("time-slider-section-stress", "value"),  # 단면도용 독립 슬라이더 사용
+    Input("section-x-input-stress", "value"),
+    Input("section-y-input-stress", "value"),
+    Input("section-z-input-stress", "value"),
+    Input("unified-stress-colorbar-section-state", "data"),
+    State("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
+    prevent_initial_call=True,
+)
+def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar, selected_rows, tbl_data):
+    """단면도 뷰어들을 업데이트합니다."""
+    import plotly.graph_objects as go
+    import numpy as np
+    from scipy.interpolate import griddata
+    import glob, os
+    from datetime import datetime as dt_import
+    
+    if not selected_rows or not tbl_data:
+        empty_fig = go.Figure().add_annotation(
+            text="콘크리트를 선택하세요.",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+        return empty_fig, empty_fig, empty_fig, empty_fig, 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, "콘크리트를 선택하세요."
+    
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    
+    # FRD 파일 목록 가져오기
+    frd_files = get_frd_files(concrete_pk)
+    if not frd_files:
+        empty_fig = go.Figure().add_annotation(
+            text="FRD 파일이 없습니다.",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+        return empty_fig, empty_fig, empty_fig, empty_fig, 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, "FRD 파일이 없습니다."
+    
+    # 선택된 시간에 해당하는 FRD 파일
+    if time_idx is None or time_idx >= len(frd_files):
+        time_idx = len(frd_files) - 1  # 마지막 파일로 설정
+    
+    current_file = frd_files[time_idx]
+    
+    # FRD 파일에서 응력 데이터 읽기
+    stress_data = read_frd_stress_data(current_file)
+    if not stress_data or not stress_data['coordinates'] or not stress_data['stress_values']:
+        empty_fig = go.Figure().add_annotation(
+            text="유효한 응력 데이터가 없습니다.",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+        return empty_fig, empty_fig, empty_fig, empty_fig, 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, "유효한 응력 데이터가 없습니다."
+    
+    # 좌표와 응력 값 추출 (von Mises 응력 사용)
+    coords = np.array(stress_data['coordinates'])
+    stress_values = [stress_data['stress_values'][0][node_id] for node_id in stress_data['nodes']]
+    
+    # 응력 값 검증
+    if len(coords) != len(stress_values):
+        empty_fig = go.Figure().add_annotation(
+            text="좌표와 응력 데이터가 일치하지 않습니다.",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+        return empty_fig, empty_fig, empty_fig, empty_fig, 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, "데이터 불일치"
+    
+    # 전체 파일의 응력 범위 계산
+    all_stress_values = []
+    for frd_file in frd_files:
+        try:
+            file_stress_data = read_frd_stress_data(frd_file)
+            if file_stress_data and file_stress_data['stress_values']:
+                file_stress_values = [file_stress_data['stress_values'][0][node_id] for node_id in file_stress_data['nodes']]
+                all_stress_values.extend(file_stress_values)
+        except Exception as e:
+            print(f"파일 {frd_file} 읽기 오류: {e}")
+            continue
+    
+    # 응력바 통일 여부에 따른 응력 범위 계산
+    if unified_colorbar:
+        # 전체 파일의 응력 범위 사용 (통일 모드)
+        if all_stress_values:
+            stress_min, stress_max = float(np.nanmin(all_stress_values)), float(np.nanmax(all_stress_values))
+        else:
+            stress_min, stress_max = float(np.nanmin(stress_values)), float(np.nanmax(stress_values))
+    else:
+        # 현재 파일의 응력 범위 사용 (개별 모드)
+        stress_min, stress_max = float(np.nanmin(stress_values)), float(np.nanmax(stress_values))
+    
+    # 입력창 min/max/기본값 자동 설정
+    x_coords = coords[:, 0]
+    y_coords = coords[:, 1]
+    z_coords = coords[:, 2]
+    
+    x_min, x_max = float(np.min(x_coords)), float(np.max(x_coords))
+    y_min, y_max = float(np.min(y_coords)), float(np.max(y_coords))
+    z_min, z_max = float(np.min(z_coords)), float(np.max(z_coords))
+    x_mid = float(np.median(x_coords))
+    y_mid = float(np.median(y_coords))
+    z_mid = float(np.median(z_coords))
+    
+    def round01(val):
+        return round(val * 10) / 10 if val is not None else None
+    
+    x0 = round01(x_val) if x_val is not None else round01(x_mid)
+    y0 = round01(y_val) if y_val is not None else round01(y_mid)
+    z0 = round01(z_val) if z_val is not None else round01(z_mid)
+    
+    # 3D 뷰(작게)
+    fig_3d = go.Figure(data=go.Volume(
+        x=coords[:,0], y=coords[:,1], z=coords[:,2], value=stress_values,
+        opacity=0.1, surface_count=15, colorscale=[[0, 'blue'], [1, 'red']],
+        colorbar=None, cmin=stress_min, cmax=stress_max, showscale=False
+    ))
+    fig_3d.update_layout(
+        uirevision='constant',
+        scene=dict(aspectmode='data', bgcolor='white'),
+        margin=dict(l=0, r=0, t=0, b=0)
+    )
+    
+    # 단면 위치 평면(케이크 자르듯)
+    # X 평면
+    fig_3d.add_trace(go.Surface(
+        x=[[x0, x0], [x0, x0]],
+        y=[[y_min, y_max], [y_min, y_max]],
+        z=[[z_min, z_min], [z_max, z_max]],
+        showscale=False, opacity=0.3, colorscale=[[0, 'red'], [1, 'red']],
+        hoverinfo='skip', name='X-section', showlegend=False
+    ))
+    # Y 평면
+    fig_3d.add_trace(go.Surface(
+        x=[[x_min, x_max], [x_min, x_max]],
+        y=[[y0, y0], [y0, y0]],
+        z=[[z_min, z_min], [z_max, z_max]],
+        showscale=False, opacity=0.3, colorscale=[[0, 'blue'], [1, 'blue']],
+        hoverinfo='skip', name='Y-section', showlegend=False
+    ))
+    # Z 평면
+    fig_3d.add_trace(go.Surface(
+        x=[[x_min, x_max], [x_min, x_max]],
+        y=[[y_min, y_min], [y_max, y_max]],
+        z=[[z0, z0], [z0, z0]],
+        showscale=False, opacity=0.3, colorscale=[[0, 'green'], [1, 'green']],
+        hoverinfo='skip', name='Z-section', showlegend=False
+    ))
+    
+    # X 단면 (x ≈ x0, 리니어 보간, 컬러바 없음)
+    # 슬라이싱 허용 오차를 콘크리트 크기에 비례하도록 동적으로 계산
+    dx = x_max - x_min
+    dy = y_max - y_min
+    dz = z_max - z_min
+    tol = max(dx, dy, dz) * 0.02  # 전체 치수의 약 2%
+    tol = max(tol, 0.01)  # 최소 1 cm 보장
+    
+    mask_x = np.abs(x_coords - x0) < tol
+    if np.any(mask_x):
+        yb, zb, sb = y_coords[mask_x], z_coords[mask_x], stress_values[mask_x]
+        if len(yb) > 3:
+            y_bins = np.linspace(yb.min(), yb.max(), 40)
+            z_bins = np.linspace(zb.min(), zb.max(), 40)
+            yy, zz = np.meshgrid(y_bins, z_bins)
+            points = np.column_stack([yb, zb])
+            values = sb
+            grid = griddata(points, values, (yy, zz), method='linear')
+            fig_x = go.Figure(go.Heatmap(
+                x=y_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], 
+                zmin=stress_min, zmax=stress_max, colorbar=None, zsmooth='best'))
+        else:
+            fig_x = go.Figure()
+    else:
+        fig_x = go.Figure()
+    
+    fig_x.update_layout(
+        title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", 
+        margin=dict(l=0, r=0, b=0, t=30),
+        xaxis=dict(scaleanchor="y", scaleratio=1),
+        yaxis=dict(constrain='domain')
+    )
+    
+    # Y 단면 (y ≈ y0, 리니어 보간, 컬러바 없음)
+    mask_y = np.abs(y_coords - y0) < tol
+    if np.any(mask_y):
+        xb, zb, sb = x_coords[mask_y], z_coords[mask_y], stress_values[mask_y]
+        if len(xb) > 3:
+            x_bins = np.linspace(xb.min(), xb.max(), 40)
+            z_bins = np.linspace(zb.min(), zb.max(), 40)
+            xx, zz = np.meshgrid(x_bins, z_bins)
+            points = np.column_stack([xb, zb])
+            values = sb
+            grid = griddata(points, values, (xx, zz), method='linear')
+            fig_y = go.Figure(go.Heatmap(
+                x=x_bins, y=z_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], 
+                zmin=stress_min, zmax=stress_max, colorbar=None, zsmooth='best'))
+        else:
+            fig_y = go.Figure()
+    else:
+        fig_y = go.Figure()
+    
+    fig_y.update_layout(
+        title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", 
+        margin=dict(l=0, r=0, b=0, t=30),
+        xaxis=dict(scaleanchor="y", scaleratio=1),
+        yaxis=dict(constrain='domain')
+    )
+    
+    # Z 단면 (z ≈ z0, 리니어 보간, 컬러바 없음)
+    mask_z = np.abs(z_coords - z0) < tol
+    if np.any(mask_z):
+        xb, yb, sb = x_coords[mask_z], y_coords[mask_z], stress_values[mask_z]
+        if len(xb) > 3:
+            x_bins = np.linspace(xb.min(), xb.max(), 40)
+            y_bins = np.linspace(yb.min(), yb.max(), 40)
+            xx, yy = np.meshgrid(x_bins, y_bins)
+            points = np.column_stack([xb, yb])
+            values = sb
+            grid = griddata(points, values, (xx, yy), method='linear')
+            fig_z = go.Figure(go.Heatmap(
+                x=x_bins, y=y_bins, z=grid.T, colorscale=[[0, 'blue'], [1, 'red']], 
+                zmin=stress_min, zmax=stress_max, colorbar=None, zsmooth='best'))
+        else:
+            fig_z = go.Figure()
+    else:
+        fig_z = go.Figure()
+    
+    fig_z.update_layout(
+        title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", 
+        margin=dict(l=0, r=0, b=0, t=30),
+        xaxis=dict(scaleanchor="y", scaleratio=1),
+        yaxis=dict(constrain='domain')
+    )
+    
+    # 현재 파일명/응력 통계 계산
+    try:
+        time_str = os.path.basename(current_file).split(".")[0]
+        # 시간 형식을 읽기 쉽게 변환
+        try:
+            dt = dt_import.strptime(time_str, "%Y%m%d%H")
+            formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
+        except:
+            formatted_time = time_str
+        
+        current_min = float(np.nanmin(stress_values))
+        current_max = float(np.nanmax(stress_values))
+        current_avg = float(np.nanmean(stress_values))
+        current_file_title = f"{formatted_time} (최저: {current_min:.0f}Pa, 최고: {current_max:.0f}Pa, 평균: {current_avg:.0f}Pa)"
+    except Exception:
+        current_file_title = f"{os.path.basename(current_file)}"
+    
+    # step=0.1로 반환
+    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, current_file_title
+
+@callback(
+    Output("section-time-info-stress", "children"),
+    Input("current-stress-file-title-store", "data"),
+    Input("tabs-main-stress", "active_tab"),
+    prevent_initial_call=True,
+)
+def update_section_time_info_stress(current_file_title, active_tab):
+    """단면도 시간 정보를 업데이트합니다."""
+    if active_tab != "tab-section-stress":
+        raise PreventUpdate
+    
+    if not current_file_title:
+        return html.Div([
+            html.I(className="fas fa-info-circle", style={"color": "#6b7280", "fontSize": "14px"}),
+            html.Span("콘크리트를 선택하세요.", style={
+                "color": "#6b7280",
+                "fontSize": "14px",
+                "marginLeft": "8px",
+                "fontWeight": "500"
+            })
+        ])
+    
+    return html.Div([
+        # 통합 정보 카드 (노션 스타일)
+        html.Div([
+            # 시간 정보와 응력 통계를 한 줄에 표시
+            html.Div([
+                html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "14px"}),
+                html.Span(current_file_title, style={
+                    "fontWeight": "600",
+                    "color": "#1f2937",
+                    "fontSize": "14px",
+                    "marginLeft": "8px",
+                    "marginRight": "16px"
+                }),
+            ], style={
+                "display": "flex",
+                "alignItems": "center",
+                "justifyContent": "flex-start"
+            }),
+        ], style={
+            "padding": "12px 16px",
+            "backgroundColor": "#f8fafc",
+            "borderRadius": "8px",
+            "border": "1px solid #e2e8f0",
+            "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
+        })
+    ])
+
+@callback(
+    Output("time-slider-section-stress", "min"),
+    Output("time-slider-section-stress", "max"), 
+    Output("time-slider-section-stress", "value"),
+    Output("time-slider-section-stress", "marks"),
+    Input("tabs-main-stress", "active_tab"),
+    Input("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
+    prevent_initial_call=True,
+)
+def init_section_slider_independent_stress(active_tab, selected_rows, tbl_data):
+    """단면도용 독립 슬라이더를 초기화합니다."""
+    if active_tab != "tab-section-stress":
+        raise PreventUpdate
+    
+    # 기본값
+    slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
+    
+    # 선택된 콘크리트가 있으면 해당 FRD 파일 기반으로 슬라이더 설정
+    if selected_rows and tbl_data and len(selected_rows) > 0:
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+        concrete_pk = row["concrete_pk"]
+        frd_files = get_frd_files(concrete_pk)
+        
+        if frd_files:
+            # 시간 파싱
+            times = []
+            for f in frd_files:
+                try:
+                    time_str = os.path.basename(f).split(".")[0]
+                    dt = dt_import.strptime(time_str, "%Y%m%d%H")
+                    times.append(dt)
+                except:
+                    continue
+            
+            if times:
+                max_idx = len(times) - 1
+                slider_min, slider_max = 0, max_idx
+                slider_value = max_idx  # 최신 파일로 초기화
+                
+                # 슬라이더 마크 설정
+                marks = {}
+                seen_dates = set()
+                for i, dt in enumerate(times):
+                    date_str = dt.strftime("%m/%d")
+                    if date_str not in seen_dates:
+                        marks[i] = date_str
+                        seen_dates.add(date_str)
+                slider_marks = marks
+    
+    return slider_min, slider_max, slider_value, slider_marks
+
+@callback(
+    Output("download-section-image-stress", "data"),
+    Output("btn-save-section-image-stress", "children"),
+    Output("btn-save-section-image-stress", "disabled"),
+    Input("btn-save-section-image-stress", "n_clicks"),
+    State("viewer-3d-section-stress", "figure"),
+    State("viewer-section-x-stress", "figure"),
+    State("viewer-section-y-stress", "figure"),
+    State("viewer-section-z-stress", "figure"),
+    State("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
+    State("time-slider-section-stress", "value"),
+    prevent_initial_call=True,
+)
+def save_section_image_stress(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl_data, time_value):
+    """단면도 이미지를 저장합니다."""
+    if not n_clicks or not selected_rows or not tbl_data:
+        raise PreventUpdate
+    
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_name = row["name"]
+    
+    # 시간 정보 가져오기
+    time_info = ""
+    if time_value is not None:
+        try:
+            frd_files = get_frd_files(row["concrete_pk"])
+            if frd_files and time_value < len(frd_files):
+                time_str = os.path.basename(frd_files[time_value]).split(".")[0]
+                dt = datetime.strptime(time_str, "%Y%m%d%H")
+                time_info = f"_{dt.strftime('%Y%m%d_%H')}"
+        except:
+            time_info = f"_time_{time_value}"
+    
+    # 이미지 생성
+    try:
+        import io
+        from PIL import Image
+        
+        # 각 그래프를 이미지로 변환
+        img_3d = fig_3d.to_image(format="png", width=400, height=300)
+        img_x = fig_x.to_image(format="png", width=400, height=300)
+        img_y = fig_y.to_image(format="png", width=400, height=300)
+        img_z = fig_z.to_image(format="png", width=400, height=300)
+        
+        # 이미지들을 PIL Image로 변환
+        img_3d_pil = Image.open(io.BytesIO(img_3d))
+        img_x_pil = Image.open(io.BytesIO(img_x))
+        img_y_pil = Image.open(io.BytesIO(img_y))
+        img_z_pil = Image.open(io.BytesIO(img_z))
+        
+        # 2x2 그리드로 합치기
+        total_width = 800
+        total_height = 600
+        
+        combined_img = Image.new('RGB', (total_width, total_height), 'white')
+        
+        # 이미지 배치
+        combined_img.paste(img_3d_pil, (0, 0))
+        combined_img.paste(img_x_pil, (400, 0))
+        combined_img.paste(img_y_pil, (0, 300))
+        combined_img.paste(img_z_pil, (400, 300))
+        
+        # 이미지를 바이트로 변환
+        img_buffer = io.BytesIO()
+        combined_img.save(img_buffer, format='PNG')
+        img_buffer.seek(0)
+        
+        filename = f"section_stress_{concrete_name}{time_info}.png"
+        
+        return dcc.send_bytes(img_buffer.getvalue(), filename=filename)
+    
+    except Exception as e:
+        print(f"이미지 저장 오류: {e}")
+        return None
+
+@callback(
+    Output("download-section-frd-stress", "data"),
+    Output("btn-save-section-frd-stress", "children"),
+    Output("btn-save-section-frd-stress", "disabled"),
+    Input("btn-save-section-frd-stress", "n_clicks"),
+    State("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
+    State("time-slider-section-stress", "value"),
+    prevent_initial_call=True,
+)
+def save_section_frd_stress(n_clicks, selected_rows, tbl_data, time_value):
+    """단면도 FRD 파일을 저장합니다."""
+    if not n_clicks or not selected_rows or not tbl_data:
+        raise PreventUpdate
+    
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    concrete_name = row["name"]
+    
+    # 선택된 시간의 FRD 파일 가져오기
+    frd_files = get_frd_files(concrete_pk)
+    if not frd_files or time_value is None or time_value >= len(frd_files):
+        return None
+    
+    selected_file = frd_files[time_value]
+    
+    # 파일 복사
+    try:
+        import shutil
+        import tempfile
+        
+        # 임시 파일 생성
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.frd') as tmp_file:
+            shutil.copy2(selected_file, tmp_file.name)
+            tmp_file_path = tmp_file.name
+        
+        # 시간 정보 가져오기
+        time_info = ""
+        try:
+            time_str = os.path.basename(selected_file).split(".")[0]
+            dt = datetime.strptime(time_str, "%Y%m%d%H")
+            time_info = f"_{dt.strftime('%Y%m%d_%H')}"
+        except:
+            time_info = f"_time_{time_value}"
+        
+        filename = f"section_stress_{concrete_name}{time_info}.frd"
+        
+        # 파일 읽기 및 반환
+        with open(tmp_file_path, 'rb') as f:
+            file_content = f.read()
+        
+        # 임시 파일 삭제
+        os.unlink(tmp_file_path)
+        
+        return dcc.send_bytes(file_content, filename=filename)
+    
+    except Exception as e:
+        print(f"FRD 파일 저장 오류: {e}")
+        return None
+
+# 단면도 재생/정지 콜백들
+@callback(
+    Output("play-state-section-stress", "data"),
+    Output("play-interval-section-stress", "disabled"),
+    Output("btn-play-section-stress", "disabled"),
+    Output("btn-pause-section-stress", "disabled"),
+    Input("btn-play-section-stress", "n_clicks"),
+    State("play-state-section-stress", "data"),
+    prevent_initial_call=True,
+)
+def start_section_playback_stress(n_clicks, play_state):
+    """단면도 재생을 시작합니다."""
+    if not play_state:
+        play_state = {"playing": False}
+    
+    play_state["playing"] = True
+    return play_state, False, True, False
+
+@callback(
+    Output("play-state-section-stress", "data", allow_duplicate=True),
+    Output("play-interval-section-stress", "disabled", allow_duplicate=True),
+    Output("btn-play-section-stress", "disabled", allow_duplicate=True),
+    Output("btn-pause-section-stress", "disabled", allow_duplicate=True),
+    Input("btn-pause-section-stress", "n_clicks"),
+    State("play-state-section-stress", "data"),
+    prevent_initial_call=True,
+)
+def stop_section_playback_stress(n_clicks, play_state):
+    """단면도 재생을 정지합니다."""
+    if not play_state:
+        play_state = {"playing": False}
+    
+    play_state["playing"] = False
+    return play_state, True, False, True
+
+@callback(
+    Output("time-slider-section-stress", "value", allow_duplicate=True),
+    Input("play-interval-section-stress", "n_intervals"),
+    State("play-state-section-stress", "data"),
+    State("speed-state-section-stress", "data"),
+    State("time-slider-section-stress", "value"),
+    State("time-slider-section-stress", "max"),
+    State("tabs-main-stress", "active_tab"),
+    prevent_initial_call=True,
+)
+def auto_play_section_slider_stress(n_intervals, play_state, speed_state, current_value, max_value, active_tab):
+    """단면도 자동 재생으로 슬라이더를 업데이트합니다."""
+    if active_tab != "tab-section-stress" or not play_state or not play_state.get("playing", False):
+        raise PreventUpdate
+    
+    speed = speed_state.get("speed", 1) if speed_state else 1
+    
+    if current_value is None:
+        current_value = 0
+    
+    new_value = current_value + speed
+    if new_value > max_value:
+        new_value = 0  # 처음으로 돌아가기
+    
+    return new_value
+
+@callback(
+    Output("play-state-section-stress", "data", allow_duplicate=True),
+    Output("play-interval-section-stress", "disabled", allow_duplicate=True),
+    Output("btn-play-section-stress", "disabled", allow_duplicate=True),
+    Output("btn-pause-section-stress", "disabled", allow_duplicate=True),
+    Input("tabs-main-stress", "active_tab"),
+    prevent_initial_call=True,
+)
+def reset_section_play_state_on_tab_change_stress(active_tab):
+    """탭 변경 시 단면도 재생 상태를 리셋합니다."""
+    return {"playing": False}, True, False, True
+
+@callback(
+    Output("speed-state-section-stress", "data"),
+    Input("speed-1x-section-stress", "n_clicks"),
+    Input("speed-2x-section-stress", "n_clicks"),
+    Input("speed-4x-section-stress", "n_clicks"),
+    Input("speed-8x-section-stress", "n_clicks"),
+    prevent_initial_call=True,
+)
+def set_speed_section_stress(speed_1x, speed_2x, speed_4x, speed_8x):
+    """단면도 재생 속도를 설정합니다."""
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        return {"speed": 1}
+    
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    if button_id == "speed-1x-section-stress":
+        return {"speed": 1}
+    elif button_id == "speed-2x-section-stress":
+        return {"speed": 2}
+    elif button_id == "speed-4x-section-stress":
+        return {"speed": 4}
+    elif button_id == "speed-8x-section-stress":
+        return {"speed": 8}
+    
+    return {"speed": 1}
+
+@callback(
+    Output("speed-state-section-stress", "data", allow_duplicate=True),
+    Input("tabs-main-stress", "active_tab"),
+    prevent_initial_call=True,
+)
+def reset_speed_section_on_tab_change_stress(active_tab):
+    """탭 변경 시 단면도 속도를 리셋합니다."""
+    return {"speed": 1}
+
+@callback(
+    Output("unified-stress-colorbar-section-state", "data"),
+    Input("btn-unified-stress-colorbar-section", "value"),
+    prevent_initial_call=True,
+)
+def toggle_unified_stress_colorbar_section_stress(switch_value):
+    """단면도 응력바 통일 토글을 처리합니다."""
+    return {"unified": switch_value} if switch_value is not None else {"unified": False}
 
 
