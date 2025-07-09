@@ -827,23 +827,24 @@ def create_3d_tab_content_stress(concrete_pk):
                                         "marginLeft": "8px",
                                         "marginRight": "16px"
                                     }),
-                                    html.Span(f"최저: {current_min:.2f}GPa", style={
+                                    html.Span(f"최저: {current_min:.0f}GPa", style={
                                         "color": "#6b7280",
                                         "fontSize": "11px",
                                         "marginRight": "12px"
                                     }),
-                                    html.Span(f"최고: {current_max:.2f}GPa", style={
+                                    html.Span(f"최고: {current_max:.0f}GPa", style={
                                         "color": "#6b7280",
                                         "fontSize": "11px",
                                         "marginRight": "12px"
                                     }),
-                                    html.Span(f"평균: {current_avg:.2f}GPa", style={
+                                    html.Span(f"평균: {current_avg:.0f}GPa", style={
                                         "color": "#6b7280",
                                         "fontSize": "11px"
                                     })
                                 ], style={
                                     "display": "flex",
                                     "alignItems": "center",
+                                    "justifyContent": "center",
                                     "marginBottom": "8px" if material_info and material_info != "물성치 정보 없음" else "0",
                                     "marginTop": "12px"
                                 }),
@@ -879,7 +880,12 @@ def create_3d_tab_content_stress(concrete_pk):
                                 "padding": "12px 16px",
                                 "borderRadius": "8px",
                                 "border": "1px solid #e2e8f0",
-                                "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
+                                "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
+                                "height": "65px",
+                                "display": "flex",
+                                "flexDirection": "column",
+                                "justifyContent": "center",
+                                "alignItems": "center"
                             })
                         ])
             except:
@@ -1441,23 +1447,24 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
                             "marginLeft": "8px",
                             "marginRight": "16px"
                         }),
-                        html.Span(f"최저: {current_min:.2f}GPa", style={
+                        html.Span(f"최저: {current_min:.0f}GPa", style={
                             "color": "#6b7280",
                             "fontSize": "11px",
                             "marginRight": "12px"
                         }),
-                        html.Span(f"최고: {current_max:.2f}GPa", style={
+                        html.Span(f"최고: {current_max:.0f}GPa", style={
                             "color": "#6b7280",
                             "fontSize": "11px",
                             "marginRight": "12px"
                         }),
-                        html.Span(f"평균: {current_avg:.2f}GPa", style={
+                        html.Span(f"평균: {current_avg:.0f}GPa", style={
                             "color": "#6b7280",
                             "fontSize": "11px"
                         })
                     ], style={
                         "display": "flex",
                         "alignItems": "center",
+                        "justifyContent": "center",
                         "marginBottom": "8px" if material_info and material_info != "물성치 정보 없음" else "0",
                         "marginTop": "12px"
                     }),
@@ -1493,7 +1500,12 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
                     "padding": "12px 16px",
                     "borderRadius": "8px",
                     "border": "1px solid #e2e8f0",
-                    "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
+                    "boxShadow": "0 1px 2px rgba(0,0,0,0.05)",
+                    "height": "65px",
+                    "display": "flex",
+                    "flexDirection": "column",
+                    "justifyContent": "center",
+                    "alignItems": "center"
                 })
             ])
         else:
