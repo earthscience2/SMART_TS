@@ -64,57 +64,7 @@ layout = dbc.Container(
         dcc.Download(id="download-node-image-stress"),
         dcc.Download(id="download-node-data-stress"),
         
-        # ── 숨겨진 단면 탭 컴포넌트들 (콜백용)
-        html.Div([
-            dcc.Interval(id="play-interval-section-stress", interval=1000, disabled=True, n_intervals=0),
-            dbc.Button(id="btn-play-section-stress", style={"display": "none"}),
-            dbc.Button(id="btn-pause-section-stress", style={"display": "none"}),
-            dcc.Dropdown(id="speed-dropdown-section-stress", style={"display": "none"}),
-            dbc.Switch(id="btn-unified-stress-colorbar-section", style={"display": "none"}),
-            dcc.Slider(id="time-slider-section-stress", min=0, max=1, value=0),
-            dbc.Input(id="section-x-input-stress", style={"display": "none"}),
-            dbc.Input(id="section-y-input-stress", style={"display": "none"}),
-            dbc.Input(id="section-z-input-stress", style={"display": "none"}),
-            dcc.Dropdown(id="stress-component-selector-section", style={"display": "none"}),
-            html.Div(id="section-time-info-stress", style={"display": "none"}),
-            dcc.Graph(id="viewer-3d-section-stress", style={"display": "none"}),
-            dcc.Graph(id="viewer-section-x-stress", style={"display": "none"}),
-            dcc.Graph(id="viewer-section-y-stress", style={"display": "none"}),
-            dcc.Graph(id="viewer-section-z-stress", style={"display": "none"}),
-            dbc.Button(id="btn-save-section-image-stress", style={"display": "none"}),
-            dbc.Button(id="btn-save-section-frd-stress", style={"display": "none"}),
-        ], style={"display": "none"}),
-        
-        # ── 숨겨진 노드 탭 컴포넌트들 (콜백용)
-        html.Div([
-            dbc.Input(id="node-x-input-stress", style={"display": "none"}),
-            dbc.Input(id="node-y-input-stress", style={"display": "none"}),
-            dbc.Input(id="node-z-input-stress", style={"display": "none"}),
-            dcc.Dropdown(id="stress-component-selector-node", style={"display": "none"}),
-            dcc.Graph(id="viewer-3d-node-stress", style={"display": "none"}),
-            dcc.Graph(id="viewer-stress-time-stress", style={"display": "none"}),
-            dbc.Button(id="btn-save-node-image-stress", style={"display": "none"}),
-            dbc.Button(id="btn-save-node-data-stress", style={"display": "none"}),
-            dcc.Dropdown(id="stress-range-filter", style={"display": "none"}),
-        ], style={"display": "none"}),
-        
-        # ── 숨겨진 3D 탭 컴포넌트들 (콜백용)
-        html.Div([
-            dcc.Slider(id="time-slider-stress", min=0, max=1, value=0),
-            dbc.Switch(id="btn-unified-stress-colorbar", style={"display": "none"}),
-            dcc.Dropdown(id="stress-component-selector", style={"display": "none"}),
-            dcc.Graph(id="viewer-3d-stress-display", style={"display": "none"}),
-            html.Div(id="viewer-3d-stress-time-info", style={"display": "none"}),
-            dbc.Button(id="btn-play-stress", style={"display": "none"}),
-            dbc.Button(id="btn-pause-stress", style={"display": "none"}),
-            dcc.Interval(id="play-interval-stress", interval=1000, disabled=True, n_intervals=0),
-            dbc.Button(id="speed-1x-stress", style={"display": "none"}),
-            dbc.Button(id="speed-2x-stress", style={"display": "none"}),
-            dbc.Button(id="speed-4x-stress", style={"display": "none"}),
-            dbc.Button(id="speed-8x-stress", style={"display": "none"}),
-            dbc.Button(id="btn-save-3d-stress-image", style={"display": "none"}),
-            dbc.Button(id="btn-save-current-frd", style={"display": "none"}),
-        ], style={"display": "none"}),
+
         
         # ── 알림 컴포넌트
         dbc.Alert(id="stress-project-alert", is_open=False, duration=4000),
@@ -3784,9 +3734,6 @@ def save_section_frd_stress(n_clicks, selected_rows, tbl_data, time_value):
 # 단면도 재생/정지 콜백들
 @callback(
     Output("play-state-section-stress", "data"),
-    Output("play-interval-section-stress", "disabled"),
-    Output("btn-play-section-stress", "disabled"),
-    Output("btn-pause-section-stress", "disabled"),
     Input("btn-play-section-stress", "n_clicks"),
     State("play-state-section-stress", "data"),
     State("tabs-main-stress", "active_tab"),
@@ -3801,13 +3748,10 @@ def start_section_playback_stress(n_clicks, play_state, active_tab):
         play_state = {"playing": False}
     
     play_state["playing"] = True
-    return play_state, False, True, False
+    return play_state
 
 @callback(
     Output("play-state-section-stress", "data", allow_duplicate=True),
-    Output("play-interval-section-stress", "disabled", allow_duplicate=True),
-    Output("btn-play-section-stress", "disabled", allow_duplicate=True),
-    Output("btn-pause-section-stress", "disabled", allow_duplicate=True),
     Input("btn-pause-section-stress", "n_clicks"),
     State("play-state-section-stress", "data"),
     State("tabs-main-stress", "active_tab"),
@@ -3822,7 +3766,7 @@ def stop_section_playback_stress(n_clicks, play_state, active_tab):
         play_state = {"playing": False}
     
     play_state["playing"] = False
-    return play_state, True, False, True
+    return play_state
 
 @callback(
     Output("time-slider-section-stress", "value", allow_duplicate=True),
@@ -3859,9 +3803,6 @@ def auto_play_section_slider_stress(n_intervals, play_state, speed_state, curren
 
 @callback(
     Output("play-state-section-stress", "data", allow_duplicate=True),
-    Output("play-interval-section-stress", "disabled", allow_duplicate=True),
-    Output("btn-play-section-stress", "disabled", allow_duplicate=True),
-    Output("btn-pause-section-stress", "disabled", allow_duplicate=True),
     Input("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
@@ -3869,7 +3810,7 @@ def reset_section_play_state_on_tab_change_stress(active_tab):
     """탭 변경 시 단면도 재생 상태를 리셋합니다."""
     # 단면 탭이 아닌 다른 탭으로 변경될 때만 재생 상태 리셋
     if active_tab != "tab-section-stress":
-        return {"playing": False}, True, False, True
+        return {"playing": False}
     else:
         raise PreventUpdate
 
