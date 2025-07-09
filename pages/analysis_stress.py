@@ -2619,7 +2619,7 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
     
     # 좌표와 응력 값 추출 (von Mises 응력 사용)
     coords = np.array(stress_data['coordinates'])
-    stress_values = [stress_data['stress_values'][0][node_id] for node_id in stress_data['nodes']]
+    stress_values = np.array([stress_data['stress_values'][0][node_id] for node_id in stress_data['nodes']])
     
     # 응력 값 검증
     if len(coords) != len(stress_values):
