@@ -2590,6 +2590,7 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
+    concrete_name = row["name"]
     
     # FRD 파일 목록 가져오기
     frd_files = get_frd_files(concrete_pk)
@@ -2601,14 +2602,36 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
         )
         return empty_fig, empty_fig, empty_fig, empty_fig, 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, "FRD 파일이 없습니다."
     
+    # 응력바 통일 상태 확인
+    use_unified_colorbar = unified_colorbar or (isinstance(unified_colorbar, dict) and unified_colorbar.get("unified", False))
+    
+    # 미리 계산된 전체 응력 범위 사용 (von Mises 응력 기준)
+    global_stress_min = None
+    global_stress_max = None
+    
+    if use_unified_colorbar:
+        # 미리 계산된 전체 범위 가져오기
+        global_ranges = _global_stress_ranges.get(concrete_pk, {})
+        if 'von_mises' in global_ranges:
+            global_stress_min = global_ranges['von_mises']['min']
+            global_stress_max = global_ranges['von_mises']['max']
+        else:
+            # 캐시에 없으면 즉시 계산
+            global_ranges = calculate_global_stress_ranges(concrete_pk)
+            if 'von_mises' in global_ranges:
+                global_stress_min = global_ranges['von_mises']['min']
+                global_stress_max = global_ranges['von_mises']['max']
+    
     # 선택된 시간에 해당하는 FRD 파일
     if time_idx is None or time_idx >= len(frd_files):
         time_idx = len(frd_files) - 1  # 마지막 파일로 설정
     
-    current_file = frd_files[time_idx]
+    selected_file = frd_files[time_idx]
+    filename = os.path.basename(selected_file)
     
     # FRD 파일에서 응력 데이터 읽기
-    stress_data = read_frd_stress_data(current_file)
+    stress_data = read_frd_stress_data(selected_file)
+    
     if not stress_data or not stress_data['coordinates'] or not stress_data['stress_values']:
         empty_fig = go.Figure().add_annotation(
             text="유효한 응력 데이터가 없습니다.",
@@ -2617,11 +2640,14 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
         )
         return empty_fig, empty_fig, empty_fig, empty_fig, 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, "유효한 응력 데이터가 없습니다."
     
-    # 좌표와 응력 값 추출 (von Mises 응력 사용)
+    # 좌표와 응력 값 추출 (입체 탭과 동일한 방식)
     coords = np.array(stress_data['coordinates'])
-    stress_values = np.array([stress_data['stress_values'][0][node_id] for node_id in stress_data['nodes']])
     
-    # 응력 값 검증
+    # von Mises 응력: 노드 ID 순서대로 추출 (입체 탭과 동일)
+    stress_values = [stress_data['stress_values'][0][node_id] for node_id in stress_data['nodes']]
+    component_name = "von Mises 응력"
+    
+    # 데이터 검증: 좌표와 응력 값의 개수가 일치하는지 확인
     if len(coords) != len(stress_values):
         empty_fig = go.Figure().add_annotation(
             text="좌표와 응력 데이터가 일치하지 않습니다.",
@@ -2630,28 +2656,22 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
         )
         return empty_fig, empty_fig, empty_fig, empty_fig, 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, "데이터 불일치"
     
-    # 전체 파일의 응력 범위 계산
-    all_stress_values = []
-    for frd_file in frd_files:
-        try:
-            file_stress_data = read_frd_stress_data(frd_file)
-            if file_stress_data and file_stress_data['stress_values']:
-                file_stress_values = [file_stress_data['stress_values'][0][node_id] for node_id in file_stress_data['nodes']]
-                all_stress_values.extend(file_stress_values)
-        except Exception as e:
-            print(f"파일 {frd_file} 읽기 오류: {e}")
-            continue
+    # 시간 정보 계산 (입체 탭과 동일)
+    try:
+        time_str = filename.split(".")[0]
+        dt = dt_import.strptime(time_str, "%Y%m%d%H")
+        formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
+    except:
+        formatted_time = filename
     
-    # 응력바 통일 여부에 따른 응력 범위 계산
-    if unified_colorbar:
-        # 전체 파일의 응력 범위 사용 (통일 모드)
-        if all_stress_values:
-            stress_min, stress_max = float(np.nanmin(all_stress_values)), float(np.nanmax(all_stress_values))
-        else:
-            stress_min, stress_max = float(np.nanmin(stress_values)), float(np.nanmax(stress_values))
+    # 단위 변환: Pa → GPa (입체 탭과 동일)
+    stress_values_gpa = np.array(stress_values) / 1e9
+    
+    # 응력 범위 설정 (통일 여부에 따라, 입체 탭과 동일)
+    if use_unified_colorbar and global_stress_min is not None and global_stress_max is not None:
+        stress_min, stress_max = global_stress_min, global_stress_max
     else:
-        # 현재 파일의 응력 범위 사용 (개별 모드)
-        stress_min, stress_max = float(np.nanmin(stress_values)), float(np.nanmax(stress_values))
+        stress_min, stress_max = np.nanmin(stress_values_gpa), np.nanmax(stress_values_gpa)
     
     # 입력창 min/max/기본값 자동 설정
     x_coords = coords[:, 0]
@@ -2672,9 +2692,9 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
     y0 = round01(y_val) if y_val is not None else round01(y_mid)
     z0 = round01(z_val) if z_val is not None else round01(z_mid)
     
-    # 3D 뷰(작게)
+    # 3D 뷰(작게) - GPa 단위 사용
     fig_3d = go.Figure(data=go.Volume(
-        x=coords[:,0], y=coords[:,1], z=coords[:,2], value=stress_values,
+        x=coords[:,0], y=coords[:,1], z=coords[:,2], value=stress_values_gpa,
         opacity=0.1, surface_count=15, colorscale=[[0, 'blue'], [1, 'red']],
         colorbar=None, cmin=stress_min, cmax=stress_max, showscale=False
     ))
@@ -2720,7 +2740,7 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
     
     mask_x = np.abs(x_coords - x0) < tol
     if np.any(mask_x):
-        yb, zb, sb = y_coords[mask_x], z_coords[mask_x], stress_values[mask_x]
+        yb, zb, sb = y_coords[mask_x], z_coords[mask_x], stress_values_gpa[mask_x]
         if len(yb) > 3:
             y_bins = np.linspace(yb.min(), yb.max(), 40)
             z_bins = np.linspace(zb.min(), zb.max(), 40)
@@ -2746,7 +2766,7 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
     # Y 단면 (y ≈ y0, 리니어 보간, 컬러바 없음)
     mask_y = np.abs(y_coords - y0) < tol
     if np.any(mask_y):
-        xb, zb, sb = x_coords[mask_y], z_coords[mask_y], stress_values[mask_y]
+        xb, zb, sb = x_coords[mask_y], z_coords[mask_y], stress_values_gpa[mask_y]
         if len(xb) > 3:
             x_bins = np.linspace(xb.min(), xb.max(), 40)
             z_bins = np.linspace(zb.min(), zb.max(), 40)
@@ -2772,7 +2792,7 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
     # Z 단면 (z ≈ z0, 리니어 보간, 컬러바 없음)
     mask_z = np.abs(z_coords - z0) < tol
     if np.any(mask_z):
-        xb, yb, sb = x_coords[mask_z], y_coords[mask_z], stress_values[mask_z]
+        xb, yb, sb = x_coords[mask_z], y_coords[mask_z], stress_values_gpa[mask_z]
         if len(xb) > 3:
             x_bins = np.linspace(xb.min(), xb.max(), 40)
             y_bins = np.linspace(yb.min(), yb.max(), 40)
@@ -2795,22 +2815,14 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
         yaxis=dict(constrain='domain')
     )
     
-    # 현재 파일명/응력 통계 계산
+    # 현재 파일명/응력 통계 계산 (입체 탭과 동일한 방식)
     try:
-        time_str = os.path.basename(current_file).split(".")[0]
-        # 시간 형식을 읽기 쉽게 변환
-        try:
-            dt = dt_import.strptime(time_str, "%Y%m%d%H")
-            formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
-        except:
-            formatted_time = time_str
-        
-        current_min = float(np.nanmin(stress_values))
-        current_max = float(np.nanmax(stress_values))
-        current_avg = float(np.nanmean(stress_values))
-        current_file_title = f"{formatted_time} (최저: {current_min:.0f}Pa, 최고: {current_max:.0f}Pa, 평균: {current_avg:.0f}Pa)"
+        current_min = float(np.nanmin(stress_values_gpa))
+        current_max = float(np.nanmax(stress_values_gpa))
+        current_avg = float(np.nanmean(stress_values_gpa))
+        current_file_title = f"{formatted_time} (최저: {current_min:.0f}GPa, 최고: {current_max:.0f}GPa, 평균: {current_avg:.0f}GPa)"
     except Exception:
-        current_file_title = f"{os.path.basename(current_file)}"
+        current_file_title = f"{formatted_time}"
     
     # step=0.1로 반환
     return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, current_file_title
