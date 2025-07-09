@@ -3635,6 +3635,9 @@ def save_section_frd_stress(n_clicks, selected_rows, tbl_data, time_value):
 # 단면도 재생/정지 콜백들
 @callback(
     Output("play-state-section-stress", "data"),
+    Output("play-interval-section-stress", "disabled"),
+    Output("btn-play-section-stress", "disabled"),
+    Output("btn-pause-section-stress", "disabled"),
     Input("btn-play-section-stress", "n_clicks"),
     State("play-state-section-stress", "data"),
     State("tabs-main-stress", "active_tab"),
@@ -3649,10 +3652,13 @@ def start_section_playback_stress(n_clicks, play_state, active_tab):
         play_state = {"playing": False}
     
     play_state["playing"] = True
-    return play_state
+    return play_state, False, True, False  # interval 활성화, 재생 버튼 비활성화, 정지 버튼 활성화
 
 @callback(
     Output("play-state-section-stress", "data", allow_duplicate=True),
+    Output("play-interval-section-stress", "disabled", allow_duplicate=True),
+    Output("btn-play-section-stress", "disabled", allow_duplicate=True),
+    Output("btn-pause-section-stress", "disabled", allow_duplicate=True),
     Input("btn-pause-section-stress", "n_clicks"),
     State("play-state-section-stress", "data"),
     State("tabs-main-stress", "active_tab"),
@@ -3667,7 +3673,7 @@ def stop_section_playback_stress(n_clicks, play_state, active_tab):
         play_state = {"playing": False}
     
     play_state["playing"] = False
-    return play_state
+    return play_state, True, False, True  # interval 비활성화, 재생 버튼 활성화, 정지 버튼 비활성화
 
 @callback(
     Output("time-slider-section-stress", "value", allow_duplicate=True),
@@ -3689,16 +3695,12 @@ def auto_play_section_slider_stress(n_intervals, play_state, speed_state, curren
     if not play_state or not play_state.get("playing", False):
         return dash.no_update
     
-    # n_intervals가 0이면 초기 상태이므로 업데이트하지 않음
-    if n_intervals == 0:
-        return dash.no_update
-    
     speed = speed_state.get("speed", 1) if speed_state else 1
     
     if current_value is None:
         current_value = 0
     
-    new_value = current_value + speed
+    new_value = current_value + 1  # 항상 1씩 증가 (배속은 interval 간격으로 제어)
     if new_value > max_value:
         new_value = 0  # 처음으로 돌아가기
     
@@ -3720,6 +3722,7 @@ def reset_section_play_state_on_tab_change_stress(active_tab):
 
 @callback(
     Output("speed-state-section-stress", "data"),
+    Output("play-interval-section-stress", "interval"),
     Input("speed-dropdown-section-stress", "value"),
     State("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
@@ -3728,18 +3731,18 @@ def set_speed_section_stress(speed_value, active_tab):
     """단면도 재생 속도를 설정합니다."""
     import dash
     if active_tab != "tab-section-stress":
-        return dash.no_update
+        return dash.no_update, dash.no_update
     
     if speed_value == "1x":
-        return {"speed": 1}
+        return {"speed": 1}, 1000  # 1초 간격
     elif speed_value == "2x":
-        return {"speed": 2}
+        return {"speed": 2}, 500   # 0.5초 간격
     elif speed_value == "4x":
-        return {"speed": 4}
+        return {"speed": 4}, 250   # 0.25초 간격
     elif speed_value == "8x":
-        return {"speed": 8}
+        return {"speed": 8}, 125   # 0.125초 간격
     
-    return {"speed": 1}
+    return {"speed": 1}, 1000
 
 @callback(
     Output("speed-state-section-stress", "data", allow_duplicate=True),
