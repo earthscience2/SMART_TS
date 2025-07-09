@@ -707,6 +707,114 @@ def create_3d_tab_content_stress(concrete_pk):
             # 3D 시각화 생성
         stress_3d_figure = create_3d_stress_figure(all_stress_data)
         
+        # 초기 시간 정보와 물성치 정보 생성 (첫 번째 파일 기준)
+        initial_time_info = ""
+        if frd_files:
+            try:
+                first_filename = os.path.basename(frd_files[0])
+                time_str = first_filename.split(".")[0]
+                dt = datetime.strptime(time_str, "%Y%m%d%H")
+                formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
+                
+                # 물성치 정보 가져오기 (동일한 시간의 INP 파일에서)
+                material_info = ""
+                try:
+                    inp_dir = f"inp/{concrete_pk}"
+                    inp_file_path = f"{inp_dir}/{first_filename.split('.')[0]}.inp"
+                    if os.path.exists(inp_file_path):
+                        with open(inp_file_path, 'r') as f:
+                            inp_lines = f.readlines()
+                        material_info = parse_material_info_from_inp(inp_lines)
+                except:
+                    material_info = ""
+                
+                # 초기 응력 통계 계산
+                if all_stress_data and first_filename in all_stress_data:
+                    first_data = all_stress_data[first_filename]
+                    if first_data['stress_values']:
+                        stress_values = list(first_data['stress_values'][0].values())
+                        stress_values_gpa = np.array(stress_values) / 1e9
+                        current_min = float(np.nanmin(stress_values_gpa))
+                        current_max = float(np.nanmax(stress_values_gpa))
+                        current_avg = float(np.nanmean(stress_values_gpa))
+                        
+                        initial_time_info = html.Div([
+                            html.Div([
+                                html.Div([
+                                    html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "14px"}),
+                                    html.Span(formatted_time, style={
+                                        "fontWeight": "600",
+                                        "color": "#1f2937",
+                                        "fontSize": "14px",
+                                        "marginLeft": "8px"
+                                    })
+                                ], style={
+                                    "display": "flex",
+                                    "alignItems": "center",
+                                    "marginBottom": "1px" if material_info and material_info != "물성치 정보 없음" else "0",
+                                    "marginTop": "12px"
+                                }),
+                                
+                                # 응력 통계 정보 (작은 글씨로)
+                                html.Div([
+                                    html.Span(f"최저: {current_min:.2f}GPa", style={
+                                        "color": "#6b7280",
+                                        "fontSize": "11px",
+                                        "marginRight": "12px"
+                                    }),
+                                    html.Span(f"최고: {current_max:.2f}GPa", style={
+                                        "color": "#6b7280",
+                                        "fontSize": "11px",
+                                        "marginRight": "12px"
+                                    }),
+                                    html.Span(f"평균: {current_avg:.2f}GPa", style={
+                                        "color": "#6b7280",
+                                        "fontSize": "11px"
+                                    })
+                                ], style={
+                                    "display": "flex",
+                                    "alignItems": "center",
+                                    "marginBottom": "8px"
+                                }),
+                                
+                                # 물성치 정보 섹션 (있는 경우만, 인라인 형태)
+                                html.Div([
+                                    html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "14px"}),
+                                    *[html.Div([
+                                        html.Span(f"{prop.split(':')[0]}:", style={
+                                            "color": "#6b7280",
+                                            "fontSize": "12px",
+                                            "marginRight": "4px"
+                                        }),
+                                        html.Span(prop.split(":", 1)[1].strip(), style={
+                                            "color": "#111827",
+                                            "fontSize": "12px",
+                                            "fontWeight": "500",
+                                            "marginRight": "12px"
+                                        })
+                                    ], style={"display": "inline"})
+                                    for prop in material_info.split(", ") if material_info and material_info != "물성치 정보 없음"]
+                                ], style={
+                                    "display": "flex",
+                                    "alignItems": "flex-start",
+                                    "gap": "8px",
+                                    "flexWrap": "wrap",
+                                    "marginBottom": "12px"
+                                }) if material_info and material_info != "물성치 정보 없음" else html.Div()
+                                
+                            ], style={
+                                "backgroundColor": "#f8fafc",
+                                "padding": "12px 16px",
+                                "borderRadius": "8px",
+                                "border": "1px solid #e2e8f0",
+                                "boxShadow": "0 1px 2px rgba(0,0,0,0.05)"
+                            })
+                        ])
+            except:
+                initial_time_info = "시간 정보를 불러올 수 없습니다."
+        else:
+            initial_time_info = "FRD 파일이 없습니다."
+        
         # 응력 성분 선택 드롭다운
         stress_component_dropdown = dbc.Select(
             id="stress-component-selector",
@@ -846,6 +954,7 @@ def create_3d_tab_content_stress(concrete_pk):
             # 왼쪽: 현재 시간/응력 정보
             dbc.Col([
                 html.Div(
+                    initial_time_info, 
                     id="viewer-3d-stress-time-info", 
                     style={
                         "minHeight": "65px !important",
@@ -867,44 +976,43 @@ def create_3d_tab_content_stress(concrete_pk):
                         type="circle",
                         children=[
                             dbc.Button(
-                                [html.I(className="fas fa-camera me-1"), "현재 이미지"],
+                                [html.I(className="fas fa-camera me-1"), "이미지 저장"],
                                 id="btn-save-3d-stress-image",
                                 color="primary",
-                                size="sm",
+                                size="lg",
                                 style={
                                     "borderRadius": "8px",
-                                    "fontWeight": "500",
+                                    "fontWeight": "600",
                                     "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                    "fontSize": "12px",
-                                    "width": "100px",
-                                    "height": "32px",
-                                    "marginBottom": "8px"
+                                    "fontSize": "15px",
+                                    "width": "120px",
+                                    "height": "48px",
+                                    "marginRight": "16px"
                                 }
                             )
                         ]
                     ),
-                    html.Br(),
                     dcc.Loading(
                         id="loading-btn-save-current-frd",
                         type="circle",
                         children=[
                             dbc.Button(
-                                [html.I(className="fas fa-file-download me-1"), "FRD 파일"],
+                                [html.I(className="fas fa-file-download me-1"), "FRD 파일 저장"],
                                 id="btn-save-current-frd",
                                 color="success",
-                                size="sm",
+                                size="lg",
                                 style={
                                     "borderRadius": "8px",
-                                    "fontWeight": "500",
+                                    "fontWeight": "600",
                                     "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                    "fontSize": "12px",
-                                    "width": "100px",
-                                    "height": "32px"
+                                    "fontSize": "15px",
+                                    "width": "140px",
+                                    "height": "48px"
                                 }
                             )
                         ]
                     ),
-                ], style={"display": "flex", "flexDirection": "column", "justifyContent": "center", "alignItems": "center", "height": "65px"})
+                ], style={"display": "flex", "justifyContent": "center", "alignItems": "center", "height": "65px"})
             ], md=4, style={
                 "height": "65px"
             }),
@@ -1256,7 +1364,7 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
                     # 시간 정보 섹션
                     html.Div([
                         html.I(className="fas fa-clock", style={"color": "#3b82f6", "fontSize": "14px"}),
-                        html.Span(f"{formatted_time} - {component_name} (최저: {current_min:.2f}GPa, 최고: {current_max:.2f}GPa, 평균: {current_avg:.2f}GPa)", style={
+                        html.Span(formatted_time, style={
                             "fontWeight": "600",
                             "color": "#1f2937",
                             "fontSize": "14px",
@@ -1267,6 +1375,28 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
                         "alignItems": "center",
                         "marginBottom": "1px" if material_info and material_info != "물성치 정보 없음" else "0",
                         "marginTop": "12px"
+                    }),
+                    
+                    # 응력 통계 정보 (작은 글씨로)
+                    html.Div([
+                        html.Span(f"최저: {current_min:.2f}GPa", style={
+                            "color": "#6b7280",
+                            "fontSize": "11px",
+                            "marginRight": "12px"
+                        }),
+                        html.Span(f"최고: {current_max:.2f}GPa", style={
+                            "color": "#6b7280",
+                            "fontSize": "11px",
+                            "marginRight": "12px"
+                        }),
+                        html.Span(f"평균: {current_avg:.2f}GPa", style={
+                            "color": "#6b7280",
+                            "fontSize": "11px"
+                        })
+                    ], style={
+                        "display": "flex",
+                        "alignItems": "center",
+                        "marginBottom": "8px"
                     }),
                     
                     # 물성치 정보 섹션 (있는 경우만, 인라인 형태)
