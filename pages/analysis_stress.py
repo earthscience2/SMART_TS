@@ -65,8 +65,66 @@ layout = dbc.Container(
         dcc.Download(id="download-node-image-stress"),
         dcc.Download(id="download-node-data-stress"),
         
+        # ── 필수 숨겨진 컴포넌트들 (콜백 오류 방지) - 제일 먼저 선언
+        html.Div([
+            # 단면도 탭 컴포넌트들 최우선 선언
+            dcc.Slider(
+                id="time-slider-section-stress", 
+                min=0, max=5, step=1, value=0, marks={},
+                updatemode='drag', persistence=False
+            ),
+            dbc.Input(id="section-x-input-stress", type="number", value=None),
+            dbc.Input(id="section-y-input-stress", type="number", value=None),
+            dbc.Input(id="section-z-input-stress", type="number", value=None),
+            dcc.Graph(id="viewer-3d-section-stress"),
+            dcc.Graph(id="viewer-section-x-stress"),
+            dcc.Graph(id="viewer-section-y-stress"),
+            dcc.Graph(id="viewer-section-z-stress"),
+            dbc.Button("▶", id="btn-play-section-stress"),
+            dbc.Button("⏸", id="btn-pause-section-stress"),
+            dcc.Dropdown(id="speed-dropdown-section-stress"),
+            dbc.Switch(id="btn-unified-stress-colorbar-section"),
+            dcc.Dropdown(id="stress-component-selector-section"),
+            dcc.Interval(id="play-interval-section-stress", interval=1000, n_intervals=0, disabled=True),
+            dbc.Button(id="btn-save-section-image-stress"),
+            dbc.Button(id="btn-save-section-frd-stress"),
+            html.Div(id="section-time-info-stress"),
+            dcc.Loading(id="loading-btn-save-section-image-stress", type="circle"),
+            dcc.Loading(id="loading-btn-save-section-frd-stress", type="circle"),
+            # 입체 탭 컴포넌트들
+            dcc.Slider(id="time-slider-stress", min=0, max=5, step=1, value=0, marks={}),
+            dbc.Button(id="btn-play-stress"),
+            dbc.Button(id="btn-pause-stress"),
+            dcc.Dropdown(id="speed-dropdown-stress"),
+            dbc.Switch(id="btn-unified-stress-colorbar"),
+            dcc.Dropdown(id="stress-component-selector"),
+            dcc.Store(id="play-state-stress", data={"playing": False}),
+            dcc.Store(id="speed-state-stress", data={"speed": 1}),
+            dcc.Interval(id="play-interval-stress", interval=1000, n_intervals=0, disabled=True),
+            dbc.Button(id="btn-save-3d-stress-image"),
+            dbc.Button(id="btn-save-current-frd"),
+            dcc.Graph(id="viewer-3d-stress-display"),
+            html.Div(id="viewer-3d-stress-time-info"),
+            dbc.DropdownMenuItem(id="speed-1x-stress"),
+            dbc.DropdownMenuItem(id="speed-2x-stress"),
+            dbc.DropdownMenuItem(id="speed-4x-stress"),
+            dbc.DropdownMenuItem(id="speed-8x-stress"),
+            dcc.Loading(id="loading-btn-save-3d-stress-image", type="circle"),
+            dcc.Loading(id="loading-btn-save-current-frd", type="circle"),
+            # 노드별 탭 컴포넌트들
+            dbc.Input(id="node-x-input-stress", type="number"),
+            dbc.Input(id="node-y-input-stress", type="number"),
+            dbc.Input(id="node-z-input-stress", type="number"),
+            dcc.Loading(id="loading-btn-save-node-image-stress", type="circle"),
+            dbc.Button(id="btn-save-node-image-stress"),
+            dcc.Loading(id="loading-btn-save-node-data-stress", type="circle"),
+            dbc.Button(id="btn-save-node-data-stress"),
+            dcc.Dropdown(id="stress-component-selector-node"),
+            dcc.Dropdown(id="stress-range-filter"),
+            dcc.Graph(id="viewer-3d-node-stress"),
+            dcc.Graph(id="viewer-stress-time-stress"),
+        ], style={"display": "none"}),
 
-        
         # ── 알림 컴포넌트
         dbc.Alert(id="stress-project-alert", is_open=False, duration=4000),
         
@@ -307,80 +365,6 @@ layout = dbc.Container(
                 ])
             ], md=8)
         ], className="g-4"),
-        
-        # 숨겨진 컴포넌트들 (콜백용) - 온도분석과 동일하게 처리
-        html.Div([
-            # 단면도 탭 컴포넌트들 (온도분석과 동일)
-            dcc.Slider(
-                id="time-slider-section-stress", 
-                min=0, max=5, step=1, value=0, marks={},
-                updatemode='drag', persistence=False
-            ),
-            dbc.Input(id="section-x-input-stress", type="number", value=None),
-            dbc.Input(id="section-y-input-stress", type="number", value=None),
-            dbc.Input(id="section-z-input-stress", type="number", value=None),
-            dcc.Graph(id="viewer-3d-section-stress"),
-            dcc.Graph(id="viewer-section-x-stress"),
-            dcc.Graph(id="viewer-section-y-stress"),
-            dcc.Graph(id="viewer-section-z-stress"),
-            dbc.Button("▶", id="btn-play-section-stress"),
-            dbc.Button("⏸", id="btn-pause-section-stress"),
-            dcc.Dropdown(id="speed-dropdown-section-stress"),
-            dbc.Switch(id="btn-unified-stress-colorbar-section"),
-            dcc.Dropdown(id="stress-component-selector-section"),
-            dcc.Store(id="play-state-section-stress", data={"playing": False}),
-            dcc.Store(id="speed-state-section-stress", data={"speed": 1}),
-            dcc.Store(id="unified-stress-colorbar-section-state", data={"unified": False}),
-            dcc.Interval(id="play-interval-section-stress", interval=1000, n_intervals=0, disabled=True),
-            dbc.Button(id="btn-save-section-image-stress"),
-            dbc.Button(id="btn-save-section-frd-stress"),
-            dcc.Download(id="download-section-image-stress"),
-            dcc.Download(id="download-section-frd-stress"),
-            html.Div(id="section-time-info-stress"),
-            # 로딩 컴포넌트들 추가
-            dcc.Loading(id="loading-btn-save-section-image-stress", type="circle"),
-            dcc.Loading(id="loading-btn-save-section-frd-stress", type="circle"),
-            # 입체 탭 컴포넌트들도 추가 (콜백 오류 방지)
-            dcc.Slider(id="time-slider-stress", min=0, max=5, step=1, value=0, marks={}),
-            dbc.Button(id="btn-play-stress"),
-            dbc.Button(id="btn-pause-stress"),
-            dcc.Dropdown(id="speed-dropdown-stress"),
-            dbc.Switch(id="btn-unified-stress-colorbar"),
-            dcc.Dropdown(id="stress-component-selector"),
-            dcc.Store(id="play-state-stress", data={"playing": False}),
-            dcc.Store(id="speed-state-stress", data={"speed": 1}),
-            dcc.Store(id="unified-stress-colorbar-state", data={"unified": False}),
-            dcc.Interval(id="play-interval-stress", interval=1000, n_intervals=0, disabled=True),
-            dbc.Button(id="btn-save-3d-stress-image"),
-            dbc.Button(id="btn-save-current-frd"),
-            dcc.Graph(id="viewer-3d-stress-display"),
-            html.Div(id="viewer-3d-stress-time-info"),
-            # 배속 버튼들 추가
-            dbc.DropdownMenuItem(id="speed-1x-stress"),
-            dbc.DropdownMenuItem(id="speed-2x-stress"),
-            dbc.DropdownMenuItem(id="speed-4x-stress"),
-            dbc.DropdownMenuItem(id="speed-8x-stress"),
-            # 로딩 컴포넌트들
-            dcc.Loading(id="loading-btn-save-3d-stress-image", type="circle"),
-            dcc.Loading(id="loading-btn-save-current-frd", type="circle"),
-            # 노드별 탭 컴포넌트들 추가 (콜백 오류 방지)
-            dbc.Input(id="node-x-input-stress", type="number"),
-            dbc.Input(id="node-y-input-stress", type="number"),
-            dbc.Input(id="node-z-input-stress", type="number"),
-            dcc.Loading(id="loading-btn-save-node-image-stress", type="circle"),
-            dbc.Button(id="btn-save-node-image-stress"),
-            dcc.Loading(id="loading-btn-save-node-data-stress", type="circle"),
-            dbc.Button(id="btn-save-node-data-stress"),
-            dcc.Dropdown(id="stress-component-selector-node"),
-            dcc.Dropdown(id="stress-range-filter"),
-            dcc.Graph(id="viewer-3d-node-stress"),
-            dcc.Graph(id="viewer-stress-time-stress"),
-            dcc.Download(id="download-node-image-stress"),
-            dcc.Download(id="download-node-data-stress"),
-            dcc.Store(id="node-coord-store-stress", data=None),
-        ], style={"display": "none"}),
-        
-        # 콜백 오류 해결을 위한 필수 컴포넌트들 (제거됨 - 실제 탭에 포함됨)
     ]
 )
 
