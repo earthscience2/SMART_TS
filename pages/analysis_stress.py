@@ -308,12 +308,34 @@ layout = dbc.Container(
             ], md=8)
         ], className="g-4"),
         
-        # 숨겨진 컴포넌트들 (콜백용) - 단면 탭 컴포넌트들 추가
+        # 숨겨진 컴포넌트들 (콜백용) - 온도분석과 동일하게 처리
         html.Div([
-            # 단면 탭 관련 컴포넌트들 (콜백 오류 방지) - 숨겨진 div가 필요한 경우만
+            # 단면도 탭 컴포넌트들 (온도분석과 동일)
+            dcc.Slider(
+                id="time-slider-section-stress", 
+                min=0, max=5, step=1, value=0, marks={},
+                updatemode='drag', persistence=False
+            ),
+            dbc.Input(id="section-x-input-stress", type="number", value=None),
+            dbc.Input(id="section-y-input-stress", type="number", value=None),
+            dbc.Input(id="section-z-input-stress", type="number", value=None),
+            dcc.Graph(id="viewer-3d-section-stress"),
+            dcc.Graph(id="viewer-section-x-stress"),
+            dcc.Graph(id="viewer-section-y-stress"),
+            dcc.Graph(id="viewer-section-z-stress"),
+            dbc.Button("▶", id="btn-play-section-stress"),
+            dbc.Button("⏸", id="btn-pause-section-stress"),
+            dcc.Dropdown(id="speed-dropdown-section-stress"),
+            dbc.Switch(id="btn-unified-stress-colorbar-section"),
+            dcc.Dropdown(id="stress-component-selector-section"),
+            dcc.Store(id="play-state-section-stress", data={"playing": False}),
+            dcc.Store(id="speed-state-section-stress", data={"speed": 1}),
+            dcc.Interval(id="play-interval-section-stress", interval=1000, n_intervals=0, disabled=True),
+            dbc.Button(id="btn-save-section-image-stress"),
+            dbc.Button(id="btn-save-section-frd-stress"),
+            dcc.Download(id="download-section-image-stress"),
+            dcc.Download(id="download-section-frd-stress"),
             html.Div(id="section-time-info-stress"),
-            
-            # 최소한의 숨겨진 컴포넌트만 유지 (콜백 오류 방지용)
         ], style={"display": "none"}),
         
         # 콜백 오류 해결을 위한 필수 컴포넌트들 (제거됨 - 실제 탭에 포함됨)
