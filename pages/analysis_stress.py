@@ -3559,6 +3559,8 @@ def init_section_slider_independent_stress(active_tab, selected_rows, tbl_data, 
     if active_tab != "tab-section-stress":
         raise PreventUpdate
     
+    print(f"단면 탭 초기화 시작: active_tab={active_tab}, selected_rows={selected_rows}")
+    
     # 기본값
     slider_min, slider_max, slider_marks, slider_value = 0, 0, {}, 0
     
@@ -3571,8 +3573,12 @@ def init_section_slider_independent_stress(active_tab, selected_rows, tbl_data, 
             else:
                 # 딕셔너리 형태인 경우
                 row = tbl_data
+            
+            print(f"선택된 콘크리트 정보: {row}")
             concrete_pk = row["concrete_pk"]
             frd_files = get_frd_files(concrete_pk)
+            
+            print(f"FRD 파일들: {frd_files}")
             
             if frd_files:
                 # 시간 파싱
@@ -3582,8 +3588,12 @@ def init_section_slider_independent_stress(active_tab, selected_rows, tbl_data, 
                         time_str = os.path.basename(f).split(".")[0]
                         dt = datetime.strptime(time_str, "%Y%m%d%H")
                         times.append(dt)
-                    except:
+                        print(f"파싱된 시간: {f} -> {dt}")
+                    except Exception as e:
+                        print(f"시간 파싱 오류 {f}: {e}")
                         continue
+                
+                print(f"파싱된 시간들: {times}")
                 
                 if times:
                     max_idx = len(times) - 1
@@ -3601,8 +3611,16 @@ def init_section_slider_independent_stress(active_tab, selected_rows, tbl_data, 
                     slider_marks = marks
                     
                     print(f"단면 슬라이더 초기화: min={slider_min}, max={slider_max}, value={slider_value}, marks={slider_marks}")
+                else:
+                    print("파싱된 시간이 없습니다.")
+            else:
+                print("FRD 파일이 없습니다.")
         except Exception as e:
             print(f"단면 슬라이더 초기화 오류: {e}")
+            import traceback
+            traceback.print_exc()
+    else:
+        print(f"선택된 콘크리트가 없습니다: selected_rows={selected_rows}, tbl_data={tbl_data}")
     
     return slider_min, slider_max, slider_value, slider_marks
 
@@ -3622,6 +3640,8 @@ def force_init_section_slider_stress(active_tab, selected_rows, tbl_data):
     if active_tab != "tab-section-stress":
         raise PreventUpdate
     
+    print(f"단면 탭 강제 초기화 시작: active_tab={active_tab}, selected_rows={selected_rows}")
+    
     # 기본값
     slider_min, slider_max, slider_marks, slider_value = 0, 0, {}, 0
     
@@ -3634,8 +3654,12 @@ def force_init_section_slider_stress(active_tab, selected_rows, tbl_data):
             else:
                 # 딕셔너리 형태인 경우
                 row = tbl_data
+            
+            print(f"선택된 콘크리트 정보: {row}")
             concrete_pk = row["concrete_pk"]
             frd_files = get_frd_files(concrete_pk)
+            
+            print(f"FRD 파일들: {frd_files}")
             
             if frd_files:
                 # 시간 파싱
@@ -3645,8 +3669,12 @@ def force_init_section_slider_stress(active_tab, selected_rows, tbl_data):
                         time_str = os.path.basename(f).split(".")[0]
                         dt = datetime.strptime(time_str, "%Y%m%d%H")
                         times.append(dt)
-                    except:
+                        print(f"파싱된 시간: {f} -> {dt}")
+                    except Exception as e:
+                        print(f"시간 파싱 오류 {f}: {e}")
                         continue
+                
+                print(f"파싱된 시간들: {times}")
                 
                 if times:
                     max_idx = len(times) - 1
@@ -3664,8 +3692,16 @@ def force_init_section_slider_stress(active_tab, selected_rows, tbl_data):
                     slider_marks = marks
                     
                     print(f"단면 슬라이더 강제 초기화: min={slider_min}, max={slider_max}, value={slider_value}, marks={slider_marks}")
+                else:
+                    print("파싱된 시간이 없습니다.")
+            else:
+                print("FRD 파일이 없습니다.")
         except Exception as e:
             print(f"단면 슬라이더 강제 초기화 오류: {e}")
+            import traceback
+            traceback.print_exc()
+    else:
+        print(f"선택된 콘크리트가 없습니다: selected_rows={selected_rows}, tbl_data={tbl_data}")
     
     return slider_min, slider_max, slider_value, slider_marks
 
