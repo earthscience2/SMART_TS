@@ -339,6 +339,13 @@ layout = dbc.Container(
             # 입체 탭 관련 컴포넌트들
             dcc.Graph(id="viewer-3d-stress-display"),
             dcc.Store(id="section-slider-value-store", data=None),
+            
+            # UI 컴포넌트들 (콜백용으로 숨겨진 영역에 추가)
+            dcc.Slider(id="section-slider-ui", min=0, max=5, step=1, value=0, marks={}),
+            dbc.Input(id="section-x-input-ui", type="number", value=None),
+            dbc.Input(id="section-y-input-ui", type="number", value=None),
+            dbc.Input(id="section-z-input-ui", type="number", value=None),
+            dcc.Dropdown(id="stress-component-selector-ui", value="von_mises"),
         ], style={"display": "none"})
     ]
 )
