@@ -4547,7 +4547,7 @@ def user_move_slider(value):
 
 # UI 컴포넌트와 숨겨진 컴포넌트 동기화 콜백들
 @callback(
-    Output("time-slider-section-stress", "value"),
+    Output("time-slider-section-stress", "value", allow_duplicate=True),
     Input("section-slider-ui", "value"),
     prevent_initial_call=True,
 )
@@ -4556,10 +4556,10 @@ def sync_ui_slider_to_hidden(ui_value):
     return ui_value
 
 @callback(
-    Output("section-slider-ui", "value"),
-    Output("section-slider-ui", "min"),
-    Output("section-slider-ui", "max"),
-    Output("section-slider-ui", "marks"),
+    Output("section-slider-ui", "value", allow_duplicate=True),
+    Output("section-slider-ui", "min", allow_duplicate=True),
+    Output("section-slider-ui", "max", allow_duplicate=True),
+    Output("section-slider-ui", "marks", allow_duplicate=True),
     Input("time-slider-section-stress", "value"),
     Input("time-slider-section-stress", "min"),
     Input("time-slider-section-stress", "max"),
@@ -4571,7 +4571,7 @@ def sync_hidden_slider_to_ui(value, min_val, max_val, marks):
     return value, min_val, max_val, marks
 
 @callback(
-    Output("section-x-input-stress", "value"),
+    Output("section-x-input-stress", "value", allow_duplicate=True),
     Input("section-x-input-ui", "value"),
     prevent_initial_call=True,
 )
@@ -4580,7 +4580,7 @@ def sync_ui_x_input_to_hidden(ui_value):
     return ui_value
 
 @callback(
-    Output("section-x-input-ui", "value"),
+    Output("section-x-input-ui", "value", allow_duplicate=True),
     Input("section-x-input-stress", "value"),
     prevent_initial_call=True,
 )
@@ -4589,7 +4589,7 @@ def sync_hidden_x_input_to_ui(value):
     return value
 
 @callback(
-    Output("section-y-input-stress", "value"),
+    Output("section-y-input-stress", "value", allow_duplicate=True),
     Input("section-y-input-ui", "value"),
     prevent_initial_call=True,
 )
@@ -4598,7 +4598,7 @@ def sync_ui_y_input_to_hidden(ui_value):
     return ui_value
 
 @callback(
-    Output("section-y-input-ui", "value"),
+    Output("section-y-input-ui", "value", allow_duplicate=True),
     Input("section-y-input-stress", "value"),
     prevent_initial_call=True,
 )
@@ -4607,7 +4607,7 @@ def sync_hidden_y_input_to_ui(value):
     return value
 
 @callback(
-    Output("section-z-input-stress", "value"),
+    Output("section-z-input-stress", "value", allow_duplicate=True),
     Input("section-z-input-ui", "value"),
     prevent_initial_call=True,
 )
@@ -4616,7 +4616,7 @@ def sync_ui_z_input_to_hidden(ui_value):
     return ui_value
 
 @callback(
-    Output("section-z-input-ui", "value"),
+    Output("section-z-input-ui", "value", allow_duplicate=True),
     Input("section-z-input-stress", "value"),
     prevent_initial_call=True,
 )
@@ -4625,7 +4625,7 @@ def sync_hidden_z_input_to_ui(value):
     return value
 
 @callback(
-    Output("stress-component-selector-section", "value"),
+    Output("stress-component-selector-section", "value", allow_duplicate=True),
     Input("stress-component-selector-ui", "value"),
     prevent_initial_call=True,
 )
@@ -4634,7 +4634,7 @@ def sync_ui_component_to_hidden(ui_value):
     return ui_value
 
 @callback(
-    Output("stress-component-selector-ui", "value"),
+    Output("stress-component-selector-ui", "value", allow_duplicate=True),
     Input("stress-component-selector-section", "value"),
     prevent_initial_call=True,
 )
