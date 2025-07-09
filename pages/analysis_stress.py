@@ -9,6 +9,7 @@ import glob
 import pandas as pd
 import numpy as np
 from datetime import datetime
+from scipy.interpolate import griddata
 import dash
 from dash import (
     html, dcc, Input, Output, State,
