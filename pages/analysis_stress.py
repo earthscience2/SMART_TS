@@ -71,7 +71,7 @@ layout = dbc.Container(
             dbc.Button(id="btn-pause-section-stress", style={"display": "none"}),
             dcc.Dropdown(id="speed-dropdown-section-stress", style={"display": "none"}),
             dbc.Switch(id="btn-unified-stress-colorbar-section", style={"display": "none"}),
-            dcc.Slider(id="time-slider-section-stress", style={"display": "none"}),
+            dcc.Slider(id="time-slider-section-stress", min=0, max=1, value=0),
             dbc.Input(id="section-x-input-stress", style={"display": "none"}),
             dbc.Input(id="section-y-input-stress", style={"display": "none"}),
             dbc.Input(id="section-z-input-stress", style={"display": "none"}),
@@ -100,14 +100,14 @@ layout = dbc.Container(
         
         # ── 숨겨진 3D 탭 컴포넌트들 (콜백용)
         html.Div([
-            dcc.Slider(id="time-slider-stress", style={"display": "none"}),
+            dcc.Slider(id="time-slider-stress", min=0, max=1, value=0),
             dbc.Switch(id="btn-unified-stress-colorbar", style={"display": "none"}),
             dcc.Dropdown(id="stress-component-selector", style={"display": "none"}),
             dcc.Graph(id="viewer-3d-stress-display", style={"display": "none"}),
             html.Div(id="viewer-3d-stress-time-info", style={"display": "none"}),
             dbc.Button(id="btn-play-stress", style={"display": "none"}),
             dbc.Button(id="btn-pause-stress", style={"display": "none"}),
-            dcc.Interval(id="play-interval-stress", style={"display": "none"}),
+            dcc.Interval(id="play-interval-stress", interval=1000, disabled=True, n_intervals=0),
             dbc.Button(id="speed-1x-stress", style={"display": "none"}),
             dbc.Button(id="speed-2x-stress", style={"display": "none"}),
             dbc.Button(id="speed-4x-stress", style={"display": "none"}),
