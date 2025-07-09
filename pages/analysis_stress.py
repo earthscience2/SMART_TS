@@ -482,6 +482,50 @@ def calculate_global_stress_ranges(concrete_pk):
     _global_stress_ranges[concrete_pk] = global_ranges
     return global_ranges
 
+def clear_stress_cache(concrete_pk=None):
+    """응력 데이터 캐시를 정리합니다."""
+    global _stress_data_cache, _material_info_cache, _global_stress_ranges
+    
+    if concrete_pk:
+        # 특정 콘크리트의 캐시만 정리
+        keys_to_remove = [k for k in _stress_data_cache.keys() if concrete_pk in k]
+        for key in keys_to_remove:
+            del _stress_data_cache[key]
+        
+        if concrete_pk in _global_stress_ranges:
+            del _global_stress_ranges[concrete_pk]
+    else:
+        # 전체 캐시 정리
+        _stress_data_cache.clear()
+        _material_info_cache.clear()
+        _global_stress_ranges.clear()
+
+def get_sensor_positions(concrete_pk):
+    """콘크리트에 속한 센서들의 위치 정보를 가져옵니다."""
+    try:
+        df_sensors = api_db.get_sensors_data(concrete_pk=concrete_pk)
+        if df_sensors.empty:
+            return []
+        
+        sensor_positions = []
+        for _, row in df_sensors.iterrows():
+            try:
+                dims = ast.literal_eval(row["dims"])
+                x = float(dims["nodes"][0])
+                y = float(dims["nodes"][1])
+                z = float(dims["nodes"][2])
+                device_id = row["device_id"]
+                sensor_positions.append({
+                    "x": x, "y": y, "z": z,
+                    "device_id": device_id
+                })
+            except Exception:
+                continue
+        
+        return sensor_positions
+    except Exception:
+        return []
+
 def parse_material_info_from_inp_cached(inp_file_path):
     """INP 파일에서 물성치 정보를 캐싱하여 추출합니다."""
     # 캐시 확인
@@ -531,12 +575,15 @@ def load_concrete_data_stress(search, pathname):
             pass
     
     if not project_pk:
+        # 프로젝트가 없으면 캐시 정리
+        clear_stress_cache()
         return [], [], [], [], None
     
     try:
         # 프로젝트 정보 로드
         df_proj = api_db.get_project_data(project_pk=project_pk)
         if df_proj.empty:
+            clear_stress_cache()
             return [], [], [], [], None
             
         proj_row = df_proj.iloc[0]
@@ -545,9 +592,11 @@ def load_concrete_data_stress(search, pathname):
         # 해당 프로젝트의 콘크리트 데이터 로드
         df_conc = api_db.get_concrete_data(project_pk=project_pk)
         if df_conc.empty:
+            clear_stress_cache()
             return [], [], [], [], {"name": proj_name, "pk": project_pk}
         
     except Exception as e:
+        clear_stress_cache()
         return [], [], [], [], None
     
     table_data = []
@@ -866,6 +915,16 @@ def create_3d_tab_content_stress(concrete_pk):
                 except:
                     material_info = ""
                 
+                # 센서 정보 가져오기
+                sensor_info = ""
+                try:
+                    sensor_positions = get_sensor_positions(concrete_pk)
+                    if sensor_positions:
+                        sensor_count = len(sensor_positions)
+                        sensor_info = f"센서: {sensor_count}개"
+                except:
+                    sensor_info = ""
+                
                 # 초기 응력 통계 계산
                 if all_stress_data and first_filename in all_stress_data:
                     first_data = all_stress_data[first_filename]
@@ -909,35 +968,49 @@ def create_3d_tab_content_stress(concrete_pk):
                                     "display": "flex",
                                     "alignItems": "center",
                                     "justifyContent": "center",
-                                    "marginBottom": "8px" if material_info and material_info != "물성치 정보 없음" else "0",
+                                    "marginBottom": "8px" if (material_info and material_info != "물성치 정보 없음") or sensor_info else "0",
                                     "marginTop": "12px"
                                 }),
                                 
-                                # 물성치 정보 섹션 (있는 경우만, 인라인 형태)
+                                # 물성치 정보와 센서 정보를 한 줄에 표시
                                 html.Div([
-                                    html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "14px"}),
-                                    *[html.Div([
-                                        html.Span(f"{prop.split(':')[0]}:", style={
-                                            "color": "#6b7280",
-                                            "fontSize": "12px",
-                                            "marginRight": "4px"
-                                        }),
-                                        html.Span(prop.split(":", 1)[1].strip(), style={
+                                    # 물성치 정보 (있는 경우만)
+                                    html.Div([
+                                        html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "14px"}),
+                                        *[html.Div([
+                                            html.Span(f"{prop.split(':')[0]}:", style={
+                                                "color": "#6b7280",
+                                                "fontSize": "12px",
+                                                "marginRight": "4px"
+                                            }),
+                                            html.Span(prop.split(":", 1)[1].strip(), style={
+                                                "color": "#111827",
+                                                "fontSize": "12px",
+                                                "fontWeight": "500",
+                                                "marginRight": "12px"
+                                            })
+                                        ], style={"display": "inline"})
+                                        for prop in material_info.split(", ") if material_info and material_info != "물성치 정보 없음"]
+                                    ], style={"display": "inline"}) if material_info and material_info != "물성치 정보 없음" else html.Div(),
+                                    
+                                    # 센서 정보 (있는 경우만)
+                                    html.Div([
+                                        html.I(className="fas fa-microchip", style={"color": "#10b981", "fontSize": "14px"}),
+                                        html.Span(sensor_info, style={
                                             "color": "#111827",
                                             "fontSize": "12px",
                                             "fontWeight": "500",
-                                            "marginRight": "12px"
+                                            "marginLeft": "4px"
                                         })
-                                    ], style={"display": "inline"})
-                                    for prop in material_info.split(", ") if material_info and material_info != "물성치 정보 없음"]
+                                    ], style={"display": "inline"}) if sensor_info else html.Div()
                                 ], style={
                                     "display": "flex",
-                                    "alignItems": "flex-start",
+                                    "alignItems": "center",
                                     "justifyContent": "center",
-                                    "gap": "8px",
+                                    "gap": "16px",
                                     "flexWrap": "wrap",
                                     "marginBottom": "12px"
-                                }) if material_info and material_info != "물성치 정보 없음" else html.Div()
+                                }) if (material_info and material_info != "물성치 정보 없음") or sensor_info else html.Div()
                                 
                             ], style={
                                 "backgroundColor": "#f8fafc",
@@ -1517,11 +1590,21 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
         except:
             material_info = ""
         
+        # 센서 정보 가져오기
+        sensor_info = ""
+        try:
+            sensor_positions = get_sensor_positions(concrete_pk)
+            if sensor_positions:
+                sensor_count = len(sensor_positions)
+                sensor_info = f"센서: {sensor_count}개"
+        except:
+            sensor_info = ""
+        
         # 단위 변환: Pa → GPa
         stress_values_gpa = np.array(stress_values) / 1e9
         
         # 응력 범위 설정 (통일 여부에 따라)
-        if use_unified_colorbar and global_stress_min != float('inf') and global_stress_max != float('-inf'):
+        if use_unified_colorbar and global_stress_min is not None and global_stress_max is not None:
             stress_min, stress_max = global_stress_min, global_stress_max
         else:
             stress_min, stress_max = np.nanmin(stress_values_gpa), np.nanmax(stress_values_gpa)
@@ -1565,35 +1648,49 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
                         "display": "flex",
                         "alignItems": "center",
                         "justifyContent": "center",
-                        "marginBottom": "8px" if material_info and material_info != "물성치 정보 없음" else "0",
+                        "marginBottom": "8px" if (material_info and material_info != "물성치 정보 없음") or sensor_info else "0",
                         "marginTop": "12px"
                     }),
                     
-                    # 물성치 정보 섹션 (있는 경우만, 인라인 형태)
+                    # 물성치 정보와 센서 정보를 한 줄에 표시
                     html.Div([
-                        html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "14px"}),
-                        *[html.Div([
-                            html.Span(f"{prop.split(':')[0]}:", style={
-                                "color": "#6b7280",
-                                "fontSize": "12px",
-                                "marginRight": "4px"
-                            }),
-                            html.Span(prop.split(":", 1)[1].strip(), style={
+                        # 물성치 정보 (있는 경우만)
+                        html.Div([
+                            html.I(className="fas fa-cube", style={"color": "#6366f1", "fontSize": "14px"}),
+                            *[html.Div([
+                                html.Span(f"{prop.split(':')[0]}:", style={
+                                    "color": "#6b7280",
+                                    "fontSize": "12px",
+                                    "marginRight": "4px"
+                                }),
+                                html.Span(prop.split(":", 1)[1].strip(), style={
+                                    "color": "#111827",
+                                    "fontSize": "12px",
+                                    "fontWeight": "500",
+                                    "marginRight": "12px"
+                                })
+                            ], style={"display": "inline"})
+                            for prop in material_info.split(", ") if material_info and material_info != "물성치 정보 없음"]
+                        ], style={"display": "inline"}) if material_info and material_info != "물성치 정보 없음" else html.Div(),
+                        
+                        # 센서 정보 (있는 경우만)
+                        html.Div([
+                            html.I(className="fas fa-microchip", style={"color": "#10b981", "fontSize": "14px"}),
+                            html.Span(sensor_info, style={
                                 "color": "#111827",
                                 "fontSize": "12px",
                                 "fontWeight": "500",
-                                "marginRight": "12px"
+                                "marginLeft": "4px"
                             })
-                        ], style={"display": "inline"})
-                        for prop in material_info.split(", ") if material_info and material_info != "물성치 정보 없음"]
+                        ], style={"display": "inline"}) if sensor_info else html.Div()
                     ], style={
                         "display": "flex",
-                        "alignItems": "flex-start",
+                        "alignItems": "center",
                         "justifyContent": "center",
-                        "gap": "8px",
+                        "gap": "16px",
                         "flexWrap": "wrap",
                         "marginBottom": "12px"
-                    }) if material_info and material_info != "물성치 정보 없음" else html.Div()
+                    }) if (material_info and material_info != "물성치 정보 없음") or sensor_info else html.Div()
                     
                 ], style={
                     "backgroundColor": "#f8fafc",
@@ -1724,6 +1821,48 @@ def update_3d_stress_viewer(time_idx, unified_colorbar, selected_component, sele
                     x=[x0_norm[i], x1_norm[i]], y=[y0_norm[i], y1_norm[i]], z=[z0_norm[i], z1_norm[i]],
                     mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
         except Exception:
+            pass
+        
+        # 센서 위치 추가 (온도분석 페이지와 동일한 방식)
+        try:
+            sensor_positions = get_sensor_positions(concrete_pk)
+            if sensor_positions:
+                sensor_xs, sensor_ys, sensor_zs, sensor_names = [], [], [], []
+                
+                for sensor in sensor_positions:
+                    # 센서 좌표도 정규화
+                    if orig_x_max > orig_x_min:
+                        sensor_x_norm = (sensor["x"] - orig_x_min) / (orig_x_max - orig_x_min)
+                    else:
+                        sensor_x_norm = sensor["x"]
+                        
+                    if orig_y_max > orig_y_min:
+                        sensor_y_norm = (sensor["y"] - orig_y_min) / (orig_y_max - orig_y_min)
+                    else:
+                        sensor_y_norm = sensor["y"]
+                        
+                    if orig_z_max > orig_z_min:
+                        sensor_z_norm = (sensor["z"] - orig_z_min) / (orig_z_max - orig_z_min)
+                    else:
+                        sensor_z_norm = sensor["z"]
+                    
+                    sensor_xs.append(sensor_x_norm)
+                    sensor_ys.append(sensor_y_norm)
+                    sensor_zs.append(sensor_z_norm)
+                    sensor_names.append(sensor["device_id"])
+                
+                # 센서 위치를 빨간 점으로 표시
+                fig.add_trace(go.Scatter3d(
+                    x=sensor_xs, y=sensor_ys, z=sensor_zs,
+                    mode='markers',
+                    marker=dict(size=6, color='red', symbol='circle'),
+                    text=sensor_names,
+                    hoverinfo='text',
+                    name='센서',
+                    showlegend=False
+                ))
+        except Exception as e:
+            print(f"센서 위치 표기 중 오류: {e}")
             pass
         
         return fig, time_info
@@ -2010,7 +2149,8 @@ def on_concrete_select_stress(selected_rows, pathname, tbl_data):
     
     # 백그라운드에서 전체 범위 계산 (캐시에 저장됨)
     try:
-        calculate_global_stress_ranges(concrete_pk)
+        global_ranges = calculate_global_stress_ranges(concrete_pk)
+        print(f"전체 응력 범위 계산 완료 - {concrete_pk}: {len(global_ranges)}개 성분")
     except Exception as e:
         print(f"전체 응력 범위 계산 중 오류: {e}")
     
