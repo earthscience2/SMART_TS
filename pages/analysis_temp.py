@@ -827,6 +827,8 @@ def load_concrete_data_tmp(search, pathname):
             pass
     
     if not project_pk:
+        # 프로젝트가 없으면 캐시 정리
+        clear_temp_cache()
         # 타입 검증 및 안전한 값 설정
         slider_min = 0
         slider_max = 5
@@ -839,6 +841,8 @@ def load_concrete_data_tmp(search, pathname):
         # 프로젝트 정보 로드
         df_proj = api_db.get_project_data(project_pk=project_pk)
         if df_proj.empty:
+            # 프로젝트가 없으면 캐시 정리
+            clear_temp_cache()
             # 타입 검증 및 안전한 값 설정
             slider_min = 0
             slider_max = 5
@@ -853,6 +857,8 @@ def load_concrete_data_tmp(search, pathname):
         # 해당 프로젝트의 콘크리트 데이터 로드
         df_conc = api_db.get_concrete_data(project_pk=project_pk)
         if df_conc.empty:
+            # 콘크리트가 없으면 캐시 정리
+            clear_temp_cache()
             # 타입 검증 및 안전한 값 설정
             slider_min = 0
             slider_max = 5
@@ -862,6 +868,8 @@ def load_concrete_data_tmp(search, pathname):
             return [], [], [], [], True, True, slider_min, slider_max, slider_value, slider_marks, None, {"name": proj_name, "pk": project_pk}
         
     except Exception as e:
+        # 오류 발생 시 캐시 정리
+        clear_temp_cache()
         # 타입 검증 및 안전한 값 설정
         slider_min = 0
         slider_max = 5
@@ -1080,7 +1088,8 @@ def on_concrete_select_tmp(selected_rows, pathname, tbl_data):
     
     # 전체 온도 범위 미리 계산
     try:
-        calculate_global_temp_ranges(concrete_pk)
+        global_ranges = calculate_global_temp_ranges(concrete_pk)
+        print(f"전체 온도 범위 계산 완료 - {concrete_pk}: {global_ranges}")
     except Exception as e:
         print(f"전체 온도 범위 계산 중 오류: {e}")
     
@@ -1285,10 +1294,12 @@ def update_heatmap_tmp(time_idx, section_coord, unified_colorbar, selected_rows,
         current_file = inp_files[min(value, len(inp_files) - 1)]
         # 온도바 통일 여부에 따른 온도 범위 계산
         if unified_colorbar:
+            # 미리 계산된 전체 온도 범위 사용
             global_temp_min, global_temp_max = _global_temp_ranges.get(concrete_pk, (None, None))
             if global_temp_min is not None and global_temp_max is not None:
                 tmin, tmax = global_temp_min, global_temp_max
             else:
+                # 캐시에 없으면 즉시 계산
                 all_temps = []
                 for f in inp_files:
                     try:
@@ -1315,9 +1326,14 @@ def update_heatmap_tmp(time_idx, section_coord, unified_colorbar, selected_rows,
                 if all_temps:
                     tmin, tmax = float(np.nanmin(all_temps)), float(np.nanmax(all_temps))
                 else:
-                    tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
+                    # 현재 파일의 온도만 사용
+                    tmin, tmax = 0, 100  # 기본값
         else:
-            tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
+            # 현재 파일의 온도 범위만 사용
+            if current_temps:
+                tmin, tmax = float(np.nanmin(current_temps)), float(np.nanmax(current_temps))
+            else:
+                tmin, tmax = 0, 100  # 기본값
         current_time = os.path.basename(current_file).split(".")[0]
         try:
             dt = datetime.strptime(current_time, "%Y%m%d%H")
@@ -2965,14 +2981,22 @@ def update_section_views_tmp(time_idx,
     
     # 온도바 통일 여부에 따른 온도 범위 계산
     if unified_colorbar:
-        # 전체 파일의 온도 범위 사용 (통일 모드)
-        if all_temps:
-            tmin, tmax = float(np.nanmin(all_temps)), float(np.nanmax(all_temps))
+        # 미리 계산된 전체 온도 범위 사용
+        global_temp_min, global_temp_max = _global_temp_ranges.get(concrete_pk, (None, None))
+        if global_temp_min is not None and global_temp_max is not None:
+            tmin, tmax = global_temp_min, global_temp_max
         else:
-            tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
+            # 캐시에 없으면 즉시 계산
+            if all_temps:
+                tmin, tmax = float(np.nanmin(all_temps)), float(np.nanmax(all_temps))
+            else:
+                tmin, tmax = 0, 100  # 기본값
     else:
         # 현재 파일의 온도 범위 사용 (개별 모드)
-        tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
+        if len(temps) > 0:
+            tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
+        else:
+            tmin, tmax = 0, 100  # 기본값
     # 입력창 min/max/기본값 자동 설정
     x_min, x_max = float(np.min(x_coords)), float(np.max(x_coords))
     y_min, y_max = float(np.min(y_coords)), float(np.max(y_coords))
