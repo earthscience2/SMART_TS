@@ -344,12 +344,14 @@ layout = dbc.Container(
         ], style={"display": "none"}),
         
         # 콜백 오류 해결을 위한 필수 컴포넌트들
-        dcc.Slider(id="section-slider-ui", min=0, max=5, step=1, value=0, marks={}, style={"display": "none"}),
-        dbc.Input(id="section-x-input-ui", type="number", value=None, style={"display": "none"}),
-        dbc.Input(id="section-y-input-ui", type="number", value=None, style={"display": "none"}),
-        dbc.Input(id="section-z-input-ui", type="number", value=None, style={"display": "none"}),
-        dcc.Dropdown(id="stress-component-selector-ui", value="von_mises", style={"display": "none"}),
-        dbc.Switch(id="btn-unified-stress-colorbar-section", value=False, style={"display": "none"})
+        html.Div([
+            dcc.Slider(id="section-slider-ui", min=0, max=5, step=1, value=0, marks={}),
+            dbc.Input(id="section-x-input-ui", type="number", value=None),
+            dbc.Input(id="section-y-input-ui", type="number", value=None),
+            dbc.Input(id="section-z-input-ui", type="number", value=None),
+            dcc.Dropdown(id="stress-component-selector-ui", value="von_mises"),
+            dbc.Switch(id="btn-unified-stress-colorbar-section", value=False)
+        ], style={"display": "none"})
     ]
 )
 
