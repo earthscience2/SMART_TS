@@ -1146,8 +1146,9 @@ def create_3d_tab_content_stress(concrete_pk):
                 "marginBottom": "12px"
             }
         )
-    else:
-        # FRD 파일이 없을 때도 기본 드롭다운 생성
+    
+    # 응력 성분 선택 드롭다운 (FRD 파일이 없을 때도 생성)
+    if not frd_files:
         stress_component_dropdown = dbc.Select(
             id="stress-component-selector",
             options=[
@@ -1165,6 +1166,9 @@ def create_3d_tab_content_stress(concrete_pk):
                 "marginBottom": "12px"
             }
         )
+        
+        # FRD 파일이 없을 때도 기본 3D 그래프 생성
+        stress_3d_figure = create_3d_stress_figure({})
     
     return html.Div([
         # 시간 컨트롤 섹션 (노션 스타일)
