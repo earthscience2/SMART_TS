@@ -40,6 +40,10 @@ from utils.encryption import parse_project_key_from_url
 
 register_page(__name__, path="/temp", title="온도 분석")
 
+# ────────────────────────────── 전역 캐시 변수 ──────────────────────────────
+# 전체 온도 범위 저장 (페이지 로딩 시 미리 계산)
+_global_temp_ranges = {}  # {concrete_pk: (min, max)}
+
 # ────────────────────────────── 유틸리티 함수 ──────────────────────────────
 # INP 파일 내 물성치(탄성계수, 포아송비, 밀도, 열팽창계수)를 보다 견고하게 추출하기 위한 헬퍼
 # 밀도 값이 0 으로 표시되던 문제를 단위 자동 변환(tonne/mm³, g/cm³ → kg/m³) 로 해결
@@ -181,48 +185,113 @@ def parse_material_info_from_inp(lines):
         if not section or not line:
             continue
 
-        # 각 섹션별 파싱
-        if section == "elastic":
-            parts = line.split(",")
-            if len(parts) >= 2:
-                try:
-                    elastic_modulus = float(parts[0].strip())
-                    poisson_ratio = float(parts[1].strip())
-                except ValueError:
-                    continue
-        elif section == "density":
-            try:
-                density = float(line.strip())
-            except ValueError:
-                continue
-        elif section == "expansion":
-            try:
-                expansion = float(line.strip())
-            except ValueError:
-                continue
+        tokens = [tok.strip() for tok in line.split(',') if tok.strip()]
+        if not tokens:
+            continue
 
-    # 결과 문자열 생성
-    result_parts = []
+        try:
+            if section == "elastic":
+                elastic_modulus = float(tokens[0])
+                if len(tokens) >= 2:
+                    poisson_ratio = float(tokens[1])
+                # Pa → GPa 변환
+                elastic_modulus /= 1e9
+                section = None  # 한 줄만 사용
+
+            elif section == "density":
+                density = float(tokens[0])
+                # 단위 자동 변환
+                if density < 1e-3:      # tonne/mm^3 (예: 2.40e-9)
+                    density *= 1e12     # 1 tonne/mm³ = 1e12 kg/m³
+                elif density < 10:      # g/cm³ (예: 2.4)
+                    density *= 1000     # g/cm³ → kg/m³
+                section = None
+
+            elif section == "expansion":
+                expansion = float(tokens[0])
+                section = None
+        except ValueError:
+            # 숫자 파싱 실패 시 해당 항목 무시
+            continue
+
+    parts = []
     if elastic_modulus is not None:
-        result_parts.append(f"탄성계수: {int(elastic_modulus)}MPa")
+        parts.append(f"탄성계수: {elastic_modulus:.1f}GPa")
     if poisson_ratio is not None:
-        result_parts.append(f"포아송비: {poisson_ratio:.3f}")
+        parts.append(f"포아송비: {poisson_ratio:.1f}")
     if density is not None:
-        result_parts.append(f"밀도: {int(density)}kg/m³")
+        parts.append(f"밀도: {density:.0f}kg/m³")
     if expansion is not None:
-        # 과학적 표기법으로 변환
-        if expansion < 0.001:
-            exp_str = format_scientific_notation(expansion)
-        else:
-            exp_str = f"{expansion:.1f}×10⁻⁵"
-        result_parts.append(f"열팽창: {exp_str}/°C")
+        parts.append(f"열팽창: {expansion:.1f}×10⁻⁵/°C")
 
-    if not result_parts:
-        return "물성치 정보 없음"
+    return ", ".join(parts) if parts else "물성치 정보 없음"
+
+def calculate_global_temp_ranges(concrete_pk):
+    """콘크리트의 모든 INP 파일에서 전체 온도 범위를 미리 계산합니다."""
+    global _global_temp_ranges
     
-    return ", ".join(result_parts)
+    if concrete_pk in _global_temp_ranges:
+        return _global_temp_ranges[concrete_pk]
+    
+    inp_dir = f"inp/{concrete_pk}"
+    if not os.path.exists(inp_dir):
+        return None, None
+    
+    inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+    if not inp_files:
+        return None, None
+    
+    # 전체 온도 범위 계산
+    global_temp_min = float('inf')
+    global_temp_max = float('-inf')
+    
+    for inp_file in inp_files:
+        try:
+            with open(inp_file, 'r') as f:
+                lines = f.readlines()
+            
+            # 온도 섹션 파싱
+            temp_section = False
+            for line in lines:
+                if line.startswith('*TEMPERATURE'):
+                    temp_section = True
+                    continue
+                elif line.startswith('*'):
+                    temp_section = False
+                    continue
+                
+                if temp_section and ',' in line:
+                    parts = line.strip().split(',')
+                    if len(parts) >= 2:
+                        try:
+                            temp = float(parts[1])
+                            global_temp_min = min(global_temp_min, temp)
+                            global_temp_max = max(global_temp_max, temp)
+                        except ValueError:
+                            continue
+        except Exception:
+            continue
+    
+    # 무한대 값이 있으면 None으로 설정
+    if global_temp_min == float('inf'):
+        global_temp_min = None
+    if global_temp_max == float('-inf'):
+        global_temp_max = None
+    
+    _global_temp_ranges[concrete_pk] = (global_temp_min, global_temp_max)
+    return global_temp_min, global_temp_max
 
-
+def clear_temp_cache(concrete_pk=None):
+    """온도 데이터 캐시를 정리합니다."""
+    global _global_temp_ranges
+    
+    if concrete_pk:
+        # 특정 콘크리트의 캐시만 정리
+        if concrete_pk in _global_temp_ranges:
+            del _global_temp_ranges[concrete_pk]
+    else:
+        # 전체 캐시 정리
+        _global_temp_ranges.clear()
 
 # ────────────────────────────── 레이아웃 ────────────────────────────
 layout = dbc.Container(
@@ -758,7 +827,6 @@ def load_concrete_data_tmp(search, pathname):
             pass
     
     if not project_pk:
-
         # 타입 검증 및 안전한 값 설정
         slider_min = 0
         slider_max = 5
@@ -771,7 +839,6 @@ def load_concrete_data_tmp(search, pathname):
         # 프로젝트 정보 로드
         df_proj = api_db.get_project_data(project_pk=project_pk)
         if df_proj.empty:
-
             # 타입 검증 및 안전한 값 설정
             slider_min = 0
             slider_max = 5
@@ -786,7 +853,6 @@ def load_concrete_data_tmp(search, pathname):
         # 해당 프로젝트의 콘크리트 데이터 로드
         df_conc = api_db.get_concrete_data(project_pk=project_pk)
         if df_conc.empty:
-
             # 타입 검증 및 안전한 값 설정
             slider_min = 0
             slider_max = 5
@@ -796,7 +862,6 @@ def load_concrete_data_tmp(search, pathname):
             return [], [], [], [], True, True, slider_min, slider_max, slider_value, slider_marks, None, {"name": proj_name, "pk": project_pk}
         
     except Exception as e:
-
         # 타입 검증 및 안전한 값 설정
         slider_min = 0
         slider_max = 5
@@ -1013,7 +1078,11 @@ def on_concrete_select_tmp(selected_rows, pathname, tbl_data):
     has_sensors = row["has_sensors"]
     concrete_pk = row["concrete_pk"]
     
-
+    # 전체 온도 범위 미리 계산
+    try:
+        calculate_global_temp_ranges(concrete_pk)
+    except Exception as e:
+        print(f"전체 온도 범위 계산 중 오류: {e}")
     
     # 버튼 상태 결정
     # 분석중 (activate == 0): 분석 시작(비활성화), 삭제(활성화)
@@ -1216,41 +1285,39 @@ def update_heatmap_tmp(time_idx, section_coord, unified_colorbar, selected_rows,
         current_file = inp_files[min(value, len(inp_files) - 1)]
         # 온도바 통일 여부에 따른 온도 범위 계산
         if unified_colorbar:
-            # 전체 파일의 온도 범위 사용 (통일 모드)
-            all_temps = []
-            for f in inp_files:
-                try:
-                    with open(f, 'r') as file:
-                        lines = file.readlines()
-                    temp_section = False
-                    for line in lines:
-                        if line.startswith('*TEMPERATURE'):
-                            temp_section = True
-                            continue
-                        elif line.startswith('*'):
-                            temp_section = False
-                            continue
-                        if temp_section and ',' in line:
-                            parts = line.strip().split(',')
-                            if len(parts) >= 2:
-                                try:
-                                    temp = float(parts[1])
-                                    all_temps.append(temp)
-                                except:
-                                    continue
-                except (IOError, OSError) as e:
-                    continue
-            if all_temps:
-                tmin, tmax = float(np.nanmin(all_temps)), float(np.nanmax(all_temps))
+            global_temp_min, global_temp_max = _global_temp_ranges.get(concrete_pk, (None, None))
+            if global_temp_min is not None and global_temp_max is not None:
+                tmin, tmax = global_temp_min, global_temp_max
             else:
-                # 현재 파일의 온도만 사용
-                tmin, tmax = 0, 100  # 기본값
+                all_temps = []
+                for f in inp_files:
+                    try:
+                        with open(f, 'r') as file:
+                            lines = file.readlines()
+                        temp_section = False
+                        for line in lines:
+                            if line.startswith('*TEMPERATURE'):
+                                temp_section = True
+                                continue
+                            elif line.startswith('*'):
+                                temp_section = False
+                                continue
+                            if temp_section and ',' in line:
+                                parts = line.strip().split(',')
+                                if len(parts) >= 2:
+                                    try:
+                                        temp = float(parts[1])
+                                        all_temps.append(temp)
+                                    except:
+                                        continue
+                    except (IOError, OSError) as e:
+                        continue
+                if all_temps:
+                    tmin, tmax = float(np.nanmin(all_temps)), float(np.nanmax(all_temps))
+                else:
+                    tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
         else:
-            # 현재 파일의 온도 범위만 사용
-            if current_temps:
-                tmin, tmax = float(np.nanmin(current_temps)), float(np.nanmax(current_temps))
-            else:
-                tmin, tmax = 0, 100  # 기본값
+            tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
         current_time = os.path.basename(current_file).split(".")[0]
         try:
             dt = datetime.strptime(current_time, "%Y%m%d%H")
@@ -2905,10 +2972,7 @@ def update_section_views_tmp(time_idx,
             tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
     else:
         # 현재 파일의 온도 범위 사용 (개별 모드)
-        if len(temps) > 0:
-            tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
-        else:
-            tmin, tmax = 0, 100  # 기본값
+        tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
     # 입력창 min/max/기본값 자동 설정
     x_min, x_max = float(np.min(x_coords)), float(np.max(x_coords))
     y_min, y_max = float(np.min(y_coords)), float(np.max(y_coords))
