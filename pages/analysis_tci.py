@@ -1159,19 +1159,99 @@ def create_crack_probability_tab_content(concrete_pk, concrete_name):
         dcc.Download(id="download-tci-data-csv"),
     ])
 
-# 입체 TCI 탭 콘텐츠 함수 추가
+# 입체 TCI 탭 콘텐츠 함수 수정
 def create_tci_3d_tab_content():
-    import dash_table
     import dash_bootstrap_components as dbc
     from dash import dcc, html
+    from datetime import datetime
+    import os
+    import glob
+    
+    # 현재 선택된 콘크리트 정보 가져오기 (전역 변수나 콜백에서)
+    # 임시로 기본값 설정
+    concrete_pk = None
+    frd_files = []
+    
+    # FRD 파일 목록 가져오기 (실제로는 콜백에서 처리)
+    if concrete_pk:
+        frd_files = get_frd_files(concrete_pk)
+    
+    # 기본 슬라이더 설정
+    slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
+    
+    # FRD 파일이 있으면 시간 정보 설정 (응력 분석 페이지와 동일)
+    if frd_files:
+        # 시간 파싱
+        times = []
+        for f in frd_files:
+            try:
+                time_str = os.path.basename(f).split(".")[0]
+                dt = datetime.strptime(time_str, "%Y%m%d%H")
+                times.append(dt)
+            except:
+                continue
+        
+        if times:
+            max_idx = len(times) - 1
+            slider_min, slider_max = 0, max_idx
+            slider_value = max_idx  # 최신 파일로 초기화
+            
+            # 슬라이더 마크 설정
+            marks = {}
+            seen_dates = set()
+            for i, dt in enumerate(times):
+                date_str = dt.strftime("%m/%d")
+                if date_str not in seen_dates:
+                    marks[i] = date_str
+                    seen_dates.add(date_str)
+            slider_marks = marks
+    
     return html.Div([
         html.H5("입체 TCI 분석", style={"fontWeight": "600", "marginBottom": "18px"}),
+        
+        # 시간 컨트롤 섹션 (응력 분석 페이지와 동일한 스타일)
         html.Div([
-            html.Label("시간 선택", style={"marginRight": "12px", "fontWeight": "500"}),
-            dcc.Slider(id="tci-3d-time-slider", min=0, max=0, step=1, value=0, marks={}),
-            dbc.Button("재생", id="tci-3d-play-btn", color="primary", style={"marginLeft": "24px"}),
-        ], style={"display": "flex", "alignItems": "center", "gap": "16px", "marginBottom": "18px"}),
+            html.Div([
+                html.H6("⏰ 시간 설정", style={
+                    "fontWeight": "600",
+                    "color": "#374151",
+                    "marginBottom": "12px",
+                    "fontSize": "14px"
+                }),
+                dcc.Slider(
+                    id="tci-3d-time-slider",
+                    min=slider_min,
+                    max=slider_max,
+                    step=1,
+                    value=slider_value,
+                    marks=slider_marks,
+                    tooltip={"placement": "bottom", "always_visible": True},
+                    updatemode='drag',
+                    persistence=False
+                ),
+                # 재생/정지 버튼 추가
+                html.Div([
+                    dbc.Button("▶", id="btn-play-tci-3d", size="sm", color="success", className="me-2"),
+                    dbc.Button("⏸", id="btn-pause-tci-3d", size="sm", color="warning", className="me-2"),
+                    dcc.Interval(id="play-interval-tci-3d", interval=1000, n_intervals=0, disabled=True),
+                ], style={"marginTop": "12px", "textAlign": "center"})
+            ], style={
+                "padding": "16px",
+                "backgroundColor": "#f8fafc",
+                "borderRadius": "8px",
+                "border": "1px solid #e2e8f0",
+                "marginBottom": "20px"
+            })
+        ]),
+        
+        # TCI 표
         html.Div([
+            html.H6("📊 노드별 TCI 분석 결과", style={
+                "fontWeight": "600",
+                "color": "#374151",
+                "marginBottom": "16px",
+                "fontSize": "16px"
+            }),
             dash_table.DataTable(
                 id="tci-3d-table",
                 columns=[
@@ -1190,37 +1270,16 @@ def create_tci_3d_tab_content():
                 style_header={"backgroundColor": "#f8fafc", "fontWeight": "600", "color": "#374151"},
                 style_data={"backgroundColor": "#fff"},
             )
-        ])
+        ], style={
+            "backgroundColor": "white",
+            "padding": "20px",
+            "borderRadius": "12px",
+            "border": "1px solid #e5e7eb",
+            "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
+        })
     ], style={"backgroundColor": "#fff", "borderRadius": "12px", "padding": "28px 28px 18px 28px", "boxShadow": "0 1px 4px rgba(0,0,0,0.04)", "border": "1px solid #e5e7eb", "marginBottom": "28px"})
 
-# 시간 슬라이더 min/max/value/marks 동적 갱신 콜백 추가
-def get_frd_slider_info(concrete_pk):
-    import os
-    from datetime import datetime
-    frd_files = get_frd_files(concrete_pk)
-    if not frd_files:
-        return 0, 0, 0, {}
-    times = []
-    for f in frd_files:
-        try:
-            time_str = os.path.basename(f).split(".")[0]
-            dt = datetime.strptime(time_str, "%Y%m%d%H")
-            times.append(dt)
-        except:
-            continue
-    if not times:
-        return 0, 0, 0, {}
-    max_idx = len(times) - 1
-    marks = {}
-    seen_dates = set()
-    for i, dt in enumerate(times):
-        date_str = dt.strftime("%m/%d")
-        if date_str not in seen_dates:
-            marks[i] = date_str
-            seen_dates.add(date_str)
-    return 0, max_idx, max_idx, marks
-
-from dash import callback, Output, Input, State
+# 시간 슬라이더 min/max/value/marks 동적 갱신 콜백 수정
 @callback(
     Output('tci-3d-time-slider', 'min'),
     Output('tci-3d-time-slider', 'max'),
@@ -1231,11 +1290,51 @@ from dash import callback, Output, Input, State
     prevent_initial_call=True
 )
 def update_tci_3d_slider(selected_rows, tbl_data):
+    from datetime import datetime
+    import os
+    import glob
+    
     if not selected_rows or not tbl_data:
-        return 0, 0, 0, {}
-    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
-    concrete_pk = row["concrete_pk"]
-    return get_frd_slider_info(concrete_pk)
+        return 0, 5, 0, {}
+    
+    try:
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+        concrete_pk = row["concrete_pk"]
+        frd_files = get_frd_files(concrete_pk)
+        
+        if not frd_files:
+            return 0, 5, 0, {}
+        
+        # 시간 파싱 (응력 분석 페이지와 동일)
+        times = []
+        for f in frd_files:
+            try:
+                time_str = os.path.basename(f).split(".")[0]
+                dt = datetime.strptime(time_str, "%Y%m%d%H")
+                times.append(dt)
+            except:
+                continue
+        
+        if not times:
+            return 0, 5, 0, {}
+        
+        max_idx = len(times) - 1
+        
+        # 슬라이더 마크 설정
+        marks = {}
+        seen_dates = set()
+        for i, dt in enumerate(times):
+            date_str = dt.strftime("%m/%d")
+            if date_str not in seen_dates:
+                marks[i] = date_str
+                seen_dates.add(date_str)
+        
+        # 최신 파일로 초기화
+        return 0, max_idx, max_idx, marks
+        
+    except Exception as e:
+        print(f"슬라이더 초기화 오류: {e}")
+        return 0, 5, 0, {}
 
 # ───────────────────── 그래프 생성 콜백 함수들 ─────────────────────
 
