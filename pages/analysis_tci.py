@@ -828,13 +828,22 @@ def create_tci_formula_tab_content(concrete_pk, concrete_name):
         ], style={"backgroundColor": "#fff", "borderRadius": "12px", "padding": "28px 28px 18px 28px", "boxShadow": "0 1px 4px rgba(0,0,0,0.04)", "border": "1px solid #e5e7eb", "marginBottom": "28px"}),
     ], style={"maxWidth": "900px", "margin": "0 auto"})
 
-# 입력란+공식+그래프+표를 모두 하나의 콜백에서 반환, 그래프/표는 양옆 배치
-def _formula_block(formula, fct28, a, b):
+from dash import callback, Input, Output
+@callback(
+    Output('tci-formula-dynamic-block', 'children'),
+    Input('tci-formula-choice', 'value'),
+    prevent_initial_call=False
+)
+def update_formula_block(formula):
     import dash_table
     import plotly.graph_objs as go
     import numpy as np
     import pandas as pd
     import dash_bootstrap_components as dbc
+    # 기본값
+    fct28 = 20
+    a = 1
+    b = 1
     # 입력란/공식 안내
     if formula == 'ceb':
         inputs = html.Div([
@@ -861,67 +870,16 @@ def _formula_block(formula, fct28, a, b):
             html.Div("(t ≤ 28, 국내 KCI/KS 기준에서 자주 사용되는 간단 경험식)", style={"fontSize": "13px", "color": "#64748b", "marginTop": "2px"}),
             html.Div("예시: 7일차 인장강도 = fct,28 × (7/28)^0.5", style={"fontSize": "13px", "color": "#64748b", "marginTop": "2px"})
         ], style={"marginBottom": "12px"})
-    # 값 처리
-    try:
-        fct28 = float(fct28)
-    except Exception:
-        fct28 = 20
-    if formula == 'ceb':
-        try:
-            a = float(a)
-        except Exception:
-            a = 1
-        try:
-            b = float(b)
-        except Exception:
-            b = 1
-    else:
-        a, b = 1, 1
-    t = np.arange(1, 28.01, 0.1)
-    if formula == 'ceb':
-        y = fct28 * (t / (a + b * t)) ** 0.5
-    else:
-        y = fct28 * (t / 28) ** 0.5
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=t, y=y, mode='lines', name='fct(t)', line=dict(color='#3b82f6', width=3)))
-    fig.update_layout(title='인장강도 발전 곡선', xaxis_title='t(일)', yaxis_title='fct(MPa)', template='plotly_white', margin=dict(l=20, r=20, t=40, b=20))
-    df = pd.DataFrame({"t(일)": np.round(t, 1), "fct(t) (MPa)": np.round(y, 2)})
-    table = dash_table.DataTable(
-        columns=[{"name": i, "id": i} for i in df.columns],
-        data=df.to_dict('records'),
-        page_size=10,
-        style_table={"overflowY": "auto", "height": "48vh", "marginTop": "0px", "borderRadius": "8px", "border": "1px solid #e5e7eb"},
-        style_cell={"textAlign": "center", "fontSize": "15px", "padding": "8px 4px"},
-        style_header={"backgroundColor": "#f8fafc", "fontWeight": "600", "color": "#374151"},
-        style_data={"backgroundColor": "#fff"},
-    )
+    # 그래프/표는 JS에서 입력값을 읽어 그리도록 안내
     return html.Div([
         inputs,
         eq,
-        dbc.Row([
-            dbc.Col(dcc.Graph(figure=fig, config={"displayModeBar": False}, id="tci-fct-graph"), md=6),
-            dbc.Col(table, md=6)
-        ], className="g-3")
+        html.Div([
+            html.Div("※ 입력값을 변경하면 아래 그래프와 표가 자동으로 갱신됩니다.", style={"color": "#64748b", "fontSize": "13px", "marginBottom": "8px"}),
+            html.Div(id="tci-fct-graph-table-reactive")
+        ])
     ])
-
-from dash import callback, Input, Output, State
-@callback(
-    Output('tci-formula-dynamic-block', 'children'),
-    Input('tci-formula-choice', 'value'),
-    State('tci-fct28', 'value'),
-    State('tci-a', 'value'),
-    State('tci-b', 'value'),
-    prevent_initial_call=False
-)
-def update_formula_block(formula, fct28, a, b):
-    # 최초 진입 시 기본값
-    if fct28 is None:
-        fct28 = 20
-    if a is None:
-        a = 1
-    if b is None:
-        b = 1
-    return _formula_block(formula, fct28, a, b)
+# (아래에 JS/클라이언트 사이드 콜백 또는 dash-extensions/clientside_callback 등으로 tci-fct-graph-table-reactive에 그래프+표를 렌더링하는 코드가 추가되어야 함)
 
 def create_tci_timeline_tab_content(concrete_pk, concrete_name):
     """시간별 TCI 분석 탭 콘텐츠를 생성합니다."""
