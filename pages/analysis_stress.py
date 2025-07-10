@@ -3012,13 +3012,11 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
             xref="paper", yref="paper",
             x=0.5, y=0.5, showarrow=False
         )
-        # 드롭다운 옵션 설정 (빈 옵션)
-        x_options = []
-        y_options = []
-        z_options = []
+        # 기본 드롭다운 옵션 설정
+        default_options = [{"label": "0.000", "value": 0.0}]
         
         return (empty_fig, empty_fig, empty_fig, empty_fig, 
-                x_options, None, y_options, None, z_options, None, 
+                default_options, 0.0, default_options, 0.0, default_options, 0.0, 
                 "단면도 탭을 선택하세요.")
     
     # 컴포넌트가 존재하지 않을 때 기본값 처리
@@ -3034,12 +3032,10 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
             xref="paper", yref="paper",
             x=0.5, y=0.5, showarrow=False
         )
-        # 드롭다운 옵션 설정 (빈 옵션)
-        x_options = []
-        y_options = []
-        z_options = []
+        # 기본 드롭다운 옵션 설정
+        default_options = [{"label": "0.000", "value": 0.0}]
         
-        return empty_fig, empty_fig, empty_fig, empty_fig, x_options, None, y_options, None, z_options, None, "콘크리트를 선택하세요."
+        return empty_fig, empty_fig, empty_fig, empty_fig, default_options, 0.0, default_options, 0.0, default_options, 0.0, "콘크리트를 선택하세요."
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
@@ -3053,12 +3049,10 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
             xref="paper", yref="paper",
             x=0.5, y=0.5, showarrow=False
         )
-        # 드롭다운 옵션 설정 (빈 옵션)
-        x_options = []
-        y_options = []
-        z_options = []
+        # 기본 드롭다운 옵션 설정
+        default_options = [{"label": "0.000", "value": 0.0}]
         
-        return empty_fig, empty_fig, empty_fig, empty_fig, x_options, None, y_options, None, z_options, None, "FRD 파일이 없습니다."
+        return empty_fig, empty_fig, empty_fig, empty_fig, default_options, 0.0, default_options, 0.0, default_options, 0.0, "FRD 파일이 없습니다."
     
     # 응력바 통일 상태 확인 (직접 토글 값 사용)
     use_unified_colorbar = unified_colorbar if unified_colorbar is not None else False
@@ -3100,12 +3094,10 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
             xref="paper", yref="paper",
             x=0.5, y=0.5, showarrow=False
         )
-        # 드롭다운 옵션 설정 (빈 옵션)
-        x_options = []
-        y_options = []
-        z_options = []
+        # 기본 드롭다운 옵션 설정
+        default_options = [{"label": "0.000", "value": 0.0}]
         
-        return empty_fig, empty_fig, empty_fig, empty_fig, x_options, None, y_options, None, z_options, None, "유효한 응력 데이터가 없습니다."
+        return empty_fig, empty_fig, empty_fig, empty_fig, default_options, 0.0, default_options, 0.0, default_options, 0.0, "유효한 응력 데이터가 없습니다."
     
     # 좌표와 응력 값 추출 (입체 탭과 동일한 방식)
     coords = np.array(stress_data['coordinates'])
@@ -3132,12 +3124,10 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
             xref="paper", yref="paper",
             x=0.5, y=0.5, showarrow=False
         )
-        # 드롭다운 옵션 설정 (빈 옵션)
-        x_options = []
-        y_options = []
-        z_options = []
+        # 기본 드롭다운 옵션 설정
+        default_options = [{"label": "0.000", "value": 0.0}]
         
-        return empty_fig, empty_fig, empty_fig, empty_fig, x_options, None, y_options, None, z_options, None, "데이터 불일치"
+        return empty_fig, empty_fig, empty_fig, empty_fig, default_options, 0.0, default_options, 0.0, default_options, 0.0, "데이터 불일치"
     
     # 시간 정보 계산 (입체 탭과 동일)
     try:
@@ -3504,6 +3494,9 @@ def update_section_time_info_stress(current_file_title, active_tab):
     prevent_initial_call=True,
 )
 def update_section_slider_stress(active_tab, selected_rows, tbl_data):
+    # 단면도 탭이 활성화되어 있지 않으면 기본값 반환
+    if active_tab != "tab-section-stress":
+        return 0, 5, 0, {}
     from datetime import datetime as dt_import
     if active_tab != "tab-section-stress":
         return dash.no_update, dash.no_update, dash.no_update, dash.no_update
@@ -3557,6 +3550,9 @@ def update_section_slider_stress(active_tab, selected_rows, tbl_data):
     prevent_initial_call=True,
 )
 def save_section_image_stress(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl_data, time_value):
+    # 단면도 탭이 활성화되어 있지 않으면 기본값 반환
+    if not n_clicks:
+        return None, "이미지 저장", False
     """단면도 이미지를 저장합니다."""
     if not n_clicks or not selected_rows or not tbl_data:
         raise PreventUpdate
@@ -3629,6 +3625,9 @@ def save_section_image_stress(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_ro
     prevent_initial_call=True,
 )
 def save_section_frd_stress(n_clicks, selected_rows, tbl_data, time_value):
+    # 단면도 탭이 활성화되어 있지 않으면 기본값 반환
+    if not n_clicks:
+        return None, "FRD 저장", False
     """단면도 FRD 파일을 저장합니다."""
     if not n_clicks or not selected_rows or not tbl_data:
         raise PreventUpdate
@@ -3723,6 +3722,9 @@ def stop_section_playback_stress(n_clicks, play_state):
     prevent_initial_call=True,
 )
 def auto_play_section_slider_stress(n_intervals, play_state, speed_state, current_value, max_value):
+    # 단면도 탭이 활성화되어 있지 않으면 기본값 반환
+    if not n_intervals:
+        return dash.no_update
     """단면도 자동 재생 슬라이더를 업데이트합니다."""
     if not play_state or not play_state.get("playing", False):
         raise PreventUpdate
