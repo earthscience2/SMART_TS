@@ -822,7 +822,7 @@ def switch_tab_tci(active_tab, selected_rows, pathname, tbl_data):
     elif active_tab == "tab-crack-probability":
         return create_crack_probability_tab_content(concrete_pk, concrete_name)
     elif active_tab == "tab-tci-3d":
-        return create_tci_3d_tab_content()
+        return create_tci_3d_tab_content(concrete_pk)  # concrete_pk 전달
     else:
         return html.Div("알 수 없는 탭입니다.", className="text-center text-muted mt-5")
 
@@ -1160,21 +1160,15 @@ def create_crack_probability_tab_content(concrete_pk, concrete_name):
     ])
 
 # 입체 TCI 탭 콘텐츠 함수 수정
-def create_tci_3d_tab_content():
+def create_tci_3d_tab_content(concrete_pk):
     import dash_bootstrap_components as dbc
     from dash import dcc, html
     from datetime import datetime
     import os
     import glob
     
-    # 현재 선택된 콘크리트 정보 가져오기 (전역 변수나 콜백에서)
-    # 임시로 기본값 설정
-    concrete_pk = None
-    frd_files = []
-    
-    # FRD 파일 목록 가져오기 (실제로는 콜백에서 처리)
-    if concrete_pk:
-        frd_files = get_frd_files(concrete_pk)
+    # FRD 파일 목록 가져오기
+    frd_files = get_frd_files(concrete_pk) if concrete_pk else []
     
     # 기본 슬라이더 설정
     slider_min, slider_max, slider_marks, slider_value = 0, 5, {}, 0
