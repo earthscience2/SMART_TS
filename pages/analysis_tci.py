@@ -1875,20 +1875,30 @@ def update_crack_probability_graph(active_tab, selected_rows, tbl_data):
 @callback(
     Output('tci-3d-table', 'data'),
     Input('tci-3d-time-slider', 'value'),
-    Input('btn-play-tci-3d', 'n_clicks'),  # tci-3d-play-btn → btn-play-tci-3d로 수정
+    Input('btn-play-tci-3d', 'n_clicks'),
+    Input('tabs-main-tci', 'active_tab'),  # 탭 전환 시에도 실행되도록 추가
     State('tbl-concrete-tci', 'selected_rows'),
     State('tbl-concrete-tci', 'data'),
-    prevent_initial_call=False  # 초기 로딩 시에도 실행되도록 변경
+    prevent_initial_call=False
 )
-def update_tci_3d_table(time_idx, play_click, selected_rows, tbl_data):
+def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_data):
     import numpy as np
     
     print(f"DEBUG: update_tci_3d_table 호출됨")
-    print(f"DEBUG: time_idx={time_idx}, selected_rows={selected_rows}")
+    print(f"DEBUG: active_tab={active_tab}, time_idx={time_idx}, selected_rows={selected_rows}")
+    
+    # 입체 TCI 탭이 활성화되어 있지 않으면 빈 데이터 반환
+    if active_tab != "tab-tci-3d":
+        print("DEBUG: 입체 TCI 탭이 활성화되지 않음")
+        return []
     
     if not selected_rows or not tbl_data:
         print("DEBUG: 선택된 콘크리트가 없음")
-        return []
+        # 더미 데이터로 표 초기화
+        return [
+            {"node": "콘크리트를 선택하세요", "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
+             "tci_sxy": None, "tci_syz": None, "tci_szx": None}
+        ]
     
     try:
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
@@ -1900,7 +1910,10 @@ def update_tci_3d_table(time_idx, play_click, selected_rows, tbl_data):
         
         if not frd_files:
             print("DEBUG: FRD 파일이 없음")
-            return []
+            return [
+                {"node": "FRD 파일이 없습니다", "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
+                 "tci_sxy": None, "tci_syz": None, "tci_szx": None}
+            ]
         
         if time_idx is None:
             time_idx = len(frd_files) - 1  # 기본값으로 마지막 파일 사용
@@ -1916,11 +1929,17 @@ def update_tci_3d_table(time_idx, play_click, selected_rows, tbl_data):
         stress_data = read_frd_stress_data(frd_file)
         if not stress_data:
             print("DEBUG: 응력 데이터를 읽을 수 없음")
-            return []
+            return [
+                {"node": "응력 데이터를 읽을 수 없습니다", "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
+                 "tci_sxy": None, "tci_syz": None, "tci_szx": None}
+            ]
         
         if not stress_data.get('nodes'):
             print("DEBUG: 노드 정보가 없음")
-            return []
+            return [
+                {"node": "노드 정보가 없습니다", "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
+                 "tci_sxy": None, "tci_syz": None, "tci_szx": None}
+            ]
         
         print(f"DEBUG: 노드 개수={len(stress_data['nodes'])}")
         
@@ -1971,41 +1990,65 @@ def update_tci_3d_table(time_idx, play_click, selected_rows, tbl_data):
         print(f"DEBUG: 응력 성분 개수={len(comps)}")
         print(f"DEBUG: 사용 가능한 응력 성분={list(comps.keys())}")
         
-        data = []
-        for node in node_ids:
-            sxx = comps.get('SXX', {}).get(node, 0)
-            syy = comps.get('SYY', {}).get(node, 0)
-            szz = comps.get('SZZ', {}).get(node, 0)
-            sxy = comps.get('SXY', {}).get(node, 0)
-            syz = comps.get('SYZ', {}).get(node, 0)
-            szx = comps.get('SZX', {}).get(node, 0)
-            
-            # 0으로 나누기 방지
-            tci_sxx = round(fct / sxx, 3) if sxx != 0 else None
-            tci_syy = round(fct / syy, 3) if syy != 0 else None
-            tci_szz = round(fct / szz, 3) if szz != 0 else None
-            tci_sxy = round(fct / sxy, 3) if sxy != 0 else None
-            tci_syz = round(fct / syz, 3) if syz != 0 else None
-            tci_szx = round(fct / szx, 3) if szx != 0 else None
-            
-            data.append({
-                "node": node,
-                "tci_sxx": tci_sxx,
-                "tci_syy": tci_syy,
-                "tci_szz": tci_szz,
-                "tci_sxy": tci_sxy,
-                "tci_syz": tci_syz,
-                "tci_szx": tci_szx,
-            })
+        # 응력 성분이 없으면 von Mises 응력 사용
+        if not comps:
+            print("DEBUG: 6성분 응력이 없어서 von Mises 응력 사용")
+            von_mises_data = stress_data.get('stress_values', [{}])[0] if stress_data.get('stress_values') else {}
+            data = []
+            for node in node_ids:
+                vm_stress = von_mises_data.get(node, 0)
+                tci_vm = round(fct / vm_stress, 3) if vm_stress != 0 else None
+                data.append({
+                    "node": node,
+                    "tci_sxx": tci_vm,  # von Mises를 모든 컬럼에 표시
+                    "tci_syy": tci_vm,
+                    "tci_szz": tci_vm,
+                    "tci_sxy": tci_vm,
+                    "tci_syz": tci_vm,
+                    "tci_szx": tci_vm,
+                })
+        else:
+            data = []
+            for node in node_ids:
+                sxx = comps.get('SXX', {}).get(node, 0)
+                syy = comps.get('SYY', {}).get(node, 0)
+                szz = comps.get('SZZ', {}).get(node, 0)
+                sxy = comps.get('SXY', {}).get(node, 0)
+                syz = comps.get('SYZ', {}).get(node, 0)
+                szx = comps.get('SZX', {}).get(node, 0)
+                
+                # 0으로 나누기 방지
+                tci_sxx = round(fct / sxx, 3) if sxx != 0 else None
+                tci_syy = round(fct / syy, 3) if syy != 0 else None
+                tci_szz = round(fct / szz, 3) if szz != 0 else None
+                tci_sxy = round(fct / sxy, 3) if sxy != 0 else None
+                tci_syz = round(fct / syz, 3) if syz != 0 else None
+                tci_szx = round(fct / szx, 3) if szx != 0 else None
+                
+                data.append({
+                    "node": node,
+                    "tci_sxx": tci_sxx,
+                    "tci_syy": tci_syy,
+                    "tci_szz": tci_szz,
+                    "tci_sxy": tci_sxy,
+                    "tci_syz": tci_syz,
+                    "tci_szx": tci_szx,
+                })
         
         print(f"DEBUG: 생성된 데이터 개수={len(data)}")
+        if data:
+            print(f"DEBUG: 첫 번째 데이터 샘플={data[0]}")
+        
         return data
         
     except Exception as e:
         print(f"DEBUG: update_tci_3d_table 오류: {e}")
         import traceback
         traceback.print_exc()
-        return []
+        return [
+            {"node": f"오류 발생: {str(e)}", "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
+             "tci_sxy": None, "tci_syz": None, "tci_szx": None}
+        ]
 
 # ───────────────────── 버튼 상태 및 액션 콜백 함수들 ─────────────────────
 
