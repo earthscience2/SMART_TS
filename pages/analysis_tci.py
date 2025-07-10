@@ -805,23 +805,29 @@ def switch_tab_tci(active_tab, selected_rows, pathname, tbl_data):
         return html.Div("알 수 없는 탭입니다.", className="text-center text-muted mt-5")
 
 def create_tci_formula_tab_content(concrete_pk, concrete_name):
-    """인장강도 계산식 탭 콘텐츠를 Dash 기본 스타일로 심플하게 생성합니다."""
+    import dash_table
     return html.Div([
-        html.H5("인장강도 계산식", style={"fontWeight": "600", "marginBottom": "18px"}),
-        dcc.RadioItems(
-            id="tci-formula-choice",
-            options=[
-                {"label": "CEB-FIP Model Code", "value": "ceb"},
-                {"label": "경험식 #1", "value": "exp1"}
-            ],
-            value="ceb",
-            labelStyle={"display": "block", "marginBottom": "8px"},
-            style={"marginBottom": "16px"}
-        ),
-        html.Div(id="tci-formula-input-fields", style={"marginBottom": "12px"}),
-        html.Div(id="tci-formula-equation", style={"marginBottom": "24px", "fontSize": "16px", "color": "#374151"}),
-        dcc.Graph(id="tci-fct-graph", style={"height": "48vh"})
-    ])
+        html.Div([
+            html.H4("🧮 인장강도 계산식", style={"fontWeight": "700", "marginBottom": "18px", "color": "#1e293b"}),
+            html.Hr(style={"margin": "8px 0 20px 0", "borderColor": "#e5e7eb"}),
+            dcc.RadioItems(
+                id="tci-formula-choice",
+                options=[
+                    {"label": html.Span([html.B("CEB-FIP Model Code", style={"color": "#2563eb"})], style={"marginRight": "16px"}), "value": "ceb"},
+                    {"label": html.Span([html.B("경험식 #1 (KCI/KS)", style={"color": "#059669"})], style={"marginRight": "16px"}), "value": "exp1"}
+                ],
+                value="ceb",
+                labelStyle={"display": "inline-block", "marginRight": "32px", "fontSize": "17px"},
+                style={"marginBottom": "18px"}
+            ),
+            html.Div(id="tci-formula-input-fields", style={"marginBottom": "8px"}),
+            html.Div(id="tci-formula-equation", style={"marginBottom": "18px", "fontSize": "16px", "color": "#374151"}),
+        ], style={"backgroundColor": "#fff", "borderRadius": "12px", "padding": "28px 28px 18px 28px", "boxShadow": "0 1px 4px rgba(0,0,0,0.04)", "border": "1px solid #e5e7eb", "marginBottom": "28px"}),
+        html.Div([
+            dcc.Graph(id="tci-fct-graph", style={"height": "48vh", "marginBottom": "18px"}),
+            html.Div(id="tci-fct-table-container")
+        ], style={"backgroundColor": "#fff", "borderRadius": "12px", "padding": "24px 28px", "boxShadow": "0 1px 4px rgba(0,0,0,0.04)", "border": "1px solid #e5e7eb"})
+    ], style={"maxWidth": "700px", "margin": "0 auto"})
 
 # 입력란 동적 생성 콜백 + 공식 안내
 @callback(
@@ -832,43 +838,46 @@ def create_tci_formula_tab_content(concrete_pk, concrete_name):
 def update_formula_inputs(formula):
     if formula == 'ceb':
         inputs = html.Div([
-            html.Label('fct,28(28일 인장강도)', style={"marginRight": "8px"}),
+            html.Label('fct,28(28일 인장강도)', style={"marginRight": "8px", "fontWeight": "500"}),
             dcc.Input(id='tci-fct28', type='number', value=20, style={'width': '80px', 'marginRight': '16px'}),
-            html.Label('a', style={"marginRight": "4px"}),
+            html.Label('a', style={"marginRight": "4px", "fontWeight": "500"}),
             dcc.Input(id='tci-a', type='number', value=1, style={'width': '60px', 'marginRight': '16px'}),
-            html.Label('b', style={"marginRight": "4px"}),
+            html.Label('b', style={"marginRight": "4px", "fontWeight": "500"}),
             dcc.Input(id='tci-b', type='number', value=1, style={'width': '60px'}),
-        ], style={"display": "flex", "alignItems": "center", "gap": "8px"})
+        ], style={"display": "flex", "alignItems": "center", "gap": "8px", "marginBottom": "4px"})
         eq = html.Div([
-            html.B("CEB-FIP Model Code 1990 공식: "),
+            html.B("CEB-FIP Model Code 1990 공식: ", style={"color": "#2563eb"}),
             html.Span("fct(t) = fct,28 × ( t / (a + b × t) )^0.5", style={"fontFamily": "monospace", "color": "#2563eb", "marginLeft": "8px"}),
             html.Div("(보통 a=1, b=1 사용)", style={"fontSize": "13px", "color": "#64748b", "marginTop": "2px"})
         ])
     else:
         inputs = html.Div([
-            html.Label('fct,28(28일 인장강도)', style={"marginRight": "8px"}),
+            html.Label('fct,28(28일 인장강도)', style={"marginRight": "8px", "fontWeight": "500"}),
             dcc.Input(id='tci-fct28', type='number', value=20, style={'width': '80px'}),
-        ], style={"display": "flex", "alignItems": "center", "gap": "8px"})
+        ], style={"display": "flex", "alignItems": "center", "gap": "8px", "marginBottom": "4px"})
         eq = html.Div([
-            html.B("경험식 (KCI/KS): "),
+            html.B("경험식 #1 (KCI/KS): ", style={"color": "#059669"}),
             html.Span("fct(t) = fct,28 × ( t / 28 )^0.5", style={"fontFamily": "monospace", "color": "#059669", "marginLeft": "8px"}),
-            html.Div("(t ≤ 28)", style={"fontSize": "13px", "color": "#64748b", "marginTop": "2px"})
+            html.Div("(t ≤ 28, 국내 KCI/KS 기준에서 자주 사용되는 간단 경험식)", style={"fontSize": "13px", "color": "#64748b", "marginTop": "2px"}),
+            html.Div("예시: 7일차 인장강도 = fct,28 × (7/28)^0.5", style={"fontSize": "13px", "color": "#64748b", "marginTop": "2px"})
         ])
     return inputs, eq
 
-# 그래프 업데이트 콜백 (동적 입력란은 State로)
+# 그래프/표 업데이트 콜백 (동적 입력란은 State로)
 from dash import State
 @callback(
     Output('tci-fct-graph', 'figure'),
+    Output('tci-fct-table-container', 'children'),
     Input('tci-formula-choice', 'value'),
     State('tci-fct28', 'value'),
     State('tci-a', 'value'),
     State('tci-b', 'value'),
     prevent_initial_call=False
 )
-def update_fct_graph(formula, fct28, a, b):
+def update_fct_graph_and_table(formula, fct28, a, b):
     import numpy as np
     import plotly.graph_objs as go
+    import pandas as pd
     t = np.arange(1, 28.01, 0.1)
     # 기본값 처리
     if fct28 is None or fct28 == '':
@@ -890,10 +899,22 @@ def update_fct_graph(formula, fct28, a, b):
         y = fct28 * (t / (a + b * t)) ** 0.5
     else:
         y = fct28 * (t / 28) ** 0.5
+    # 그래프
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=t, y=y, mode='lines', name='fct(t)', line=dict(color='#3b82f6', width=3)))
     fig.update_layout(title='인장강도 발전 곡선', xaxis_title='t(일)', yaxis_title='fct(MPa)', template='plotly_white')
-    return fig
+    # 표
+    df = pd.DataFrame({"t(일)": np.round(t, 1), "fct(t) (MPa)": np.round(y, 2)})
+    table = dash_table.DataTable(
+        columns=[{"name": i, "id": i} for i in df.columns],
+        data=df.to_dict('records'),
+        page_size=10,
+        style_table={"overflowY": "auto", "height": "320px", "marginTop": "8px", "borderRadius": "8px", "border": "1px solid #e5e7eb"},
+        style_cell={"textAlign": "center", "fontSize": "15px", "padding": "8px 4px"},
+        style_header={"backgroundColor": "#f8fafc", "fontWeight": "600", "color": "#374151"},
+        style_data={"backgroundColor": "#fff"},
+    )
+    return fig, table
 
 def create_tci_timeline_tab_content(concrete_pk, concrete_name):
     """시간별 TCI 분석 탭 콘텐츠를 생성합니다."""
