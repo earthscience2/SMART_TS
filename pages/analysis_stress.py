@@ -115,6 +115,12 @@ layout = dbc.Container(
             dbc.Input(id="node-x-input-stress", type="number"),
             dbc.Input(id="node-y-input-stress", type="number"),
             dbc.Input(id="node-z-input-stress", type="number"),
+            dcc.Dropdown(id="section-x-dropdown-stress"),
+            dcc.Dropdown(id="section-y-dropdown-stress"),
+            dcc.Dropdown(id="section-z-dropdown-stress"),
+            dcc.Dropdown(id="node-x-dropdown-stress"),
+            dcc.Dropdown(id="node-y-dropdown-stress"),
+            dcc.Dropdown(id="node-z-dropdown-stress"),
             dcc.Loading(id="loading-btn-save-node-image-stress", type="circle"),
             dbc.Button(id="btn-save-node-image-stress"),
             dcc.Loading(id="loading-btn-save-node-data-stress", type="circle"),
@@ -1092,9 +1098,10 @@ def switch_tab_stress(active_tab, selected_rows, pathname, tbl_data):
                                             "fontWeight": "600", "color": "#ef4444", "fontSize": "13px"
                                         })
                                     ], style={"marginBottom": "4px"}),
-                                    dbc.Input(
-                                        id="section-x-input-stress", type="number", step=0.1, value=None,
-                                        placeholder="X 좌표", style={"width": "100%"}
+                                    dcc.Dropdown(
+                                        id="section-x-dropdown-stress",
+                                        placeholder="X 좌표 선택",
+                                        style={"width": "100%"}
                                     )
                                 ], style={"padding": "8px"})
                             ], style={"border": "1px solid #fecaca", "backgroundColor": "#fef2f2"})
@@ -1110,9 +1117,10 @@ def switch_tab_stress(active_tab, selected_rows, pathname, tbl_data):
                                             "fontWeight": "600", "color": "#3b82f6", "fontSize": "13px"
                                         })
                                     ], style={"marginBottom": "4px"}),
-                                    dbc.Input(
-                                        id="section-y-input-stress", type="number", step=0.1, value=None,
-                                        placeholder="Y 좌표", style={"width": "100%"}
+                                    dcc.Dropdown(
+                                        id="section-y-dropdown-stress",
+                                        placeholder="Y 좌표 선택",
+                                        style={"width": "100%"}
                                     )
                                 ], style={"padding": "8px"})
                             ], style={"border": "1px solid #bfdbfe", "backgroundColor": "#eff6ff"})
@@ -1128,9 +1136,10 @@ def switch_tab_stress(active_tab, selected_rows, pathname, tbl_data):
                                             "fontWeight": "600", "color": "#22c55e", "fontSize": "13px"
                                         })
                                     ], style={"marginBottom": "4px"}),
-                                    dbc.Input(
-                                        id="section-z-input-stress", type="number", step=0.1, value=None,
-                                        placeholder="Z 좌표", style={"width": "100%"}
+                                    dcc.Dropdown(
+                                        id="section-z-dropdown-stress",
+                                        placeholder="Z 좌표 선택",
+                                        style={"width": "100%"}
                                     )
                                 ], style={"padding": "8px"})
                             ], style={"border": "1px solid #bbf7d0", "backgroundColor": "#f0fdf4"})
@@ -1932,14 +1941,9 @@ def create_node_tab_content_stress(concrete_pk):
                                             "fontSize": "13px"
                                         })
                                     ], style={"marginBottom": "4px"}),
-                                    dbc.Input(
-                                        id="node-x-input-stress", 
-                                        type="number", 
-                                        step=0.1, 
-                                        value=round(x_mid,1), 
-                                        min=round(x_min,2), 
-                                        max=round(x_max,2),
-                                        placeholder="X 좌표",
+                                    dcc.Dropdown(
+                                        id="node-x-dropdown-stress",
+                                        placeholder="X 좌표 선택",
                                         style={"width": "100%"}
                                     )
                                 ], style={"padding": "8px"})
@@ -1963,14 +1967,9 @@ def create_node_tab_content_stress(concrete_pk):
                                             "fontSize": "13px"
                                         })
                                     ], style={"marginBottom": "4px"}),
-                                    dbc.Input(
-                                        id="node-y-input-stress", 
-                                        type="number", 
-                                        step=0.1, 
-                                        value=round(y_mid,1), 
-                                        min=round(y_min,2), 
-                                        max=round(y_max,2),
-                                        placeholder="Y 좌표",
+                                    dcc.Dropdown(
+                                        id="node-y-dropdown-stress",
+                                        placeholder="Y 좌표 선택",
                                         style={"width": "100%"}
                                     )
                                 ], style={"padding": "8px"})
@@ -1994,14 +1993,9 @@ def create_node_tab_content_stress(concrete_pk):
                                             "fontSize": "13px"
                                         })
                                     ], style={"marginBottom": "4px"}),
-                                    dbc.Input(
-                                        id="node-z-input-stress", 
-                                        type="number", 
-                                        step=0.1, 
-                                        value=round(z_mid,1), 
-                                        min=round(z_min,2), 
-                                        max=round(z_max,2),
-                                        placeholder="Z 좌표",
+                                    dcc.Dropdown(
+                                        id="node-z-dropdown-stress",
+                                        placeholder="Z 좌표 선택",
                                         style={"width": "100%"}
                                     )
                                 ], style={"padding": "8px"})
@@ -2991,14 +2985,14 @@ def delete_concrete_confirm_stress(_click, sel, tbl_data):
     Output("viewer-section-x-stress", "figure"),
     Output("viewer-section-y-stress", "figure"),
     Output("viewer-section-z-stress", "figure"),
-    Output("section-x-input-stress", "min"), Output("section-x-input-stress", "max"), Output("section-x-input-stress", "value"),
-    Output("section-y-input-stress", "min"), Output("section-y-input-stress", "max"), Output("section-y-input-stress", "value"),
-    Output("section-z-input-stress", "min"), Output("section-z-input-stress", "max"), Output("section-z-input-stress", "value"),
+    Output("section-x-dropdown-stress", "options"), Output("section-x-dropdown-stress", "value"),
+    Output("section-y-dropdown-stress", "options"), Output("section-y-dropdown-stress", "value"),
+    Output("section-z-dropdown-stress", "options"), Output("section-z-dropdown-stress", "value"),
     Output("current-stress-file-title-store", "data", allow_duplicate=True),
     Input("time-slider-section-stress", "value"),
-    Input("section-x-input-stress", "value"),
-    Input("section-y-input-stress", "value"),
-    Input("section-z-input-stress", "value"),
+    Input("section-x-dropdown-stress", "value"),
+    Input("section-y-dropdown-stress", "value"),
+    Input("section-z-dropdown-stress", "value"),
     Input("btn-unified-stress-colorbar-section", "value"),
     Input("stress-component-selector-section", "value"),
     Input("tabs-main-stress", "active_tab"),  # 탭 활성화를 트리거로 추가
@@ -3338,8 +3332,32 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
     except Exception:
         current_file_title = f"{formatted_time}"
     
-    # step=0.1로 반환
-    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, current_file_title
+    # 드롭다운 옵션 설정 (FRD 파일에서 좌표 파싱)
+    x_unique = sorted(list(set(x_coords)))
+    y_unique = sorted(list(set(y_coords)))
+    z_unique = sorted(list(set(z_coords)))
+    
+    x_options = [{"label": f"{coord:.3f}", "value": coord} for coord in x_unique]
+    y_options = [{"label": f"{coord:.3f}", "value": coord} for coord in y_unique]
+    z_options = [{"label": f"{coord:.3f}", "value": coord} for coord in z_unique]
+    
+    # 기본값 설정
+    if x_val is None and len(x_unique) > 0:
+        x0 = x_unique[len(x_unique)//2]
+    else:
+        x0 = float(x_val) if x_val is not None else 0.0
+    
+    if y_val is None and len(y_unique) > 0:
+        y0 = y_unique[len(y_unique)//2]
+    else:
+        y0 = float(y_val) if y_val is not None else 0.0
+    
+    if z_val is None and len(z_unique) > 0:
+        z0 = z_unique[len(z_unique)//2]
+    else:
+        z0 = float(z_val) if z_val is not None else 0.0
+    
+    return fig_3d, fig_x, fig_y, fig_z, x_options, x0, y_options, y0, z_options, z0, current_file_title
 
 @callback(
     Output("section-time-info-stress", "children"),
@@ -3750,18 +3768,52 @@ def store_node_coord_stress(selected_rows, active_tab, tbl_data):
     return None
 
 @callback(
-    Output("node-x-input-stress", "value"),
-    Output("node-y-input-stress", "value"),
-    Output("node-z-input-stress", "value"),
+    Output("node-x-dropdown-stress", "options"), Output("node-x-dropdown-stress", "value"),
+    Output("node-y-dropdown-stress", "options"), Output("node-y-dropdown-stress", "value"),
+    Output("node-z-dropdown-stress", "options"), Output("node-z-dropdown-stress", "value"),
     Input("tabs-main-stress", "active_tab"),
     Input("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
 def init_node_inputs_stress(active_tab, selected_rows, tbl_data):
-    """노드 탭이 활성화될 때 입력 필드를 초기화합니다."""
+    """노드 탭이 활성화될 때 드롭다운 옵션을 초기화합니다."""
     if active_tab == "tab-node-stress" and selected_rows and len(selected_rows) > 0 and tbl_data:
         row = tbl_data[selected_rows[0]]
+        concrete_pk = row["concrete_pk"]
+        
+        # FRD 파일에서 좌표 파싱
+        frd_files = get_frd_files(concrete_pk)
+        if frd_files:
+            try:
+                # 첫 번째 FRD 파일에서 좌표 추출
+                stress_data = read_frd_stress_data(frd_files[0])
+                if stress_data and stress_data['coordinates']:
+                    coords = np.array(stress_data['coordinates'])
+                    x_coords = coords[:, 0]
+                    y_coords = coords[:, 1]
+                    z_coords = coords[:, 2]
+                    
+                    # 고유한 좌표값 추출
+                    x_unique = sorted(list(set(x_coords)))
+                    y_unique = sorted(list(set(y_coords)))
+                    z_unique = sorted(list(set(z_coords)))
+                    
+                    # 드롭다운 옵션 생성
+                    x_options = [{"label": f"{coord:.3f}", "value": coord} for coord in x_unique]
+                    y_options = [{"label": f"{coord:.3f}", "value": coord} for coord in y_unique]
+                    z_options = [{"label": f"{coord:.3f}", "value": coord} for coord in z_unique]
+                    
+                    # 기본값 설정 (중간값)
+                    x_default = x_unique[len(x_unique)//2] if x_unique else 0.0
+                    y_default = y_unique[len(y_unique)//2] if y_unique else 0.0
+                    z_default = z_unique[len(z_unique)//2] if z_unique else 0.0
+                    
+                    return x_options, x_default, y_options, y_default, z_options, z_default
+            except Exception as e:
+                print(f"FRD 파일 파싱 오류: {e}")
+        
+        # FRD 파일이 없거나 파싱 실패 시 콘크리트 차원 정보 사용
         try:
             dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
             poly_nodes = np.array(dims["nodes"])
@@ -3769,19 +3821,25 @@ def init_node_inputs_stress(active_tab, selected_rows, tbl_data):
             x_mid = float(np.mean(poly_nodes[:,0]))
             y_mid = float(np.mean(poly_nodes[:,1]))
             z_mid = float(poly_h/2)
-            return round(x_mid,1), round(y_mid,1), round(z_mid,1)
+            
+            # 기본 옵션 생성
+            default_options = [{"label": f"{x_mid:.3f}", "value": x_mid}]
+            return default_options, x_mid, default_options, y_mid, default_options, z_mid
         except Exception:
-            return 0.5, 0.5, 0.5
+            default_options = [{"label": "0.000", "value": 0.0}]
+            return default_options, 0.0, default_options, 0.0, default_options, 0.0
     
-    return None, None, None
+    # 기본값 반환
+    default_options = [{"label": "0.000", "value": 0.0}]
+    return default_options, 0.0, default_options, 0.0, default_options, 0.0
 
 @callback(
     Output("viewer-3d-node-stress", "figure"),
     Output("viewer-stress-time-stress", "figure"),
     Input("node-coord-store-stress", "data"),
-    Input("node-x-input-stress", "value"),
-    Input("node-y-input-stress", "value"),
-    Input("node-z-input-stress", "value"),
+    Input("node-x-dropdown-stress", "value"),
+    Input("node-y-dropdown-stress", "value"),
+    Input("node-z-dropdown-stress", "value"),
     Input("stress-component-selector-node", "value"),
     Input("tabs-main-stress", "active_tab"),  # 탭 활성화를 트리거로 추가
     State("tbl-concrete-stress", "selected_rows"),
@@ -4045,9 +4103,9 @@ def update_node_tab_stress(store_data, x, y, z, selected_component, active_tab, 
     State("viewer-3d-node-stress", "figure"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
-    State("node-x-input-stress", "value"),
-    State("node-y-input-stress", "value"),
-    State("node-z-input-stress", "value"),
+    State("node-x-dropdown-stress", "value"),
+    State("node-y-dropdown-stress", "value"),
+    State("node-z-dropdown-stress", "value"),
     State("stress-component-selector-node", "value"),
     State("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
@@ -4205,9 +4263,9 @@ def update_stress_range_filter_stress(range_filter, fig_3d, selected_rows, tbl_d
     State("viewer-stress-time-stress", "figure"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
-    State("node-x-input-stress", "value"),
-    State("node-y-input-stress", "value"),
-    State("node-z-input-stress", "value"),
+    State("node-x-dropdown-stress", "value"),
+    State("node-y-dropdown-stress", "value"),
+    State("node-z-dropdown-stress", "value"),
     State("tabs-main-stress", "active_tab"),
     prevent_initial_call=True,
 )
@@ -4271,9 +4329,9 @@ def save_node_image_stress(n_clicks, fig_3d, fig_stress, selected_rows, tbl_data
     Input("btn-save-node-data-stress", "n_clicks"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
-    State("node-x-input-stress", "value"),
-    State("node-y-input-stress", "value"),
-    State("node-z-input-stress", "value"),
+    State("node-x-dropdown-stress", "value"),
+    State("node-y-dropdown-stress", "value"),
+    State("node-z-dropdown-stress", "value"),
     State("stress-component-selector-node", "value"),
     State("stress-range-filter", "value"),
     State("tabs-main-stress", "active_tab"),
