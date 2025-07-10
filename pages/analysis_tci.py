@@ -984,7 +984,7 @@ def create_tci_timeline_tab_content(concrete_pk, concrete_name):
                         "fontWeight": "600", "color": "#374151", "fontSize": "13px"
                     }),
                     dbc.Input(
-                        id="compressive-strength-input-timeline", 
+                        id="compressive-strength-input", 
                         type="number", 
                         value=30, 
                         min=10, 
@@ -1342,7 +1342,7 @@ def update_tci_formula_graph(age_input, fc28_input, active_tab, selected_rows, t
     Output("viewer-tci-timeline", "figure"),
     Output("tci-statistics-summary", "children"),
     Input("tci-time-range-selector", "value"),
-    Input("compressive-strength-input-timeline", "value"),
+    Input("compressive-strength-input", "value"),
     Input("tabs-main-tci", "active_tab"),
     State("tbl-concrete-tci", "selected_rows"),
     State("tbl-concrete-tci", "data"),
