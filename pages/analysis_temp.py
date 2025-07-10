@@ -226,6 +226,95 @@ def parse_material_info_from_inp(lines):
 
     return ", ".join(parts) if parts else "물성치 정보 없음"
 
+def parse_inp_nodes_and_temperatures(inp_file_path):
+    """
+    INP 파일에서 노드 정보와 온도 정보를 파싱합니다.
+    
+    Returns:
+    - nodes: {node_id: {'x': x, 'y': y, 'z': z}}
+    - temperatures: {node_id: temperature}
+    - x_coords, y_coords, z_coords: 좌표 배열
+    - temps: 온도 배열
+    """
+    try:
+        with open(inp_file_path, 'r') as f:
+            lines = f.readlines()
+    except Exception as e:
+        print(f"INP 파일 읽기 오류: {e}")
+        return {}, {}, np.array([]), np.array([]), np.array([]), np.array([])
+    
+    nodes = {}
+    temperatures = {}
+    
+    # 노드 정보 파싱
+    node_section = False
+    for line in lines:
+        if line.startswith('*NODE'):
+            node_section = True
+            continue
+        elif line.startswith('*'):
+            node_section = False
+            continue
+        if node_section and ',' in line:
+            parts = line.strip().split(',')
+            if len(parts) >= 4:
+                try:
+                    node_id = int(parts[0])
+                    nx = float(parts[1])
+                    ny = float(parts[2])
+                    nz = float(parts[3])
+                    nodes[node_id] = {'x': nx, 'y': ny, 'z': nz}
+                except (ValueError, IndexError):
+                    continue
+    
+    # 온도 정보 파싱
+    temp_section = False
+    for line in lines:
+        if line.startswith('*TEMPERATURE'):
+            temp_section = True
+            continue
+        elif line.startswith('*'):
+            temp_section = False
+            continue
+        if temp_section and ',' in line:
+            parts = line.strip().split(',')
+            if len(parts) >= 2:
+                try:
+                    node_id = int(parts[0])
+                    temp = float(parts[1])
+                    temperatures[node_id] = temp
+                except (ValueError, IndexError):
+                    continue
+    
+    # 온도가 있는 노드만 필터링
+    valid_nodes = {k: v for k, v in nodes.items() if k in temperatures}
+    
+    if not valid_nodes:
+        return {}, {}, np.array([]), np.array([]), np.array([]), np.array([])
+    
+    # 좌표 배열 생성
+    x_coords = np.array([n['x'] for n in valid_nodes.values()])
+    y_coords = np.array([n['y'] for n in valid_nodes.values()])
+    z_coords = np.array([n['z'] for n in valid_nodes.values()])
+    temps = np.array([temperatures[k] for k in valid_nodes.keys()])
+    
+    return valid_nodes, temperatures, x_coords, y_coords, z_coords, temps
+
+def get_node_grid_info(x_coords, y_coords, z_coords):
+    """
+    노드 좌표에서 그리드 정보를 추출합니다.
+    
+    Returns:
+    - x_unique: X축 고유값들 (정렬됨)
+    - y_unique: Y축 고유값들 (정렬됨)
+    - z_unique: Z축 고유값들 (정렬됨)
+    """
+    x_unique = sorted(list(set(x_coords)))
+    y_unique = sorted(list(set(y_coords)))
+    z_unique = sorted(list(set(z_coords)))
+    
+    return x_unique, y_unique, z_unique
+
 # ────────────────────────────── 레이아웃 ────────────────────────────
 layout = dbc.Container(
     fluid=True,
@@ -700,17 +789,17 @@ layout = dbc.Container(
                         # dcc.Slider(id="temp-tci-time-slider-tmp", min=0, max=5, step=1, value=0, marks={}),  # TCI용 시간 슬라이더
                         dcc.Graph(id="viewer-3d"),
                         dcc.Graph(id="viewer-3d-display"),
-                        dbc.Input(id="section-x-input-tmp", type="number", value=None),
-                        dbc.Input(id="section-y-input-tmp", type="number", value=None),
-                        dbc.Input(id="section-z-input-tmp", type="number", value=None),
+                        dcc.Dropdown(id="section-x-dropdown-tmp"),
+                        dcc.Dropdown(id="section-y-dropdown-tmp"),
+                        dcc.Dropdown(id="section-z-dropdown-tmp"),
                         dcc.Graph(id="viewer-3d-section-tmp"),
                         dcc.Graph(id="viewer-section-x-tmp"),
                         dcc.Graph(id="viewer-section-y-tmp"),
                         dcc.Graph(id="viewer-section-z-tmp"),
                         dcc.Store(id="temp-coord-store", data={}),
-                        dbc.Input(id="temp-x-input", type="number", value=0),
-                        dbc.Input(id="temp-y-input", type="number", value=0),
-                        dbc.Input(id="temp-z-input", type="number", value=0),
+                        dcc.Dropdown(id="temp-x-dropdown"),
+                        dcc.Dropdown(id="temp-y-dropdown"),
+                        dcc.Dropdown(id="temp-z-dropdown"),
                         dcc.Graph(id="temp-viewer-3d"),
                         dcc.Graph(id="temp-time-graph"),
                         html.Div(id="section-time-info"),  # 단면도용 시간 정보 표시 컴포넌트
@@ -2199,93 +2288,84 @@ def switch_tab_tmp(active_tab, selected_rows, pathname, tbl_data, viewer_data, c
                         "marginBottom": "12px",
                         "fontSize": "14px"
                     }),
-                    dbc.Row([
+                                            dbc.Row([
                         dbc.Col([
-                                                            dbc.Card([
-                                    dbc.CardBody([
-                                        html.Div([
-                                            html.I(className="fas fa-arrows-alt-h", style={
-                                                "color": "#ef4444", 
-                                                "fontSize": "14px", 
-                                                "marginRight": "6px"
-                                            }),
-                                            html.Span("X축", style={
-                                                "fontWeight": "600",
-                                                "color": "#ef4444",
-                                                "fontSize": "13px"
-                                            })
-                                        ], style={"marginBottom": "4px"}),
-                                        dbc.Input(
-                                            id="section-x-input-tmp", 
-                                            type="number", 
-                                            step=0.1, 
-                                            value=None,
-                                            placeholder="X 좌표",
-                                            style={"width": "100%"}
-                                        )
-                                    ], style={"padding": "8px"})
-                                ], style={
-                                    "border": "1px solid #fecaca",
-                                    "backgroundColor": "#fef2f2"
-                                })
+                            dbc.Card([
+                                dbc.CardBody([
+                                    html.Div([
+                                        html.I(className="fas fa-arrows-alt-h", style={
+                                            "color": "#ef4444", 
+                                            "fontSize": "14px", 
+                                            "marginRight": "6px"
+                                        }),
+                                        html.Span("X축", style={
+                                            "fontWeight": "600",
+                                            "color": "#ef4444",
+                                            "fontSize": "13px"
+                                        })
+                                    ], style={"marginBottom": "4px"}),
+                                    dcc.Dropdown(
+                                        id="section-x-dropdown-tmp",
+                                        placeholder="X 좌표 선택",
+                                        style={"width": "100%"}
+                                    )
+                                ], style={"padding": "8px"})
+                            ], style={
+                                "border": "1px solid #fecaca",
+                                "backgroundColor": "#fef2f2"
+                            })
                         ], md=4),
                         dbc.Col([
-                                                            dbc.Card([
-                                    dbc.CardBody([
-                                        html.Div([
-                                            html.I(className="fas fa-arrows-alt-v", style={
-                                                "color": "#3b82f6", 
-                                                "fontSize": "14px", 
-                                                "marginRight": "6px"
-                                            }),
-                                            html.Span("Y축", style={
-                                                "fontWeight": "600",
-                                                "color": "#3b82f6",
-                                                "fontSize": "13px"
-                                            })
-                                        ], style={"marginBottom": "4px"}),
-                                        dbc.Input(
-                                            id="section-y-input-tmp", 
-                                            type="number", 
-                                            step=0.1, 
-                                            value=None,
-                                            placeholder="Y 좌표",
-                                            style={"width": "100%"}
-                                        )
-                                    ], style={"padding": "8px"})
-                                ], style={
-                                    "border": "1px solid #bfdbfe",
-                                    "backgroundColor": "#eff6ff"
-                                })
+                            dbc.Card([
+                                dbc.CardBody([
+                                    html.Div([
+                                        html.I(className="fas fa-arrows-alt-v", style={
+                                            "color": "#3b82f6", 
+                                            "fontSize": "14px", 
+                                            "marginRight": "6px"
+                                        }),
+                                        html.Span("Y축", style={
+                                            "fontWeight": "600",
+                                            "color": "#3b82f6",
+                                            "fontSize": "13px"
+                                        })
+                                    ], style={"marginBottom": "4px"}),
+                                    dcc.Dropdown(
+                                        id="section-y-dropdown-tmp",
+                                        placeholder="Y 좌표 선택",
+                                        style={"width": "100%"}
+                                    )
+                                ], style={"padding": "8px"})
+                            ], style={
+                                "border": "1px solid #bfdbfe",
+                                "backgroundColor": "#eff6ff"
+                            })
                         ], md=4),
                         dbc.Col([
-                                                            dbc.Card([
-                                    dbc.CardBody([
-                                        html.Div([
-                                            html.I(className="fas fa-arrows-alt", style={
-                                                "color": "#22c55e", 
-                                                "fontSize": "14px", 
-                                                "marginRight": "6px"
-                                            }),
-                                            html.Span("Z축", style={
-                                                "fontWeight": "600",
-                                                "color": "#22c55e",
-                                                "fontSize": "13px"
-                                            })
-                                        ], style={"marginBottom": "4px"}),
-                                        dbc.Input(
-                                            id="section-z-input-tmp", 
-                                            type="number", 
-                                            step=0.1, 
-                                            value=None,
-                                            placeholder="Z 좌표",
-                                            style={"width": "100%"}
-                                        )
-                                    ], style={"padding": "8px"})
-                                ], style={
-                                    "border": "1px solid #bbf7d0",
-                                    "backgroundColor": "#f0fdf4"
-                                })
+                            dbc.Card([
+                                dbc.CardBody([
+                                    html.Div([
+                                        html.I(className="fas fa-arrows-alt", style={
+                                            "color": "#22c55e", 
+                                            "fontSize": "14px", 
+                                            "marginRight": "6px"
+                                        }),
+                                        html.Span("Z축", style={
+                                            "fontWeight": "600",
+                                            "color": "#22c55e",
+                                            "fontSize": "13px"
+                                        })
+                                    ], style={"marginBottom": "4px"}),
+                                    dcc.Dropdown(
+                                        id="section-z-dropdown-tmp",
+                                        placeholder="Z 좌표 선택",
+                                        style={"width": "100%"}
+                                    )
+                                ], style={"padding": "8px"})
+                            ], style={
+                                "border": "1px solid #bbf7d0",
+                                "backgroundColor": "#f0fdf4"
+                            })
                         ], md=4),
                     ], className="g-3"),
                 ], style={
@@ -2444,14 +2524,9 @@ def switch_tab_tmp(active_tab, selected_rows, pathname, tbl_data, viewer_data, c
                                                 "fontSize": "13px"
                                             })
                                         ], style={"marginBottom": "4px"}),
-                                        dbc.Input(
-                                            id="temp-x-input", 
-                                            type="number", 
-                                            step=0.1, 
-                                            value=round(x_mid,1), 
-                                            min=round(x_min,2), 
-                                            max=round(x_max,2),
-                                            placeholder="X 좌표",
+                                        dcc.Dropdown(
+                                            id="temp-x-dropdown", 
+                                            placeholder="X 좌표 선택",
                                             style={"width": "100%"}
                                         )
                                     ], style={"padding": "8px"})
@@ -2475,14 +2550,9 @@ def switch_tab_tmp(active_tab, selected_rows, pathname, tbl_data, viewer_data, c
                                                 "fontSize": "13px"
                                             })
                                         ], style={"marginBottom": "4px"}),
-                                        dbc.Input(
-                                            id="temp-y-input", 
-                                            type="number", 
-                                            step=0.1, 
-                                            value=round(y_mid,1), 
-                                            min=round(y_min,2), 
-                                            max=round(y_max,2),
-                                            placeholder="Y 좌표",
+                                        dcc.Dropdown(
+                                            id="temp-y-dropdown", 
+                                            placeholder="Y 좌표 선택",
                                             style={"width": "100%"}
                                         )
                                     ], style={"padding": "8px"})
@@ -2506,14 +2576,9 @@ def switch_tab_tmp(active_tab, selected_rows, pathname, tbl_data, viewer_data, c
                                                 "fontSize": "13px"
                                             })
                                         ], style={"marginBottom": "4px"}),
-                                        dbc.Input(
-                                            id="temp-z-input", 
-                                            type="number", 
-                                            step=0.1, 
-                                            value=round(z_mid,1), 
-                                            min=round(z_min,2), 
-                                            max=round(z_max,2),
-                                            placeholder="Z 좌표",
+                                        dcc.Dropdown(
+                                            id="temp-z-dropdown", 
+                                            placeholder="Z 좌표 선택",
                                             style={"width": "100%"}
                                         )
                                     ], style={"padding": "8px"})
@@ -2803,14 +2868,14 @@ def delete_concrete_confirm_tmp(_click, sel, tbl_data):
     Output("viewer-section-x-tmp", "figure"),
     Output("viewer-section-y-tmp", "figure"),
     Output("viewer-section-z-tmp", "figure"),
-    Output("section-x-input-tmp", "min"), Output("section-x-input-tmp", "max"), Output("section-x-input-tmp", "value"),
-    Output("section-y-input-tmp", "min"), Output("section-y-input-tmp", "max"), Output("section-y-input-tmp", "value"),
-    Output("section-z-input-tmp", "min"), Output("section-z-input-tmp", "max"), Output("section-z-input-tmp", "value"),
+    Output("section-x-dropdown-tmp", "options"), Output("section-x-dropdown-tmp", "value"),
+    Output("section-y-dropdown-tmp", "options"), Output("section-y-dropdown-tmp", "value"),
+    Output("section-z-dropdown-tmp", "options"), Output("section-z-dropdown-tmp", "value"),
     Output("current-file-title-store-tmp", "data", allow_duplicate=True),
     Input("time-slider-section-tmp", "value"),  # 단면도용 독립 슬라이더 사용
-    Input("section-x-input-tmp", "value"),
-    Input("section-y-input-tmp", "value"),
-    Input("section-z-input-tmp", "value"),
+    Input("section-x-dropdown-tmp", "value"),
+    Input("section-y-dropdown-tmp", "value"),
+    Input("section-z-dropdown-tmp", "value"),
     Input("unified-colorbar-section-state-tmp", "data"),
     State("tbl-concrete-tmp", "selected_rows"),
     State("tbl-concrete-tmp", "data"),
@@ -2829,13 +2894,13 @@ def update_section_views_tmp(time_idx,
     
     
     if not selected_rows or not tbl_data:
-        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, ""
+        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), [], None, [], None, [], None, ""
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
     inp_dir = f"inp/{concrete_pk}"
     inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
     if not inp_files:
-        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, ""
+        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), [], None, [], None, [], None, ""
     # 시간 인덱스 안전 처리
     if time_idx is None or (isinstance(time_idx, float) and math.isnan(time_idx)) or (isinstance(time_idx, str) and not str(time_idx).isdigit()):
         file_idx = len(inp_files)-1
@@ -2846,44 +2911,7 @@ def update_section_views_tmp(time_idx,
     current_file = inp_files[file_idx]
 
     # inp 파일 파싱 (노드, 온도)
-    with open(current_file, 'r') as f:
-        lines = f.readlines()
-    nodes = {}
-    node_section = False
-    for line in lines:
-        if line.startswith('*NODE'):
-            node_section = True
-            continue
-        elif line.startswith('*'):
-            node_section = False
-            continue
-        if node_section and ',' in line:
-            parts = line.strip().split(',')
-            if len(parts) >= 4:
-                node_id = int(parts[0])
-                nx = float(parts[1])
-                ny = float(parts[2])
-                nz = float(parts[3])
-                nodes[node_id] = {'x': nx, 'y': ny, 'z': nz}
-    temperatures = {}
-    temp_section = False
-    for line in lines:
-        if line.startswith('*TEMPERATURE'):
-            temp_section = True
-            continue
-        elif line.startswith('*'):
-            temp_section = False
-            continue
-        if temp_section and ',' in line:
-            parts = line.strip().split(',')
-            if len(parts) >= 2:
-                node_id = int(parts[0])
-                temp = float(parts[1])
-                temperatures[node_id] = temp
-    x_coords = np.array([n['x'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
-    y_coords = np.array([n['y'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
-    z_coords = np.array([n['z'] for n in nodes.values() if n and temperatures.get(list(nodes.keys())[list(nodes.values()).index(n)], None) is not None])
-    temps = np.array([temperatures[k] for k in nodes.keys() if k in temperatures])
+    nodes, temperatures, x_coords, y_coords, z_coords, temps = parse_inp_nodes_and_temperatures(current_file)
     
     # 전체 파일의 온도 범위 계산
     all_temps = []
@@ -2921,15 +2949,21 @@ def update_section_views_tmp(time_idx,
     else:
         # 현재 파일의 온도 범위 사용 (개별 모드)
         tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
-    # 입력창 min/max/기본값 자동 설정
-    x_min, x_max = float(np.min(x_coords)), float(np.max(x_coords))
-    y_min, y_max = float(np.min(y_coords)), float(np.max(y_coords))
-    z_min, z_max = float(np.min(z_coords)), float(np.max(z_coords))
-    x_mid = float(np.median(x_coords))
-    y_mid = float(np.median(y_coords))
-    z_mid = float(np.median(z_coords))
+    # 드롭박스 옵션 설정
+    x_unique, y_unique, z_unique = get_node_grid_info(x_coords, y_coords, z_coords)
+    
+    x_options = [{"label": f"{x:.3f}", "value": x} for x in x_unique]
+    y_options = [{"label": f"{y:.3f}", "value": y} for y in y_unique]
+    z_options = [{"label": f"{z:.3f}", "value": z} for z in z_unique]
+    
+    # 기본값 설정
+    x_mid = float(np.median(x_coords)) if len(x_coords) > 0 else 0.0
+    y_mid = float(np.median(y_coords)) if len(y_coords) > 0 else 0.0
+    z_mid = float(np.median(z_coords)) if len(z_coords) > 0 else 0.0
+    
     def round01(val):
         return round(val * 10) / 10 if val is not None else None
+    
     x0 = round01(x_val) if x_val is not None else round01(x_mid)
     y0 = round01(y_val) if y_val is not None else round01(y_mid)
     z0 = round01(z_val) if z_val is not None else round01(z_mid)
@@ -3070,10 +3104,16 @@ def update_section_views_tmp(time_idx,
 @callback(
     Output("temp-viewer-3d", "figure"),
     Output("temp-time-graph", "figure"),
+    Output("temp-x-dropdown", "options"),
+    Output("temp-x-dropdown", "value"),
+    Output("temp-y-dropdown", "options"),
+    Output("temp-y-dropdown", "value"),
+    Output("temp-z-dropdown", "options"),
+    Output("temp-z-dropdown", "value"),
     Input("temp-coord-store", "data"),
-    Input("temp-x-input", "value"),
-    Input("temp-y-input", "value"),
-    Input("temp-z-input", "value"),
+    Input("temp-x-dropdown", "value"),
+    Input("temp-y-dropdown", "value"),
+    Input("temp-z-dropdown", "value"),
     Input("unified-colorbar-state-tmp", "data"),
     State("tbl-concrete-tmp", "selected_rows"),
     State("tbl-concrete-tmp", "data"),
@@ -3086,7 +3126,7 @@ def update_temp_tab_tmp(store_data, x, y, z, unified_colorbar, selected_rows, tb
     import glob, os
     from datetime import datetime as dt_import
     if not selected_rows or not tbl_data:
-        return go.Figure(), go.Figure()
+        return go.Figure(), go.Figure(), [], None, [], None, [], None
     # store_data가 있으면 기본값으로 사용, 입력값이 있으면 입력값 우선
     if store_data is not None:
         x0 = store_data.get('x', 0.5)
@@ -3240,7 +3280,53 @@ def update_temp_tab_tmp(store_data, x, y, z, unified_colorbar, selected_rows, tb
                 ticktext=x_labels
             )
         )
-    return fig_3d, fig_temp
+    
+    # 드롭다운 옵션 생성
+    x_options = []
+    y_options = []
+    z_options = []
+    
+    # INP 파일에서 노드 좌표 읽어서 드롭다운 옵션 생성
+    if selected_rows and tbl_data:
+        row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+        concrete_pk = row["concrete_pk"]
+        inp_dir = f"inp/{concrete_pk}"
+        inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
+        
+        if inp_files:
+            # 첫 번째 INP 파일에서 노드 좌표 읽기
+            with open(inp_files[0], 'r') as file:
+                lines = file.readlines()
+            
+            nodes = {}
+            node_section = False
+            for line in lines:
+                if line.startswith('*NODE'):
+                    node_section = True
+                    continue
+                elif line.startswith('*'):
+                    node_section = False
+                    continue
+                if node_section and ',' in line:
+                    parts = line.strip().split(',')
+                    if len(parts) >= 4:
+                        node_id = int(parts[0])
+                        nx = float(parts[1])
+                        ny = float(parts[2])
+                        nz = float(parts[3])
+                        nodes[node_id] = {'x': nx, 'y': ny, 'z': nz}
+            
+            if nodes:
+                # 고유한 X, Y, Z 좌표 추출
+                x_coords = sorted(list(set([v['x'] for v in nodes.values()])))
+                y_coords = sorted(list(set([v['y'] for v in nodes.values()])))
+                z_coords = sorted(list(set([v['z'] for v in nodes.values()])))
+                
+                x_options = [{"label": f"{coord:.3f}", "value": coord} for coord in x_coords]
+                y_options = [{"label": f"{coord:.3f}", "value": coord} for coord in y_coords]
+                z_options = [{"label": f"{coord:.3f}", "value": coord} for coord in z_coords]
+    
+    return fig_3d, fig_temp, x_options, x, y_options, y, z_options, z
 
 # 온도 범위 필터 콜백 (온도변화 탭에서만 작동)
 @callback(
@@ -3249,9 +3335,9 @@ def update_temp_tab_tmp(store_data, x, y, z, unified_colorbar, selected_rows, tb
     State("temp-viewer-3d", "figure"),
     State("tbl-concrete-tmp", "selected_rows"),
     State("tbl-concrete-tmp", "data"),
-    State("temp-x-input", "value"),
-    State("temp-y-input", "value"),
-    State("temp-z-input", "value"),
+    State("temp-x-dropdown", "value"),
+    State("temp-y-dropdown", "value"),
+    State("temp-z-dropdown", "value"),
     prevent_initial_call=True,
 )
 def update_temp_range_filter_tmp(range_filter, fig_3d, selected_rows, tbl_data, x, y, z):
@@ -3971,9 +4057,9 @@ def save_section_image_tmp(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows,
     State("temp-time-graph", "figure"),
     State("tbl-concrete-tmp", "selected_rows"),
     State("tbl-concrete-tmp", "data"),
-    State("temp-x-input", "value"),
-    State("temp-y-input", "value"),
-    State("temp-z-input", "value"),
+    State("temp-x-dropdown", "value"),
+    State("temp-y-dropdown", "value"),
+    State("temp-z-dropdown", "value"),
     State("temp-range-filter", "value"),
     prevent_initial_call=True,
 )
@@ -4139,9 +4225,9 @@ def save_section_inp_tmp(n_clicks, selected_rows, tbl_data, time_value):
     Input("btn-save-temp-data", "n_clicks"),
     State("tbl-concrete-tmp", "selected_rows"),
     State("tbl-concrete-tmp", "data"),
-    State("temp-x-input", "value"),
-    State("temp-y-input", "value"),
-    State("temp-z-input", "value"),
+    State("temp-x-dropdown", "value"),
+    State("temp-y-dropdown", "value"),
+    State("temp-z-dropdown", "value"),
     State("temp-range-filter", "value"),
     prevent_initial_call=True,
 )
