@@ -818,19 +818,20 @@ def create_tci_formula_tab_content(concrete_pk, concrete_name):
             labelStyle={"display": "block", "marginBottom": "8px"},
             style={"marginBottom": "16px"}
         ),
-        html.Div(id="tci-formula-input-fields", style={"marginBottom": "24px"}),
+        html.Div(id="tci-formula-input-fields", style={"marginBottom": "12px"}),
+        html.Div(id="tci-formula-equation", style={"marginBottom": "24px", "fontSize": "16px", "color": "#374151"}),
         dcc.Graph(id="tci-fct-graph", style={"height": "48vh"})
     ])
 
-# 입력란 동적 생성 콜백
-from dash import callback_context
+# 입력란 동적 생성 콜백 + 공식 안내
 @callback(
     Output('tci-formula-input-fields', 'children'),
+    Output('tci-formula-equation', 'children'),
     Input('tci-formula-choice', 'value')
 )
 def update_formula_inputs(formula):
     if formula == 'ceb':
-        return html.Div([
+        inputs = html.Div([
             html.Label('fct,28(28일 인장강도)', style={"marginRight": "8px"}),
             dcc.Input(id='tci-fct28', type='number', value=20, style={'width': '80px', 'marginRight': '16px'}),
             html.Label('a', style={"marginRight": "4px"}),
@@ -838,25 +839,38 @@ def update_formula_inputs(formula):
             html.Label('b', style={"marginRight": "4px"}),
             dcc.Input(id='tci-b', type='number', value=1, style={'width': '60px'}),
         ], style={"display": "flex", "alignItems": "center", "gap": "8px"})
+        eq = html.Div([
+            html.B("CEB-FIP Model Code 1990 공식: "),
+            html.Span("fct(t) = fct,28 × ( t / (a + b × t) )^0.5", style={"fontFamily": "monospace", "color": "#2563eb", "marginLeft": "8px"}),
+            html.Div("(보통 a=1, b=1 사용)", style={"fontSize": "13px", "color": "#64748b", "marginTop": "2px"})
+        ])
     else:
-        return html.Div([
+        inputs = html.Div([
             html.Label('fct,28(28일 인장강도)', style={"marginRight": "8px"}),
             dcc.Input(id='tci-fct28', type='number', value=20, style={'width': '80px'}),
         ], style={"display": "flex", "alignItems": "center", "gap": "8px"})
+        eq = html.Div([
+            html.B("경험식 (KCI/KS): "),
+            html.Span("fct(t) = fct,28 × ( t / 28 )^0.5", style={"fontFamily": "monospace", "color": "#059669", "marginLeft": "8px"}),
+            html.Div("(t ≤ 28)", style={"fontSize": "13px", "color": "#64748b", "marginTop": "2px"})
+        ])
+    return inputs, eq
 
-# 그래프 업데이트 콜백
+# 그래프 업데이트 콜백 (동적 입력란은 State로)
+from dash import State
 @callback(
     Output('tci-fct-graph', 'figure'),
     Input('tci-formula-choice', 'value'),
-    Input('tci-fct28', 'value'),
-    Input('tci-a', 'value'),
-    Input('tci-b', 'value'),
+    State('tci-fct28', 'value'),
+    State('tci-a', 'value'),
+    State('tci-b', 'value'),
     prevent_initial_call=False
 )
 def update_fct_graph(formula, fct28, a, b):
     import numpy as np
     import plotly.graph_objs as go
     t = np.arange(1, 28.01, 0.1)
+    # 기본값 처리
     if fct28 is None or fct28 == '':
         fct28 = 20
     try:
