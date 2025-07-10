@@ -229,76 +229,56 @@ def parse_material_info_from_inp(lines):
 def parse_inp_nodes_and_temperatures(inp_file_path):
     """
     INP 파일에서 노드 정보와 온도 정보를 파싱합니다.
-    
     Returns:
     - nodes: {node_id: {'x': x, 'y': y, 'z': z}}
     - temperatures: {node_id: temperature}
     - x_coords, y_coords, z_coords: 좌표 배열
     - temps: 온도 배열
     """
+    import numpy as np
+    nodes = {}
+    temperatures = {}
+    x_coords, y_coords, z_coords, temps = [], [], [], []
     try:
         with open(inp_file_path, 'r') as f:
             lines = f.readlines()
     except Exception as e:
         print(f"INP 파일 읽기 오류: {e}")
         return {}, {}, np.array([]), np.array([]), np.array([]), np.array([])
-    
-    nodes = {}
-    temperatures = {}
-    
-    # 노드 정보 파싱
+
     node_section = False
     for line in lines:
-        if line.startswith('*NODE'):
+        if line.strip().startswith('*NODE'):
             node_section = True
             continue
-        elif line.startswith('*'):
-            node_section = False
-            continue
-        if node_section and ',' in line:
-            parts = line.strip().split(',')
-            if len(parts) >= 4:
-                try:
+        if node_section:
+            if line.strip().startswith('*'):
+                node_section = False
+                continue
+            if ',' in line:
+                parts = line.strip().split(',')
+                if len(parts) >= 4:
                     node_id = int(parts[0])
                     nx = float(parts[1])
                     ny = float(parts[2])
                     nz = float(parts[3])
                     nodes[node_id] = {'x': nx, 'y': ny, 'z': nz}
-                except (ValueError, IndexError):
-                    continue
-    
-    # 온도 정보 파싱
-    temp_section = False
+                    x_coords.append(nx)
+                    y_coords.append(ny)
+                    z_coords.append(nz)
+    # 온도 데이터: *NODE 섹션 이후, 쉼표(,)가 포함된 줄 중 2개만 있는 줄
     for line in lines:
-        if line.startswith('*TEMPERATURE'):
-            temp_section = True
-            continue
-        elif line.startswith('*'):
-            temp_section = False
-            continue
-        if temp_section and ',' in line:
+        if ',' in line:
             parts = line.strip().split(',')
-            if len(parts) >= 2:
+            if len(parts) == 2:
                 try:
                     node_id = int(parts[0])
                     temp = float(parts[1])
                     temperatures[node_id] = temp
-                except (ValueError, IndexError):
+                    temps.append(temp)
+                except:
                     continue
-    
-    # 온도가 있는 노드만 필터링
-    valid_nodes = {k: v for k, v in nodes.items() if k in temperatures}
-    
-    if not valid_nodes:
-        return {}, {}, np.array([]), np.array([]), np.array([]), np.array([])
-    
-    # 좌표 배열 생성
-    x_coords = np.array([n['x'] for n in valid_nodes.values()])
-    y_coords = np.array([n['y'] for n in valid_nodes.values()])
-    z_coords = np.array([n['z'] for n in valid_nodes.values()])
-    temps = np.array([temperatures[k] for k in valid_nodes.keys()])
-    
-    return valid_nodes, temperatures, x_coords, y_coords, z_coords, temps
+    return nodes, temperatures, np.array(x_coords), np.array(y_coords), np.array(z_coords), np.array(temps)
 
 def get_node_grid_info(x_coords, y_coords, z_coords):
     """
