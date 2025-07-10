@@ -1914,8 +1914,9 @@ def create_node_tab_content_stress(concrete_pk):
     store_data = {'x': round(x_mid,1), 'y': round(y_mid,1), 'z': round(z_mid,1)}
     
     return html.Div([
-        # 위치 설정 섹션 (높이 절반으로 줄임)
+        # 위치 설정 + 저장 버튼 섹션 (한 줄 배치)
         dbc.Row([
+            # 왼쪽: 측정 위치 설정
             dbc.Col([
                 html.Div([
                     html.H6("📍 측정 위치 설정", style={
@@ -2009,13 +2010,14 @@ def create_node_tab_content_stress(concrete_pk):
                     "backgroundColor": "#f9fafb",
                     "borderRadius": "8px",
                     "border": "1px solid #e5e7eb",
-                    "marginBottom": "12px"
+                    "height": "100%",
+                    "display": "flex",
+                    "flexDirection": "column",
+                    "justifyContent": "center"
                 })
-            ], md=12),
-        ]),
-        
-        # 저장 버튼들 (양옆 중앙 정렬)
-        dbc.Row([
+            ], md=8),
+            
+            # 오른쪽: 저장 버튼들 (위아래 배치)
             dbc.Col([
                 html.Div([
                     dcc.Loading(
@@ -2034,7 +2036,7 @@ def create_node_tab_content_stress(concrete_pk):
                                     "fontSize": "14px",
                                     "width": "120px",
                                     "height": "40px",
-                                    "marginRight": "16px"
+                                    "marginBottom": "12px"
                                 }
                             )
                         ]
@@ -2059,9 +2061,9 @@ def create_node_tab_content_stress(concrete_pk):
                             )
                         ]
                     ),
-                ], style={"display": "flex", "justifyContent": "center", "alignItems": "center", "marginBottom": "16px"}),
-            ], md=12),
-        ]),
+                ], style={"display": "flex", "flexDirection": "column", "justifyContent": "center", "alignItems": "center", "height": "100%"}),
+            ], md=4),
+        ], className="mb-4 align-items-stretch", style={"minHeight": "120px"}),
         
         # 응력 종류 선택과 범위 필터 (한 줄에 배치)
         dbc.Row([
