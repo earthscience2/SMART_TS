@@ -2959,6 +2959,11 @@ def update_section_views_tmp(time_idx,
     y0 = round01(y_val) if y_val is not None else round01(y_mid)
     z0 = round01(z_val) if z_val is not None else round01(z_mid)
     
+    # 스칼라 값으로 변환
+    x0 = float(x0) if hasattr(x0, '__iter__') else x0
+    y0 = float(y0) if hasattr(y0, '__iter__') else y0
+    z0 = float(z0) if hasattr(z0, '__iter__') else z0
+    
     # 좌표 범위 계산
     x_min, x_max = float(np.min(x_coords)), float(np.max(x_coords))
     y_min, y_max = float(np.min(y_coords)), float(np.max(y_coords))
