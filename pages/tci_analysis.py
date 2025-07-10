@@ -90,49 +90,7 @@ layout = dbc.Container(
 )
 
 # ===== 인장강도 계산식 선택 및 입력 UI 예시 (CEB-FIP 기본값: 20, 1, 1) =====
-strength_formula_section = html.Div([
-    html.H5("인장강도 계산식 선택", style={"marginTop": "32px", "marginBottom": "16px"}),
-    dcc.RadioItems(
-        id='strength-formula-choice',
-        options=[
-            {'label': 'CEB-FIP Model Code', 'value': 'ceb'},
-            {'label': '경험식 #1', 'value': 'exp1'}
-        ],
-        value='ceb',  # CEB-FIP를 기본값으로 선택
-        labelStyle={'display': 'block', 'marginBottom': '8px'}
-    ),
-    html.Div([
-        html.Label('fct,28(28일 인장강도)'),
-        dcc.Input(id='ceb-fct28', type='number', value=20, style={"width": "100px", "marginRight": "8px"}),
-        html.Span('MPa', style={"marginRight": "16px"}),
-        html.Label('a'),
-        dcc.Input(id='ceb-a', type='number', value=1, style={"width": "60px", "marginRight": "8px"}),
-        html.Label('b'),
-        dcc.Input(id='ceb-b', type='number', value=1, style={"width": "60px"}),
-    ], id='ceb-inputs', style={"display": "block", "marginBottom": "16px"}),
-    html.Div([
-        html.Label('fct,28(28일 인장강도)'),
-        dcc.Input(id='exp1-fct28', type='number', value=20, style={"width": "100px", "marginRight": "8px"}),
-        html.Span('MPa'),
-    ], id='exp1-inputs', style={"display": "none", "marginBottom": "16px"}),
-])
-
-# 기존 layout에 strength_formula_section을 적절한 위치에 삽입 필요
-# 예시: layout.children.insert(1, strength_formula_section)
-
-# 입력란 활성화/비활성화 콜백 예시
-@callback(
-    Output('ceb-inputs', 'style'),
-    Output('exp1-inputs', 'style'),
-    Input('strength-formula-choice', 'value')
-)
-def toggle_strength_inputs(selected):
-    if selected == 'ceb':
-        return {"display": "block", "marginBottom": "16px"}, {"display": "none", "marginBottom": "16px"}
-    elif selected == 'exp1':
-        return {"display": "none", "marginBottom": "16px"}, {"display": "block", "marginBottom": "16px"}
-    else:
-        return {"display": "none", "marginBottom": "16px"}, {"display": "none", "marginBottom": "16px"}
+# (중복 콜백 문제로 인해 전체 블록 삭제)
 
 # 콘크리트 목록 로드 콜백
 @callback(
