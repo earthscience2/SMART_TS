@@ -2951,6 +2951,12 @@ def update_section_views_tmp(time_idx,
     x0 = round01(x_val) if x_val is not None else round01(x_mid)
     y0 = round01(y_val) if y_val is not None else round01(y_mid)
     z0 = round01(z_val) if z_val is not None else round01(z_mid)
+    
+    # 좌표 범위 계산
+    x_min, x_max = float(np.min(x_coords)), float(np.max(x_coords))
+    y_min, y_max = float(np.min(y_coords)), float(np.max(y_coords))
+    z_min, z_max = float(np.min(z_coords)), float(np.max(z_coords))
+    
     # 3D 뷰(작게)
     coords = np.array([[cx, cy, cz] for cx, cy, cz in zip(x_coords, y_coords, z_coords)])
     fig_3d = go.Figure(data=go.Volume(
