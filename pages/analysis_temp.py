@@ -2879,7 +2879,7 @@ def delete_concrete_confirm_tmp(_click, sel, tbl_data):
     Input("unified-colorbar-section-state-tmp", "data"),
     State("tbl-concrete-tmp", "selected_rows"),
     State("tbl-concrete-tmp", "data"),
-    prevent_initial_call=True,
+    prevent_initial_call=False,
 )
 def update_section_views_tmp(time_idx,
                          x_val, y_val, z_val, unified_colorbar,
@@ -3294,37 +3294,29 @@ def update_temp_tab_tmp(store_data, x, y, z, unified_colorbar, selected_rows, tb
         inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
         
         if inp_files:
-            # 첫 번째 INP 파일에서 노드 좌표 읽기
-            with open(inp_files[0], 'r') as file:
-                lines = file.readlines()
-            
-            nodes = {}
-            node_section = False
-            for line in lines:
-                if line.startswith('*NODE'):
-                    node_section = True
-                    continue
-                elif line.startswith('*'):
-                    node_section = False
-                    continue
-                if node_section and ',' in line:
-                    parts = line.strip().split(',')
-                    if len(parts) >= 4:
-                        node_id = int(parts[0])
-                        nx = float(parts[1])
-                        ny = float(parts[2])
-                        nz = float(parts[3])
-                        nodes[node_id] = {'x': nx, 'y': ny, 'z': nz}
-            
-            if nodes:
-                # 고유한 X, Y, Z 좌표 추출
-                x_coords = sorted(list(set([v['x'] for v in nodes.values()])))
-                y_coords = sorted(list(set([v['y'] for v in nodes.values()])))
-                z_coords = sorted(list(set([v['z'] for v in nodes.values()])))
-                
-                x_options = [{"label": f"{coord:.3f}", "value": coord} for coord in x_coords]
-                y_options = [{"label": f"{coord:.3f}", "value": coord} for coord in y_coords]
-                z_options = [{"label": f"{coord:.3f}", "value": coord} for coord in z_coords]
+            try:
+                nodes, temperatures, x_coords, y_coords, z_coords, temps = parse_inp_nodes_and_temperatures(inp_files[0])
+                if len(x_coords) > 0 and len(y_coords) > 0 and len(z_coords) > 0:
+                    x_unique = sorted(list(set(x_coords)))
+                    y_unique = sorted(list(set(y_coords)))
+                    z_unique = sorted(list(set(z_coords)))
+                    x_options = [{"label": f"{coord:.3f}", "value": coord} for coord in x_unique]
+                    y_options = [{"label": f"{coord:.3f}", "value": coord} for coord in y_unique]
+                    z_options = [{"label": f"{coord:.3f}", "value": coord} for coord in z_unique]
+                    if x is None and len(x_unique) > 0:
+                        x = x_unique[len(x_unique)//2]
+                    if y is None and len(y_unique) > 0:
+                        y = y_unique[len(y_unique)//2]
+                    if z is None and len(z_unique) > 0:
+                        z = z_unique[len(z_unique)//2]
+            except Exception as e:
+                print(f"INP 파일 파싱 오류: {e}")
+                x_options = [{"label": "0.000", "value": 0.0}]
+                y_options = [{"label": "0.000", "value": 0.0}]
+                z_options = [{"label": "0.000", "value": 0.0}]
+                if x is None: x = 0.0
+                if y is None: y = 0.0
+                if z is None: z = 0.0
     
     return fig_3d, fig_temp, x_options, x, y_options, y, z_options, z
 
