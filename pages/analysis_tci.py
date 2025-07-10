@@ -2060,27 +2060,33 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
             print(f"DEBUG: 파일 시간 파싱 오류: {e}")
             file_time = None
         
-        # 재령 계산
+        # 재령 계산 (0.1일 단위까지 정밀 계산)
         if pour_date and file_time:
-            age_days = (file_time - pour_date).days
-            if age_days < 1:
-                age_days = 1
-            print(f"DEBUG: 재령 계산 성공: {age_days}일 (타설일: {pour_date}, 분석일: {file_time})")
+            # 총 시간 차이를 초 단위로 계산
+            time_diff = file_time - pour_date
+            total_seconds = time_diff.total_seconds()
+            # 초를 일 단위로 변환 (86400초 = 1일)
+            age_days = total_seconds / 86400
+            if age_days < 0.1:
+                age_days = 0.1
+            print(f"DEBUG: 재령 계산 성공: {age_days:.1f}일 (타설일: {pour_date}, 분석일: {file_time})")
         else:
             # 타설일이 없으면 첫 번째 FRD 파일을 기준으로 계산
             if not pour_date and frd_files:
                 try:
                     first_time_str = os.path.basename(frd_files[0]).split(".")[0]
                     first_file_time = datetime.strptime(first_time_str, "%Y%m%d%H")
-                    age_days = max(1, (file_time - first_file_time).days + 1)
-                    print(f"DEBUG: 타설일 없음, 첫 파일 기준 재령: {age_days}일")
+                    time_diff = file_time - first_file_time
+                    total_seconds = time_diff.total_seconds()
+                    age_days = max(0.1, total_seconds / 86400 + 1)
+                    print(f"DEBUG: 타설일 없음, 첫 파일 기준 재령: {age_days:.1f}일")
                 except:
-                    age_days = 1
+                    age_days = 0.1
             else:
-                age_days = 1
-            print(f"DEBUG: 재령 기본값: {age_days}일")
+                age_days = 0.1
+            print(f"DEBUG: 재령 기본값: {age_days:.1f}일")
         
-        print(f"DEBUG: 최종 재령={age_days}일")
+        print(f"DEBUG: 최종 재령={age_days:.1f}일")
         
         # 인장강도 계산식 탭의 값들을 사용하여 fct(t) 계산
         if formula_params:
@@ -2099,7 +2105,7 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
                     fct = 0
                 else:
                     t_ratio = age_days / 28
-                    strength_ratio = t_ratio / (a + b * t_ratio)
+                    strength_ratio = (t_ratio / (a + b * t_ratio)) ** 0.5
                     fct = fct28 * strength_ratio
             else:
                 # 경험식 #1: fct(t) = fct28 × ( t / 28 )^0.5
@@ -2113,7 +2119,7 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
             fct = calculate_tensile_strength(age_days, fc28)
             print(f"DEBUG: 기본값 사용 - fc28={fc28} MPa")
         
-        print(f"DEBUG: fct(t)={fct:.3f} MPa (재령={age_days}일)")
+        print(f"DEBUG: fct(t)={fct:.3f} MPa (재령={age_days:.1f}일)")
         
         # 분석 정보 생성
         formula_name = "CEB-FIP Model Code" if formula_params and formula_params.get("formula") == "ceb" else "경험식 #1 (KCI/KS)"
@@ -2130,7 +2136,7 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
             ], style={"marginBottom": "8px"}),
             html.Div([
                 html.Span("📊 재령: ", style={"fontWeight": "600", "color": "#374151"}),
-                html.Span(f"{age_days}일", style={"color": "#6b7280"})
+                html.Span(f"{age_days:.1f}일", style={"color": "#6b7280"})
             ], style={"marginBottom": "8px"}),
             html.Div([
                 html.Span("💪 인장강도 fct(t): ", style={"fontWeight": "600", "color": "#374151"}),
