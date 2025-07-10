@@ -412,7 +412,6 @@ def read_frd_stress_data(frd_path):
         parsing_coords = False
         parsing_stress = False
         coord_section_ended = False
-        node_count = 0
         
         for i, line in enumerate(lines):
             line = line.strip()
@@ -421,16 +420,16 @@ def read_frd_stress_data(frd_path):
             if line.startswith('-1') and not coord_section_ended and not parsing_coords:
                 parsing_coords = True
             
-            # 좌표 섹션 종료 확인 (891개 노드 후 또는 -3 발견)
-            if parsing_coords and (node_count >= 891 or line.strip() == '-3'):
+            # 좌표 섹션 종료 확인 (첫 번째 -3)
+            if line.strip() == '-3' and parsing_coords and not coord_section_ended:
                 parsing_coords = False
                 coord_section_ended = True
-                if line.strip() == '-3':
-                    continue
+                continue
             
-            # 응력 섹션 시작 확인 (좌표 섹션 종료 후 -1 라인)
-            if coord_section_ended and line.startswith('-1') and not parsing_stress:
+            # 응력 섹션 시작 확인 (-4 STRESS 라인)
+            if '-4  STRESS' in line and coord_section_ended:
                 parsing_stress = True
+                continue
             
             # 응력 섹션 종료 확인 (응력 섹션 시작 후 첫 번째 -3)
             if line.strip() == '-3' and parsing_stress:
@@ -446,7 +445,6 @@ def read_frd_stress_data(frd_path):
                         node_id = int(nums[1])
                         x, y, z = float(nums[2]), float(nums[3]), float(nums[4])
                         node_coords[node_id] = [x, y, z]
-                        node_count += 1
                     except Exception:
                         pass
             
@@ -3809,16 +3807,21 @@ def init_node_inputs_stress(active_tab, selected_rows, tbl_data):
         row = tbl_data[selected_rows[0]]
         concrete_pk = row["concrete_pk"]
         
+        print(f"노드 탭 초기화 - concrete_pk: {concrete_pk}")
+        
         # FRD 파일에서 좌표 파싱
         frd_files = get_frd_files(concrete_pk)
+        print(f"FRD 파일 개수: {len(frd_files) if frd_files else 0}")
         
         if frd_files:
             try:
                 # 첫 번째 FRD 파일에서 좌표 추출
                 stress_data = read_frd_stress_data(frd_files[0])
+                print(f"응력 데이터 키: {list(stress_data.keys()) if stress_data else 'None'}")
                 
                 if stress_data and stress_data.get('coordinates'):
                     coords = np.array(stress_data['coordinates'])
+                    print(f"좌표 데이터 형태: {coords.shape}")
                     
                     x_coords = coords[:, 0]
                     y_coords = coords[:, 1]
@@ -3828,6 +3831,8 @@ def init_node_inputs_stress(active_tab, selected_rows, tbl_data):
                     x_unique = sorted(list(set(x_coords)))
                     y_unique = sorted(list(set(y_coords)))
                     z_unique = sorted(list(set(z_coords)))
+                    
+                    print(f"고유 좌표 개수 - X: {len(x_unique)}, Y: {len(y_unique)}, Z: {len(z_unique)}")
                     
                     # 드롭다운 옵션 생성
                     x_options = [{"label": f"{coord:.3f}", "value": coord} for coord in x_unique]
@@ -3839,9 +3844,15 @@ def init_node_inputs_stress(active_tab, selected_rows, tbl_data):
                     y_default = y_unique[len(y_unique)//2] if y_unique else 0.0
                     z_default = z_unique[len(z_unique)//2] if z_unique else 0.0
                     
+                    print(f"기본값 설정 - X: {x_default}, Y: {y_default}, Z: {z_default}")
+                    
                     return x_options, x_default, y_options, y_default, z_options, z_default
+                else:
+                    print("응력 데이터에 좌표 정보가 없습니다.")
             except Exception as e:
                 print(f"FRD 파일 파싱 오류: {e}")
+                import traceback
+                traceback.print_exc()
         
         # FRD 파일이 없거나 파싱 실패 시 콘크리트 차원 정보 사용
         try:
