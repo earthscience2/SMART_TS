@@ -2970,15 +2970,108 @@ def update_section_views_tmp(time_idx,
     y_min, y_max = float(np.min(y_coords)), float(np.max(y_coords))
     z_min, z_max = float(np.min(z_coords)), float(np.max(z_coords))
     
-    # 3D 뷰(입체 탭과 동일하게)
-    coords = np.array([[cx, cy, cz] for cx, cy, cz in zip(x_coords, y_coords, z_coords)])
-    fig_3d = go.Figure(data=go.Volume(
-        x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
-        opacity=0.1, surface_count=15, 
-        colorscale=[[0, 'blue'], [1, 'red']],
-        colorbar=dict(title='Temperature (°C)', thickness=10),
-        cmin=tmin, cmax=tmax, showscale=True
-    ))
+    # 3D 뷰(입체 탭과 동일하게, 노드/온도 필터링 및 컬러바 범위 계산)
+    # --- 입체 탭과 동일한 방식으로 노드/온도 필터링 및 coords/temps 생성 ---
+    nodes = {}
+    temperatures = {}
+    try:
+        with open(current_file, 'r') as f:
+            lines = f.readlines()
+        node_section = False
+        for line in lines:
+            if line.startswith('*NODE'):
+                node_section = True
+                continue
+            elif line.startswith('*'):
+                node_section = False
+                continue
+            if node_section and ',' in line:
+                parts = line.strip().split(',')
+                if len(parts) >= 4:
+                    try:
+                        node_id = int(parts[0])
+                        x = float(parts[1])
+                        y = float(parts[2])
+                        z = float(parts[3])
+                        nodes[node_id] = {'x': x, 'y': y, 'z': z}
+                    except (ValueError, TypeError):
+                        continue
+        temp_section = False
+        for line in lines:
+            if line.startswith('*TEMPERATURE'):
+                temp_section = True
+                continue
+            elif line.startswith('*'):
+                temp_section = False
+                continue
+            if temp_section and ',' in line:
+                parts = line.strip().split(',')
+                if len(parts) >= 2:
+                    try:
+                        node_id = int(parts[0])
+                        temp = float(parts[1])
+                        temperatures[node_id] = temp
+                    except (ValueError, TypeError):
+                        continue
+    except (IOError, OSError):
+        nodes = {}
+        temperatures = {}
+    coords_list = []
+    temps_list = []
+    for node_id, node_data in nodes.items():
+        if node_id in temperatures and node_data:
+            try:
+                coords_list.append([node_data['x'], node_data['y'], node_data['z']])
+                temps_list.append(temperatures[node_id])
+            except (KeyError, TypeError):
+                continue
+    if not coords_list or not temps_list:
+        fig_3d = go.Figure()
+    else:
+        coords = np.array(coords_list)
+        temps = np.array(temps_list)
+        # 컬러바 범위 계산 (입체 탭과 동일)
+        if unified_colorbar:
+            all_temps = []
+            for f in inp_files:
+                try:
+                    with open(f, 'r') as file:
+                        lines = file.readlines()
+                    temp_section = False
+                    for line in lines:
+                        if line.startswith('*TEMPERATURE'):
+                            temp_section = True
+                            continue
+                        elif line.startswith('*'):
+                            temp_section = False
+                            continue
+                        if temp_section and ',' in line:
+                            parts = line.strip().split(',')
+                            if len(parts) >= 2:
+                                try:
+                                    temp = float(parts[1])
+                                    all_temps.append(temp)
+                                except (ValueError, TypeError):
+                                    continue
+                except (IOError, OSError):
+                    continue
+            if all_temps:
+                tmin, tmax = float(np.nanmin(all_temps)), float(np.nanmax(all_temps))
+            else:
+                tmin, tmax = 0, 100
+        else:
+            if temps.size > 0:
+                tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
+            else:
+                tmin, tmax = 0, 100
+        fig_3d = go.Figure(data=go.Volume(
+            x=coords[:,0], y=coords[:,1], z=coords[:,2], value=temps,
+            opacity=0.1, surface_count=15, 
+            colorscale=[[0, 'blue'], [1, 'red']],
+            colorbar=dict(title='Temperature (°C)', thickness=10),
+            cmin=tmin, cmax=tmax,  # 전체 파일의 최대/최솟값 사용
+            showscale=True
+        ))
     fig_3d.update_layout(
         uirevision='constant',
         scene=dict(
