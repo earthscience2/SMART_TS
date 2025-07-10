@@ -3009,8 +3009,13 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
             xref="paper", yref="paper",
             x=0.5, y=0.5, showarrow=False
         )
+        # 드롭다운 옵션 설정 (빈 옵션)
+        x_options = []
+        y_options = []
+        z_options = []
+        
         return (empty_fig, empty_fig, empty_fig, empty_fig, 
-                0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, 
+                x_options, None, y_options, None, z_options, None, 
                 "단면도 탭을 선택하세요.")
     
     # 컴포넌트가 존재하지 않을 때 기본값 처리
@@ -3026,7 +3031,12 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
             xref="paper", yref="paper",
             x=0.5, y=0.5, showarrow=False
         )
-        return empty_fig, empty_fig, empty_fig, empty_fig, 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, "콘크리트를 선택하세요."
+        # 드롭다운 옵션 설정 (빈 옵션)
+        x_options = []
+        y_options = []
+        z_options = []
+        
+        return empty_fig, empty_fig, empty_fig, empty_fig, x_options, None, y_options, None, z_options, None, "콘크리트를 선택하세요."
     
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
@@ -3040,7 +3050,12 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
             xref="paper", yref="paper",
             x=0.5, y=0.5, showarrow=False
         )
-        return empty_fig, empty_fig, empty_fig, empty_fig, 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, "FRD 파일이 없습니다."
+        # 드롭다운 옵션 설정 (빈 옵션)
+        x_options = []
+        y_options = []
+        z_options = []
+        
+        return empty_fig, empty_fig, empty_fig, empty_fig, x_options, None, y_options, None, z_options, None, "FRD 파일이 없습니다."
     
     # 응력바 통일 상태 확인 (직접 토글 값 사용)
     use_unified_colorbar = unified_colorbar if unified_colorbar is not None else False
@@ -3082,7 +3097,12 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
             xref="paper", yref="paper",
             x=0.5, y=0.5, showarrow=False
         )
-        return empty_fig, empty_fig, empty_fig, empty_fig, 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, "유효한 응력 데이터가 없습니다."
+        # 드롭다운 옵션 설정 (빈 옵션)
+        x_options = []
+        y_options = []
+        z_options = []
+        
+        return empty_fig, empty_fig, empty_fig, empty_fig, x_options, None, y_options, None, z_options, None, "유효한 응력 데이터가 없습니다."
     
     # 좌표와 응력 값 추출 (입체 탭과 동일한 방식)
     coords = np.array(stress_data['coordinates'])
@@ -3109,7 +3129,12 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
             xref="paper", yref="paper",
             x=0.5, y=0.5, showarrow=False
         )
-        return empty_fig, empty_fig, empty_fig, empty_fig, 0, 1, 0.5, 0, 1, 0.5, 0, 1, 0.5, "데이터 불일치"
+        # 드롭다운 옵션 설정 (빈 옵션)
+        x_options = []
+        y_options = []
+        z_options = []
+        
+        return empty_fig, empty_fig, empty_fig, empty_fig, x_options, None, y_options, None, z_options, None, "데이터 불일치"
     
     # 시간 정보 계산 (입체 탭과 동일)
     try:
