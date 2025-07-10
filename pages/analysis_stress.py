@@ -412,6 +412,7 @@ def read_frd_stress_data(frd_path):
         parsing_coords = False
         parsing_stress = False
         coord_section_ended = False
+        node_count = 0
         
         for i, line in enumerate(lines):
             line = line.strip()
@@ -420,16 +421,16 @@ def read_frd_stress_data(frd_path):
             if line.startswith('-1') and not coord_section_ended and not parsing_coords:
                 parsing_coords = True
             
-            # 좌표 섹션 종료 확인 (첫 번째 -3)
-            if line.strip() == '-3' and parsing_coords and not coord_section_ended:
+            # 좌표 섹션 종료 확인 (891개 노드 후 또는 -3 발견)
+            if parsing_coords and (node_count >= 891 or line.strip() == '-3'):
                 parsing_coords = False
                 coord_section_ended = True
-                continue
+                if line.strip() == '-3':
+                    continue
             
-            # 응력 섹션 시작 확인 (-4 STRESS 라인)
-            if '-4  STRESS' in line and coord_section_ended:
+            # 응력 섹션 시작 확인 (좌표 섹션 종료 후 -1 라인)
+            if coord_section_ended and line.startswith('-1') and not parsing_stress:
                 parsing_stress = True
-                continue
             
             # 응력 섹션 종료 확인 (응력 섹션 시작 후 첫 번째 -3)
             if line.strip() == '-3' and parsing_stress:
@@ -445,6 +446,7 @@ def read_frd_stress_data(frd_path):
                         node_id = int(nums[1])
                         x, y, z = float(nums[2]), float(nums[3]), float(nums[4])
                         node_coords[node_id] = [x, y, z]
+                        node_count += 1
                     except Exception:
                         pass
             
@@ -3809,12 +3811,15 @@ def init_node_inputs_stress(active_tab, selected_rows, tbl_data):
         
         # FRD 파일에서 좌표 파싱
         frd_files = get_frd_files(concrete_pk)
+        
         if frd_files:
             try:
                 # 첫 번째 FRD 파일에서 좌표 추출
                 stress_data = read_frd_stress_data(frd_files[0])
-                if stress_data and stress_data['coordinates']:
+                
+                if stress_data and stress_data.get('coordinates'):
                     coords = np.array(stress_data['coordinates'])
+                    
                     x_coords = coords[:, 0]
                     y_coords = coords[:, 1]
                     z_coords = coords[:, 2]
