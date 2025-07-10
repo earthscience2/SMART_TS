@@ -3004,6 +3004,12 @@ def delete_concrete_confirm_stress(_click, sel, tbl_data):
 )
 def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar, selected_component, active_tab, selected_rows, tbl_data):
     import dash
+    import plotly.graph_objects as go
+    import numpy as np
+    from datetime import datetime
+    import os
+    import glob
+    from scipy.interpolate import griddata
     # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
     if active_tab != "tab-section-stress":
         empty_fig = go.Figure().add_annotation(
@@ -3809,53 +3815,46 @@ def init_node_inputs_stress(active_tab, selected_rows, tbl_data):
         row = tbl_data[selected_rows[0]]
         concrete_pk = row["concrete_pk"]
         
-        # FRD 파일에서 좌표 파싱
+        # FRD 파일에서 좌표 파싱 (단면 탭과 동일한 방식)
         frd_files = get_frd_files(concrete_pk)
+        if not frd_files:
+            # 기본값 반환
+            default_options = [{"label": "0.000", "value": 0.0}]
+            return default_options, 0.0, default_options, 0.0, default_options, 0.0
         
-        if frd_files:
-            try:
-                # 첫 번째 FRD 파일에서 좌표 추출
-                stress_data = read_frd_stress_data(frd_files[0])
-                
-                if stress_data and stress_data.get('coordinates'):
-                    coords = np.array(stress_data['coordinates'])
-                    
-                    x_coords = coords[:, 0]
-                    y_coords = coords[:, 1]
-                    z_coords = coords[:, 2]
-                    
-                    # 고유한 좌표값 추출
-                    x_unique = sorted(list(set(x_coords)))
-                    y_unique = sorted(list(set(y_coords)))
-                    z_unique = sorted(list(set(z_coords)))
-                    
-                    # 드롭다운 옵션 생성
-                    x_options = [{"label": f"{coord:.3f}", "value": coord} for coord in x_unique]
-                    y_options = [{"label": f"{coord:.3f}", "value": coord} for coord in y_unique]
-                    z_options = [{"label": f"{coord:.3f}", "value": coord} for coord in z_unique]
-                    
-                    # 기본값 설정 (중간값)
-                    x_default = x_unique[len(x_unique)//2] if x_unique else 0.0
-                    y_default = y_unique[len(y_unique)//2] if y_unique else 0.0
-                    z_default = z_unique[len(z_unique)//2] if z_unique else 0.0
-                    
-                    return x_options, x_default, y_options, y_default, z_options, z_default
-            except Exception as e:
-                print(f"FRD 파일 파싱 오류: {e}")
-        
-        # FRD 파일이 없거나 파싱 실패 시 콘크리트 차원 정보 사용
         try:
-            dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
-            poly_nodes = np.array(dims["nodes"])
-            poly_h = float(dims["h"])
-            x_mid = float(np.mean(poly_nodes[:,0]))
-            y_mid = float(np.mean(poly_nodes[:,1]))
-            z_mid = float(poly_h/2)
+            # 첫 번째 FRD 파일에서 좌표 추출
+            stress_data = read_frd_stress_data(frd_files[0])
+            if not stress_data or not stress_data.get('coordinates'):
+                # 기본값 반환
+                default_options = [{"label": "0.000", "value": 0.0}]
+                return default_options, 0.0, default_options, 0.0, default_options, 0.0
             
-            # 기본 옵션 생성
-            default_options = [{"label": f"{x_mid:.3f}", "value": x_mid}]
-            return default_options, x_mid, default_options, y_mid, default_options, z_mid
-        except Exception:
+            coords = np.array(stress_data['coordinates'])
+            x_coords = coords[:, 0]
+            y_coords = coords[:, 1]
+            z_coords = coords[:, 2]
+            
+            # 고유한 좌표값 추출 (단면 탭과 동일)
+            x_unique = sorted(list(set(x_coords)))
+            y_unique = sorted(list(set(y_coords)))
+            z_unique = sorted(list(set(z_coords)))
+            
+            # 드롭다운 옵션 생성 (단면 탭과 동일)
+            x_options = [{"label": f"{coord:.3f}", "value": coord} for coord in x_unique]
+            y_options = [{"label": f"{coord:.3f}", "value": coord} for coord in y_unique]
+            z_options = [{"label": f"{coord:.3f}", "value": coord} for coord in z_unique]
+            
+            # 기본값 설정 (중간값, 단면 탭과 동일)
+            x_default = x_unique[len(x_unique)//2] if x_unique else 0.0
+            y_default = y_unique[len(y_unique)//2] if y_unique else 0.0
+            z_default = z_unique[len(z_unique)//2] if z_unique else 0.0
+            
+            return x_options, x_default, y_options, y_default, z_options, z_default
+            
+        except Exception as e:
+            print(f"노드 탭 FRD 파일 파싱 오류: {e}")
+            # 기본값 반환
             default_options = [{"label": "0.000", "value": 0.0}]
             return default_options, 0.0, default_options, 0.0, default_options, 0.0
     
