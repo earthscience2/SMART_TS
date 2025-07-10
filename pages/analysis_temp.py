@@ -3079,8 +3079,8 @@ def update_section_views_tmp(time_idx,
         current_file_title = f"{formatted_time} (최저: {current_min:.1f}°C, 최고: {current_max:.1f}°C, 평균: {current_avg:.1f}°C)\n{material_info}"
     except Exception:
         current_file_title = f"{os.path.basename(current_file)}"
-    # step=0.1로 반환
-    return fig_3d, fig_x, fig_y, fig_z, x_min, x_max, x0, y_min, y_max, y0, z_min, z_max, z0, current_file_title
+    # 드롭박스 옵션과 값 반환
+    return fig_3d, fig_x, fig_y, fig_z, x_options, x0, y_options, y0, z_options, z0, current_file_title
 
 
 
