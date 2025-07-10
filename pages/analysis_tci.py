@@ -1264,6 +1264,30 @@ def create_tci_3d_tab_content(concrete_pk):
             })
         ]),
         
+        # 분석 정보 박스
+        html.Div([
+            html.H6("📋 분석 정보", style={
+                "fontWeight": "600",
+                "color": "#374151",
+                "marginBottom": "16px",
+                "fontSize": "16px"
+            }),
+            html.Div(id="tci-3d-analysis-info", style={
+                "padding": "16px",
+                "backgroundColor": "#f8fafc",
+                "borderRadius": "8px",
+                "border": "1px solid #e2e8f0",
+                "marginBottom": "20px"
+            })
+        ], style={
+            "backgroundColor": "white",
+            "padding": "20px",
+            "borderRadius": "12px",
+            "border": "1px solid #e5e7eb",
+            "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
+            "marginBottom": "20px"
+        }),
+        
         # TCI 표
         html.Div([
             html.H6("📊 노드별 TCI 분석 결과", style={
@@ -1276,6 +1300,12 @@ def create_tci_3d_tab_content(concrete_pk):
                 id="tci-3d-table",
                 columns=[
                     {"name": "node", "id": "node"},
+                    {"name": "SXX (MPa)", "id": "sxx_mpa"},
+                    {"name": "SYY (MPa)", "id": "syy_mpa"},
+                    {"name": "SZZ (MPa)", "id": "szz_mpa"},
+                    {"name": "SXY (MPa)", "id": "sxy_mpa"},
+                    {"name": "SYZ (MPa)", "id": "syz_mpa"},
+                    {"name": "SZX (MPa)", "id": "szx_mpa"},
                     {"name": "TCI-SXX", "id": "tci_sxx"},
                     {"name": "TCI-SYY", "id": "tci_syy"},
                     {"name": "TCI-SZZ", "id": "tci_szz"},
@@ -1286,7 +1316,7 @@ def create_tci_3d_tab_content(concrete_pk):
                 data=[],
                 page_size=10,
                 style_table={"overflowY": "auto", "height": "48vh", "marginTop": "0px", "borderRadius": "8px", "border": "1px solid #e5e7eb"},
-                style_cell={"textAlign": "center", "fontSize": "15px", "padding": "8px 4px"},
+                style_cell={"textAlign": "center", "fontSize": "14px", "padding": "6px 4px"},
                 style_header={"backgroundColor": "#f8fafc", "fontWeight": "600", "color": "#374151"},
                 style_data={"backgroundColor": "#fff"},
             )
@@ -1900,6 +1930,7 @@ def update_crack_probability_graph(active_tab, selected_rows, tbl_data):
 # 시간 슬라이더/재생 버튼/탭 선택 시 TCI 표 갱신 콜백 수정
 @callback(
     Output('tci-3d-table', 'data'),
+    Output('tci-3d-analysis-info', 'children'),
     Input('tci-3d-time-slider', 'value'),
     Input('btn-play-tci-3d', 'n_clicks'),
     Input('tabs-main-tci', 'active_tab'),  # 탭 전환 시에도 실행되도록 추가
@@ -1922,9 +1953,11 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
         print("DEBUG: 선택된 콘크리트가 없음")
         # 더미 데이터로 표 초기화
         return [
-            {"node": "콘크리트를 선택하세요", "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
+            {"node": "콘크리트를 선택하세요", "sxx_mpa": None, "syy_mpa": None, "szz_mpa": None, 
+             "sxy_mpa": None, "syz_mpa": None, "szx_mpa": None,
+             "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
              "tci_sxy": None, "tci_syz": None, "tci_szx": None}
-        ]
+        ], "콘크리트를 선택하세요"
     
     try:
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
@@ -1937,9 +1970,11 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
         if not frd_files:
             print("DEBUG: FRD 파일이 없음")
             return [
-                {"node": "FRD 파일이 없습니다", "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
+                {"node": "FRD 파일이 없습니다", "sxx_mpa": None, "syy_mpa": None, "szz_mpa": None, 
+                 "sxy_mpa": None, "syz_mpa": None, "szx_mpa": None,
+                 "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
                  "tci_sxy": None, "tci_syz": None, "tci_szx": None}
-            ]
+            ], "FRD 파일이 없습니다"
         
         if time_idx is None:
             time_idx = len(frd_files) - 1  # 기본값으로 마지막 파일 사용
@@ -1956,16 +1991,20 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
         if not stress_data:
             print("DEBUG: 응력 데이터를 읽을 수 없음")
             return [
-                {"node": "응력 데이터를 읽을 수 없습니다", "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
+                {"node": "응력 데이터를 읽을 수 없습니다", "sxx_mpa": None, "syy_mpa": None, "szz_mpa": None, 
+                 "sxy_mpa": None, "syz_mpa": None, "szx_mpa": None,
+                 "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
                  "tci_sxy": None, "tci_syz": None, "tci_szx": None}
-            ]
+            ], "응력 데이터를 읽을 수 없습니다"
         
         if not stress_data.get('nodes'):
             print("DEBUG: 노드 정보가 없음")
             return [
-                {"node": "노드 정보가 없습니다", "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
+                {"node": "노드 정보가 없습니다", "sxx_mpa": None, "syy_mpa": None, "szz_mpa": None, 
+                 "sxy_mpa": None, "syz_mpa": None, "szx_mpa": None,
+                 "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
                  "tci_sxy": None, "tci_syz": None, "tci_szx": None}
-            ]
+            ], "노드 정보가 없습니다"
         
         print(f"DEBUG: 노드 개수={len(stress_data['nodes'])}")
         
@@ -2009,6 +2048,26 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
         fct = calculate_tensile_strength(age_days, 30)
         print(f"DEBUG: fct(t)={fct:.3f} MPa")
         
+        # 분석 정보 생성
+        analysis_info = html.Div([
+            html.Div([
+                html.Span("📅 분석 일자: ", style={"fontWeight": "600", "color": "#374151"}),
+                html.Span(file_time.strftime("%Y년 %m월 %d일 %H시") if file_time else "N/A", style={"color": "#6b7280"})
+            ], style={"marginBottom": "8px"}),
+            html.Div([
+                html.Span("🏗️ 타설일: ", style={"fontWeight": "600", "color": "#374151"}),
+                html.Span(pour_date.strftime("%Y년 %m월 %d일") if pour_date else "N/A", style={"color": "#6b7280"})
+            ], style={"marginBottom": "8px"}),
+            html.Div([
+                html.Span("📊 재령: ", style={"fontWeight": "600", "color": "#374151"}),
+                html.Span(f"{age_days}일", style={"color": "#6b7280"})
+            ], style={"marginBottom": "8px"}),
+            html.Div([
+                html.Span("💪 인장강도 fct(t): ", style={"fontWeight": "600", "color": "#374151"}),
+                html.Span(f"{fct:.3f} MPa", style={"color": "#059669", "fontWeight": "600"})
+            ])
+        ])
+        
         # 6성분 응력 추출
         comps = stress_data.get('stress_components', {})
         node_ids = stress_data.get('nodes', [])
@@ -2029,7 +2088,13 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
                 print(f"DEBUG: 노드 {node} - von Mises: {vm_stress:.2e} Pa = {vm_stress_mpa:.6f} MPa, TCI: {tci_vm}")
                 data.append({
                     "node": node,
-                    "tci_sxx": tci_vm,  # von Mises를 모든 컬럼에 표시
+                    "sxx_mpa": round(vm_stress_mpa, 6),  # von Mises를 모든 응력 컬럼에 표시
+                    "syy_mpa": round(vm_stress_mpa, 6),
+                    "szz_mpa": round(vm_stress_mpa, 6),
+                    "sxy_mpa": round(vm_stress_mpa, 6),
+                    "syz_mpa": round(vm_stress_mpa, 6),
+                    "szx_mpa": round(vm_stress_mpa, 6),
+                    "tci_sxx": tci_vm,  # von Mises를 모든 TCI 컬럼에 표시
                     "tci_syy": tci_vm,
                     "tci_szz": tci_vm,
                     "tci_sxy": tci_vm,
@@ -2066,6 +2131,12 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
                 
                 data.append({
                     "node": node,
+                    "sxx_mpa": round(sxx_mpa, 6),
+                    "syy_mpa": round(syy_mpa, 6),
+                    "szz_mpa": round(szz_mpa, 6),
+                    "sxy_mpa": round(sxy_mpa, 6),
+                    "syz_mpa": round(syz_mpa, 6),
+                    "szx_mpa": round(szx_mpa, 6),
                     "tci_sxx": tci_sxx,
                     "tci_syy": tci_syy,
                     "tci_szz": tci_szz,
@@ -2078,16 +2149,18 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
         if data:
             print(f"DEBUG: 첫 번째 데이터 샘플={data[0]}")
         
-        return data
+        return data, analysis_info
         
     except Exception as e:
         print(f"DEBUG: update_tci_3d_table 오류: {e}")
         import traceback
         traceback.print_exc()
         return [
-            {"node": f"오류 발생: {str(e)}", "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
+            {"node": f"오류 발생: {str(e)}", "sxx_mpa": None, "syy_mpa": None, "szz_mpa": None, 
+             "sxy_mpa": None, "syz_mpa": None, "szx_mpa": None,
+             "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
              "tci_sxy": None, "tci_syz": None, "tci_szx": None}
-        ]
+        ], f"오류 발생: {str(e)}"
 
 # ───────────────────── 버튼 상태 및 액션 콜백 함수들 ─────────────────────
 
