@@ -2015,7 +2015,7 @@ def create_node_tab_content_stress(concrete_pk):
                     "flexDirection": "column",
                     "justifyContent": "center"
                 })
-            ], md=8),
+            ], md=9),
             
             # 오른쪽: 저장 버튼들 (위아래 배치)
             dbc.Col([
@@ -2062,7 +2062,7 @@ def create_node_tab_content_stress(concrete_pk):
                         ]
                     ),
                 ], style={"display": "flex", "flexDirection": "column", "justifyContent": "center", "alignItems": "center", "height": "100%"}),
-            ], md=4),
+            ], md=3),
         ], className="mb-4 align-items-stretch", style={"minHeight": "120px"}),
         
         # 응력 종류 선택과 범위 필터 (한 줄에 배치)
