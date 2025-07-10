@@ -1168,7 +1168,7 @@ def create_tci_3d_tab_content():
         html.H5("입체 TCI 분석", style={"fontWeight": "600", "marginBottom": "18px"}),
         html.Div([
             html.Label("시간 선택", style={"marginRight": "12px", "fontWeight": "500"}),
-            dcc.Slider(id="tci-3d-time-slider", min=0, max=10, step=1, value=0, marks={i: str(i) for i in range(11)}, tooltip={"placement": "bottom"}),
+            dcc.Slider(id="tci-3d-time-slider", min=0, max=0, step=1, value=0, marks={}),
             dbc.Button("재생", id="tci-3d-play-btn", color="primary", style={"marginLeft": "24px"}),
         ], style={"display": "flex", "alignItems": "center", "gap": "16px", "marginBottom": "18px"}),
         html.Div([
@@ -1189,6 +1189,50 @@ def create_tci_3d_tab_content():
             )
         ])
     ], style={"backgroundColor": "#fff", "borderRadius": "12px", "padding": "28px 28px 18px 28px", "boxShadow": "0 1px 4px rgba(0,0,0,0.04)", "border": "1px solid #e5e7eb", "marginBottom": "28px"})
+
+# 시간 슬라이더 min/max/value/marks 동적 갱신 콜백 추가
+def get_frd_slider_info(concrete_pk):
+    import os
+    from datetime import datetime
+    frd_files = get_frd_files(concrete_pk)
+    if not frd_files:
+        return 0, 0, 0, {}
+    times = []
+    for f in frd_files:
+        try:
+            time_str = os.path.basename(f).split(".")[0]
+            dt = datetime.strptime(time_str, "%Y%m%d%H")
+            times.append(dt)
+        except:
+            continue
+    if not times:
+        return 0, 0, 0, {}
+    max_idx = len(times) - 1
+    marks = {}
+    seen_dates = set()
+    for i, dt in enumerate(times):
+        date_str = dt.strftime("%m/%d")
+        if date_str not in seen_dates:
+            marks[i] = date_str
+            seen_dates.add(date_str)
+    return 0, max_idx, max_idx, marks
+
+from dash import callback, Output, Input, State
+@callback(
+    Output('tci-3d-time-slider', 'min'),
+    Output('tci-3d-time-slider', 'max'),
+    Output('tci-3d-time-slider', 'value'),
+    Output('tci-3d-time-slider', 'marks'),
+    Input('tbl-concrete-tci', 'selected_rows'),
+    State('tbl-concrete-tci', 'data'),
+    prevent_initial_call=True
+)
+def update_tci_3d_slider(selected_rows, tbl_data):
+    if not selected_rows or not tbl_data:
+        return 0, 0, 0, {}
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    return get_frd_slider_info(concrete_pk)
 
 # ───────────────────── 그래프 생성 콜백 함수들 ─────────────────────
 
