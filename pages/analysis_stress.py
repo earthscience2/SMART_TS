@@ -73,9 +73,7 @@ layout = dbc.Container(
                 min=0, max=5, step=1, value=0, marks={},
                 updatemode='drag', persistence=False
             ),
-            dbc.Input(id="section-x-input-stress", type="number", value=None),
-            dbc.Input(id="section-y-input-stress", type="number", value=None),
-            dbc.Input(id="section-z-input-stress", type="number", value=None),
+
             dcc.Graph(id="viewer-3d-section-stress"),
             dcc.Graph(id="viewer-section-x-stress"),
             dcc.Graph(id="viewer-section-y-stress"),
@@ -3865,11 +3863,11 @@ def store_node_coord_stress(selected_rows, active_tab, tbl_data):
     Input("tabs-main-stress", "active_tab"),
     Input("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
-    prevent_initial_call=True,
+    prevent_initial_call=False,  # 초기 로딩 시에도 실행되도록 변경
 )
 def init_node_inputs_stress(active_tab, selected_rows, tbl_data):
     """노드 탭이 활성화될 때 드롭다운 옵션을 초기화합니다."""
-    if active_tab == "tab-node-stress" and selected_rows and len(selected_rows) > 0 and tbl_data:
+    if selected_rows and len(selected_rows) > 0 and tbl_data:
         row = tbl_data[selected_rows[0]]
         concrete_pk = row["concrete_pk"]
         
@@ -3951,7 +3949,7 @@ def init_node_inputs_stress(active_tab, selected_rows, tbl_data):
     Input("tabs-main-stress", "active_tab"),  # 탭 활성화를 트리거로 추가
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
-    prevent_initial_call=False,  # 즉시 실행 허용
+    prevent_initial_call=True,  # 초기 실행 방지
 )
 def update_node_tab_stress(store_data, x, y, z, selected_component, active_tab, selected_rows, tbl_data):
     """노드별 탭의 3D 뷰와 시간별 응력 변화를 업데이트합니다."""
