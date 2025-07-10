@@ -869,9 +869,9 @@ from dash import State
     Output('tci-fct-graph', 'figure'),
     Output('tci-fct-table-container', 'children'),
     Input('tci-formula-choice', 'value'),
-    State('tci-fct28', 'value'),
-    State('tci-a', 'value'),
-    State('tci-b', 'value'),
+    Input('tci-fct28', 'value'),
+    Input('tci-a', 'value'),
+    Input('tci-b', 'value'),
     prevent_initial_call=False
 )
 def update_fct_graph_and_table(formula, fct28, a, b):
