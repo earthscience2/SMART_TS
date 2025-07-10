@@ -2879,7 +2879,7 @@ def delete_concrete_confirm_tmp(_click, sel, tbl_data):
     Input("unified-colorbar-section-state-tmp", "data"),
     State("tbl-concrete-tmp", "selected_rows"),
     State("tbl-concrete-tmp", "data"),
-    prevent_initial_call=True,
+    prevent_initial_call=False,
 )
 def update_section_views_tmp(time_idx,
                          x_val, y_val, z_val, unified_colorbar,
@@ -2894,13 +2894,17 @@ def update_section_views_tmp(time_idx,
     
     
     if not selected_rows or not tbl_data:
-        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), [], None, [], None, [], None, ""
+        # 기본 옵션 제공
+        default_options = [{"label": "0.000", "value": 0.0}]
+        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), default_options, 0.0, default_options, 0.0, default_options, 0.0, ""
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
     inp_dir = f"inp/{concrete_pk}"
     inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
     if not inp_files:
-        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), [], None, [], None, [], None, ""
+        # 기본 옵션 제공
+        default_options = [{"label": "0.000", "value": 0.0}]
+        return go.Figure(), go.Figure(), go.Figure(), go.Figure(), default_options, 0.0, default_options, 0.0, default_options, 0.0, ""
     # 시간 인덱스 안전 처리
     if time_idx is None or (isinstance(time_idx, float) and math.isnan(time_idx)) or (isinstance(time_idx, str) and not str(time_idx).isdigit()):
         file_idx = len(inp_files)-1
@@ -3126,7 +3130,9 @@ def update_temp_tab_tmp(store_data, x, y, z, unified_colorbar, selected_rows, tb
     import glob, os
     from datetime import datetime as dt_import
     if not selected_rows or not tbl_data:
-        return go.Figure(), go.Figure(), [], None, [], None, [], None
+        # 기본 옵션 제공
+        default_options = [{"label": "0.000", "value": 0.0}]
+        return go.Figure(), go.Figure(), default_options, 0.0, default_options, 0.0, default_options, 0.0
     # store_data가 있으면 기본값으로 사용, 입력값이 있으면 입력값 우선
     if store_data is not None:
         x0 = store_data.get('x', 0.5)
