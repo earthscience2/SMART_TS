@@ -442,11 +442,16 @@ def read_frd_stress_data(frd_path):
             'times': [],
             'nodes': [],
             'coordinates': [],
-            'stress_values': []
+            'stress_values': [],
+            'stress_components': {}  # 각 응력 성분별 데이터 저장
         }
         
         node_coords = {}
         stress_values = {}
+        stress_components = {
+            'SXX': {}, 'SYY': {}, 'SZZ': {}, 
+            'SXY': {}, 'SYZ': {}, 'SZX': {}
+        }
         
         # 단계별로 파싱
         parsing_coords = False
@@ -478,6 +483,7 @@ def read_frd_stress_data(frd_path):
             
             # 노드 좌표 파싱
             if parsing_coords and line.startswith('-1'):
+                # 과학적 표기법을 포함한 숫자 추출
                 nums = re.findall(r'-?\d+(?:\.\d+)?(?:[Ee][-+]?\d+)?', line)
                 if len(nums) >= 5:
                     try:
@@ -487,8 +493,9 @@ def read_frd_stress_data(frd_path):
                     except Exception:
                         pass
             
-            # 응력 데이터 파싱 (von Mises 응력만)
+            # 응력 데이터 파싱
             elif parsing_stress and line.startswith('-1'):
+                # 노드 ID와 응력 값들 추출
                 nums = re.findall(r'-?\d+(?:\.\d+)?(?:[Ee][-+]?\d+)?', line)
                 if len(nums) >= 7:  # -1, node_id, 6개 응력 성분
                     try:
@@ -499,6 +506,14 @@ def read_frd_stress_data(frd_path):
                         sxy = float(nums[5])
                         syz = float(nums[6])
                         sxz = float(nums[7])
+                        
+                        # 각 응력 성분 저장
+                        stress_components['SXX'][node_id] = sxx
+                        stress_components['SYY'][node_id] = syy
+                        stress_components['SZZ'][node_id] = szz
+                        stress_components['SXY'][node_id] = sxy
+                        stress_components['SYZ'][node_id] = syz
+                        stress_components['SZX'][node_id] = sxz
                         
                         # von Mises 응력 계산
                         von_mises = np.sqrt(0.5 * ((sxx - syy)**2 + (syy - szz)**2 + (szz - sxx)**2 + 6 * (sxy**2 + syz**2 + sxz**2)))
@@ -514,10 +529,21 @@ def read_frd_stress_data(frd_path):
             common_node_ids = coord_node_ids.intersection(stress_node_ids)
             
             if common_node_ids:
+                # 노드 ID 순서를 정렬하여 일관성 보장
                 sorted_node_ids = sorted(common_node_ids)
+                
+                # 공통 노드 ID만 사용 (정렬된 순서로)
                 stress_data['coordinates'] = [node_coords[i] for i in sorted_node_ids]
                 stress_data['nodes'] = sorted_node_ids
                 stress_data['stress_values'] = [{i: stress_values[i] for i in sorted_node_ids}]
+                
+                # 각 응력 성분별 데이터 저장 (정렬된 순서로)
+                for component in stress_components:
+                    component_data = {}
+                    for node_id in sorted_node_ids:
+                        if node_id in stress_components[component]:
+                            component_data[node_id] = stress_components[component][node_id]
+                    stress_data['stress_components'][component] = component_data
         
         # 시간 정보 파싱
         try:
@@ -1997,7 +2023,10 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
             data = []
             for node in node_ids:
                 vm_stress = von_mises_data.get(node, 0)
-                tci_vm = round(fct / vm_stress, 3) if vm_stress != 0 else None
+                # von Mises 응력을 MPa로 변환 (Pa -> MPa)
+                vm_stress_mpa = vm_stress / 1e6
+                tci_vm = round(abs(vm_stress_mpa) / fct, 3) if fct != 0 else None
+                print(f"DEBUG: 노드 {node} - von Mises: {vm_stress:.2e} Pa = {vm_stress_mpa:.6f} MPa, TCI: {tci_vm}")
                 data.append({
                     "node": node,
                     "tci_sxx": tci_vm,  # von Mises를 모든 컬럼에 표시
@@ -2017,13 +2046,23 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
                 syz = comps.get('SYZ', {}).get(node, 0)
                 szx = comps.get('SZX', {}).get(node, 0)
                 
-                # 0으로 나누기 방지
-                tci_sxx = round(fct / sxx, 3) if sxx != 0 else None
-                tci_syy = round(fct / syy, 3) if syy != 0 else None
-                tci_szz = round(fct / szz, 3) if szz != 0 else None
-                tci_sxy = round(fct / sxy, 3) if sxy != 0 else None
-                tci_syz = round(fct / syz, 3) if syz != 0 else None
-                tci_szx = round(fct / szx, 3) if szx != 0 else None
+                # Pa를 MPa로 변환
+                sxx_mpa = sxx / 1e6
+                syy_mpa = syy / 1e6
+                szz_mpa = szz / 1e6
+                sxy_mpa = sxy / 1e6
+                syz_mpa = syz / 1e6
+                szx_mpa = szx / 1e6
+                
+                # TCI 계산 (|응력|/인장강도)
+                tci_sxx = round(abs(sxx_mpa) / fct, 3) if fct != 0 else None
+                tci_syy = round(abs(syy_mpa) / fct, 3) if fct != 0 else None
+                tci_szz = round(abs(szz_mpa) / fct, 3) if fct != 0 else None
+                tci_sxy = round(abs(sxy_mpa) / fct, 3) if fct != 0 else None
+                tci_syz = round(abs(syz_mpa) / fct, 3) if fct != 0 else None
+                tci_szx = round(abs(szx_mpa) / fct, 3) if fct != 0 else None
+                
+                print(f"DEBUG: 노드 {node} - SXX: {sxx_mpa:.6f} MPa (TCI: {tci_sxx}), SYY: {syy_mpa:.6f} MPa (TCI: {tci_syy}), SZZ: {szz_mpa:.6f} MPa (TCI: {tci_szz})")
                 
                 data.append({
                     "node": node,
