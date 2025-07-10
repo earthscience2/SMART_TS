@@ -879,7 +879,7 @@ def update_fct_graph_and_table(formula, fct28, a, b):
     import plotly.graph_objs as go
     import pandas as pd
     t = np.arange(1, 28.01, 0.1)
-    # 기본값 처리
+    # fct28은 항상 필요
     if fct28 is None or fct28 == '':
         fct28 = 20
     try:
@@ -887,17 +887,18 @@ def update_fct_graph_and_table(formula, fct28, a, b):
     except Exception:
         fct28 = 20
     if formula == 'ceb':
-        if a is None or a == '':
-            a = 1
-        if b is None or b == '':
-            b = 1
         try:
+            if a is None or a == '':
+                a = 1
+            if b is None or b == '':
+                b = 1
             a = float(a)
             b = float(b)
         except Exception:
             a, b = 1, 1
         y = fct28 * (t / (a + b * t)) ** 0.5
     else:
+        # 경험식: a, b가 없어도 무조건 동작
         y = fct28 * (t / 28) ** 0.5
     # 그래프
     fig = go.Figure()
@@ -905,6 +906,7 @@ def update_fct_graph_and_table(formula, fct28, a, b):
     fig.update_layout(title='인장강도 발전 곡선', xaxis_title='t(일)', yaxis_title='fct(MPa)', template='plotly_white')
     # 표
     df = pd.DataFrame({"t(일)": np.round(t, 1), "fct(t) (MPa)": np.round(y, 2)})
+    import dash_table
     table = dash_table.DataTable(
         columns=[{"name": i, "id": i} for i in df.columns],
         data=df.to_dict('records'),
