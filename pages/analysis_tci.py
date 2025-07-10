@@ -1176,9 +1176,12 @@ def create_tci_3d_tab_content():
                 id="tci-3d-table",
                 columns=[
                     {"name": "node", "id": "node"},
-                    {"name": "TCI-X", "id": "tci_x"},
-                    {"name": "TCI-Y", "id": "tci_y"},
-                    {"name": "TCI-Z", "id": "tci_z"},
+                    {"name": "TCI-SXX", "id": "tci_sxx"},
+                    {"name": "TCI-SYY", "id": "tci_syy"},
+                    {"name": "TCI-SZZ", "id": "tci_szz"},
+                    {"name": "TCI-SXY", "id": "tci_sxy"},
+                    {"name": "TCI-SYZ", "id": "tci_syz"},
+                    {"name": "TCI-SZX", "id": "tci_szx"},
                 ],
                 data=[],
                 page_size=10,
@@ -1791,7 +1794,6 @@ def update_tci_3d_table(time_idx, play_click, selected_rows, tbl_data):
         return []
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_pk = row["concrete_pk"]
-    # FRD 파일 목록
     frd_files = get_frd_files(concrete_pk)
     if not frd_files or time_idx is None or time_idx >= len(frd_files):
         return []
@@ -1828,62 +1830,34 @@ def update_tci_3d_table(time_idx, play_click, selected_rows, tbl_data):
             age_days = 1
     else:
         age_days = 1
-    # fct(t) 계산 (fc28=30 기본)
+    # fct(t) 계산 (fc28=30 기본, 추후 입력값 연동 가능)
     fct = calculate_tensile_strength(age_days, 30)
-    # sxx, syy, szz 추출
-    # 기존 read_frd_stress_data는 von Mises만 저장하므로, sxx 등도 저장하도록 개선 필요
-    # 임시로 응력 분석 페이지 방식 차용
-    sxx_dict = {}
-    syy_dict = {}
-    szz_dict = {}
-    try:
-        with open(frd_file, 'r') as f:
-            lines = f.readlines()
-        parsing_stress = False
-        coord_section_ended = False
-        for line in lines:
-            line = line.strip()
-            if '-4  STRESS' in line and coord_section_ended:
-                parsing_stress = True
-                continue
-            if line.strip() == '-3' and parsing_stress:
-                parsing_stress = False
-                break
-            if line.strip() == '-3' and not coord_section_ended:
-                coord_section_ended = True
-                continue
-            if parsing_stress and line.startswith('-1'):
-                import re
-                nums = re.findall(r'-?\d+(?:\.\d+)?(?:[Ee][-+]?\d+)?', line)
-                if len(nums) >= 7:
-                    try:
-                        node_id = int(nums[1])
-                        sxx = float(nums[2])
-                        syy = float(nums[3])
-                        szz = float(nums[4])
-                        sxx_dict[node_id] = sxx
-                        syy_dict[node_id] = syy
-                        szz_dict[node_id] = szz
-                    except Exception:
-                        pass
-    except Exception:
-        return []
-    # 노드 리스트
-    node_ids = sorted(list(set(sxx_dict.keys()) & set(syy_dict.keys()) & set(szz_dict.keys())))
+    # 6성분 응력 추출
+    comps = stress_data.get('stress_components', {})
+    node_ids = stress_data.get('nodes', [])
     data = []
     for node in node_ids:
-        sx = sxx_dict[node]
-        sy = syy_dict[node]
-        sz = szz_dict[node]
+        sxx = comps.get('SXX', {}).get(node, 0)
+        syy = comps.get('SYY', {}).get(node, 0)
+        szz = comps.get('SZZ', {}).get(node, 0)
+        sxy = comps.get('SXY', {}).get(node, 0)
+        syz = comps.get('SYZ', {}).get(node, 0)
+        szx = comps.get('SZX', {}).get(node, 0)
         # 0으로 나누기 방지
-        tci_x = round(fct / sx, 3) if sx != 0 else None
-        tci_y = round(fct / sy, 3) if sy != 0 else None
-        tci_z = round(fct / sz, 3) if sz != 0 else None
+        tci_sxx = round(fct / sxx, 3) if sxx != 0 else None
+        tci_syy = round(fct / syy, 3) if syy != 0 else None
+        tci_szz = round(fct / szz, 3) if szz != 0 else None
+        tci_sxy = round(fct / sxy, 3) if sxy != 0 else None
+        tci_syz = round(fct / syz, 3) if syz != 0 else None
+        tci_szx = round(fct / szx, 3) if szx != 0 else None
         data.append({
             "node": node,
-            "tci_x": tci_x,
-            "tci_y": tci_y,
-            "tci_z": tci_z,
+            "tci_sxx": tci_sxx,
+            "tci_syy": tci_syy,
+            "tci_szz": tci_szz,
+            "tci_sxy": tci_sxy,
+            "tci_syz": tci_syz,
+            "tci_szx": tci_szx,
         })
     return data
 
