@@ -2898,10 +2898,11 @@ def update_section_views_tmp(time_idx,
     nodes, temperatures, x_coords, y_coords, z_coords, temps = parse_inp_nodes_and_temperatures(current_file)
     
     # 배열 길이 맞춤 (온도 데이터가 있는 노드만 사용)
-    valid_indices = np.arange(len(x_coords))[:len(temps)]
-    x_coords = x_coords[valid_indices]
-    y_coords = y_coords[valid_indices]
-    z_coords = z_coords[valid_indices]
+    min_length = min(len(x_coords), len(y_coords), len(z_coords), len(temps))
+    x_coords = x_coords[:min_length]
+    y_coords = y_coords[:min_length]
+    z_coords = z_coords[:min_length]
+    temps = temps[:min_length]
     
     # 전체 파일의 온도 범위 계산
     all_temps = []
