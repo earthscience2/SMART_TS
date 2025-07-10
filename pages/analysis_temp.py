@@ -2940,29 +2940,30 @@ def update_section_views_tmp(time_idx,
     else:
         # 현재 파일의 온도 범위 사용 (개별 모드)
         tmin, tmax = float(np.nanmin(temps)), float(np.nanmax(temps))
-    # 드롭박스 옵션 설정
-    x_unique, y_unique, z_unique = get_node_grid_info(x_coords, y_coords, z_coords)
+    # 드롭박스 옵션 설정 (노드 탭과 동일한 로직)
+    x_unique = sorted(list(set(x_coords)))
+    y_unique = sorted(list(set(y_coords)))
+    z_unique = sorted(list(set(z_coords)))
     
-    x_options = [{"label": f"{x:.3f}", "value": x} for x in x_unique]
-    y_options = [{"label": f"{y:.3f}", "value": y} for y in y_unique]
-    z_options = [{"label": f"{z:.3f}", "value": z} for z in z_unique]
+    x_options = [{"label": f"{coord:.3f}", "value": coord} for coord in x_unique]
+    y_options = [{"label": f"{coord:.3f}", "value": coord} for coord in y_unique]
+    z_options = [{"label": f"{coord:.3f}", "value": coord} for coord in z_unique]
     
-    # 기본값 설정
-    x_mid = float(np.median(x_coords)) if len(x_coords) > 0 else 0.0
-    y_mid = float(np.median(y_coords)) if len(y_coords) > 0 else 0.0
-    z_mid = float(np.median(z_coords)) if len(z_coords) > 0 else 0.0
+    # 기본값 설정 (노드 탭과 동일한 로직)
+    if x_val is None and len(x_unique) > 0:
+        x0 = x_unique[len(x_unique)//2]
+    else:
+        x0 = float(x_val) if x_val is not None else 0.0
     
-    def round01(val):
-        return round(val * 10) / 10 if val is not None else None
+    if y_val is None and len(y_unique) > 0:
+        y0 = y_unique[len(y_unique)//2]
+    else:
+        y0 = float(y_val) if y_val is not None else 0.0
     
-    x0 = round01(x_val) if x_val is not None else round01(x_mid)
-    y0 = round01(y_val) if y_val is not None else round01(y_mid)
-    z0 = round01(z_val) if z_val is not None else round01(z_mid)
-    
-    # 스칼라 값으로 변환
-    x0 = float(x0) if hasattr(x0, '__iter__') else x0
-    y0 = float(y0) if hasattr(y0, '__iter__') else y0
-    z0 = float(z0) if hasattr(z0, '__iter__') else z0
+    if z_val is None and len(z_unique) > 0:
+        z0 = z_unique[len(z_unique)//2]
+    else:
+        z0 = float(z_val) if z_val is not None else 0.0
     
     # 좌표 범위 계산
     x_min, x_max = float(np.min(x_coords)), float(np.max(x_coords))
