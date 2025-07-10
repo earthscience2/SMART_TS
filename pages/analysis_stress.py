@@ -3004,12 +3004,6 @@ def delete_concrete_confirm_stress(_click, sel, tbl_data):
 )
 def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar, selected_component, active_tab, selected_rows, tbl_data):
     import dash
-    import plotly.graph_objects as go
-    import numpy as np
-    from datetime import datetime
-    import os
-    import glob
-    from scipy.interpolate import griddata
     # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
     if active_tab != "tab-section-stress":
         empty_fig = go.Figure().add_annotation(
