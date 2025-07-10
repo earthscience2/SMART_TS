@@ -28,7 +28,62 @@ layout = dbc.Container(
     style={"backgroundColor": "#f7f9fc", "minHeight": "100vh"},
     children=[
         dcc.Location(id="tci-url", refresh=False),
-        
+        # ===== 인장강도 계산식 선택 영역 (이미지 스타일 반영) =====
+        html.Div([
+            html.Div([
+                dcc.RadioItems(
+                    id='strength-formula-choice',
+                    options=[
+                        {'label': html.Span([
+                            html.B('CEB-FIP Model Code', style={"fontSize": "26px", "fontWeight": "bold"})
+                        ], style={"verticalAlign": "middle"}), 'value': 'ceb'},
+                        {'label': html.Span([
+                            html.B('경험식 #1', style={"fontSize": "22px", "fontWeight": "bold"})
+                        ], style={"verticalAlign": "middle"}), 'value': 'exp1'}
+                    ],
+                    value='ceb',
+                    labelStyle={'display': 'block', 'marginBottom': '18px', 'marginTop': '8px'},
+                    inputStyle={"marginRight": "12px", "transform": "scale(1.5)"},
+                    style={"marginBottom": "8px"}
+                ),
+                html.Div([
+                    html.Div([
+                        html.Label('fct,28(28일 인장강도)', style={"fontSize": "22px", "marginRight": "8px"}),
+                        dcc.Input(id='ceb-fct28', type='number', value=20, style={"width": "120px", "height": "32px", "fontSize": "20px", "marginRight": "8px"}),
+                        html.Span('MPa', style={"fontSize": "20px", "marginRight": "24px"}),
+                        html.Label('a', style={"fontSize": "20px", "marginRight": "4px"}),
+                        dcc.Input(id='ceb-a', type='number', value=1, style={"width": "60px", "height": "32px", "fontSize": "20px", "marginRight": "16px", "color": "#6d28d9"}),
+                        html.Label('b', style={"fontSize": "20px", "marginRight": "4px"}),
+                        dcc.Input(id='ceb-b', type='number', value=1, style={"width": "60px", "height": "32px", "fontSize": "20px", "color": "#6d28d9"}),
+                    ], id='ceb-inputs', style={"display": "block", "marginBottom": "18px", "marginLeft": "36px"}),
+                    html.Div([
+                        html.Label('fct,28(28일 인장강도)', style={"fontSize": "22px", "marginRight": "8px"}),
+                        dcc.Input(id='exp1-fct28', type='number', value=20, style={"width": "120px", "height": "32px", "fontSize": "20px", "marginRight": "8px"}),
+                        html.Span('MPa', style={"fontSize": "20px"}),
+                    ], id='exp1-inputs', style={"display": "none", "marginBottom": "18px", "marginLeft": "36px"}),
+                ]),
+            ], style={"width": "60%", "display": "inline-block", "verticalAlign": "top", "background": "#d1d5db33", "padding": "24px 12px 12px 12px", "borderRadius": "12px", "marginBottom": "12px"}),
+            html.Div([
+                html.Div([
+                    html.B('(1) CEB-FIP Model Code 1990 기준:', style={"fontSize": "18px", "color": "#fff"}),
+                    html.Br(),
+                    html.Span('fₜc,28: 28일 인장강도', style={"color": "#fff", "fontSize": "15px"}),
+                    html.Br(),
+                    html.Span('보통 a = 1, b = 1.0 정도로 사용됨', style={"color": "#fff", "fontSize": "15px"}),
+                    html.Br(),
+                    html.Span('제형 1~7일: 급격한 증가', style={"color": "#fff", "fontSize": "15px"}),
+                    html.Br(),
+                    html.Span('제형 28일 이후: 점진적 증가', style={"color": "#fff", "fontSize": "15px"}),
+                    html.Br(),
+                    html.Img(src="https://latex.codecogs.com/svg.image?f_{ct}(t)=f_{ct,28}\left(\frac{t}{a&plus;b\cdot t}\right)^{0.5}", style={"marginTop": "8px", "marginBottom": "8px", "background": "#fff", "borderRadius": "4px"}),
+                    html.Br(),
+                    html.B('(2) 간단한 경험식 (KCI, KS 기준 활용 가능):', style={"fontSize": "18px", "color": "#fff"}),
+                    html.Br(),
+                    html.Img(src="https://latex.codecogs.com/svg.image?f_{ct}(t)=f_{ct,28}\left(\frac{t}{28}\right)^{0.5}\quad(t\leq28)", style={"marginTop": "8px", "background": "#fff", "borderRadius": "4px"}),
+                ], style={"padding": "18px 18px 18px 18px", "background": "#222", "borderRadius": "12px", "color": "#fff", "fontSize": "15px", "width": "420px", "marginLeft": "18px"})
+            ], style={"display": "inline-block", "verticalAlign": "top"})
+        ], style={"marginBottom": "24px", "width": "100%", "display": "flex", "flexDirection": "row"}),
+        # ===== 기존 콘텐츠 =====
         # 알림
         dbc.Alert(
             id="tci-alert",
