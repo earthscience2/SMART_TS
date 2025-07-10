@@ -2996,25 +2996,23 @@ def update_section_views_tmp(time_idx,
         dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
         poly_nodes = np.array(dims["nodes"])
         poly_h = float(dims["h"])
-        
         n = len(poly_nodes)
-        x0, y0 = poly_nodes[:,0], poly_nodes[:,1]
-        z0 = np.zeros(n)
-        x1, y1 = x0, y0
-        z1 = np.full(n, poly_h)
-        
+        x0s, y0s = poly_nodes[:,0], poly_nodes[:,1]
+        z0s = np.zeros(n)
+        x1s, y1s = x0s, y0s
+        z1s = np.full(n, poly_h)
         # 아래면
         fig_3d.add_trace(go.Scatter3d(
-            x=np.append(x0, x0[0]), y=np.append(y0, y0[0]), z=np.append(z0, z0[0]),
+            x=np.append(x0s, x0s[0]), y=np.append(y0s, y0s[0]), z=np.append(z0s, z0s[0]),
             mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
         # 윗면
         fig_3d.add_trace(go.Scatter3d(
-            x=np.append(x1, x1[0]), y=np.append(y1, y1[0]), z=np.append(z1, z1[0]),
+            x=np.append(x1s, x1s[0]), y=np.append(y1s, y1s[0]), z=np.append(z1s, z1s[0]),
             mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
         # 기둥
         for i in range(n):
             fig_3d.add_trace(go.Scatter3d(
-                x=[x0[i], x1[i]], y=[y0[i], y1[i]], z=[z0[i], z1[i]],
+                x=[x0s[i], x1s[i]], y=[y0s[i], y1s[i]], z=[z0s[i], z1s[i]],
                 mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
     except Exception:
         pass
@@ -3076,7 +3074,20 @@ def update_section_views_tmp(time_idx,
     dz = z_max - z_min
     tol = max(dx, dy, dz) * 0.02  # 전체 치수의 약 2%
     tol = max(tol, 0.01)  # 최소 1 cm 보장
-    mask_x = np.abs(x_coords - x0) < tol
+    # x0, y0, z0는 반드시 float이어야 함
+    if isinstance(x0, (np.ndarray, list)):
+        x0_val = float(np.mean(x0))
+    else:
+        x0_val = float(x0)
+    if isinstance(y0, (np.ndarray, list)):
+        y0_val = float(np.mean(y0))
+    else:
+        y0_val = float(y0)
+    if isinstance(z0, (np.ndarray, list)):
+        z0_val = float(np.mean(z0))
+    else:
+        z0_val = float(z0)
+    mask_x = np.abs(x_coords - x0_val) < tol
     if np.any(mask_x):
         yb, zb, tb = y_coords[mask_x], z_coords[mask_x], temps[mask_x]
         if len(yb) > 3:
@@ -3093,12 +3104,12 @@ def update_section_views_tmp(time_idx,
     else:
         fig_x = go.Figure()
     fig_x.update_layout(
-        title=f"X={x0:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30),
+        title=f"X={x0_val:.2f}m 단면", xaxis_title="Y (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30),
         xaxis=dict(scaleanchor="y", scaleratio=1),
         yaxis=dict(constrain='domain')
     )
     # Y 단면 (y ≈ y0, 리니어 보간, 컬러바 없음)
-    mask_y = np.abs(y_coords - y0) < tol
+    mask_y = np.abs(y_coords - y0_val) < tol
     if np.any(mask_y):
         xb, zb, tb = x_coords[mask_y], z_coords[mask_y], temps[mask_y]
         if len(xb) > 3:
@@ -3115,12 +3126,12 @@ def update_section_views_tmp(time_idx,
     else:
         fig_y = go.Figure()
     fig_y.update_layout(
-        title=f"Y={y0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30),
+        title=f"Y={y0_val:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Z (m)", margin=dict(l=0, r=0, b=0, t=30),
         xaxis=dict(scaleanchor="y", scaleratio=1),
         yaxis=dict(constrain='domain')
     )
     # Z 단면 (z ≈ z0, 리니어 보간, 컬러바 없음)
-    mask_z = np.abs(z_coords - z0) < tol
+    mask_z = np.abs(z_coords - z0_val) < tol
     if np.any(mask_z):
         xb, yb, tb = x_coords[mask_z], y_coords[mask_z], temps[mask_z]
         if len(xb) > 3:
@@ -3137,7 +3148,7 @@ def update_section_views_tmp(time_idx,
     else:
         fig_z = go.Figure()
     fig_z.update_layout(
-        title=f"Z={z0:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30),
+        title=f"Z={z0_val:.2f}m 단면", xaxis_title="X (m)", yaxis_title="Y (m)", margin=dict(l=0, r=0, b=0, t=30),
         xaxis=dict(scaleanchor="y", scaleratio=1),
         yaxis=dict(constrain='domain')
     )
