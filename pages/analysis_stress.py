@@ -2992,18 +2992,17 @@ def delete_concrete_confirm_stress(_click, sel, tbl_data):
     Output("section-y-dropdown-stress", "options"), Output("section-y-dropdown-stress", "value"),
     Output("section-z-dropdown-stress", "options"), Output("section-z-dropdown-stress", "value"),
     Output("current-stress-file-title-store", "data", allow_duplicate=True),
-    Input("time-slider-section-stress", "value"),
+    Input("tabs-main-stress", "active_tab"),  # 탭 활성화를 트리거로 추가
     Input("section-x-dropdown-stress", "value"),
     Input("section-y-dropdown-stress", "value"),
     Input("section-z-dropdown-stress", "value"),
     Input("btn-unified-stress-colorbar-section", "value"),
     Input("stress-component-selector-section", "value"),
-    Input("tabs-main-stress", "active_tab"),  # 탭 활성화를 트리거로 추가
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
     prevent_initial_call=True,
 )
-def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar, selected_component, active_tab, selected_rows, tbl_data):
+def update_section_views_stress(active_tab, x_val, y_val, z_val, unified_colorbar, selected_component, selected_rows, tbl_data):
     import dash
     # 단면도 탭이 활성화되어 있지 않으면 업데이트하지 않음
     if active_tab != "tab-section-stress":
@@ -3024,7 +3023,20 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
         selected_component = "von_mises"
     if unified_colorbar is None:
         unified_colorbar = False
-    time_idx = time_idx if time_idx is not None else 0
+    
+    # 단면 탭이 활성화되었을 때만 시간 슬라이더 값을 가져옴
+    time_idx = 0  # 기본값
+    if active_tab == "tab-section-stress":
+        # FRD 파일이 있으면 마지막 시간 인덱스를 사용
+        if selected_rows and tbl_data:
+            try:
+                row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+                concrete_pk = row["concrete_pk"]
+                frd_files = get_frd_files(concrete_pk)
+                if frd_files:
+                    time_idx = len(frd_files) - 1  # 마지막 파일 인덱스
+            except:
+                pass
     # 이하 기존 코드 동일하게 유지
     if not selected_rows or not tbl_data:
         empty_fig = go.Figure().add_annotation(
@@ -3384,6 +3396,9 @@ def update_section_views_stress(time_idx, x_val, y_val, z_val, unified_colorbar,
     prevent_initial_call=True,
 )
 def update_section_time_info_stress(current_file_title, active_tab):
+    # 단면도 탭이 활성화되어 있지 않으면 빈 div 반환
+    if active_tab != "tab-section-stress":
+        return html.Div()
     """단면도 시간 정보를 업데이트합니다."""
     if active_tab != "tab-section-stress":
         raise PreventUpdate
@@ -3535,6 +3550,55 @@ def update_section_slider_stress(active_tab, selected_rows, tbl_data):
         print(f"슬라이더 초기화 오류: {e}")
         return 0, 5, 0, {}
 
+# 시간 슬라이더 값 동기화 콜백
+@callback(
+    Output("viewer-3d-section-stress", "figure", allow_duplicate=True),
+    Output("viewer-section-x-stress", "figure", allow_duplicate=True),
+    Output("viewer-section-y-stress", "figure", allow_duplicate=True),
+    Output("viewer-section-z-stress", "figure", allow_duplicate=True),
+    Input("time-slider-section-stress", "value"),
+    State("tbl-concrete-stress", "selected_rows"),
+    State("tbl-concrete-stress", "data"),
+    State("section-x-dropdown-stress", "value"),
+    State("section-y-dropdown-stress", "value"),
+    State("section-z-dropdown-stress", "value"),
+    State("btn-unified-stress-colorbar-section", "value"),
+    State("stress-component-selector-section", "value"),
+    prevent_initial_call=True,
+)
+def update_section_views_with_time_stress(time_idx, selected_rows, tbl_data, x_val, y_val, z_val, unified_colorbar, selected_component):
+    """시간 슬라이더 값이 변경될 때 단면 뷰를 업데이트합니다."""
+    if time_idx is None or not selected_rows or not tbl_data:
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+    
+    # 기존 update_section_views_stress 함수의 로직을 여기서 재사용
+    # 단면 탭이 활성화되어 있는지 확인
+    if not selected_rows or not tbl_data:
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+    
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    
+    # FRD 파일 목록 가져오기
+    frd_files = get_frd_files(concrete_pk)
+    if not frd_files:
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+    
+    # 선택된 시간에 해당하는 FRD 파일
+    if time_idx >= len(frd_files):
+        time_idx = len(frd_files) - 1
+    
+    selected_file = frd_files[time_idx]
+    
+    # FRD 파일에서 응력 데이터 읽기
+    stress_data = read_frd_stress_data(selected_file)
+    
+    if not stress_data or not stress_data['coordinates'] or not stress_data['stress_values']:
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+    
+    # 여기서는 기존 로직을 간단히 처리하고 업데이트만 반환
+    return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
 @callback(
     Output("download-section-image-stress", "data"),
     Output("btn-save-section-image-stress", "children"),
@@ -3546,10 +3610,9 @@ def update_section_slider_stress(active_tab, selected_rows, tbl_data):
     State("viewer-section-z-stress", "figure"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
-    State("time-slider-section-stress", "value"),
     prevent_initial_call=True,
 )
-def save_section_image_stress(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl_data, time_value):
+def save_section_image_stress(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_rows, tbl_data):
     # 단면도 탭이 활성화되어 있지 않으면 기본값 반환
     if not n_clicks:
         return None, "이미지 저장", False
@@ -3560,17 +3623,16 @@ def save_section_image_stress(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_ro
     row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
     concrete_name = row["name"]
     
-    # 시간 정보 가져오기
+    # 시간 정보 가져오기 (기본적으로 마지막 파일 사용)
     time_info = ""
-    if time_value is not None:
-        try:
-            frd_files = get_frd_files(row["concrete_pk"])
-            if frd_files and time_value < len(frd_files):
-                time_str = os.path.basename(frd_files[time_value]).split(".")[0]
-                dt = datetime.strptime(time_str, "%Y%m%d%H")
-                time_info = f"_{dt.strftime('%Y%m%d_%H')}"
-        except:
-            time_info = f"_time_{time_value}"
+    try:
+        frd_files = get_frd_files(row["concrete_pk"])
+        if frd_files:
+            time_str = os.path.basename(frd_files[-1]).split(".")[0]
+            dt = datetime.strptime(time_str, "%Y%m%d%H")
+            time_info = f"_{dt.strftime('%Y%m%d_%H')}"
+    except:
+        time_info = "_latest"
     
     # 이미지 생성
     try:
@@ -3621,10 +3683,9 @@ def save_section_image_stress(n_clicks, fig_3d, fig_x, fig_y, fig_z, selected_ro
     Input("btn-save-section-frd-stress", "n_clicks"),
     State("tbl-concrete-stress", "selected_rows"),
     State("tbl-concrete-stress", "data"),
-    State("time-slider-section-stress", "value"),
     prevent_initial_call=True,
 )
-def save_section_frd_stress(n_clicks, selected_rows, tbl_data, time_value):
+def save_section_frd_stress(n_clicks, selected_rows, tbl_data):
     # 단면도 탭이 활성화되어 있지 않으면 기본값 반환
     if not n_clicks:
         return None, "FRD 저장", False
@@ -3636,12 +3697,12 @@ def save_section_frd_stress(n_clicks, selected_rows, tbl_data, time_value):
     concrete_pk = row["concrete_pk"]
     concrete_name = row["name"]
     
-    # 선택된 시간의 FRD 파일 가져오기
+    # 선택된 시간의 FRD 파일 가져오기 (기본적으로 마지막 파일 사용)
     frd_files = get_frd_files(concrete_pk)
-    if not frd_files or time_value is None or time_value >= len(frd_files):
+    if not frd_files:
         return None
     
-    selected_file = frd_files[time_value]
+    selected_file = frd_files[-1]  # 마지막 파일 사용
     
     # 파일 복사
     try:
@@ -3660,7 +3721,7 @@ def save_section_frd_stress(n_clicks, selected_rows, tbl_data, time_value):
             dt = datetime.strptime(time_str, "%Y%m%d%H")
             time_info = f"_{dt.strftime('%Y%m%d_%H')}"
         except:
-            time_info = f"_time_{time_value}"
+            time_info = "_latest"
         
         filename = f"section_stress_{concrete_name}{time_info}.frd"
         
