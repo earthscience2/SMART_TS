@@ -45,6 +45,13 @@ layout = dbc.Container(
         dcc.Store(id="project-info-store-tci", data=None),
         dcc.Store(id="tci-data-store", data=None),
         dcc.Store(id="current-tci-time-store", data=None),
+        dcc.Store(id="tci-formula-params-store", data={
+            "formula": "ceb",
+            "fct28": 20,
+            "a": 1,
+            "b": 1,
+            "fct28_exp": 20
+        }),
         
         # ── 다운로드 컴포넌트들
         dcc.Download(id="download-tci-formula-image"),
@@ -928,6 +935,7 @@ def toggle_formula_inputs(formula):
 @callback(
     Output('tci-fct-graph', 'figure'),
     Output('tci-fct-table-container', 'children'),
+    Output('tci-formula-params-store', 'data'),
     Input('tci-formula-choice', 'value'),
     Input('tci-fct28', 'value'),
     Input('tci-a', 'value'),
@@ -974,7 +982,17 @@ def update_fct_graph_and_table(formula, ceb_fct28, a, b, exp_fct28):
         style_header={"backgroundColor": "#f8fafc", "fontWeight": "600", "color": "#374151"},
         style_data={"backgroundColor": "#fff"},
     )
-    return fig, table
+    
+    # Store에 파라미터 저장
+    params_data = {
+        "formula": formula,
+        "fct28": ceb_fct28 if formula == "ceb" else exp_fct28,
+        "a": a,
+        "b": b,
+        "fct28_exp": exp_fct28
+    }
+    
+    return fig, table, params_data
 
 def create_tci_timeline_tab_content(concrete_pk, concrete_name):
     """시간별 TCI 분석 탭 콘텐츠를 생성합니다."""
@@ -1936,9 +1954,10 @@ def update_crack_probability_graph(active_tab, selected_rows, tbl_data):
     Input('tabs-main-tci', 'active_tab'),  # 탭 전환 시에도 실행되도록 추가
     State('tbl-concrete-tci', 'selected_rows'),
     State('tbl-concrete-tci', 'data'),
+    State('tci-formula-params-store', 'data'),
     prevent_initial_call=False
 )
-def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_data):
+def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_data, formula_params):
     import numpy as np
     
     print(f"DEBUG: update_tci_3d_table 호출됨")
@@ -2008,21 +2027,27 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
         
         print(f"DEBUG: 노드 개수={len(stress_data['nodes'])}")
         
-        # 타설일 정보
+        # 타설일 정보 (콘크리트 데이터에서 가져오기)
         pour_date = None
-        if row.get("con_t") and row["con_t"] not in ["", "N/A", None]:
-            try:
-                from datetime import datetime
-                if hasattr(row["con_t"], 'strftime'):
-                    pour_date = row["con_t"]
-                elif isinstance(row["con_t"], str):
-                    if 'T' in row["con_t"]:
-                        pour_date = datetime.fromisoformat(row["con_t"].replace('Z', ''))
-                    else:
-                        pour_date = datetime.strptime(str(row["con_t"]), '%Y-%m-%d %H:%M:%S')
-            except Exception as e:
-                print(f"DEBUG: 타설일 파싱 오류: {e}")
-                pour_date = None
+        try:
+            # 콘크리트 데이터에서 타설일 정보 추출
+            concrete_data = api_db.get_concrete_data(concrete_pk=concrete_pk)
+            if not concrete_data.empty:
+                concrete_row = concrete_data.iloc[0]
+                if concrete_row.get("con_t") and concrete_row["con_t"] not in ["", "N/A", None]:
+                    if hasattr(concrete_row["con_t"], 'strftime'):
+                        pour_date = concrete_row["con_t"]
+                    elif isinstance(concrete_row["con_t"], str):
+                        if 'T' in concrete_row["con_t"]:
+                            pour_date = datetime.fromisoformat(concrete_row["con_t"].replace('Z', ''))
+                        else:
+                            pour_date = datetime.strptime(str(concrete_row["con_t"]), '%Y-%m-%d %H:%M:%S')
+                    print(f"DEBUG: 타설일 파싱 성공: {pour_date}")
+                else:
+                    print("DEBUG: 타설일 정보가 없음")
+        except Exception as e:
+            print(f"DEBUG: 타설일 파싱 오류: {e}")
+            pour_date = None
         
         # 파일명에서 시간 추출
         try:
@@ -2030,6 +2055,7 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
             from datetime import datetime
             time_str = os.path.basename(frd_file).split(".")[0]
             file_time = datetime.strptime(time_str, "%Y%m%d%H")
+            print(f"DEBUG: 파일 시간 파싱 성공: {file_time}")
         except Exception as e:
             print(f"DEBUG: 파일 시간 파싱 오류: {e}")
             file_time = None
@@ -2039,16 +2065,60 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
             age_days = (file_time - pour_date).days
             if age_days < 1:
                 age_days = 1
+            print(f"DEBUG: 재령 계산 성공: {age_days}일 (타설일: {pour_date}, 분석일: {file_time})")
         else:
-            age_days = 1
+            # 타설일이 없으면 첫 번째 FRD 파일을 기준으로 계산
+            if not pour_date and frd_files:
+                try:
+                    first_time_str = os.path.basename(frd_files[0]).split(".")[0]
+                    first_file_time = datetime.strptime(first_time_str, "%Y%m%d%H")
+                    age_days = max(1, (file_time - first_file_time).days + 1)
+                    print(f"DEBUG: 타설일 없음, 첫 파일 기준 재령: {age_days}일")
+                except:
+                    age_days = 1
+            else:
+                age_days = 1
+            print(f"DEBUG: 재령 기본값: {age_days}일")
         
-        print(f"DEBUG: 재령={age_days}일")
+        print(f"DEBUG: 최종 재령={age_days}일")
         
-        # fct(t) 계산 (fc28=30 기본, 추후 입력값 연동 가능)
-        fct = calculate_tensile_strength(age_days, 30)
-        print(f"DEBUG: fct(t)={fct:.3f} MPa")
+        # 인장강도 계산식 탭의 값들을 사용하여 fct(t) 계산
+        if formula_params:
+            formula = formula_params.get("formula", "ceb")
+            fct28 = formula_params.get("fct28", 20)
+            a = formula_params.get("a", 1)
+            b = formula_params.get("b", 1)
+            fct28_exp = formula_params.get("fct28_exp", 20)
+            
+            print(f"DEBUG: 공식 파라미터 - formula={formula}, fct28={fct28}, a={a}, b={b}, fct28_exp={fct28_exp}")
+            
+            # 선택된 공식에 따라 인장강도 계산
+            if formula == "ceb":
+                # CEB-FIP Model Code: fct(t) = fct28 × ( t / (a + b × t) )^0.5
+                if age_days <= 0:
+                    fct = 0
+                else:
+                    t_ratio = age_days / 28
+                    strength_ratio = t_ratio / (a + b * t_ratio)
+                    fct = fct28 * strength_ratio
+            else:
+                # 경험식 #1: fct(t) = fct28 × ( t / 28 )^0.5
+                if age_days <= 0:
+                    fct = 0
+                else:
+                    fct = fct28 * (age_days / 28) ** 0.5
+        else:
+            # 기본값 사용
+            fc28 = 30  # 기본 압축강도
+            fct = calculate_tensile_strength(age_days, fc28)
+            print(f"DEBUG: 기본값 사용 - fc28={fc28} MPa")
+        
+        print(f"DEBUG: fct(t)={fct:.3f} MPa (재령={age_days}일)")
         
         # 분석 정보 생성
+        formula_name = "CEB-FIP Model Code" if formula_params and formula_params.get("formula") == "ceb" else "경험식 #1 (KCI/KS)"
+        fct28_value = formula_params.get("fct28", 20) if formula_params else 20
+        
         analysis_info = html.Div([
             html.Div([
                 html.Span("📅 분석 일자: ", style={"fontWeight": "600", "color": "#374151"}),
@@ -2065,6 +2135,14 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
             html.Div([
                 html.Span("💪 인장강도 fct(t): ", style={"fontWeight": "600", "color": "#374151"}),
                 html.Span(f"{fct:.3f} MPa", style={"color": "#059669", "fontWeight": "600"})
+            ], style={"marginBottom": "8px"}),
+            html.Div([
+                html.Span("📐 사용 공식: ", style={"fontWeight": "600", "color": "#374151"}),
+                html.Span(formula_name, style={"color": "#3b82f6", "fontWeight": "500"})
+            ], style={"marginBottom": "8px"}),
+            html.Div([
+                html.Span("🔢 fct,28: ", style={"fontWeight": "600", "color": "#374151"}),
+                html.Span(f"{fct28_value} MPa", style={"color": "#6b7280"})
             ])
         ])
         
