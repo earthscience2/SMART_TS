@@ -1914,15 +1914,14 @@ def create_node_tab_content_stress(concrete_pk):
     store_data = {'x': round(x_mid,1), 'y': round(y_mid,1), 'z': round(z_mid,1)}
     
     return html.Div([
-        # 위치 설정 + 저장 버튼 섹션 (한 줄 배치)
+        # 위치 설정 섹션 (높이 절반으로 줄임)
         dbc.Row([
-            # 왼쪽: 측정 위치 설정
             dbc.Col([
                 html.Div([
                     html.H6("📍 측정 위치 설정", style={
                         "fontWeight": "600",
                         "color": "#374151",
-                        "marginBottom": "12px",
+                        "marginBottom": "8px",
                         "fontSize": "14px"
                     }),
                     dbc.Row([
@@ -1932,21 +1931,21 @@ def create_node_tab_content_stress(concrete_pk):
                                     html.Div([
                                         html.I(className="fas fa-arrows-alt-h", style={
                                             "color": "#ef4444", 
-                                            "fontSize": "14px", 
-                                            "marginRight": "6px"
+                                            "fontSize": "12px", 
+                                            "marginRight": "4px"
                                         }),
                                         html.Span("X축", style={
                                             "fontWeight": "600",
                                             "color": "#ef4444",
-                                            "fontSize": "13px"
+                                            "fontSize": "12px"
                                         })
-                                    ], style={"marginBottom": "4px"}),
+                                    ], style={"marginBottom": "2px"}),
                                     dcc.Dropdown(
                                         id="node-x-dropdown-stress",
                                         placeholder="X 좌표 선택",
                                         style={"width": "100%"}
                                     )
-                                ], style={"padding": "8px"})
+                                ], style={"padding": "6px"})
                             ], style={
                                 "border": "1px solid #fecaca",
                                 "backgroundColor": "#fef2f2"
@@ -1958,21 +1957,21 @@ def create_node_tab_content_stress(concrete_pk):
                                     html.Div([
                                         html.I(className="fas fa-arrows-alt-v", style={
                                             "color": "#3b82f6", 
-                                            "fontSize": "14px", 
-                                            "marginRight": "6px"
+                                            "fontSize": "12px", 
+                                            "marginRight": "4px"
                                         }),
                                         html.Span("Y축", style={
                                             "fontWeight": "600",
                                             "color": "#3b82f6",
-                                            "fontSize": "13px"
+                                            "fontSize": "12px"
                                         })
-                                    ], style={"marginBottom": "4px"}),
+                                    ], style={"marginBottom": "2px"}),
                                     dcc.Dropdown(
                                         id="node-y-dropdown-stress",
                                         placeholder="Y 좌표 선택",
                                         style={"width": "100%"}
                                     )
-                                ], style={"padding": "8px"})
+                                ], style={"padding": "6px"})
                             ], style={
                                 "border": "1px solid #bfdbfe",
                                 "backgroundColor": "#eff6ff"
@@ -1984,40 +1983,39 @@ def create_node_tab_content_stress(concrete_pk):
                                     html.Div([
                                         html.I(className="fas fa-arrows-alt", style={
                                             "color": "#22c55e", 
-                                            "fontSize": "14px", 
-                                            "marginRight": "6px"
+                                            "fontSize": "12px", 
+                                            "marginRight": "4px"
                                         }),
                                         html.Span("Z축", style={
                                             "fontWeight": "600",
                                             "color": "#22c55e",
-                                            "fontSize": "13px"
+                                            "fontSize": "12px"
                                         })
-                                    ], style={"marginBottom": "4px"}),
+                                    ], style={"marginBottom": "2px"}),
                                     dcc.Dropdown(
                                         id="node-z-dropdown-stress",
                                         placeholder="Z 좌표 선택",
                                         style={"width": "100%"}
                                     )
-                                ], style={"padding": "8px"})
+                                ], style={"padding": "6px"})
                             ], style={
                                 "border": "1px solid #bbf7d0",
                                 "backgroundColor": "#f0fdf4"
                             })
                         ], md=4),
-                    ], className="g-3"),
+                    ], className="g-2"),
                 ], style={
-                    "padding": "12px 16px",
+                    "padding": "8px 12px",
                     "backgroundColor": "#f9fafb",
                     "borderRadius": "8px",
                     "border": "1px solid #e5e7eb",
-                    "height": "100%",
-                    "display": "flex",
-                    "flexDirection": "column",
-                    "justifyContent": "center"
+                    "marginBottom": "12px"
                 })
-            ], md=8),
-            
-            # 오른쪽: 저장 버튼들
+            ], md=12),
+        ]),
+        
+        # 저장 버튼들 (양옆 중앙 정렬)
+        dbc.Row([
             dbc.Col([
                 html.Div([
                     dcc.Loading(
@@ -2028,14 +2026,14 @@ def create_node_tab_content_stress(concrete_pk):
                                 [html.I(className="fas fa-camera me-1"), "이미지 저장"],
                                 id="btn-save-node-image-stress",
                                 color="primary",
-                                size="lg",
+                                size="md",
                                 style={
                                     "borderRadius": "8px",
                                     "fontWeight": "600",
                                     "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                    "fontSize": "15px",
+                                    "fontSize": "14px",
                                     "width": "120px",
-                                    "height": "48px",
+                                    "height": "40px",
                                     "marginRight": "16px"
                                 }
                             )
@@ -2049,21 +2047,25 @@ def create_node_tab_content_stress(concrete_pk):
                                 [html.I(className="fas fa-file-csv me-1"), "데이터 저장"],
                                 id="btn-save-node-data-stress",
                                 color="success",
-                                size="lg",
+                                size="md",
                                 style={
                                     "borderRadius": "8px",
                                     "fontWeight": "600",
                                     "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-                                    "fontSize": "15px",
+                                    "fontSize": "14px",
                                     "width": "120px",
-                                    "height": "48px"
+                                    "height": "40px"
                                 }
                             )
                         ]
                     ),
                 ], style={"display": "flex", "justifyContent": "center", "alignItems": "center", "marginBottom": "16px"}),
-                
-                # 응력 종류 선택
+            ], md=12),
+        ]),
+        
+        # 응력 종류 선택과 범위 필터 (한 줄에 배치)
+        dbc.Row([
+            dbc.Col([
                 html.Div([
                     html.H6("📊 응력 종류 선택", style={
                         "fontWeight": "600",
@@ -2093,11 +2095,10 @@ def create_node_tab_content_stress(concrete_pk):
                     "padding": "8px 12px",
                     "backgroundColor": "#f8fafc",
                     "borderRadius": "6px",
-                    "border": "1px solid #e2e8f0",
-                    "marginBottom": "12px"
-                }),
-                
-                # 응력 범위 필터
+                    "border": "1px solid #e2e8f0"
+                })
+            ], md=6),
+            dbc.Col([
                 html.Div([
                     html.H6("📊 날짜 범위 필터", style={
                         "fontWeight": "600",
@@ -2127,8 +2128,8 @@ def create_node_tab_content_stress(concrete_pk):
                     "borderRadius": "6px",
                     "border": "1px solid #e2e8f0"
                 })
-            ], md=4),
-        ], className="mb-4 align-items-stretch", style={"minHeight": "120px"}),
+            ], md=6),
+        ], className="mb-4"),
         
         # 분석 결과 (좌우 배치, 노션 스타일)
         dbc.Row([
