@@ -2859,7 +2859,7 @@ def delete_concrete_confirm_tmp(_click, sel, tbl_data):
     Input("unified-colorbar-section-state-tmp", "data"),
     State("tbl-concrete-tmp", "selected_rows"),
     State("tbl-concrete-tmp", "data"),
-    prevent_initial_call=False,
+    prevent_initial_call=True,
 )
 def update_section_views_tmp(time_idx,
                          x_val, y_val, z_val, unified_colorbar,
