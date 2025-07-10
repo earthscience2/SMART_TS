@@ -253,6 +253,26 @@ layout = dbc.Container(
                                 }
                             ),
                             dbc.Tab(
+                                label="입체 TCI", 
+                                tab_id="tab-tci-3d",
+                                tab_style={
+                                    "marginLeft": "2px",
+                                    "marginRight": "2px",
+                                    "border": "none",
+                                    "borderRadius": "6px 6px 0 0",
+                                    "backgroundColor": "#f8fafc",
+                                    "color": "#1f2937",
+                                    "fontWeight": "500"
+                                },
+                                active_tab_style={
+                                    "backgroundColor": "white",
+                                    "border": "1px solid #e2e8f0",
+                                    "borderBottom": "1px solid white",
+                                    "color": "#1f2937",
+                                    "fontWeight": "600"
+                                }
+                            ),
+                            dbc.Tab(
                                 label="시간별 TCI 분석", 
                                 tab_id="tab-tci-timeline",
                                 tab_style={
@@ -801,6 +821,8 @@ def switch_tab_tci(active_tab, selected_rows, pathname, tbl_data):
         return create_tci_timeline_tab_content(concrete_pk, concrete_name)
     elif active_tab == "tab-crack-probability":
         return create_crack_probability_tab_content(concrete_pk, concrete_name)
+    elif active_tab == "tab-tci-3d":
+        return create_tci_3d_tab_content()
     else:
         return html.Div("알 수 없는 탭입니다.", className="text-center text-muted mt-5")
 
@@ -1136,6 +1158,37 @@ def create_crack_probability_tab_content(concrete_pk, concrete_name):
         dcc.Download(id="download-crack-probability-image"),
         dcc.Download(id="download-tci-data-csv"),
     ])
+
+# 입체 TCI 탭 콘텐츠 함수 추가
+def create_tci_3d_tab_content():
+    import dash_table
+    import dash_bootstrap_components as dbc
+    from dash import dcc, html
+    return html.Div([
+        html.H5("입체 TCI 분석", style={"fontWeight": "600", "marginBottom": "18px"}),
+        html.Div([
+            html.Label("시간 선택", style={"marginRight": "12px", "fontWeight": "500"}),
+            dcc.Slider(id="tci-3d-time-slider", min=0, max=10, step=1, value=0, marks={i: str(i) for i in range(11)}, tooltip={"placement": "bottom"}),
+            dbc.Button("재생", id="tci-3d-play-btn", color="primary", style={"marginLeft": "24px"}),
+        ], style={"display": "flex", "alignItems": "center", "gap": "16px", "marginBottom": "18px"}),
+        html.Div([
+            dash_table.DataTable(
+                id="tci-3d-table",
+                columns=[
+                    {"name": "node", "id": "node"},
+                    {"name": "TCI-X", "id": "tci_x"},
+                    {"name": "TCI-Y", "id": "tci_y"},
+                    {"name": "TCI-Z", "id": "tci_z"},
+                ],
+                data=[],
+                page_size=10,
+                style_table={"overflowY": "auto", "height": "48vh", "marginTop": "0px", "borderRadius": "8px", "border": "1px solid #e5e7eb"},
+                style_cell={"textAlign": "center", "fontSize": "15px", "padding": "8px 4px"},
+                style_header={"backgroundColor": "#f8fafc", "fontWeight": "600", "color": "#374151"},
+                style_data={"backgroundColor": "#fff"},
+            )
+        ])
+    ], style={"backgroundColor": "#fff", "borderRadius": "12px", "padding": "28px 28px 18px 28px", "boxShadow": "0 1px 4px rgba(0,0,0,0.04)", "border": "1px solid #e5e7eb", "marginBottom": "28px"})
 
 # ───────────────────── 그래프 생성 콜백 함수들 ─────────────────────
 
@@ -1677,6 +1730,118 @@ def update_crack_probability_graph(active_tab, selected_rows, tbl_data):
         ])
     
     return fig, risk_assessment
+
+# 시간 슬라이더/재생 버튼/탭 선택 시 TCI 표 갱신 콜백 추가(1차: 표만)
+from dash import callback, Input, Output, State
+@callback(
+    Output('tci-3d-table', 'data'),
+    Input('tci-3d-time-slider', 'value'),
+    Input('tci-3d-play-btn', 'n_clicks'),
+    State('tbl-concrete-tci', 'selected_rows'),
+    State('tbl-concrete-tci', 'data'),
+    prevent_initial_call=True
+)
+def update_tci_3d_table(time_idx, play_click, selected_rows, tbl_data):
+    import numpy as np
+    if not selected_rows or not tbl_data:
+        return []
+    row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
+    concrete_pk = row["concrete_pk"]
+    # FRD 파일 목록
+    frd_files = get_frd_files(concrete_pk)
+    if not frd_files or time_idx is None or time_idx >= len(frd_files):
+        return []
+    frd_file = frd_files[time_idx]
+    stress_data = read_frd_stress_data(frd_file)
+    if not stress_data or not stress_data.get('nodes'):
+        return []
+    # 타설일 정보
+    pour_date = None
+    if row.get("con_t") and row["con_t"] not in ["", "N/A", None]:
+        try:
+            from datetime import datetime
+            if hasattr(row["con_t"], 'strftime'):
+                pour_date = row["con_t"]
+            elif isinstance(row["con_t"], str):
+                if 'T' in row["con_t"]:
+                    pour_date = datetime.fromisoformat(row["con_t"].replace('Z', ''))
+                else:
+                    pour_date = datetime.strptime(str(row["con_t"]), '%Y-%m-%d %H:%M:%S')
+        except Exception:
+            pour_date = None
+    # 파일명에서 시간 추출
+    try:
+        import os
+        from datetime import datetime
+        time_str = os.path.basename(frd_file).split(".")[0]
+        file_time = datetime.strptime(time_str, "%Y%m%d%H")
+    except:
+        file_time = None
+    # 재령 계산
+    if pour_date and file_time:
+        age_days = (file_time - pour_date).days
+        if age_days < 1:
+            age_days = 1
+    else:
+        age_days = 1
+    # fct(t) 계산 (fc28=30 기본)
+    fct = calculate_tensile_strength(age_days, 30)
+    # sxx, syy, szz 추출
+    # 기존 read_frd_stress_data는 von Mises만 저장하므로, sxx 등도 저장하도록 개선 필요
+    # 임시로 응력 분석 페이지 방식 차용
+    sxx_dict = {}
+    syy_dict = {}
+    szz_dict = {}
+    try:
+        with open(frd_file, 'r') as f:
+            lines = f.readlines()
+        parsing_stress = False
+        coord_section_ended = False
+        for line in lines:
+            line = line.strip()
+            if '-4  STRESS' in line and coord_section_ended:
+                parsing_stress = True
+                continue
+            if line.strip() == '-3' and parsing_stress:
+                parsing_stress = False
+                break
+            if line.strip() == '-3' and not coord_section_ended:
+                coord_section_ended = True
+                continue
+            if parsing_stress and line.startswith('-1'):
+                import re
+                nums = re.findall(r'-?\d+(?:\.\d+)?(?:[Ee][-+]?\d+)?', line)
+                if len(nums) >= 7:
+                    try:
+                        node_id = int(nums[1])
+                        sxx = float(nums[2])
+                        syy = float(nums[3])
+                        szz = float(nums[4])
+                        sxx_dict[node_id] = sxx
+                        syy_dict[node_id] = syy
+                        szz_dict[node_id] = szz
+                    except Exception:
+                        pass
+    except Exception:
+        return []
+    # 노드 리스트
+    node_ids = sorted(list(set(sxx_dict.keys()) & set(syy_dict.keys()) & set(szz_dict.keys())))
+    data = []
+    for node in node_ids:
+        sx = sxx_dict[node]
+        sy = syy_dict[node]
+        sz = szz_dict[node]
+        # 0으로 나누기 방지
+        tci_x = round(fct / sx, 3) if sx != 0 else None
+        tci_y = round(fct / sy, 3) if sy != 0 else None
+        tci_z = round(fct / sz, 3) if sz != 0 else None
+        data.append({
+            "node": node,
+            "tci_x": tci_x,
+            "tci_y": tci_y,
+            "tci_z": tci_z,
+        })
+    return data
 
 # ───────────────────── 버튼 상태 및 액션 콜백 함수들 ─────────────────────
 
