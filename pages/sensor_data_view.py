@@ -220,6 +220,16 @@ layout = html.Div([
         n_intervals=0
     ),
     
+    # 알림을 위한 Toast
+    dbc.Toast(
+        id="data-collection-toast",
+        header="데이터 수집",
+        is_open=False,
+        dismissable=True,
+        duration=4000,
+        style={"position": "fixed", "top": 66, "right": 10, "width": 350}
+    ),
+    
     dbc.Container([
         dbc.Row([
             dbc.Col([
@@ -257,6 +267,13 @@ layout = html.Div([
                     dbc.CardHeader([
                         html.H5("센서 데이터", className="mb-0"),
                         html.Div([
+                            dbc.Button(
+                                "데이터 수집",
+                                id="collect-data-btn",
+                                color="primary",
+                                size="sm",
+                                className="me-2"
+                            ),
                             dbc.Button(
                                 "CSV 다운로드",
                                 id="download-csv-btn",
@@ -386,9 +403,13 @@ def load_selected_sensor_data(sensor_key, n_intervals):
         device_id, channel_part = sensor_key.split('_Ch')
         channel = channel_part
         
-        # 실제 센서 데이터 조회 (여기서는 예시 데이터 반환)
-        # 실제로는 api_db.get_sensor_data() 함수를 사용해야 함
-        df = api_db.get_sensor_data(device_id=device_id, channel=channel)
+        # ITS 데이터베이스에서 직접 센서 데이터 조회
+        df = api_db.get_sensor_data(
+            device_id=device_id, 
+            channel=channel, 
+            use_its=True,  # ITS 데이터베이스에서 직접 조회
+            its_num=1
+        )
         
         if df.empty:
             return None
@@ -680,6 +701,67 @@ def update_sensor_stats(data):
     ])
 
 @callback(
+    Output("sensor-data-store", "data", allow_duplicate=True),
+    Output("data-collection-toast", "is_open"),
+    Output("data-collection-toast", "children"),
+    Output("data-collection-toast", "icon"),
+    Input("collect-data-btn", "n_clicks"),
+    State("selected-sensor-store", "data"),
+    prevent_initial_call=True
+)
+def collect_sensor_data(n_clicks, sensor_key):
+    """센서 데이터 수집 콜백"""
+    if not sensor_key or not n_clicks:
+        raise PreventUpdate
+    
+    try:
+        device_id, channel_part = sensor_key.split('_Ch')
+        channel = channel_part
+        
+        # ITS 센서 데이터 수집 (24시간)
+        result = api_db.collect_its_sensor_data(device_id, channel, its_num=1, hours=24)
+        
+        if result["status"] == "success":
+            # 수집된 데이터를 다시 로드
+            df = api_db.get_sensor_data(
+                device_id=device_id, 
+                channel=channel, 
+                use_its=False,  # 로컬 DB에서 조회
+                its_num=1
+            )
+            
+            if not df.empty:
+                return (
+                    df.to_dict('records'),
+                    True,
+                    f"✅ {result['count']}개의 데이터를 성공적으로 수집했습니다!",
+                    "success"
+                )
+            else:
+                return (
+                    None,
+                    True,
+                    f"⚠️ 데이터를 수집했지만 표시할 수 없습니다.",
+                    "warning"
+                )
+        else:
+            return (
+                None,
+                True,
+                f"❌ 데이터 수집 실패: {result['msg']}",
+                "danger"
+            )
+        
+    except Exception as e:
+        print(f"Error collecting sensor data: {e}")
+        return (
+            None,
+            True,
+            f"❌ 데이터 수집 중 오류 발생: {str(e)}",
+            "danger"
+        )
+
+@callback(
     Output("download-csv", "data"),
     Input("download-csv-btn", "n_clicks"),
     State("selected-sensor-store", "data"),
@@ -695,7 +777,12 @@ def download_csv(n_clicks, sensor_key):
         channel = channel_part
         
         # 실제 센서 데이터 조회
-        df = api_db.get_sensor_data(device_id=device_id, channel=channel)
+        df = api_db.get_sensor_data(
+            device_id=device_id, 
+            channel=channel, 
+            use_its=True,  # ITS 데이터베이스에서 직접 조회
+            its_num=1
+        )
         
         if df.empty:
             raise PreventUpdate

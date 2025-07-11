@@ -554,42 +554,69 @@ def delete_sensors_data(sensor_pk: str) -> None:
 def get_sensor_data(device_id: str = None,
                    channel: str = None,
                    start: str = None,
-                   end: str = None) -> pd.DataFrame:
-    # 1) 날짜 계산
-    if start:
-        start_dt = parse_ymdh(start)
-    else:
-        start_dt = datetime.now() - timedelta(days=30)
+                   end: str = None,
+                   use_its: bool = False,
+                   its_num: int = 1) -> pd.DataFrame:
+    """센서 데이터를 조회합니다. ITS 데이터베이스 또는 로컬 데이터베이스에서 선택 가능합니다.
     
-    if end:
-        end_dt = parse_ymdh(end)
+    Args:
+        device_id: 디바이스 ID
+        channel: 채널 번호
+        start: 시작 시간 (YYYYMMDDHH 형식)
+        end: 종료 시간 (YYYYMMDDHH 형식)
+        use_its: ITS 데이터베이스에서 직접 조회할지 여부
+        its_num: ITS 번호 (1 또는 2)
+    
+    Returns:
+        센서 데이터 DataFrame
+    """
+    if use_its:
+        # ITS 데이터베이스에서 직접 조회
+        if start and end:
+            start_dt = parse_ymdh(start)
+            end_dt = parse_ymdh(end)
+            hours = int((end_dt - start_dt).total_seconds() / 3600)
+        else:
+            hours = 24  # 기본 24시간
+        
+        return get_its_sensor_data(device_id, channel, its_num, hours)
     else:
-        end_dt = datetime.now()
+        # 로컬 데이터베이스에서 조회 (기존 방식)
+        # 1) 날짜 계산
+        if start:
+            start_dt = parse_ymdh(start)
+        else:
+            start_dt = datetime.now() - timedelta(days=30)
+        
+        if end:
+            end_dt = parse_ymdh(end)
+        else:
+            end_dt = datetime.now()
 
-    # 2) SQL 쿼리 생성
-    sql = "SELECT * FROM sensor_data"
-    conditions = []
-    params = {}
+        # 2) SQL 쿼리 생성
+        sql = "SELECT * FROM sensor_data"
+        conditions = []
+        params = {}
 
-    if device_id:
-        conditions.append("device_id = :device_id")
-        params["device_id"] = device_id
-    if channel:
-        conditions.append("channel = :channel")
-        params["channel"] = channel
+        if device_id:
+            conditions.append("device_id = :device_id")
+            params["device_id"] = device_id
+        if channel:
+            conditions.append("channel = :channel")
+            params["channel"] = channel
 
-    # 날짜 조건 추가
-    conditions.append("time >= :start_dt")
-    conditions.append("time <= :end_dt")
-    params["start_dt"] = format_sql_datetime(start_dt)
-    params["end_dt"] = format_sql_datetime(end_dt)
+        # 날짜 조건 추가
+        conditions.append("time >= :start_dt")
+        conditions.append("time <= :end_dt")
+        params["start_dt"] = format_sql_datetime(start_dt)
+        params["end_dt"] = format_sql_datetime(end_dt)
 
-    if conditions:
-        sql += " WHERE " + " AND ".join(conditions)
-    sql += " ORDER BY time ASC"
+        if conditions:
+            sql += " WHERE " + " AND ".join(conditions)
+        sql += " ORDER BY time ASC"
 
-    stmt = text(sql)
-    return pd.read_sql(stmt, con=engine, params=params)
+        stmt = text(sql)
+        return pd.read_sql(stmt, con=engine, params=params)
 
 # 특정 시간의 센서 데이터 조회
 def get_sensor_data_by_time(device_id: str = None,
@@ -918,6 +945,190 @@ def get_user_data(its_num: int = 1) -> pd.DataFrame:
     except Exception as e:
         print(f"사용자 데이터 조회 오류: {e}")
         return pd.DataFrame()
+
+# ITS 센서 데이터 수집 및 조회 함수들
+def collect_its_sensor_data(device_id: str, channel: str, its_num: int = 1, hours: int = 24) -> dict:
+    """ITS 데이터베이스에서 센서 데이터를 수집하여 로컬 DB에 저장합니다.
+    
+    Args:
+        device_id: 디바이스 ID
+        channel: 채널 번호
+        its_num: ITS 번호 (1 또는 2)
+        hours: 수집할 시간 범위 (시간 단위)
+    
+    Returns:
+        dict: {'status': 'success'|'fail', 'count': int, 'msg': str}
+    """
+    try:
+        # ITS 데이터베이스 연결
+        eng = _get_its_engine(its_num)
+        
+        # 수집할 시간 범위 계산
+        end_time = datetime.now()
+        start_time = end_time - timedelta(hours=hours)
+        
+        # ITS 센서 데이터 조회 쿼리
+        query = text("""
+            SELECT 
+                :device_id AS device_id,
+                :channel AS channel,
+                timestamp AS time,
+                temperature,
+                humidity,
+                sv,
+                x_accel, y_accel, z_accel,
+                x_gyro, y_gyro, z_gyro
+            FROM tb_sensor_data 
+            WHERE deviceid = :device_id 
+                AND channel = :channel 
+                AND timestamp BETWEEN :start_time AND :end_time
+            ORDER BY timestamp ASC
+        """)
+        
+        params = {
+            "device_id": device_id,
+            "channel": channel,
+            "start_time": start_time,
+            "end_time": end_time
+        }
+        
+        df = pd.read_sql(query, eng, params=params)
+        
+        if df.empty:
+            return {"status": "fail", "count": 0, "msg": "수집할 데이터가 없습니다"}
+        
+        # 기존 데이터 삭제 (중복 방지)
+        delete_query = text("""
+            DELETE FROM sensor_data 
+            WHERE device_id = :device_id 
+                AND channel = :channel 
+                AND time BETWEEN :start_time AND :end_time
+        """)
+        
+        engine.execute(delete_query, params=params)
+        
+        # 새 데이터 삽입
+        df.to_sql('sensor_data', engine, if_exists='append', index=False)
+        
+        return {
+            "status": "success", 
+            "count": len(df), 
+            "msg": f"{len(df)}개의 데이터를 수집했습니다"
+        }
+        
+    except Exception as e:
+        print(f"Error collecting ITS sensor data for {device_id}/{channel}: {e}")
+        return {"status": "fail", "count": 0, "msg": str(e)}
+
+def get_its_sensor_data(device_id: str, channel: str, its_num: int = 1, hours: int = 24) -> pd.DataFrame:
+    """ITS 데이터베이스에서 직접 센서 데이터를 조회합니다.
+    
+    Args:
+        device_id: 디바이스 ID
+        channel: 채널 번호
+        its_num: ITS 번호 (1 또는 2)
+        hours: 조회할 시간 범위 (시간 단위)
+    
+    Returns:
+        센서 데이터 DataFrame
+    """
+    try:
+        # ITS 데이터베이스 연결
+        eng = _get_its_engine(its_num)
+        
+        # 조회할 시간 범위 계산
+        end_time = datetime.now()
+        start_time = end_time - timedelta(hours=hours)
+        
+        # ITS 센서 데이터 조회 쿼리
+        query = text("""
+            SELECT 
+                deviceid AS device_id,
+                channel,
+                timestamp AS time,
+                temperature,
+                humidity,
+                sv,
+                x_accel, y_accel, z_accel,
+                x_gyro, y_gyro, z_gyro
+            FROM tb_sensor_data 
+            WHERE deviceid = :device_id 
+                AND channel = :channel 
+                AND timestamp BETWEEN :start_time AND :end_time
+            ORDER BY timestamp ASC
+        """)
+        
+        params = {
+            "device_id": device_id,
+            "channel": channel,
+            "start_time": start_time,
+            "end_time": end_time
+        }
+        
+        df = pd.read_sql(query, eng, params=params)
+        
+        if not df.empty:
+            # 시간 컬럼을 datetime으로 변환
+            df['time'] = pd.to_datetime(df['time'])
+        
+        return df
+        
+    except Exception as e:
+        print(f"Error getting ITS sensor data for {device_id}/{channel}: {e}")
+        return pd.DataFrame()
+
+def collect_all_sensors_data(its_num: int = 1, hours: int = 24) -> dict:
+    """모든 센서의 데이터를 일괄 수집합니다.
+    
+    Args:
+        its_num: ITS 번호 (1 또는 2)
+        hours: 수집할 시간 범위 (시간 단위)
+    
+    Returns:
+        dict: {'status': 'success'|'fail', 'total_count': int, 'sensors': list, 'msg': str}
+    """
+    try:
+        # 모든 구조의 센서 목록 가져오기
+        structures_df = get_all_sensor_structures(its_num)
+        
+        if structures_df.empty:
+            return {"status": "fail", "total_count": 0, "sensors": [], "msg": "센서 구조를 찾을 수 없습니다"}
+        
+        total_count = 0
+        collected_sensors = []
+        
+        for _, structure in structures_df.iterrows():
+            structure_id = structure['structure_id']
+            
+            # 해당 구조의 센서 목록 가져오기
+            sensors_df = get_sensor_list_for_structure(structure_id, its_num)
+            
+            for _, sensor in sensors_df.iterrows():
+                device_id = sensor["deviceid"]
+                channel = sensor["channel"]
+                
+                # 센서 데이터 수집
+                result = collect_its_sensor_data(device_id, channel, its_num, hours)
+                
+                if result["status"] == "success":
+                    total_count += result["count"]
+                    collected_sensors.append({
+                        "device_id": device_id,
+                        "channel": channel,
+                        "structure_id": structure_id,
+                        "count": result["count"]
+                    })
+        
+        return {
+            "status": "success",
+            "total_count": total_count,
+            "sensors": collected_sensors,
+            "msg": f"총 {total_count}개의 데이터를 {len(collected_sensors)}개 센서에서 수집했습니다"
+        }
+        
+    except Exception as e:
+        print(f"Error collecting all sensors data: {e}")
+        return {"status": "fail", "total_count": 0, "sensors": [], "msg": str(e)}
 
  
     
