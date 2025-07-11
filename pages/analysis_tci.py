@@ -962,12 +962,14 @@ def update_fct_graph_and_table(formula, ceb_fct28, a, b, exp_fct28):
             b = float(b) if b is not None else 1
         except Exception:
             b = 1
+        # CEB-FIP Model Code: fct(t) = fct28 × ( t / (a + b × t) )^0.5
         y = fct28 * (t / (a + b * t)) ** 0.5
     else:
         try:
             fct28 = float(exp_fct28) if exp_fct28 is not None else 20
         except Exception:
             fct28 = 20
+        # 경험식 #1: fct(t) = fct28 × ( t / 28 )^0.5
         y = fct28 * (t / 28) ** 0.5
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=t, y=y, mode='lines', name='fct(t)', line=dict(color='#3b82f6', width=3)))
@@ -2104,18 +2106,15 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
                 if age_days <= 0:
                     fct = 0
                 else:
-                    t_ratio = age_days / 28
-                    strength_ratio = (t_ratio / (a + b * t_ratio)) ** 0.5
-                    fct = fct28 * strength_ratio
-                    print(f"DEBUG: CEB-FIP 계산 - t_ratio={t_ratio:.4f}, strength_ratio={strength_ratio:.4f}, fct={fct:.3f} MPa")
+                    fct = fct28 * (age_days / (a + b * age_days)) ** 0.5
+                    print(f"DEBUG: CEB-FIP 계산 - age_days={age_days:.1f}, fct={fct:.3f} MPa")
             else:
                 # 경험식 #1: fct(t) = fct28 × ( t / 28 )^0.5
                 if age_days <= 0:
                     fct = 0
                 else:
-                    strength_ratio = (age_days / 28) ** 0.5
-                    fct = fct28 * strength_ratio
-                    print(f"DEBUG: 경험식 #1 계산 - strength_ratio={strength_ratio:.4f}, fct={fct:.3f} MPa")
+                    fct = fct28 * (age_days / 28) ** 0.5
+                    print(f"DEBUG: 경험식 #1 계산 - age_days={age_days:.1f}, fct={fct:.3f} MPa")
         else:
             # 기본값 사용
             fc28 = 30  # 기본 압축강도
@@ -2132,8 +2131,7 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
         if formula_params and formula_params.get("formula") == "ceb":
             a_val = formula_params.get("a", 1)
             b_val = formula_params.get("b", 1)
-            t_ratio = age_days / 28
-            strength_ratio = (t_ratio / (a_val + b_val * t_ratio)) ** 0.5
+            strength_ratio = (age_days / (a_val + b_val * age_days)) ** 0.5
             formula_detail = f"fct(t) = {fct28_value} × ({age_days:.1f} / ({a_val} + {b_val} × {age_days:.1f}))^0.5 = {fct28_value} × {strength_ratio:.4f} = {fct:.3f} MPa"
         else:
             strength_ratio = (age_days / 28) ** 0.5
