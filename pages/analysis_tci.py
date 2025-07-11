@@ -1337,24 +1337,17 @@ def create_tci_3d_tab_content(concrete_pk):
                             {"label": "TCI-SXY (XY 전단)", "value": "tci_sxy"},
                             {"label": "TCI-SYZ (YZ 전단)", "value": "tci_syz"},
                             {"label": "TCI-SZX (ZX 전단)", "value": "tci_szx"},
+                            {"label": "TCI-Von Mises-P(%)", "value": "tci_von_mises_p"},
+                            {"label": "TCI-SXX-P(%)", "value": "tci_sxx_p"},
+                            {"label": "TCI-SYY-P(%)", "value": "tci_syy_p"},
+                            {"label": "TCI-SZZ-P(%)", "value": "tci_szz_p"},
+                            {"label": "TCI-SXY-P(%)", "value": "tci_sxy_p"},
+                            {"label": "TCI-SYZ-P(%)", "value": "tci_syz_p"},
+                            {"label": "TCI-SZX-P(%)", "value": "tci_szx_p"},
                         ],
                         value="tci_von_mises",
                         clearable=False,
                         style={"borderRadius": "6px"}
-                    )
-                ], md=4),
-                dbc.Col([
-                    html.Label("등온면 레벨 수", style={
-                        "fontWeight": "600", "color": "#374151", "fontSize": "13px"
-                    }),
-                    dcc.Slider(
-                        id="isosurface-levels-slider",
-                        min=3,
-                        max=5,  # 최대값을 5로 줄여서 성능 향상
-                        step=1,
-                        value=3,  # 기본값을 3으로 줄여서 성능 향상
-                        marks={i: str(i) for i in range(3, 6)},
-                        tooltip={"placement": "bottom", "always_visible": True}
                     )
                 ], md=4),
                 dbc.Col([
@@ -2058,13 +2051,12 @@ def update_crack_probability_graph(active_tab, selected_rows, tbl_data):
     Input('btn-play-tci-3d', 'n_clicks'),
     Input('tabs-main-tci', 'active_tab'),  # 탭 전환 시에도 실행되도록 추가
     Input('stress-component-selector', 'value'),
-    Input('isosurface-levels-slider', 'value'),
+    Input('tci-formula-params-store', 'data'),
     State('tbl-concrete-tci', 'selected_rows'),
     State('tbl-concrete-tci', 'data'),
-    State('tci-formula-params-store', 'data'),
     prevent_initial_call=True  # 성능 개선: 초기 호출 방지
 )
-def update_tci_3d_table(time_idx, play_click, active_tab, stress_component, isosurface_levels, selected_rows, tbl_data, formula_params):
+def update_tci_3d_table(time_idx, play_click, active_tab, stress_component, formula_params, selected_rows, tbl_data):
     import numpy as np
     
     print(f"DEBUG: update_tci_3d_table 호출됨")
@@ -2427,7 +2419,7 @@ def update_tci_3d_table(time_idx, play_click, active_tab, stress_component, isos
             print(f"콘크리트 차원 정보 가져오기 오류: {e}")
         
         # 입체 등온면 그래프 생성
-        isosurface_fig = create_3d_isosurface_figure(stress_data, stress_component, isosurface_levels, fct, concrete_dims)
+        isosurface_fig = create_3d_isosurface_figure(stress_data, stress_component, fct, concrete_dims)
         
         # 응력 범위 표시
         stress_range_text = create_stress_range_display(data, stress_component)
@@ -2453,210 +2445,116 @@ def update_tci_3d_table(time_idx, play_click, active_tab, stress_component, isos
 
 # ───────────────────── 입체 등온면 그래프 생성 함수들 ─────────────────────
 
-def create_3d_isosurface_figure(stress_data, stress_component, isosurface_levels, fct, concrete_dims=None):
-    """입체 TCI 등온면 그래프를 생성합니다."""
-    try:
-        import numpy as np
-        from scipy.interpolate import griddata
-        
-        # 좌표와 응력 데이터 추출
-        coordinates = stress_data.get('coordinates', [])
-        if not coordinates:
-            return go.Figure().add_annotation(
-                text="좌표 데이터가 없습니다.",
-                xref="paper", yref="paper",
-                x=0.5, y=0.5, showarrow=False
-            )
-        
-        # 좌표를 numpy 배열로 변환
-        coords = np.array(coordinates)
-        x_coords = coords[:, 0]
-        y_coords = coords[:, 1]
-        z_coords = coords[:, 2]
-        
-        # TCI 값 계산
-        tci_values = []
-        
-        if stress_component == "tci_von_mises":
-            # von Mises 응력 기반 TCI
-            von_mises_data = stress_data.get('stress_values', [{}])[0] if stress_data.get('stress_values') else {}
-            for node_id in stress_data.get('nodes', []):
-                vm_stress = von_mises_data.get(node_id, 0) / 1e6  # Pa를 MPa로 변환
-                tci = abs(vm_stress) / fct if fct > 0 else 0
-                tci_values.append(tci)
-        else:
-            # 개별 응력 성분 기반 TCI
-            comps = stress_data.get('stress_components', {})
-            # TCI 컴포넌트를 실제 응력 성분으로 변환
-            component_map = {
-                "tci_sxx": "SXX",
-                "tci_syy": "SYY", 
-                "tci_szz": "SZZ",
-                "tci_sxy": "SXY",
-                "tci_syz": "SYZ",
-                "tci_szx": "SZX"
-            }
-            actual_component = component_map.get(stress_component)
-            
-            if not actual_component or actual_component not in comps:
-                return go.Figure().add_annotation(
-                    text=f"{stress_component} 응력 데이터가 없습니다.",
-                    xref="paper", yref="paper",
-                    x=0.5, y=0.5, showarrow=False
-                )
-            
-            for node_id in stress_data.get('nodes', []):
-                stress_val = comps[actual_component].get(node_id, 0) / 1e6  # Pa를 MPa로 변환
-                tci = abs(stress_val) / fct if fct > 0 else 0
-                tci_values.append(tci)
-        
-        tci_values = np.array(tci_values)
-        
-        # TCI 범위 계산
-        tci_min = np.min(tci_values)
-        tci_max = np.max(tci_values)
-        
-        # TCI 위험 기준에 따른 레벨 설정
-        if tci_max <= 0.5:
-            # 안전 구간: 0 ~ 0.5
-            levels = np.linspace(0, 0.5, min(isosurface_levels, 3))
-        elif tci_max <= 0.8:
-            # 주의 구간: 0 ~ 0.8
-            levels = np.linspace(0, 0.8, min(isosurface_levels, 4))
-        elif tci_max <= 1.0:
-            # 경고 구간: 0 ~ 1.0
-            levels = np.linspace(0, 1.0, min(isosurface_levels, 5))
-        else:
-            # 위험 구간: 0 ~ 최대값 (최대 2.0으로 제한)
-            max_level = min(tci_max, 2.0)
-            levels = np.linspace(0, max_level, min(isosurface_levels, 5))
-        
-        # 3D 그리드 생성 (성능 개선: 해상도 조정)
-        grid_resolution = 30  # 50에서 30으로 줄여서 성능 향상
-        x_range = np.linspace(np.min(x_coords), np.max(x_coords), grid_resolution)
-        y_range = np.linspace(np.min(y_coords), np.max(y_coords), grid_resolution)
-        z_range = np.linspace(np.min(z_coords), np.max(z_coords), grid_resolution)
-        
-        X, Y, Z = np.meshgrid(x_range, y_range, z_range)
-        
-        # 그리드 데이터 보간 (성능 개선: nearest 방법 사용)
-        grid_tci = griddata(
-            (x_coords, y_coords, z_coords), 
-            tci_values, 
-            (X, Y, Z), 
-            method='nearest',  # linear에서 nearest로 변경하여 성능 향상
-            fill_value=tci_min
-        )
-        
-        # 등온면 그래프 생성
-        fig = go.Figure()
-        
-        # 각 레벨별 등온면 추가 (TCI 위험도에 따른 색상)
-        for i, level in enumerate(levels):
-            # TCI 위험도에 따른 색상 결정
-            if level <= 0.5:
-                color = '#22c55e'  # 초록색 (안전)
-            elif level <= 0.8:
-                color = '#eab308'  # 노란색 (주의)
-            elif level <= 1.0:
-                color = '#f97316'  # 주황색 (경고)
-            else:
-                color = '#ef4444'  # 빨간색 (위험)
-            
-            # 등온면 생성
-            fig.add_trace(go.Isosurface(
-                x=X.flatten(),
-                y=Y.flatten(),
-                z=Z.flatten(),
-                value=grid_tci.flatten(),
-                isomin=level,
-                isomax=level,
-                opacity=0.4,  # 투명도 증가
-                surface_count=1,
-                colorscale=[[0, color], [1, color]],
-                showscale=False,
-                name=f'TCI {level:.2f}'
-            ))
-        
-        # 콘크리트 외형 추가 (온도분석 페이지와 동일한 방식)
-        if concrete_dims:
-            try:
-                import ast
-                dims = ast.literal_eval(concrete_dims) if isinstance(concrete_dims, str) else concrete_dims
-                poly_nodes = np.array(dims["nodes"])
-                poly_h = float(dims["h"])
-                n = len(poly_nodes)
-                x0s, y0s = poly_nodes[:,0], poly_nodes[:,1]
-                z0s = np.zeros(n)
-                x1s, y1s = x0s, y0s
-                z1s = np.full(n, poly_h)
-                
-                # 아래면
-                fig.add_trace(go.Scatter3d(
-                    x=np.append(x0s, x0s[0]), y=np.append(y0s, y0s[0]), z=np.append(z0s, z0s[0]),
-                    mode='lines', line=dict(width=3, color='black'), showlegend=False, hoverinfo='skip'))
-                # 윗면
-                fig.add_trace(go.Scatter3d(
-                    x=np.append(x1s, x1s[0]), y=np.append(y1s, y1s[0]), z=np.append(z1s, z1s[0]),
-                    mode='lines', line=dict(width=3, color='black'), showlegend=False, hoverinfo='skip'))
-                # 기둥
-                for i in range(n):
-                    fig.add_trace(go.Scatter3d(
-                        x=[x0s[i], x1s[i]], y=[y0s[i], y1s[i]], z=[z0s[i], z1s[i]],
-                        mode='lines', line=dict(width=3, color='black'), showlegend=False, hoverinfo='skip'))
-            except Exception as e:
-                print(f"콘크리트 외형 추가 오류: {e}")
-        
-        # 레이아웃 설정 (TCI 기반)
-        component_names = {
-            "tci_von_mises": "TCI-Von Mises",
-            "tci_sxx": "TCI-X방향 정응력",
-            "tci_syy": "TCI-Y방향 정응력", 
-            "tci_szz": "TCI-Z방향 정응력",
-            "tci_sxy": "TCI-XY 전단응력",
-            "tci_syz": "TCI-YZ 전단응력",
-            "tci_szx": "TCI-ZX 전단응력"
-        }
-        
-        # TCI 위험도 범례 추가
-        legend_items = []
-        if tci_max > 1.0:
-            legend_items.append("🔴 위험 (TCI > 1.0)")
-        if tci_max > 0.8:
-            legend_items.append("🟠 경고 (0.8 < TCI ≤ 1.0)")
-        if tci_max > 0.5:
-            legend_items.append("🟡 주의 (0.5 < TCI ≤ 0.8)")
-        legend_items.append("🟢 안전 (TCI ≤ 0.5)")
-        
-        legend_text = " | ".join(legend_items)
-        
-        fig.update_layout(
-            title=f"입체 {component_names.get(stress_component, stress_component)} 등온면<br><sub>{legend_text}</sub>",
-            scene=dict(
-                xaxis_title="X (m)",
-                yaxis_title="Y (m)", 
-                zaxis_title="Z (m)",
-                camera=dict(
-                    eye=dict(x=1.5, y=1.5, z=1.5)
-                ),
-                aspectmode='data',  # 데이터 비율 유지
-                bgcolor='white'
-            ),
-            width=700,  # 크기를 줄여서 성능 향상
-            height=350,
-            margin=dict(l=0, r=0, t=50, b=0),  # 제목 공간 확보
-            uirevision='constant'  # 뷰 상태 유지
-        )
-        
-        return fig
-        
-    except Exception as e:
-        print(f"등온면 그래프 생성 오류: {e}")
+def create_3d_isosurface_figure(stress_data, stress_component, fct, concrete_dims=None):
+    import numpy as np
+    import plotly.graph_objects as go
+    from scipy.interpolate import griddata
+    # 좌표 추출
+    coordinates = stress_data.get('coordinates', [])
+    if not coordinates:
         return go.Figure().add_annotation(
-            text=f"등온면 그래프 생성 오류: {str(e)}",
+            text="좌표 데이터가 없습니다.",
             xref="paper", yref="paper",
             x=0.5, y=0.5, showarrow=False
         )
+    coords = np.array(coordinates)
+    x_coords = coords[:, 0]
+    y_coords = coords[:, 1]
+    z_coords = coords[:, 2]
+    node_ids = stress_data.get('nodes', [])
+    # 값 추출
+    tci_map = {
+        "tci_von_mises": lambda i: abs(stress_data.get('stress_values', [{}])[0].get(i, 0) / 1e6) / fct if fct > 0 else 0,
+        "tci_sxx": lambda i: abs(stress_data.get('stress_components', {}).get('SXX', {}).get(i, 0) / 1e6) / fct if fct > 0 else 0,
+        "tci_syy": lambda i: abs(stress_data.get('stress_components', {}).get('SYY', {}).get(i, 0) / 1e6) / fct if fct > 0 else 0,
+        "tci_szz": lambda i: abs(stress_data.get('stress_components', {}).get('SZZ', {}).get(i, 0) / 1e6) / fct if fct > 0 else 0,
+        "tci_sxy": lambda i: abs(stress_data.get('stress_components', {}).get('SXY', {}).get(i, 0) / 1e6) / fct if fct > 0 else 0,
+        "tci_syz": lambda i: abs(stress_data.get('stress_components', {}).get('SYZ', {}).get(i, 0) / 1e6) / fct if fct > 0 else 0,
+        "tci_szx": lambda i: abs(stress_data.get('stress_components', {}).get('SZX', {}).get(i, 0) / 1e6) / fct if fct > 0 else 0,
+    }
+    prob_map = {
+        k+"_p": lambda i, f=tci_map[k]: calculate_crack_probability(f(i)) for k in tci_map
+    }
+    tci_map.update(prob_map)
+    if stress_component not in tci_map:
+        return go.Figure().add_annotation(
+            text="지원하지 않는 성분입니다.",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+    values = np.array([tci_map[stress_component](i) for i in node_ids])
+    # 볼륨 그리드 보간
+    grid_resolution = 30
+    X, Y, Z = np.meshgrid(
+        np.linspace(np.min(x_coords), np.max(x_coords), grid_resolution),
+        np.linspace(np.min(y_coords), np.max(y_coords), grid_resolution),
+        np.linspace(np.min(z_coords), np.max(z_coords), grid_resolution)
+    )
+    grid_values = griddata((x_coords, y_coords, z_coords), values, (X, Y, Z), method='nearest', fill_value=np.nanmin(values))
+    # 컬러바/타이틀
+    if stress_component.endswith('_p'):
+        cmin, cmax = 0, 100
+        colorbar_title = '균열확률(%)'
+        colorscale = [[0, 'blue'], [1, 'red']]
+    else:
+        cmin, cmax = float(np.nanmin(values)), float(np.nanmax(values))
+        colorbar_title = 'TCI'
+        colorscale = [[0, 'green'], [0.5, 'yellow'], [1, 'red']]
+    # 볼륨
+    fig = go.Figure(data=go.Volume(
+        x=X.flatten(), y=Y.flatten(), z=Z.flatten(), value=grid_values.flatten(),
+        opacity=0.1, surface_count=15, colorscale=colorscale,
+        colorbar=dict(title=colorbar_title, thickness=10),
+        cmin=cmin, cmax=cmax, showscale=True
+    ))
+    # 콘크리트 외형 Mesh3d+Edge
+    if concrete_dims:
+        try:
+            import ast
+            dims = ast.literal_eval(concrete_dims) if isinstance(concrete_dims, str) else concrete_dims
+            poly_nodes = np.array(dims["nodes"])
+            poly_h = float(dims["h"])
+            n = len(poly_nodes)
+            x0s, y0s = poly_nodes[:,0], poly_nodes[:,1]
+            z0s = np.zeros(n)
+            x1s, y1s = x0s, y0s
+            z1s = np.full(n, poly_h)
+            verts_x = np.concatenate([x0s, x1s])
+            verts_y = np.concatenate([y0s, y1s])
+            verts_z = np.concatenate([z0s, z1s])
+            faces = []
+            for i in range(1, n-1): faces.append((0, i, i+1))
+            for i in range(1, n-1): faces.append((n, n+i+1, n+i))
+            for i in range(n):
+                nxt = (i+1)%n
+                faces.append((i, nxt, n+nxt))
+                faces.append((i, n+nxt, n+i))
+            i0, i1, i2 = zip(*faces)
+            fig.add_trace(go.Mesh3d(
+                x=verts_x, y=verts_y, z=verts_z,
+                i=i0, j=i1, k=i2,
+                color="lightgray", opacity=0.35, showscale=False
+            ))
+            # Edge
+            edges = []
+            for i in range(n):
+                edges.append((x0s[i], y0s[i], 0)); edges.append((x0s[(i+1)%n], y0s[(i+1)%n], 0))
+            for i in range(n):
+                edges.append((x1s[i], y1s[i], poly_h)); edges.append((x1s[(i+1)%n], y1s[(i+1)%n], poly_h))
+            for i in range(n):
+                edges.append((x0s[i], y0s[i], 0)); edges.append((x1s[i], y1s[i], poly_h))
+            fig.add_trace(go.Scatter3d(
+                x=[e[0] for e in edges], y=[e[1] for e in edges], z=[e[2] for e in edges],
+                mode="lines", line=dict(width=4, color="dimgray"), hoverinfo="skip", showlegend=False
+            ))
+        except Exception as e:
+            print(f"콘크리트 외형 추가 오류: {e}")
+    fig.update_layout(
+        uirevision='constant',
+        scene=dict(aspectmode='data', bgcolor='white'),
+        margin=dict(l=0, r=0, t=0, b=0)
+    )
+    return fig
 
 def create_stress_range_display(data, stress_component):
     """TCI 범위를 표시하는 텍스트를 생성합니다."""
