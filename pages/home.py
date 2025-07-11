@@ -146,12 +146,12 @@ def layout(**kwargs):
             proj_pk = row["project_pk"]
             s_code = row["s_code"]
             
-            # 해당 프로젝트의 ITS 센서 리스트 조회 (구조ID 기반) - ITS1에서 먼저 시도
-            its_sensors_df = api_db.get_sensor_list_for_structure(s_code, its_num=1)
+            # 해당 프로젝트의 ITS 센서 리스트 조회 (프로젝트 ID 기반) - ITS1에서 먼저 시도
+            its_sensors_df = api_db.get_sensor_list_for_project(proj_pk, its_num=1)
             
             # ITS1에서 센서가 없으면 ITS2에서 시도
             if its_sensors_df.empty:
-                its_sensors_df = api_db.get_sensor_list_for_structure(s_code, its_num=2)
+                its_sensors_df = api_db.get_sensor_list_for_project(proj_pk, its_num=2)
 
             # 콘크리트 리스트는 내부 DB를 사용하지 않으므로 빈 리스트
             concrete_data = []
@@ -174,6 +174,7 @@ def layout(**kwargs):
                     sensor_data.append({
                         "device_id": device_id,
                         "channel": f"Ch.{channel}",
+                        "structure": sensor.get("structure_name", "N/A"),
                         "status": status_text
                     })
 
@@ -335,6 +336,7 @@ def layout(**kwargs):
                                         columns=[
                                             {"name": "Device ID", "id": "device_id", "type": "text"},
                                             {"name": "채널", "id": "channel", "type": "text"},
+                                            {"name": "구조", "id": "structure", "type": "text"},
                                             {"name": "데이터", "id": "status", "type": "text"},
                                         ],
                                         style_table={"height": "200px", "overflowY": "auto"},
