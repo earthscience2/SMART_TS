@@ -991,12 +991,12 @@ def show_selected(sel, data):
     
     # CEB-FIB 리스트 파싱
     ceb_fib_list = []
-    if row.get('con_ceb_fib'):
+    if row.get('CEB-FIB'):
         try:
-            if isinstance(row['con_ceb_fib'], str):
-                ceb_fib_list = json.loads(row['con_ceb_fib'])
+            if isinstance(row['CEB-FIB'], str):
+                ceb_fib_list = json.loads(row['CEB-FIB'])
             else:
-                ceb_fib_list = row['con_ceb_fib']
+                ceb_fib_list = row['CEB-FIB']
         except Exception:
             ceb_fib_list = []
     
@@ -1209,12 +1209,12 @@ def apply_concrete_load(n_clicks, selected_rows, table_data):
         con_d = row.get("con_d", "")
         con_e = row.get("con_e", "")
         
-        # CEB-FIB 모델 매개변수 추출 (con_ceb_fib에서 역산)
+        # CEB-FIB 모델 매개변수 추출 (CEB-FIB에서 역산)
         con_b = ""
         con_n = ""
-        if row.get("con_ceb_fib"):
+        if row.get("CEB-FIB"):
             try:
-                ceb_fib_data = json.loads(row["con_ceb_fib"]) if isinstance(row["con_ceb_fib"], str) else row["con_ceb_fib"]
+                ceb_fib_data = json.loads(row["CEB-FIB"]) if isinstance(row["CEB-FIB"], str) else row["CEB-FIB"]
                 if ceb_fib_data and len(ceb_fib_data) >= 28:
                     # 28일 값이 E28과 같다고 가정
                     e28 = ceb_fib_data[27]
@@ -1408,7 +1408,7 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t_date, t_tim
         con_p=float(p),
         con_d=float(d),
         activate=1,
-        con_ceb_fib=elasticity_values  # 1일~28일 탄성계수 리스트 저장
+        ceb_fib=elasticity_values  # 1일~28일 탄성계수 리스트 저장
     )
 
     # 4) 성공 처리: 모달 닫기, 내부 Alert 숨기기, 테이블 갱신, 전역 알림
@@ -1542,12 +1542,12 @@ def fill_edit(opened: bool, cid):
     con_d    = row.get("con_d", "")
     con_e    = row.get("con_e", "")
     
-    # CEB-FIB 모델 매개변수 추출 (con_ceb_fib에서 역산)
+    # CEB-FIB 모델 매개변수 추출 (CEB-FIB에서 역산)
     con_b = ""
     con_n = ""
-    if row.get("con_ceb_fib"):
+    if row.get("CEB-FIB"):
         try:
-            ceb_fib_data = json.loads(row["con_ceb_fib"]) if isinstance(row["con_ceb_fib"], str) else row["con_ceb_fib"]
+            ceb_fib_data = json.loads(row["CEB-FIB"]) if isinstance(row["CEB-FIB"], str) else row["CEB-FIB"]
             if ceb_fib_data and len(ceb_fib_data) >= 28:
                 # 28일 값이 E28과 같다고 가정
                 e28 = ceb_fib_data[27]
@@ -1768,7 +1768,7 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
         con_a=float(a),
         con_p=float(p),
         con_d=float(d),
-        con_ceb_fib=elasticity_values,  # 1일~28일 탄성계수 리스트 저장
+        ceb_fib=elasticity_values,  # 1일~28일 탄성계수 리스트 저장
         activate=1
     )
 

@@ -124,7 +124,7 @@ def delete_project_data_with_log(project_pk: str) -> None:
 # 로그 기능이 추가된 콘크리트 함수들
 def add_concrete_data_with_log(project_pk: str, name: str, dims: dict, 
                      con_unit: float, con_t: str, con_a: float, con_p: float, con_d: float,
-                     activate: int) -> None:
+                     activate: int, ceb_fib: list = None) -> None:
     """로그 기능이 추가된 콘크리트 추가 함수"""
     # 1) 현재 가장 큰 concrete_pk 가져오기
     max_pk_sql = "SELECT MAX(concrete_pk) as max_pk FROM concrete"
@@ -141,9 +141,9 @@ def add_concrete_data_with_log(project_pk: str, name: str, dims: dict,
     # 3) INSERT 쿼리 실행
     sql = """
     INSERT INTO concrete 
-    (concrete_pk, project_pk, name, dims, con_unit, con_t, con_a, con_p, con_d, activate, created_at, updated_at) 
+    (concrete_pk, project_pk, name, dims, con_unit, con_t, con_a, con_p, con_d, `CEB-FIB`, activate, created_at, updated_at) 
     VALUES 
-    (:concrete_pk, :project_pk, :name, :dims, :con_unit, :con_t, :con_a, :con_p, :con_d, :activate, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    (:concrete_pk, :project_pk, :name, :dims, :con_unit, :con_t, :con_a, :con_p, :con_d, :ceb_fib, :activate, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     """
     
     params = {
@@ -156,6 +156,7 @@ def add_concrete_data_with_log(project_pk: str, name: str, dims: dict,
         "con_a": con_a,
         "con_p": con_p,
         "con_d": con_d,
+        "ceb_fib": json.dumps(ceb_fib) if ceb_fib else None,
         "activate": activate
     }
     
@@ -173,6 +174,10 @@ def update_concrete_data_with_log(concrete_pk: str, **kwargs) -> None:
     kwargs.pop('con_b', None)
     kwargs.pop('con_n', None)
     kwargs.pop('con_e', None)
+    
+    # con_ceb_fib를 CEB-FIB로 변경
+    if 'con_ceb_fib' in kwargs:
+        kwargs['CEB-FIB'] = kwargs.pop('con_ceb_fib')
     
     # 업데이트할 필드와 값만 추출
     update_fields = {k: v for k, v in kwargs.items() if v is not None}

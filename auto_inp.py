@@ -148,16 +148,16 @@ def calculate_elastic_modulus(concrete_data, analysis_time):
             log_warning("타설일 정보가 없습니다. 기본 탄성계수 3.0e10 Pa 사용")
             return 3.0e10
         
-        # CEB-FIB 모델 매개변수 가져오기 (con_ceb_fib에서 추출)
-        con_ceb_fib = concrete_data.get('con_ceb_fib')
+        # CEB-FIB 모델 매개변수 가져오기 (CEB-FIB에서 추출)
+        ceb_fib = concrete_data.get('CEB-FIB')
         
-        if con_ceb_fib:
+        if ceb_fib:
             try:
                 # JSON 문자열인 경우 파싱
-                if isinstance(con_ceb_fib, str):
-                    ceb_fib_list = json.loads(con_ceb_fib)
+                if isinstance(ceb_fib, str):
+                    ceb_fib_list = json.loads(ceb_fib)
                 else:
-                    ceb_fib_list = con_ceb_fib
+                    ceb_fib_list = ceb_fib
                 
                 if ceb_fib_list and len(ceb_fib_list) >= 28:
                     # 28일 값이 E28 (GPa 단위)
