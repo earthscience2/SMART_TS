@@ -2114,7 +2114,7 @@ def make_age_input_area(prefix, values=None):
                 style={"float": "right", "marginTop": "-8px", "marginRight": "0"}
             )
         ], style={"position": "relative", "marginBottom": "8px"}),
-        html.Div(input_fields, style={"maxHeight": "400px", "overflowY": "auto", "paddingRight": "8px"}),
+        html.Div(input_fields, style={"maxHeight": "300px", "overflowY": "auto", "paddingRight": "8px"}),
     ])
 
 # 2. 추가/수정 모달 레이아웃에서 기존 라디오/CEB-FIB 영역을 위 함수로 대체
