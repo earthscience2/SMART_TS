@@ -309,15 +309,11 @@ layout = html.Div([
                     
                     # 오른쪽 칼럼: 콘크리트 물성치
                     dbc.Col([
-                        # CEB-FIB Model 상수 박스
+                        # 재령일별 탄성계수 입력 영역
                         html.Div([
-                            html.H6("🔬 타설 콘크리트 탄성계수", className="mb-3 text-secondary fw-bold"),
-                            
-                            # 재령분석 및 직접 입력 버튼
+                            # CEB 자동채우기 버튼
                             html.Div([
-                                dbc.Button("재령분석", id="add-age-analysis", color="outline-info", className="px-3 mb-2", size="sm"),
-                                dbc.Button("직접 입력", id="add-direct-input", color="outline-secondary", className="px-3 mb-2 ms-2", size="sm"),
-                                dbc.Button("CEB-FIB 자동채우기", id="add-ceb-fib-btn", color="info", className="px-3 mb-2 ms-2", size="sm"),
+                                dbc.Button("CEB 자동채우기", id="add-age-analysis", color="info", className="px-3 mb-2", size="sm"),
                             ], className="text-center"),
                             
                             # 재령일별 탄성계수 입력 영역
@@ -465,15 +461,11 @@ layout = html.Div([
                     
                     # 오른쪽 칼럼: 콘크리트 물성치
                     dbc.Col([
-                        # CEB-FIB Model 상수 박스
+                        # 재령일별 탄성계수 입력 영역
                         html.Div([
-                            html.H6("🔬 타설 콘크리트 탄성계수", className="mb-3 text-secondary fw-bold"),
-                            
-                            # 재령분석 및 직접 입력 버튼
+                            # CEB 자동채우기 버튼
                             html.Div([
-                                dbc.Button("재령분석", id="edit-age-analysis", color="outline-info", className="px-3 mb-2", size="sm"),
-                                dbc.Button("직접 입력", id="edit-direct-input", color="outline-secondary", className="px-3 mb-2 ms-2", size="sm"),
-                                dbc.Button("CEB-FIB 자동채우기", id="edit-ceb-fib-btn", color="info", className="px-3 mb-2 ms-2", size="sm"),
+                                dbc.Button("CEB 자동채우기", id="edit-age-analysis", color="info", className="px-3 mb-2", size="sm"),
                             ], className="text-center"),
                             
                             # 재령일별 탄성계수 입력 영역
@@ -619,7 +611,7 @@ layout = html.Div([
         dbc.Modal(id="modal-age-analysis", is_open=False, size="xl", className="modal-notion", children=[
             dcc.Store(id="age-analysis-source"),  # 어느 모달에서 호출되었는지 저장
             dbc.ModalHeader([
-                html.H5("📊 재령일별 탄성계수 분석 (CEB-FIB Model)", className="mb-0 text-secondary fw-bold", style={"fontSize": "1.1rem"})
+                html.H5("📊 CEB-FIB 모델 자동채우기", className="mb-0 text-secondary fw-bold", style={"fontSize": "1.1rem"})
             ], className="border-0 pb-1"),
             dbc.ModalBody([
                 # 상단: 수식과 매개변수 섹션
@@ -711,67 +703,9 @@ layout = html.Div([
             ], className="border-0 pt-2"),
         ]),
 
-        # 직접 입력 모달
-        dbc.Modal(id="modal-direct-input", is_open=False, size="xl", className="modal-notion", children=[
-            dcc.Store(id="direct-input-source"),  # 어느 모달에서 호출되었는지 저장
-            dbc.ModalHeader([
-                html.H5("🔧 재령일별 탄성계수 직접 입력", className="mb-0 text-secondary fw-bold", style={"fontSize": "1.1rem"})
-            ], className="border-0 pb-1"),
-            dbc.ModalBody([
-                # 상단: 설명 및 안내
-                html.Div([
-                    dbc.Alert([
-                        html.I(className="fas fa-info-circle me-2"),
-                        "1일부터 28일까지의 탄성계수를 직접 입력하세요. 각 값은 GPa 단위입니다."
-                    ], color="info", className="mb-3"),
-                ]),
-                
-                # 28일치 입력 필드 (4x7 그리드)
-                html.Div([
-                    html.H6("📋 재령일별 탄성계수 입력", className="mb-3 text-secondary fw-bold"),
-                    html.Div(id="direct-input-fields", className="mb-3"),
-                ], className="bg-white p-3 rounded shadow-sm border mb-3"),
-                
-                # 경고 메시지 영역
-                html.Div([
-                    dbc.Alert(id="direct-input-alert", is_open=False, duration=3000, color="warning", className="mb-0"),
-                ]),
-            ]),
-            dbc.ModalFooter([
-                dbc.Button("적용", id="direct-input-apply", color="success", className="px-3 fw-semibold", size="sm"),
-                dbc.Button("닫기", id="direct-input-close", color="secondary", className="px-3", size="sm"),
-            ], className="border-0 pt-2"),
-        ]),
 
-        # CEB-FIB 자동채우기용 모달
-        dbc.Modal(
-            id="ceb-fib-modal",
-            is_open=False,
-            size="md",
-            children=[
-                dbc.ModalHeader("CEB-FIB 모델로 자동 채우기"),
-                dbc.ModalBody([
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Label("E28 (GPa)"),
-                            dbc.Input(id="ceb-fib-e28", type="number", step=0.1, placeholder="30.0"),
-                        ]),
-                        dbc.Col([
-                            dbc.Label("β (베타)"),
-                            dbc.Input(id="ceb-fib-beta", type="number", step=0.01, placeholder="0.2"),
-                        ]),
-                        dbc.Col([
-                            dbc.Label("n"),
-                            dbc.Input(id="ceb-fib-n", type="number", step=0.01, placeholder="0.5"),
-                        ]),
-                    ], className="g-2 mb-2"),
-                ]),
-                dbc.ModalFooter([
-                    dbc.Button("적용", id="ceb-fib-apply", color="success", className="px-3"),
-                    dbc.Button("닫기", id="ceb-fib-close", color="secondary", className="px-3"),
-                ]),
-            ]
-        ),
+
+
 ], style={"backgroundColor": "#f8f9fa", "minHeight": "100vh"})
 
 # ───────────────────── ① URL에서 프로젝트 정보 읽기
@@ -1886,26 +1820,7 @@ def toggle_age_analysis(add_btn, edit_btn, close_btn, apply_btn, is_open):
         return False, dash.no_update
     return is_open, dash.no_update
 
-# ───────────────────── ⑫-1 직접 입력 모달 토글 및 소스 추적
-@callback(
-    Output("modal-direct-input", "is_open"),
-    Output("direct-input-source", "data"),
-    Input("add-direct-input", "n_clicks"),
-    Input("edit-direct-input", "n_clicks"),
-    Input("direct-input-close", "n_clicks"),
-    Input("direct-input-apply", "n_clicks"),
-    State("modal-direct-input", "is_open"),
-    prevent_initial_call=True
-)
-def toggle_direct_input(add_btn, edit_btn, close_btn, apply_btn, is_open):
-    trig = ctx.triggered_id
-    if trig == "add-direct-input":
-        return True, "add"
-    elif trig == "edit-direct-input":
-        return True, "edit"
-    elif trig in ("direct-input-close", "direct-input-apply"):
-        return False, dash.no_update
-    return is_open, dash.no_update
+
 
 # ───────────────────── ⑬ 모달 열릴 때 입력창에 기존 값 채우기
 @callback(
@@ -1935,54 +1850,9 @@ def fill_analysis_inputs(is_open, source, add_e, add_b, add_n, edit_e, edit_b, e
         # 기본값으로 add 사용
         return add_e, add_b, add_n
 
-# ───────────────────── ⑬-1 직접 입력 필드 생성
-@callback(
-    Output("direct-input-fields", "children"),
-    Input("modal-direct-input", "is_open"),
-    State("direct-input-source", "data"),
-    State("add-e", "value"),
-    State("edit-e", "value"),
-    prevent_initial_call=True
-)
-def generate_direct_input_fields(is_open, source, add_e, edit_e):
-    if not is_open:
-        raise PreventUpdate
-    
-    # 기본값 설정 (E28 값 사용)
-    default_value = 30.0
-    if source == "add" and add_e:
-        default_value = float(add_e)
-    elif source == "edit" and edit_e:
-        default_value = float(edit_e)
-    
-    # 28일치 입력 필드 생성 (1x28 세로, 스크롤)
-    input_fields = []
-    for day_num in range(1, 29):
-        input_id = f"direct-input-day-{day_num}"
-        field = dbc.Row([
-            dbc.Col(dbc.Label(f"{day_num}일", className="form-label fw-semibold", style={"fontSize": "0.8rem", "width": "60px"}), width=2),
-            dbc.Col(dbc.Input(
-                id=input_id,
-                type="number",
-                step=0.01,
-                placeholder=f"{default_value:.1f}",
-                className="form-control-sm",
-                style={"fontSize": "0.8rem"}
-            ), width=10),
-        ], className="mb-2 align-items-center")
-        input_fields.append(field)
-    
-    return html.Div(input_fields, style={"maxHeight": "400px", "overflowY": "auto", "paddingRight": "8px"})
 
-# 적용 버튼 활성화 제어 콜백 추가
-@callback(
-    Output("direct-input-apply", "disabled"),
-    [Input(f"direct-input-day-{i}", "value") for i in range(1, 29)],
-    prevent_initial_call=True
-)
-def enable_direct_input_apply(*values):
-    # 28개 모두 값이 있어야만 적용 가능
-    return not all(v is not None and v != "" for v in values)
+
+
 
 # ───────────────────── ⑭ 재령분석 계산 및 표시
 @callback(
@@ -2141,6 +2011,8 @@ def calculate_age_analysis(e28, beta, n, is_open):
     Output("edit-e", "value", allow_duplicate=True),
     Output("edit-b", "value", allow_duplicate=True),
     Output("edit-n", "value", allow_duplicate=True),
+    *[Output(f"add-direct-input-day-{i}", "value", allow_duplicate=True) for i in range(1, 29)],
+    *[Output(f"edit-direct-input-day-{i}", "value", allow_duplicate=True) for i in range(1, 29)],
     Output("age-analysis-alert", "children", allow_duplicate=True),
     Output("age-analysis-alert", "is_open", allow_duplicate=True),
     Output("age-analysis-alert", "color", allow_duplicate=True),
@@ -2166,78 +2038,25 @@ def apply_age_analysis_values(apply_clicks, source, e28, beta, n):
         
         # 소스에 따라 적절한 모달에 값 적용
         if source == "add":
-            # add 모달에만 적용
-            return e28, beta, n, dash.no_update, dash.no_update, dash.no_update, f"✅ 1일~28일 탄성계수 값이 계산되었습니다. (예시: 1일={elasticity_values[0]}GPa, 7일={elasticity_values[6]}GPa, 28일={elasticity_values[27]}GPa)", True, "success"
+            # add 모달에만 적용 (E28, beta, n 값 + 28개 입력창)
+            return e28, beta, n, dash.no_update, dash.no_update, dash.no_update, elasticity_values, [dash.no_update] * 28, f"✅ 1일~28일 탄성계수 값이 계산되었습니다. (예시: 1일={elasticity_values[0]}GPa, 7일={elasticity_values[6]}GPa, 28일={elasticity_values[27]}GPa)", True, "success"
         elif source == "edit":
-            # edit 모달에만 적용
-            return dash.no_update, dash.no_update, dash.no_update, e28, beta, n, f"✅ 1일~28일 탄성계수 값이 계산되었습니다. (예시: 1일={elasticity_values[0]}GPa, 7일={elasticity_values[6]}GPa, 28일={elasticity_values[27]}GPa)", True, "success"
+            # edit 모달에만 적용 (E28, beta, n 값 + 28개 입력창)
+            return dash.no_update, dash.no_update, dash.no_update, e28, beta, n, [dash.no_update] * 28, elasticity_values, f"✅ 1일~28일 탄성계수 값이 계산되었습니다. (예시: 1일={elasticity_values[0]}GPa, 7일={elasticity_values[6]}GPa, 28일={elasticity_values[27]}GPa)", True, "success"
         else:
             # 소스가 명확하지 않으면 아무것도 하지 않음
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, "❌ 적용할 모달을 찾을 수 없습니다.", True, "danger"
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, [dash.no_update] * 28, [dash.no_update] * 28, "❌ 적용할 모달을 찾을 수 없습니다.", True, "danger"
             
     except Exception as e:
         error_msg = f"❌ 탄성계수 계산 중 오류 발생: {str(e)}"
         if source == "add":
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_msg, True, "danger"
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, [dash.no_update] * 28, [dash.no_update] * 28, error_msg, True, "danger"
         elif source == "edit":
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_msg, True, "danger"
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, [dash.no_update] * 28, [dash.no_update] * 28, error_msg, True, "danger"
         else:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_msg, True, "danger"
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, [dash.no_update] * 28, [dash.no_update] * 28, error_msg, True, "danger"
 
-# ───────────────────── ⑯ 직접 입력 결과 적용
-@callback(
-    Output("add-e", "value", allow_duplicate=True),
-    Output("edit-e", "value", allow_duplicate=True),
-    Output("direct-input-alert", "children", allow_duplicate=True),
-    Output("direct-input-alert", "is_open", allow_duplicate=True),
-    Output("direct-input-alert", "color", allow_duplicate=True),
-    Input("direct-input-apply", "n_clicks"),
-    State("direct-input-source", "data"),
-    # 28일치 입력값들을 State로 받기
-    *[State(f"direct-input-day-{i}", "value") for i in range(1, 29)],
-    prevent_initial_call=True
-)
-def apply_direct_input_values(apply_clicks, source, *day_values):
-    if not apply_clicks:
-        raise PreventUpdate
-    
-    try:
-        # 입력값 검증
-        elasticity_values = []
-        missing_days = []
-        
-        for i, value in enumerate(day_values, 1):
-            if value is None or value == "":
-                missing_days.append(i)
-            else:
-                try:
-                    elasticity_values.append(float(value))
-                except ValueError:
-                    missing_days.append(i)
-        
-        if missing_days:
-            return dash.no_update, dash.no_update, f"❌ 다음 날짜의 값을 입력해주세요: {', '.join(map(str, missing_days))}일", True, "danger"
-        
-        if len(elasticity_values) != 28:
-            return dash.no_update, dash.no_update, f"❌ 28일치 값이 모두 필요합니다. 현재 {len(elasticity_values)}개 입력됨", True, "danger"
-        
-        # 28일 값이 E28이므로 이를 E28 값으로 사용
-        e28_value = elasticity_values[27]  # 28일 값 (인덱스 27)
-        
-        # 소스에 따라 적절한 모달에 값 적용
-        if source == "add":
-            # add 모달에만 적용
-            return e28_value, dash.no_update, f"✅ 28일치 탄성계수가 입력되었습니다. (예시: 1일={elasticity_values[0]}GPa, 7일={elasticity_values[6]}GPa, 28일={elasticity_values[27]}GPa)", True, "success"
-        elif source == "edit":
-            # edit 모달에만 적용
-            return dash.no_update, e28_value, f"✅ 28일치 탄성계수가 입력되었습니다. (예시: 1일={elasticity_values[0]}GPa, 7일={elasticity_values[6]}GPa, 28일={elasticity_values[27]}GPa)", True, "success"
-        else:
-            # 소스가 명확하지 않으면 아무것도 하지 않음
-            return dash.no_update, dash.no_update, "❌ 적용할 모달을 찾을 수 없습니다.", True, "danger"
-            
-    except Exception as e:
-        error_msg = f"❌ 직접 입력 처리 중 오류 발생: {str(e)}"
-        return dash.no_update, dash.no_update, error_msg, True, "danger"
+
 
 # ───────────────────── ⑰ 재령일별 탄성계수 입력 영역 (추가 모달)
 @callback(
@@ -2317,80 +2136,7 @@ def make_age_input_area(prefix, values=None):
 # (구체적 코드는 파일 전체에 적용, 기존 콜백/레이아웃/입력값 처리 등 일괄 반영)
 # (이후 필요시 추가 안내)
 
-# CEB-FIB 자동채우기 모달 토글 콜백
-@callback(
-    Output("ceb-fib-modal", "is_open"),
-    Input("add-ceb-fib-btn", "n_clicks"),
-    Input("edit-ceb-fib-btn", "n_clicks"),
-    Input("ceb-fib-close", "n_clicks"),
-    Input("ceb-fib-apply", "n_clicks"),
-    State("ceb-fib-modal", "is_open"),
-    prevent_initial_call=True
-)
-def toggle_ceb_fib_modal(add_btn, edit_btn, close_btn, apply_btn, is_open):
-    trig = ctx.triggered_id
-    if trig in ("add-ceb-fib-btn", "edit-ceb-fib-btn"):
-        return True
-    elif trig in ("ceb-fib-close", "ceb-fib-apply"):
-        return False
-    return is_open
 
-
-
-# CEB-FIB 적용 시 28개 입력창 자동 채움 콜백 (추가 모달용)
-@callback(
-    *[Output(f"add-direct-input-day-{i}", "value", allow_duplicate=True) for i in range(1, 29)],
-    Input("ceb-fib-apply", "n_clicks"),
-    State("ceb-fib-e28", "value"),
-    State("ceb-fib-beta", "value"),
-    State("ceb-fib-n", "value"),
-    State("ceb-fib-modal", "is_open"),
-    prevent_initial_call=True
-)
-def apply_ceb_fib_values_add(apply_clicks, e28, beta, n, is_open):
-    if not apply_clicks or not is_open:
-        raise PreventUpdate
-    
-    if e28 is None or beta is None or n is None:
-        raise PreventUpdate
-    
-    # CEB-FIB 모델 계산: E(t) = E28 * (t/(t+β))^n
-    days = list(range(1, 29))
-    elasticity_values = []
-    
-    for t in days:
-        e_t = e28 * ((t / (t + beta)) ** n)
-        elasticity_values.append(round(e_t, 2))
-    
-    return elasticity_values
-
-# CEB-FIB 적용 시 28개 입력창 자동 채움 콜백 (수정 모달용)
-@callback(
-    *[Output(f"edit-direct-input-day-{i}", "value", allow_duplicate=True) for i in range(1, 29)],
-    Input("ceb-fib-apply", "n_clicks"),
-    State("ceb-fib-e28", "value"),
-    State("ceb-fib-beta", "value"),
-    State("ceb-fib-n", "value"),
-    State("ceb-fib-modal", "is_open"),
-    State("modal-edit", "is_open"),
-    prevent_initial_call=True
-)
-def apply_ceb_fib_values_edit(apply_clicks, e28, beta, n, is_open, edit_is_open):
-    if not apply_clicks or not is_open or not edit_is_open:
-        raise PreventUpdate
-    
-    if e28 is None or beta is None or n is None:
-        raise PreventUpdate
-    
-    # CEB-FIB 모델 계산: E(t) = E28 * (t/(t+β))^n
-    days = list(range(1, 29))
-    elasticity_values = []
-    
-    for t in days:
-        e_t = e28 * ((t / (t + beta)) ** n)
-        elasticity_values.append(round(e_t, 2))
-    
-    return elasticity_values
 
 
 
