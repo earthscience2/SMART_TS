@@ -2014,22 +2014,22 @@ def apply_age_analysis_values(apply_clicks, source, e28, beta, n):
         # 소스에 따라 적절한 모달에 값 적용
         if source == "add":
             # add 모달에만 적용 (E28, beta, n 값 + 28개 입력창)
-            return e28, beta, n, dash.no_update, dash.no_update, dash.no_update, elasticity_values, f"✅ 1일~28일 탄성계수 값이 계산되었습니다. (예시: 1일={elasticity_values[0]}GPa, 7일={elasticity_values[6]}GPa, 28일={elasticity_values[27]}GPa)", True, "success"
+            return e28, beta, n, dash.no_update, dash.no_update, dash.no_update, *elasticity_values, f"✅ 1일~28일 탄성계수 값이 계산되었습니다. (예시: 1일={elasticity_values[0]}GPa, 7일={elasticity_values[6]}GPa, 28일={elasticity_values[27]}GPa)", True, "success"
         elif source == "edit":
             # edit 모달에만 적용 (E28, beta, n 값만)
-            return dash.no_update, dash.no_update, dash.no_update, e28, beta, n, [dash.no_update] * 28, f"✅ E28, β, n 값이 적용되었습니다. (E28={e28}GPa, β={beta}, n={n})", True, "success"
+            return dash.no_update, dash.no_update, dash.no_update, e28, beta, n, *([dash.no_update] * 28), f"✅ E28, β, n 값이 적용되었습니다. (E28={e28}GPa, β={beta}, n={n})", True, "success"
         else:
             # 소스가 명확하지 않으면 아무것도 하지 않음
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, [dash.no_update] * 28, "❌ 적용할 모달을 찾을 수 없습니다.", True, "danger"
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, *([dash.no_update] * 28), "❌ 적용할 모달을 찾을 수 없습니다.", True, "danger"
             
     except Exception as e:
         error_msg = f"❌ 탄성계수 계산 중 오류 발생: {str(e)}"
         if source == "add":
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, [dash.no_update] * 28, error_msg, True, "danger"
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, *([dash.no_update] * 28), error_msg, True, "danger"
         elif source == "edit":
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, [dash.no_update] * 28, error_msg, True, "danger"
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, *([dash.no_update] * 28), error_msg, True, "danger"
         else:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, [dash.no_update] * 28, error_msg, True, "danger"
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, *([dash.no_update] * 28), error_msg, True, "danger"
 
 
 
