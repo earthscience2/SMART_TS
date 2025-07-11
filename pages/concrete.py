@@ -311,11 +311,6 @@ layout = html.Div([
                     dbc.Col([
                         # 재령일별 탄성계수 입력 영역
                         html.Div([
-                            # CEB 자동채우기 버튼
-                            html.Div([
-                                dbc.Button("CEB 자동채우기", id="add-age-analysis", color="info", className="px-3 mb-2", size="sm"),
-                            ], className="text-center"),
-                            
                             # 재령일별 탄성계수 입력 영역
                             html.Div(id="add-age-input-area"),
                         ], className="bg-white p-3 rounded shadow-sm border mb-3"),
@@ -1784,7 +1779,7 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
 @callback(
     Output("modal-age-analysis", "is_open"),
     Output("age-analysis-source", "data"),
-    Input("add-age-analysis", "n_clicks"),
+    Input("add-age-analysis-btn", "n_clicks"),
     Input("edit-age-analysis", "n_clicks"),
     Input("age-analysis-close", "n_clicks"),
     Input("age-analysis-apply", "n_clicks"),
@@ -1793,7 +1788,7 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
 )
 def toggle_age_analysis(add_btn, edit_btn, close_btn, apply_btn, is_open):
     trig = ctx.triggered_id
-    if trig == "add-age-analysis" and add_btn:
+    if trig == "add-age-analysis-btn" and add_btn:
         return True, "add"
     elif trig == "edit-age-analysis" and edit_btn:
         return True, "edit"
