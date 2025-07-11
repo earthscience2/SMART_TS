@@ -317,6 +317,7 @@ layout = html.Div([
                             html.Div([
                                 dbc.Button("재령분석", id="add-age-analysis", color="outline-info", className="px-3 mb-2", size="sm"),
                                 dbc.Button("직접 입력", id="add-direct-input", color="outline-secondary", className="px-3 mb-2 ms-2", size="sm"),
+                                dbc.Button("CEB-FIB 자동채우기", id="add-ceb-fib-btn", color="info", className="px-3 mb-2 ms-2", size="sm"),
                             ], className="text-center"),
                             
                             # 재령일별 탄성계수 입력 영역
@@ -472,6 +473,7 @@ layout = html.Div([
                             html.Div([
                                 dbc.Button("재령분석", id="edit-age-analysis", color="outline-info", className="px-3 mb-2", size="sm"),
                                 dbc.Button("직접 입력", id="edit-direct-input", color="outline-secondary", className="px-3 mb-2 ms-2", size="sm"),
+                                dbc.Button("CEB-FIB 자동채우기", id="edit-ceb-fib-btn", color="info", className="px-3 mb-2 ms-2", size="sm"),
                             ], className="text-center"),
                             
                             # 재령일별 탄성계수 입력 영역
@@ -2240,10 +2242,12 @@ def apply_direct_input_values(apply_clicks, source, *day_values):
 # ───────────────────── ⑰ 재령일별 탄성계수 입력 영역 (추가 모달)
 @callback(
     Output("add-age-input-area", "children"),
-    Input("init", "n_intervals"),
-    prevent_initial_call=False
+    Input("modal-add", "is_open"),
+    prevent_initial_call=True
 )
-def render_add_age_input_area(n):
+def render_add_age_input_area(is_open):
+    if not is_open:
+        raise PreventUpdate
     return make_age_input_area("add")
 
 # ───────────────────── ⑱ 재령일별 탄성계수 입력 영역 (수정 모달)
@@ -2299,14 +2303,7 @@ def make_age_input_area(prefix, values=None):
         ], className="mb-2 align-items-center")
         input_fields.append(field)
     
-    # CEB-FIB 버튼과 직접 입력 버튼 추가
-    button_row = html.Div([
-        dbc.Button("CEB-FIB로 자동 채우기", id=f"{prefix}-ceb-fib-btn", color="info", className="px-3 mb-2", size="sm"),
-        dbc.Button("직접 입력", id=f"{prefix}-direct-input", color="outline-secondary", className="px-3 mb-2 ms-2", size="sm"),
-    ], className="text-center")
-    
     return html.Div([
-        button_row,
         html.H6("📋 재령일별 탄성계수 입력", className="mb-3 text-secondary fw-bold"),
         html.Div(input_fields, style={"maxHeight": "400px", "overflowY": "auto", "paddingRight": "8px"}),
     ])
@@ -2338,10 +2335,11 @@ def toggle_ceb_fib_modal(add_btn, edit_btn, close_btn, apply_btn, is_open):
         return False
     return is_open
 
-# CEB-FIB 적용 시 28개 입력창 자동 채움 콜백
+
+
+# CEB-FIB 적용 시 28개 입력창 자동 채움 콜백 (추가 모달용)
 @callback(
     *[Output(f"add-direct-input-day-{i}", "value", allow_duplicate=True) for i in range(1, 29)],
-    *[Output(f"edit-direct-input-day-{i}", "value", allow_duplicate=True) for i in range(1, 29)],
     Input("ceb-fib-apply", "n_clicks"),
     State("ceb-fib-e28", "value"),
     State("ceb-fib-beta", "value"),
@@ -2349,7 +2347,7 @@ def toggle_ceb_fib_modal(add_btn, edit_btn, close_btn, apply_btn, is_open):
     State("ceb-fib-modal", "is_open"),
     prevent_initial_call=True
 )
-def apply_ceb_fib_values(apply_clicks, e28, beta, n, is_open):
+def apply_ceb_fib_values_add(apply_clicks, e28, beta, n, is_open):
     if not apply_clicks or not is_open:
         raise PreventUpdate
     
@@ -2364,8 +2362,35 @@ def apply_ceb_fib_values(apply_clicks, e28, beta, n, is_open):
         e_t = e28 * ((t / (t + beta)) ** n)
         elasticity_values.append(round(e_t, 2))
     
-    # add와 edit 모달 모두에 적용 (총 56개 출력)
-    return elasticity_values + elasticity_values
+    return elasticity_values
+
+# CEB-FIB 적용 시 28개 입력창 자동 채움 콜백 (수정 모달용)
+@callback(
+    *[Output(f"edit-direct-input-day-{i}", "value", allow_duplicate=True) for i in range(1, 29)],
+    Input("ceb-fib-apply", "n_clicks"),
+    State("ceb-fib-e28", "value"),
+    State("ceb-fib-beta", "value"),
+    State("ceb-fib-n", "value"),
+    State("ceb-fib-modal", "is_open"),
+    State("modal-edit", "is_open"),
+    prevent_initial_call=True
+)
+def apply_ceb_fib_values_edit(apply_clicks, e28, beta, n, is_open, edit_is_open):
+    if not apply_clicks or not is_open or not edit_is_open:
+        raise PreventUpdate
+    
+    if e28 is None or beta is None or n is None:
+        raise PreventUpdate
+    
+    # CEB-FIB 모델 계산: E(t) = E28 * (t/(t+β))^n
+    days = list(range(1, 29))
+    elasticity_values = []
+    
+    for t in days:
+        e_t = e28 * ((t / (t + beta)) ** n)
+        elasticity_values.append(round(e_t, 2))
+    
+    return elasticity_values
 
 
 
