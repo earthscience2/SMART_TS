@@ -751,7 +751,7 @@ def parse_url_project(search):
             # AD 권한이면 모든 프로젝트 조회
             if grade == "AD":
                 project_query = text("""
-                    SELECT projectid, name 
+                    SELECT projectid, projectname 
                     FROM tb_project 
                     WHERE projectid = :project_id
                     LIMIT 1
@@ -778,7 +778,7 @@ def parse_url_project(search):
                     ]
                 
                 project_query = text("""
-                    SELECT projectid, name 
+                    SELECT projectid, projectname 
                     FROM tb_project 
                     WHERE projectid = :project_id
                     LIMIT 1
@@ -791,7 +791,7 @@ def parse_url_project(search):
                     html.A("홈으로 돌아가기", href="/", className="alert-link")
                 ]
             
-            project_name = df_project.iloc[0]["name"]
+            project_name = df_project.iloc[0]["projectname"]
             return project_pk, f"📁 현재 프로젝트: {project_name}"
             
         except Exception as db_error:
