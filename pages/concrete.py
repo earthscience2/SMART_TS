@@ -36,8 +36,7 @@ from utils.encryption import parse_project_key_from_url
 register_page(__name__, path="/concrete", title="콘크리트 관리")
 
 # 프로젝트 메타데이터 (URL 파라미터 파싱에 사용)
-# 내부 DB 대신 외부 ITS 서버에서 프로젝트 정보를 가져옵니다
-projects_df = pd.DataFrame()  # 빈 DataFrame으로 초기화
+# 외부 ITS 서버에서 프로젝트 정보를 가져옵니다
 
 # ────────────────────────────── 3-D 헬퍼 ─────────────────────────────
 
@@ -724,16 +723,83 @@ def parse_url_project(search):
                 html.A("홈으로 돌아가기", href="/", className="alert-link")
             ]
         
-        # 프로젝트 정보 조회 (project_pk가 문자열일 수 있음)
-        project_info = projects_df[projects_df["project_pk"] == project_pk]
-        if project_info.empty:
+        # 외부 ITS 서버에서 프로젝트 정보 조회
+        try:
+            # 로그인된 사용자 정보 가져오기
+            from flask import request
+            user_id = request.cookies.get("login_user")
+            if not user_id:
+                return None, [
+                    "로그인이 필요합니다. ",
+                    html.A("홈으로 돌아가기", href="/", className="alert-link")
+                ]
+            
+            # 사용자 권한 정보 조회
+            from api_db import _get_its_engine, text
+            eng = _get_its_engine(1)
+            user_query = text("SELECT userid, grade FROM tb_user WHERE userid = :uid LIMIT 1")
+            df_user = pd.read_sql(user_query, eng, params={"uid": user_id})
+            
+            if df_user.empty:
+                return None, [
+                    "사용자 정보를 찾을 수 없습니다. ",
+                    html.A("홈으로 돌아가기", href="/", className="alert-link")
+                ]
+            
+            grade = df_user.iloc[0]["grade"]
+            
+            # AD 권한이면 모든 프로젝트 조회
+            if grade == "AD":
+                project_query = text("""
+                    SELECT projectid, name 
+                    FROM tb_project 
+                    WHERE projectid = :project_id
+                    LIMIT 1
+                """)
+                df_project = pd.read_sql(project_query, eng, params={"project_id": project_pk})
+            else:
+                # 일반 사용자의 경우 접근 가능한 프로젝트만
+                auth_query = text("SELECT id FROM tb_sensor_auth_mapping WHERE userid = :uid")
+                df_auth = pd.read_sql(auth_query, eng, params={"uid": user_id})
+                
+                if df_auth.empty:
+                    return None, [
+                        "접근 권한이 없습니다. ",
+                        html.A("홈으로 돌아가기", href="/", className="alert-link")
+                    ]
+                
+                auth_list = df_auth["id"].tolist()
+                
+                # 접근 가능한 프로젝트인지 확인
+                if project_pk not in auth_list:
+                    return None, [
+                        f"프로젝트 {project_pk}에 대한 접근 권한이 없습니다. ",
+                        html.A("홈으로 돌아가기", href="/", className="alert-link")
+                    ]
+                
+                project_query = text("""
+                    SELECT projectid, name 
+                    FROM tb_project 
+                    WHERE projectid = :project_id
+                    LIMIT 1
+                """)
+                df_project = pd.read_sql(project_query, eng, params={"project_id": project_pk})
+            
+            if df_project.empty:
+                return None, [
+                    f"프로젝트 ID {project_pk}를 찾을 수 없습니다. ",
+                    html.A("홈으로 돌아가기", href="/", className="alert-link")
+                ]
+            
+            project_name = df_project.iloc[0]["name"]
+            return project_pk, f"📁 현재 프로젝트: {project_name}"
+            
+        except Exception as db_error:
+            print(f"Database error in parse_url_project: {db_error}")
             return None, [
-                f"프로젝트 ID {project_pk}를 찾을 수 없습니다. ",
+                f"프로젝트 정보를 조회할 수 없습니다: {str(db_error)} ",
                 html.A("홈으로 돌아가기", href="/", className="alert-link")
             ]
-        
-        project_name = project_info.iloc[0]["name"]
-        return project_pk, f"📁 현재 프로젝트: {project_name}"
         
     except Exception as e:
         return None, [
