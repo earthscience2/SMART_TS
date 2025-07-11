@@ -435,11 +435,6 @@ layout = html.Div([
                     dbc.Col([
                         # 재령일별 탄성계수 입력 영역
                         html.Div([
-                            # CEB 자동채우기 버튼
-                            html.Div([
-                                dbc.Button("CEB 자동채우기", id="edit-age-analysis", color="info", className="px-3 mb-2", size="sm"),
-                            ], className="text-center"),
-                            
                             # 재령일별 탄성계수 입력 영역
                             html.Div(id="edit-age-input-area"),
                         ], className="bg-white p-3 rounded shadow-sm border mb-3"),
@@ -1654,7 +1649,7 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, t_date, t_time, a, p, d):
         con_a=float(a),
         con_p=float(p),
         con_d=float(d),
-        ceb_fib=elasticity_values,  # 기존 CEB-FIB 값 유지
+        **{"CEB-FIB": elasticity_values},  # 올바른 컬럼명 사용
         activate=1
     )
 
@@ -1674,18 +1669,15 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, t_date, t_time, a, p, d):
     Output("modal-age-analysis", "is_open"),
     Output("age-analysis-source", "data"),
     Input("add-age-analysis-btn", "n_clicks"),
-    Input("edit-age-analysis", "n_clicks"),
     Input("age-analysis-close", "n_clicks"),
     Input("age-analysis-apply", "n_clicks"),
     State("modal-age-analysis", "is_open"),
     prevent_initial_call=True
 )
-def toggle_age_analysis(add_btn, edit_btn, close_btn, apply_btn, is_open):
+def toggle_age_analysis(add_btn, close_btn, apply_btn, is_open):
     trig = ctx.triggered_id
     if trig == "add-age-analysis-btn" and add_btn:
         return True, "add"
-    elif trig == "edit-age-analysis" and edit_btn:
-        return True, "edit"
     elif trig in ("age-analysis-close", "age-analysis-apply"):
         return False, dash.no_update
     return is_open, dash.no_update
@@ -1887,16 +1879,8 @@ def apply_age_analysis_values(apply_clicks, source, e28, beta, n):
             e_t = e28 * ((t / (t + beta)) ** n)
             elasticity_values.append(round(e_t, 2))  # 소수점 2자리까지 반올림
         
-        # 소스에 따라 적절한 모달에 값 적용
-        if source == "add":
-            # add 모달에만 적용 (28개 입력창)
-            return *elasticity_values, f"✅ 1일~28일 탄성계수 값이 계산되었습니다. (예시: 1일={elasticity_values[0]}GPa, 7일={elasticity_values[6]}GPa, 28일={elasticity_values[27]}GPa)", True, "success"
-        elif source == "edit":
-            # edit 모달에만 적용 (28개 입력창) - 현재는 add 모달만 지원
-            return *([dash.no_update] * 28), f"✅ 1일~28일 탄성계수 값이 계산되었습니다. (예시: 1일={elasticity_values[0]}GPa, 7일={elasticity_values[6]}GPa, 28일={elasticity_values[27]}GPa)", True, "success"
-        else:
-            # 소스가 명확하지 않으면 아무것도 하지 않음
-            return *([dash.no_update] * 28), "❌ 적용할 모달을 찾을 수 없습니다.", True, "danger"
+        # add 모달에만 적용 (28개 입력창)
+        return *elasticity_values, f"✅ 1일~28일 탄성계수 값이 계산되었습니다. (예시: 1일={elasticity_values[0]}GPa, 7일={elasticity_values[6]}GPa, 28일={elasticity_values[27]}GPa)", True, "success"
             
     except Exception as e:
         error_msg = f"❌ 탄성계수 계산 중 오류 발생: {str(e)}"
