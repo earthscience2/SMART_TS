@@ -263,9 +263,20 @@ def update_concrete_data(concrete_pk: str, **kwargs) -> None:
     # dims가 있다면 JSON 문자열로 변환
     if 'dims' in update_fields:
         update_fields['dims'] = json.dumps(update_fields['dims'])
+    
+    # CEB-FIB가 있다면 JSON 문자열로 변환
+    if 'CEB-FIB' in update_fields:
+        update_fields['CEB-FIB'] = json.dumps(update_fields['CEB-FIB'])
 
-    # SQL 쿼리 동적 생성
-    set_clause = ", ".join([f"{k} = :{k}" for k in update_fields.keys()])
+    # 하이픈이 포함된 컬럼명을 백틱으로 감싸기
+    set_clause_parts = []
+    for k in update_fields.keys():
+        if '-' in k:
+            set_clause_parts.append(f"`{k}` = :{k}")
+        else:
+            set_clause_parts.append(f"{k} = :{k}")
+    
+    set_clause = ", ".join(set_clause_parts)
     sql = f"""
     UPDATE concrete 
     SET {set_clause}, updated_at = CURRENT_TIMESTAMP 
