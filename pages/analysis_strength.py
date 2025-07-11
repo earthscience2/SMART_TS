@@ -44,6 +44,7 @@ layout = dbc.Container(
             dbc.Button(id="btn-play-strength"),
             dbc.Button(id="btn-pause-strength"),
             dcc.Dropdown(id="speed-dropdown-strength"),
+            dcc.Interval(id="play-interval-strength", interval=1000, n_intervals=0, disabled=True),
             dbc.Button(id="btn-save-3d-strength-image"),
             dbc.Button(id="btn-save-3d-strength-image", style={"display": "none"}),
             # 속도 버튼들
@@ -980,10 +981,137 @@ def read_inp_nodes_and_temperatures(inp_path):
     
     return nodes, temperatures, time_stamps
 
+def read_inp_nodes_and_elements(inp_path):
+    """INP 파일에서 노드 좌표와 엘리먼트 정보를 추출합니다."""
+    nodes = {}
+    elements = []
+    
+    try:
+        with open(inp_path, 'r') as f:
+            lines = f.readlines()
+        
+        node_section = False
+        element_section = False
+        
+        for line in lines:
+            line = line.strip()
+            
+            # 노드 섹션 처리
+            if line.startswith('*NODE'):
+                node_section = True
+                element_section = False
+                continue
+            elif line.startswith('*ELEMENT'):
+                node_section = False
+                element_section = True
+                continue
+            elif line.startswith('*'):
+                node_section = False
+                element_section = False
+                continue
+            
+            # 노드 좌표 파싱
+            if node_section and line:
+                parts = line.split(',')
+                if len(parts) >= 4:
+                    node_id = int(parts[0])
+                    x = float(parts[1])
+                    y = float(parts[2])
+                    z = float(parts[3])
+                    nodes[node_id] = {"x": x, "y": y, "z": z}
+            
+            # 엘리먼트 정보 파싱
+            elif element_section and line:
+                parts = line.split(',')
+                if len(parts) >= 4:  # 최소 4개 노드 (테트라헤드론)
+                    element_nodes = [int(parts[i]) for i in range(1, len(parts)) if parts[i].strip()]
+                    if len(element_nodes) >= 3:  # 최소 3개 노드 필요
+                        elements.append(element_nodes)
+                    
+    except Exception as e:
+        print(f"INP 엘리먼트 파싱 오류: {e}")
+    
+    return nodes, elements
+
 def read_inp_nodes(inp_path):
     """INP 파일에서 노드 좌표만 추출합니다."""
     nodes, _, _ = read_inp_nodes_and_temperatures(inp_path)
-    return nodes 
+    return nodes
+
+def create_mesh3d_figure(nodes_dict, elements, values_dict, title, colorbar_title, colorscale):
+    """Mesh3d 그래프를 생성합니다."""
+    # 노드 좌표 배열 생성
+    x_coords = []
+    y_coords = []
+    z_coords = []
+    node_ids = list(nodes_dict.keys())
+    node_id_to_index = {node_id: i for i, node_id in enumerate(node_ids)}
+    
+    for node_id in node_ids:
+        node = nodes_dict[node_id]
+        x_coords.append(node["x"])
+        y_coords.append(node["y"])
+        z_coords.append(node["z"])
+    
+    # 엘리먼트 인덱스 배열 생성
+    i_indices = []
+    j_indices = []
+    k_indices = []
+    element_values = []
+    
+    for element in elements:
+        if len(element) >= 3:
+            # 첫 번째 삼각형
+            i_indices.append(node_id_to_index[element[0]])
+            j_indices.append(node_id_to_index[element[1]])
+            k_indices.append(node_id_to_index[element[2]])
+            
+            # 엘리먼트의 평균값 계산
+            avg_value = sum(values_dict.get(node_id, 0) for node_id in element[:3]) / 3
+            element_values.append(avg_value)
+            
+            # 4개 이상의 노드가 있으면 추가 삼각형 생성
+            if len(element) >= 4:
+                # 두 번째 삼각형
+                i_indices.append(node_id_to_index[element[0]])
+                j_indices.append(node_id_to_index[element[2]])
+                k_indices.append(node_id_to_index[element[3]])
+                
+                avg_value2 = sum(values_dict.get(node_id, 0) for node_id in [element[0], element[2], element[3]]) / 3
+                element_values.append(avg_value2)
+    
+    # Mesh3d 그래프 생성
+    fig = go.Figure(data=go.Mesh3d(
+        x=x_coords,
+        y=y_coords,
+        z=z_coords,
+        i=i_indices,
+        j=j_indices,
+        k=k_indices,
+        intensity=element_values,
+        colorscale=colorscale,
+        colorbar=dict(title=colorbar_title, thickness=10),
+        showscale=True,
+        opacity=0.8,
+        hoverinfo='all',
+        hovertemplate='<b>엘리먼트</b><br>' +
+                     f'{colorbar_title}: %{{intensity:.2f}}<br>' +
+                     '<extra></extra>'
+    ))
+    
+    fig.update_layout(
+        title=title,
+        scene=dict(
+            aspectmode='data',
+            bgcolor='white',
+            xaxis_title='X (m)',
+            yaxis_title='Y (m)',
+            zaxis_title='Z (m)'
+        ),
+        margin=dict(l=0, r=0, t=30, b=0)
+    )
+    
+    return fig
 
 # ────────────── 등가재령 및 강도/탄성계수 계산 함수 ──────────────
 def calc_equivalent_age(chronological_age, temperatures, tref=20):
@@ -1124,6 +1252,14 @@ def update_strength_analysis(selected_rows, formula_params, time_idx, active_tab
         if not nodes:
             return html.Div("노드 정보를 읽을 수 없습니다."), "", None
         
+        # 엘리먼트 정보도 추출 (면 표시용)
+        nodes_dict, elements = read_inp_nodes_and_elements(current_inp_file)
+        if not elements:
+            # 엘리먼트가 없으면 점 표시로 fallback
+            use_mesh = False
+        else:
+            use_mesh = True
+        
         # 현재 시간에 해당하는 온도 데이터 필터링
         current_temps = []
         if temperatures:
@@ -1173,14 +1309,9 @@ def update_strength_analysis(selected_rows, formula_params, time_idx, active_tab
             formula_params["ec_s"]
         )
         
-        # 3D 그래프 생성
-        x_coords = [node["x"] for node in nodes]
-        y_coords = [node["y"] for node in nodes]
-        z_coords = [node["z"] for node in nodes]
-        
         # 노드별 온도에 따른 강도/탄성계수 계산
-        strength_values = []
-        elastic_values = []
+        strength_values = {}
+        elastic_values = {}
         
         for node in nodes:
             node_id = node["id"]
@@ -1219,60 +1350,74 @@ def update_strength_analysis(selected_rows, formula_params, time_idx, active_tab
                 node_fc = fc_t
                 node_ec = ec_t
             
-            strength_values.append(node_fc)
-            elastic_values.append(node_ec)
+            strength_values[node_id] = node_fc
+            elastic_values[node_id] = node_ec
         
-        # 3D 강도 그래프
-        strength_fig = go.Figure(data=go.Scatter3d(
-            x=x_coords, y=y_coords, z=z_coords, 
-            mode='markers',
-            marker=dict(
-                size=5,
-                color=strength_values,
-                colorscale='Viridis',
-                colorbar=dict(title='강도 (MPa)', thickness=10),
-                showscale=True
-            ),
-            text=[f"노드 {node['id']}<br>강도: {val:.2f} MPa" for node, val in zip(nodes, strength_values)],
-            hovertemplate='%{text}<extra></extra>'
-        ))
-        strength_fig.update_layout(
-            title=f"{concrete_name} - 3D 강도 분포",
-            scene=dict(
-                aspectmode='data', 
-                bgcolor='white',
-                xaxis_title='X (m)',
-                yaxis_title='Y (m)',
-                zaxis_title='Z (m)'
-            ),
-            margin=dict(l=0, r=0, t=30, b=0)
-        )
-        
-        # 3D 탄성계수 그래프
-        elastic_fig = go.Figure(data=go.Scatter3d(
-            x=x_coords, y=y_coords, z=z_coords, 
-            mode='markers',
-            marker=dict(
-                size=5,
-                color=elastic_values,
-                colorscale='Plasma',
-                colorbar=dict(title='탄성계수 (MPa)', thickness=10),
-                showscale=True
-            ),
-            text=[f"노드 {node['id']}<br>탄성계수: {val:.0f} MPa" for node, val in zip(nodes, elastic_values)],
-            hovertemplate='%{text}<extra></extra>'
-        ))
-        elastic_fig.update_layout(
-            title=f"{concrete_name} - 3D 탄성계수 분포",
-            scene=dict(
-                aspectmode='data', 
-                bgcolor='white',
-                xaxis_title='X (m)',
-                yaxis_title='Y (m)',
-                zaxis_title='Z (m)'
-            ),
-            margin=dict(l=0, r=0, t=30, b=0)
-        )
+        # 3D 그래프 생성
+        if use_mesh and elements:
+            # 면 표시 (Mesh3d)
+            # 엘리먼트별 평균 강도/탄성계수 계산
+            strength_fig = create_mesh3d_figure(nodes_dict, elements, strength_values, 
+                                              f"{concrete_name} - 3D 강도 분포", "강도 (MPa)", "Viridis")
+            elastic_fig = create_mesh3d_figure(nodes_dict, elements, elastic_values, 
+                                             f"{concrete_name} - 3D 탄성계수 분포", "탄성계수 (MPa)", "Plasma")
+        else:
+            # 점 표시 (Scatter3d) - fallback
+            x_coords = [node["x"] for node in nodes]
+            y_coords = [node["y"] for node in nodes]
+            z_coords = [node["z"] for node in nodes]
+            strength_vals = [strength_values.get(node["id"], fc_t) for node in nodes]
+            elastic_vals = [elastic_values.get(node["id"], ec_t) for node in nodes]
+            
+            strength_fig = go.Figure(data=go.Scatter3d(
+                x=x_coords, y=y_coords, z=z_coords, 
+                mode='markers',
+                marker=dict(
+                    size=5,
+                    color=strength_vals,
+                    colorscale='Viridis',
+                    colorbar=dict(title='강도 (MPa)', thickness=10),
+                    showscale=True
+                ),
+                text=[f"노드 {node['id']}<br>강도: {val:.2f} MPa" for node, val in zip(nodes, strength_vals)],
+                hovertemplate='%{text}<extra></extra>'
+            ))
+            strength_fig.update_layout(
+                title=f"{concrete_name} - 3D 강도 분포",
+                scene=dict(
+                    aspectmode='data', 
+                    bgcolor='white',
+                    xaxis_title='X (m)',
+                    yaxis_title='Y (m)',
+                    zaxis_title='Z (m)'
+                ),
+                margin=dict(l=0, r=0, t=30, b=0)
+            )
+            
+            elastic_fig = go.Figure(data=go.Scatter3d(
+                x=x_coords, y=y_coords, z=z_coords, 
+                mode='markers',
+                marker=dict(
+                    size=5,
+                    color=elastic_vals,
+                    colorscale='Plasma',
+                    colorbar=dict(title='탄성계수 (MPa)', thickness=10),
+                    showscale=True
+                ),
+                text=[f"노드 {node['id']}<br>탄성계수: {val:.0f} MPa" for node, val in zip(nodes, elastic_vals)],
+                hovertemplate='%{text}<extra></extra>'
+            ))
+            elastic_fig.update_layout(
+                title=f"{concrete_name} - 3D 탄성계수 분포",
+                scene=dict(
+                    aspectmode='data', 
+                    bgcolor='white',
+                    xaxis_title='X (m)',
+                    yaxis_title='Y (m)',
+                    zaxis_title='Z (m)'
+                ),
+                margin=dict(l=0, r=0, t=30, b=0)
+            )
         
         # 시간 정보 표시
         time_info = ""
