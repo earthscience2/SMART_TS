@@ -44,7 +44,6 @@ layout = dbc.Container(
             dbc.Button(id="btn-play-strength"),
             dbc.Button(id="btn-pause-strength"),
             dcc.Dropdown(id="speed-dropdown-strength"),
-            dcc.Interval(id="play-interval-strength", interval=1000, n_intervals=0, disabled=True),
             dbc.Button(id="btn-save-3d-strength-image"),
             dbc.Button(id="btn-save-3d-strength-image", style={"display": "none"}),
             # 속도 버튼들
@@ -571,19 +570,19 @@ def on_concrete_select_strength(selected_rows, pathname, tbl_data):
                     max_idx = len(times) - 1
                     slider_min, slider_max = 0, max_idx
                     slider_value = max_idx  # 최신 파일로 초기화
-                    # 모든 파일의 날짜/시간을 marks에 표시
-                    slider_marks = {i: times[i].strftime("%m/%d %Hh") for i in range(len(times))}
-                    
-                    # 최신 파일의 시간 정보 표시
-                    latest_file = inp_files[max_idx]
-                    try:
-                        time_str = os.path.basename(latest_file).split(".")[0]
-                        dt = datetime.strptime(time_str, "%Y%m%d%H")
-                        formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
-                        current_file_title = f"{concrete_name} - {formatted_time}"
-                    except Exception as e:
-                        print(f"시간 파싱 오류: {e}")
-                        current_file_title = f"{concrete_name} - {os.path.basename(latest_file)}"
+                    # 온도/응력 분석 페이지 방식으로 marks 생성
+                    marks = {}
+                    seen_dates = set()
+                    for i, dt in enumerate(times):
+                        date_str = dt.strftime("%m/%d")
+                        # 0, 마지막, 새로운 날짜만 표시
+                        if date_str not in seen_dates or i == 0 or i == max_idx:
+                            marks[i] = date_str
+                            seen_dates.add(date_str)
+                    # marks가 너무 적으면 시간까지 표시
+                    if len(marks) < 3:
+                        marks = {i: times[i].strftime("%m/%d %Hh") for i in range(len(times))}
+                    slider_marks = marks
         
         return analyze_disabled, delete_disabled, current_file_title, slider_min, slider_max, slider_value, slider_marks
         
