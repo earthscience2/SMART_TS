@@ -1098,14 +1098,11 @@ def enable_load_button(selected_rows):
     Output("add-nodes", "value", allow_duplicate=True),
     Output("add-h", "value", allow_duplicate=True),
     Output("add-unit", "value", allow_duplicate=True),
-    Output("add-b", "value", allow_duplicate=True),
-    Output("add-n", "value", allow_duplicate=True),
     Output("add-t-date", "value", allow_duplicate=True),
     Output("add-t-time", "value", allow_duplicate=True),
     Output("add-a", "value", allow_duplicate=True),
     Output("add-p", "value", allow_duplicate=True),
     Output("add-d", "value", allow_duplicate=True),
-    Output("add-e", "value", allow_duplicate=True),
     Output("add-preview", "figure", allow_duplicate=True),
     Input("load-concrete-apply", "n_clicks"),
     State("load-concrete-table", "selected_rows"),
@@ -1152,22 +1149,6 @@ def apply_concrete_load(n_clicks, selected_rows, table_data):
         con_a = row.get("con_a", "")
         con_p = row.get("con_p", "")
         con_d = row.get("con_d", "")
-        con_e = row.get("con_e", "")
-        
-        # CEB-FIB 모델 매개변수 추출 (CEB-FIB에서 역산)
-        con_b = ""
-        con_n = ""
-        if row.get("CEB-FIB"):
-            try:
-                ceb_fib_data = json.loads(row["CEB-FIB"]) if isinstance(row["CEB-FIB"], str) else row["CEB-FIB"]
-                if ceb_fib_data and len(ceb_fib_data) >= 28:
-                    # 28일 값이 E28과 같다고 가정
-                    e28 = ceb_fib_data[27]
-                    # 기본값으로 설정 (실제로는 역산이 복잡하므로 기본값 사용)
-                    con_b = 0.2
-                    con_n = 0.5
-            except Exception:
-                pass
         
         # 타설 시간 포맷팅 (현재 시간으로 설정)
         from datetime import datetime
@@ -1178,7 +1159,7 @@ def apply_concrete_load(n_clicks, selected_rows, table_data):
         # 3D 미리보기 생성
         fig = make_fig(dims.get("nodes", []), dims.get("h", 0)) if dims.get("nodes") else go.Figure()
         
-        return name, nodes, h_value, con_unit, con_b, con_n, con_t_date, con_t_time, con_a, con_p, con_d, con_e, fig
+        return name, nodes, h_value, con_unit, con_t_date, con_t_time, con_a, con_p, con_d, fig
         
     except Exception:
         raise PreventUpdate
@@ -1264,16 +1245,6 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, t_date, t_time, a, 
     elif h < 0.1 or h > 500:
         range_errors.append("높이(0.1~500)")
         
-    if b is None:
-        missing.append("베타 상수")
-    elif b < 0.1 or b > 1.0:
-        range_errors.append("베타 상수(0.1~1.0)")
-        
-    if n is None:
-        missing.append("N 상수")
-    elif n < 0.5 or n > 0.7:
-        range_errors.append("N 상수(0.5~0.7)")
-        
     if a is None:
         missing.append("열팽창계수")
     elif a < 0.1 or a > 10.0:
@@ -1288,11 +1259,15 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, t_date, t_time, a, 
         missing.append("밀도")
     elif d < 500 or d > 5000:
         range_errors.append("밀도(500~5000)")
-        
-    if e is None:
-        missing.append("탄성계수")
-    elif e < 1 or e > 100:
-        range_errors.append("탄성계수(1~100)")
+    
+    # 28일 탄성계수 값들 검증
+    if not day_values or any(v is None for v in day_values):
+        missing.append("재령일별 탄성계수")
+    else:
+        # 값 범위 검증 (1~100 GPa)
+        for i, val in enumerate(day_values):
+            if val < 1 or val > 100:
+                range_errors.append(f"{i+1}일 탄성계수(1~100)")
 
     if missing:
         return (
@@ -1331,13 +1306,8 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, t_date, t_time, a, 
             False
         )
 
-    # 3) CEB-FIB 모델로 1일~28일 탄성계수 계산
-    days = list(range(1, 29))  # 1일부터 28일까지
-    elasticity_values = []
-    
-    for t_day in days:
-        e_t = float(e) * ((t_day / (t_day + float(b))) ** float(n))
-        elasticity_values.append(round(e_t, 2))  # 소수점 2자리까지 반올림
+    # 3) 28일 탄성계수 값들을 리스트로 변환
+    elasticity_values = [float(val) for val in day_values]
     
     # 4) DB 저장 (activate=1 고정)
     dims = {"nodes": nodes, "h": float(h)}
@@ -1433,14 +1403,11 @@ def open_edit(b1, b2, sel, data):
     Output("edit-nodes",    "value"),
     Output("edit-h",        "value"),
     Output("edit-unit",     "value"),
-    Output("edit-b",        "value"),
-    Output("edit-n",        "value"),
     Output("edit-t-date",   "value"),
     Output("edit-t-time",   "value"),
     Output("edit-a",        "value"),
     Output("edit-p",        "value"),
     Output("edit-d",        "value"),
-    Output("edit-e",        "value"),
     Output("edit-preview",  "figure"),
     Input("modal-edit",     "is_open"),
     State("edit-id",        "data"),
@@ -1483,22 +1450,6 @@ def fill_edit(opened: bool, cid):
     con_a    = row.get("con_a", "")
     con_p    = row.get("con_p", "")
     con_d    = row.get("con_d", "")
-    con_e    = row.get("con_e", "")
-    
-    # CEB-FIB 모델 매개변수 추출 (CEB-FIB에서 역산)
-    con_b = ""
-    con_n = ""
-    if row.get("CEB-FIB"):
-        try:
-            ceb_fib_data = json.loads(row["CEB-FIB"]) if isinstance(row["CEB-FIB"], str) else row["CEB-FIB"]
-            if ceb_fib_data and len(ceb_fib_data) >= 28:
-                # 28일 값이 E28과 같다고 가정
-                e28 = ceb_fib_data[27]
-                # 기본값으로 설정 (실제로는 역산이 복잡하므로 기본값 사용)
-                con_b = 0.2
-                con_n = 0.5
-        except Exception:
-            pass
     
     # 타설 시간 포맷팅 (날짜와 시간 분리)
     con_t_raw = row.get("con_t", "")
@@ -1542,7 +1493,7 @@ def fill_edit(opened: bool, cid):
     # 7) 3D 미리보기 생성
     fig = make_fig(dims.get("nodes", []), dims.get("h", 0))
 
-    return name, nodes, h_value, con_unit, con_b, con_n, con_t_date, con_t_time, con_a, con_p, con_d, con_e, fig
+    return name, nodes, h_value, con_unit, con_t_date, con_t_time, con_a, con_p, con_d, fig
 
 
 # ───────────────────── ⑩ 수정 미리보기
@@ -1583,17 +1534,15 @@ def edit_preview(refresh_clicks, nodes_txt, h):
     State("edit-nodes",   "value"),
     State("edit-h",       "value"),
     State("edit-unit",    "value"),
-    State("edit-b",       "value"),
-    State("edit-n",       "value"),
     State("edit-t-date",  "value"),
     State("edit-t-time",  "value"),
     State("edit-a",       "value"),
     State("edit-p",       "value"),
     State("edit-d",       "value"),
-    State("edit-e",       "value"),
+    *[State(f"edit-direct-input-day-{i}", "value") for i in range(1, 29)],
     prevent_initial_call=True
 )
-def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, p, d, e):
+def save_edit(n_clicks, cid, name, nodes_txt, h, unit, t_date, t_time, a, p, d, *day_values):
     if not n_clicks:
         raise PreventUpdate
 
@@ -1629,16 +1578,6 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
     elif h < 0.1 or h > 500:
         range_errors.append("높이(0.1~500)")
         
-    if b is None:
-        missing.append("베타 상수")
-    elif b < 0.1 or b > 1.0:
-        range_errors.append("베타 상수(0.1~1.0)")
-        
-    if n is None:
-        missing.append("N 상수")
-    elif n < 0.5 or n > 0.7:
-        range_errors.append("N 상수(0.5~0.7)")
-        
     if a is None:
         missing.append("열팽창계수")
     elif a < 0.1 or a > 10.0:
@@ -1653,11 +1592,15 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
         missing.append("밀도")
     elif d < 500 or d > 5000:
         range_errors.append("밀도(500~5000)")
-        
-    if e is None:
-        missing.append("탄성계수")
-    elif e < 1 or e > 100:
-        range_errors.append("탄성계수(1~100)")
+    
+    # 28일 탄성계수 값들 검증
+    if not day_values or any(v is None for v in day_values):
+        missing.append("재령일별 탄성계수")
+    else:
+        # 값 범위 검증 (1~100 GPa)
+        for i, val in enumerate(day_values):
+            if val < 1 or val > 100:
+                range_errors.append(f"{i+1}일 탄성계수(1~100)")
 
     if missing:
         return (
@@ -1692,13 +1635,8 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
             "", "", False
         )
 
-    # 3) CEB-FIB 모델로 1일~28일 탄성계수 계산
-    days = list(range(1, 29))  # 1일부터 28일까지
-    elasticity_values = []
-    
-    for t_day in days:
-        e_t = float(e) * ((t_day / (t_day + float(b))) ** float(n))
-        elasticity_values.append(round(e_t, 2))  # 소수점 2자리까지 반올림
+    # 3) 28일 탄성계수 값들을 리스트로 변환
+    elasticity_values = [float(val) for val in day_values]
     
     # 4) DB 업데이트
     dims = {"nodes": nodes, "h": float(h)}
@@ -1920,13 +1858,8 @@ def calculate_age_analysis(e28, beta, n, is_open):
 
 # ───────────────────── ⑮ 재령분석 결과 적용
 @callback(
-    Output("add-e", "value", allow_duplicate=True),
-    Output("add-b", "value", allow_duplicate=True),
-    Output("add-n", "value", allow_duplicate=True),
-    Output("edit-e", "value", allow_duplicate=True),
-    Output("edit-b", "value", allow_duplicate=True),
-    Output("edit-n", "value", allow_duplicate=True),
     *[Output(f"add-direct-input-day-{i}", "value", allow_duplicate=True) for i in range(1, 29)],
+    *[Output(f"edit-direct-input-day-{i}", "value", allow_duplicate=True) for i in range(1, 29)],
     Output("age-analysis-alert", "children", allow_duplicate=True),
     Output("age-analysis-alert", "is_open", allow_duplicate=True),
     Output("age-analysis-alert", "color", allow_duplicate=True),
@@ -1952,23 +1885,18 @@ def apply_age_analysis_values(apply_clicks, source, e28, beta, n):
         
         # 소스에 따라 적절한 모달에 값 적용
         if source == "add":
-            # add 모달에만 적용 (E28, beta, n 값 + 28개 입력창)
-            return e28, beta, n, dash.no_update, dash.no_update, dash.no_update, *elasticity_values, f"✅ 1일~28일 탄성계수 값이 계산되었습니다. (예시: 1일={elasticity_values[0]}GPa, 7일={elasticity_values[6]}GPa, 28일={elasticity_values[27]}GPa)", True, "success"
+            # add 모달에만 적용 (28개 입력창)
+            return *elasticity_values, *([dash.no_update] * 28), f"✅ 1일~28일 탄성계수 값이 계산되었습니다. (예시: 1일={elasticity_values[0]}GPa, 7일={elasticity_values[6]}GPa, 28일={elasticity_values[27]}GPa)", True, "success"
         elif source == "edit":
-            # edit 모달에만 적용 (E28, beta, n 값만)
-            return dash.no_update, dash.no_update, dash.no_update, e28, beta, n, *([dash.no_update] * 28), f"✅ E28, β, n 값이 적용되었습니다. (E28={e28}GPa, β={beta}, n={n})", True, "success"
+            # edit 모달에만 적용 (28개 입력창)
+            return *([dash.no_update] * 28), *elasticity_values, f"✅ 1일~28일 탄성계수 값이 계산되었습니다. (예시: 1일={elasticity_values[0]}GPa, 7일={elasticity_values[6]}GPa, 28일={elasticity_values[27]}GPa)", True, "success"
         else:
             # 소스가 명확하지 않으면 아무것도 하지 않음
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, *([dash.no_update] * 28), "❌ 적용할 모달을 찾을 수 없습니다.", True, "danger"
+            return *([dash.no_update] * 56), "❌ 적용할 모달을 찾을 수 없습니다.", True, "danger"
             
     except Exception as e:
         error_msg = f"❌ 탄성계수 계산 중 오류 발생: {str(e)}"
-        if source == "add":
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, *([dash.no_update] * 28), error_msg, True, "danger"
-        elif source == "edit":
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, *([dash.no_update] * 28), error_msg, True, "danger"
-        else:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, *([dash.no_update] * 28), error_msg, True, "danger"
+        return *([dash.no_update] * 56), error_msg, True, "danger"
 
 
 
