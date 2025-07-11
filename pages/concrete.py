@@ -339,9 +339,10 @@ layout = html.Div([
                                 ], width=6),
                             ], className="mb-2"),
                             
-                            # 재령분석 버튼을 박스 내부 하단에 배치
+                            # 재령분석 및 직접 입력 버튼을 박스 내부 하단에 배치
                             html.Div([
-                                dbc.Button("재령분석", id="add-age-analysis", color="warning", className="px-3", size="sm"),
+                                dbc.Button("재령분석", id="add-age-analysis", color="warning", className="px-3 me-2", size="sm"),
+                                dbc.Button("직접 입력", id="add-direct-input", color="info", className="px-3", size="sm"),
                             ], className="text-center"),
                         ], className="bg-white p-3 rounded shadow-sm border mb-3"),
                         
@@ -495,9 +496,10 @@ layout = html.Div([
                                 ], width=6),
                             ], className="mb-2"),
                             
-                            # 재령분석 버튼을 박스 내부 하단에 배치
+                            # 재령분석 및 직접 입력 버튼을 박스 내부 하단에 배치
                             html.Div([
-                                dbc.Button("재령분석", id="edit-age-analysis", color="warning", className="px-3", size="sm"),
+                                dbc.Button("재령분석", id="edit-age-analysis", color="warning", className="px-3 me-2", size="sm"),
+                                dbc.Button("직접 입력", id="edit-direct-input", color="info", className="px-3", size="sm"),
                             ], className="text-center"),
                         ], className="bg-white p-3 rounded shadow-sm border mb-3"),
                         
@@ -708,6 +710,38 @@ layout = html.Div([
             dbc.ModalFooter([
                 dbc.Button("적용", id="age-analysis-apply", color="success", className="px-3 fw-semibold", size="sm"),
                 dbc.Button("닫기", id="age-analysis-close", color="secondary", className="px-3", size="sm"),
+            ], className="border-0 pt-2"),
+        ]),
+
+        # 직접 입력 모달
+        dbc.Modal(id="modal-direct-input", is_open=False, size="xl", className="modal-notion", children=[
+            dcc.Store(id="direct-input-source"),  # 어느 모달에서 호출되었는지 저장
+            dbc.ModalHeader([
+                html.H5("🔧 재령일별 탄성계수 직접 입력", className="mb-0 text-secondary fw-bold", style={"fontSize": "1.1rem"})
+            ], className="border-0 pb-1"),
+            dbc.ModalBody([
+                # 상단: 설명 및 안내
+                html.Div([
+                    dbc.Alert([
+                        html.I(className="fas fa-info-circle me-2"),
+                        "1일부터 28일까지의 탄성계수를 직접 입력하세요. 각 값은 GPa 단위입니다."
+                    ], color="info", className="mb-3"),
+                ]),
+                
+                # 28일치 입력 필드 (4x7 그리드)
+                html.Div([
+                    html.H6("📋 재령일별 탄성계수 입력", className="mb-3 text-secondary fw-bold"),
+                    html.Div(id="direct-input-fields", className="mb-3"),
+                ], className="bg-white p-3 rounded shadow-sm border mb-3"),
+                
+                # 경고 메시지 영역
+                html.Div([
+                    dbc.Alert(id="direct-input-alert", is_open=False, duration=3000, color="warning", className="mb-0"),
+                ]),
+            ]),
+            dbc.ModalFooter([
+                dbc.Button("적용", id="direct-input-apply", color="success", className="px-3 fw-semibold", size="sm"),
+                dbc.Button("닫기", id="direct-input-close", color="secondary", className="px-3", size="sm"),
             ], className="border-0 pt-2"),
         ]),
 ], style={"backgroundColor": "#f8f9fa", "minHeight": "100vh"})
@@ -1804,6 +1838,27 @@ def toggle_age_analysis(add_btn, edit_btn, close_btn, apply_btn, is_open):
         return False, dash.no_update
     return is_open, dash.no_update
 
+# ───────────────────── ⑫-1 직접 입력 모달 토글 및 소스 추적
+@callback(
+    Output("modal-direct-input", "is_open"),
+    Output("direct-input-source", "data"),
+    Input("add-direct-input", "n_clicks"),
+    Input("edit-direct-input", "n_clicks"),
+    Input("direct-input-close", "n_clicks"),
+    Input("direct-input-apply", "n_clicks"),
+    State("modal-direct-input", "is_open"),
+    prevent_initial_call=True
+)
+def toggle_direct_input(add_btn, edit_btn, close_btn, apply_btn, is_open):
+    trig = ctx.triggered_id
+    if trig == "add-direct-input":
+        return True, "add"
+    elif trig == "edit-direct-input":
+        return True, "edit"
+    elif trig in ("direct-input-close", "direct-input-apply"):
+        return False, dash.no_update
+    return is_open, dash.no_update
+
 # ───────────────────── ⑬ 모달 열릴 때 입력창에 기존 값 채우기
 @callback(
     Output("analysis-e28", "value"),
@@ -1831,6 +1886,53 @@ def fill_analysis_inputs(is_open, source, add_e, add_b, add_n, edit_e, edit_b, e
     else:
         # 기본값으로 add 사용
         return add_e, add_b, add_n
+
+# ───────────────────── ⑬-1 직접 입력 필드 생성
+@callback(
+    Output("direct-input-fields", "children"),
+    Input("modal-direct-input", "is_open"),
+    State("direct-input-source", "data"),
+    State("add-e", "value"),
+    State("edit-e", "value"),
+    prevent_initial_call=True
+)
+def generate_direct_input_fields(is_open, source, add_e, edit_e):
+    if not is_open:
+        raise PreventUpdate
+    
+    # 기본값 설정 (E28 값 사용)
+    default_value = 30.0
+    if source == "add" and add_e:
+        default_value = float(add_e)
+    elif source == "edit" and edit_e:
+        default_value = float(edit_e)
+    
+    # 28일치 입력 필드 생성 (4x7 그리드)
+    input_fields = []
+    for week in range(4):  # 4주
+        week_row = []
+        for day in range(7):  # 7일
+            day_num = week * 7 + day + 1
+            if day_num <= 28:
+                # 각 입력 필드에 고유 ID 부여
+                input_id = f"direct-input-day-{day_num}"
+                field = dbc.Col([
+                    dbc.Label(f"{day_num}일", className="form-label fw-semibold", style={"fontSize": "0.8rem"}),
+                    dbc.Input(
+                        id=input_id,
+                        type="number",
+                        step=0.01,
+                        placeholder=f"{default_value:.1f}",
+                        className="form-control-sm",
+                        style={"fontSize": "0.8rem"}
+                    )
+                ], width=3, className="mb-2")
+                week_row.append(field)
+        
+        if week_row:
+            input_fields.append(dbc.Row(week_row, className="g-2"))
+    
+    return input_fields
 
 # ───────────────────── ⑭ 재령분석 계산 및 표시
 @callback(
@@ -2031,6 +2133,61 @@ def apply_age_analysis_values(apply_clicks, source, e28, beta, n):
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_msg, True, "danger"
         else:
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_msg, True, "danger"
+
+# ───────────────────── ⑯ 직접 입력 결과 적용
+@callback(
+    Output("add-e", "value", allow_duplicate=True),
+    Output("edit-e", "value", allow_duplicate=True),
+    Output("direct-input-alert", "children", allow_duplicate=True),
+    Output("direct-input-alert", "is_open", allow_duplicate=True),
+    Output("direct-input-alert", "color", allow_duplicate=True),
+    Input("direct-input-apply", "n_clicks"),
+    State("direct-input-source", "data"),
+    # 28일치 입력값들을 State로 받기
+    *[State(f"direct-input-day-{i}", "value") for i in range(1, 29)],
+    prevent_initial_call=True
+)
+def apply_direct_input_values(apply_clicks, source, *day_values):
+    if not apply_clicks:
+        raise PreventUpdate
+    
+    try:
+        # 입력값 검증
+        elasticity_values = []
+        missing_days = []
+        
+        for i, value in enumerate(day_values, 1):
+            if value is None or value == "":
+                missing_days.append(i)
+            else:
+                try:
+                    elasticity_values.append(float(value))
+                except ValueError:
+                    missing_days.append(i)
+        
+        if missing_days:
+            return dash.no_update, dash.no_update, f"❌ 다음 날짜의 값을 입력해주세요: {', '.join(map(str, missing_days))}일", True, "danger"
+        
+        if len(elasticity_values) != 28:
+            return dash.no_update, dash.no_update, f"❌ 28일치 값이 모두 필요합니다. 현재 {len(elasticity_values)}개 입력됨", True, "danger"
+        
+        # 28일 값이 E28이므로 이를 E28 값으로 사용
+        e28_value = elasticity_values[27]  # 28일 값 (인덱스 27)
+        
+        # 소스에 따라 적절한 모달에 값 적용
+        if source == "add":
+            # add 모달에만 적용
+            return e28_value, dash.no_update, f"✅ 28일치 탄성계수가 입력되었습니다. (예시: 1일={elasticity_values[0]}GPa, 7일={elasticity_values[6]}GPa, 28일={elasticity_values[27]}GPa)", True, "success"
+        elif source == "edit":
+            # edit 모달에만 적용
+            return dash.no_update, e28_value, f"✅ 28일치 탄성계수가 입력되었습니다. (예시: 1일={elasticity_values[0]}GPa, 7일={elasticity_values[6]}GPa, 28일={elasticity_values[27]}GPa)", True, "success"
+        else:
+            # 소스가 명확하지 않으면 아무것도 하지 않음
+            return dash.no_update, dash.no_update, "❌ 적용할 모달을 찾을 수 없습니다.", True, "danger"
+            
+    except Exception as e:
+        error_msg = f"❌ 직접 입력 처리 중 오류 발생: {str(e)}"
+        return dash.no_update, dash.no_update, error_msg, True, "danger"
 
 
 
