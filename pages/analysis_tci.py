@@ -1310,7 +1310,7 @@ def create_tci_3d_tab_content(concrete_pk):
         
         # 응력 성분 선택 및 등온면 설정
         html.Div([
-            html.H6("🎯 응력 성분 선택", style={
+            html.H6("🎯 TCI 성분 선택", style={
                 "fontWeight": "600",
                 "color": "#374151",
                 "marginBottom": "16px",
@@ -1318,21 +1318,21 @@ def create_tci_3d_tab_content(concrete_pk):
             }),
             dbc.Row([
                 dbc.Col([
-                    html.Label("응력 성분", style={
+                    html.Label("TCI 성분", style={
                         "fontWeight": "600", "color": "#374151", "fontSize": "13px"
                     }),
                     dcc.Dropdown(
                         id="stress-component-selector",
                         options=[
-                            {"label": "Von Mises 응력", "value": "von_mises"},
-                            {"label": "SXX (X방향 정응력)", "value": "SXX"},
-                            {"label": "SYY (Y방향 정응력)", "value": "SYY"},
-                            {"label": "SZZ (Z방향 정응력)", "value": "SZZ"},
-                            {"label": "SXY (XY 전단응력)", "value": "SXY"},
-                            {"label": "SYZ (YZ 전단응력)", "value": "SYZ"},
-                            {"label": "SZX (ZX 전단응력)", "value": "SZX"},
+                            {"label": "TCI-Von Mises", "value": "tci_von_mises"},
+                            {"label": "TCI-SXX (X방향)", "value": "tci_sxx"},
+                            {"label": "TCI-SYY (Y방향)", "value": "tci_syy"},
+                            {"label": "TCI-SZZ (Z방향)", "value": "tci_szz"},
+                            {"label": "TCI-SXY (XY 전단)", "value": "tci_sxy"},
+                            {"label": "TCI-SYZ (YZ 전단)", "value": "tci_syz"},
+                            {"label": "TCI-SZX (ZX 전단)", "value": "tci_szx"},
                         ],
-                        value="von_mises",
+                        value="tci_von_mises",
                         clearable=False,
                         style={"borderRadius": "6px"}
                     )
@@ -1352,7 +1352,7 @@ def create_tci_3d_tab_content(concrete_pk):
                     )
                 ], md=4),
                 dbc.Col([
-                    html.Label("색상 범위", style={
+                    html.Label("TCI 범위", style={
                         "fontWeight": "600", "color": "#374151", "fontSize": "13px"
                     }),
                     html.Div(id="stress-range-display", style={
@@ -1374,7 +1374,7 @@ def create_tci_3d_tab_content(concrete_pk):
         
         # 입체 등온면 그래프
         html.Div([
-            html.H6("🌊 입체 응력 등온면", style={
+            html.H6("🌊 입체 TCI 등온면", style={
                 "fontWeight": "600",
                 "color": "#374151",
                 "marginBottom": "16px",
@@ -2436,7 +2436,7 @@ def update_tci_3d_table(time_idx, play_click, active_tab, stress_component, isos
 # ───────────────────── 입체 등온면 그래프 생성 함수들 ─────────────────────
 
 def create_3d_isosurface_figure(stress_data, stress_component, isosurface_levels, fct, concrete_dims=None):
-    """입체 등온면 그래프를 생성합니다."""
+    """입체 TCI 등온면 그래프를 생성합니다."""
     try:
         import numpy as np
         from scipy.interpolate import griddata
@@ -2456,37 +2456,62 @@ def create_3d_isosurface_figure(stress_data, stress_component, isosurface_levels
         y_coords = coords[:, 1]
         z_coords = coords[:, 2]
         
-        # 선택된 응력 성분에 따른 값 추출
-        if stress_component == "von_mises":
-            # von Mises 응력 사용
-            stress_values = []
+        # TCI 값 계산
+        tci_values = []
+        
+        if stress_component == "tci_von_mises":
+            # von Mises 응력 기반 TCI
             von_mises_data = stress_data.get('stress_values', [{}])[0] if stress_data.get('stress_values') else {}
             for node_id in stress_data.get('nodes', []):
-                vm_stress = von_mises_data.get(node_id, 0)
-                stress_values.append(vm_stress / 1e6)  # Pa를 MPa로 변환
+                vm_stress = von_mises_data.get(node_id, 0) / 1e6  # Pa를 MPa로 변환
+                tci = abs(vm_stress) / fct if fct > 0 else 0
+                tci_values.append(tci)
         else:
-            # 개별 응력 성분 사용
+            # 개별 응력 성분 기반 TCI
             comps = stress_data.get('stress_components', {})
-            if stress_component not in comps:
+            # TCI 컴포넌트를 실제 응력 성분으로 변환
+            component_map = {
+                "tci_sxx": "SXX",
+                "tci_syy": "SYY", 
+                "tci_szz": "SZZ",
+                "tci_sxy": "SXY",
+                "tci_syz": "SYZ",
+                "tci_szx": "SZX"
+            }
+            actual_component = component_map.get(stress_component)
+            
+            if not actual_component or actual_component not in comps:
                 return go.Figure().add_annotation(
                     text=f"{stress_component} 응력 데이터가 없습니다.",
                     xref="paper", yref="paper",
                     x=0.5, y=0.5, showarrow=False
                 )
             
-            stress_values = []
             for node_id in stress_data.get('nodes', []):
-                stress_val = comps[stress_component].get(node_id, 0)
-                stress_values.append(stress_val / 1e6)  # Pa를 MPa로 변환
+                stress_val = comps[actual_component].get(node_id, 0) / 1e6  # Pa를 MPa로 변환
+                tci = abs(stress_val) / fct if fct > 0 else 0
+                tci_values.append(tci)
         
-        stress_values = np.array(stress_values)
+        tci_values = np.array(tci_values)
         
-        # 응력 범위 계산
-        stress_min = np.min(stress_values)
-        stress_max = np.max(stress_values)
+        # TCI 범위 계산
+        tci_min = np.min(tci_values)
+        tci_max = np.max(tci_values)
         
-        # 등온면 레벨 생성 (성능 개선: 레벨 수 제한)
-        levels = np.linspace(stress_min, stress_max, min(isosurface_levels, 5))
+        # TCI 위험 기준에 따른 레벨 설정
+        if tci_max <= 0.5:
+            # 안전 구간: 0 ~ 0.5
+            levels = np.linspace(0, 0.5, min(isosurface_levels, 3))
+        elif tci_max <= 0.8:
+            # 주의 구간: 0 ~ 0.8
+            levels = np.linspace(0, 0.8, min(isosurface_levels, 4))
+        elif tci_max <= 1.0:
+            # 경고 구간: 0 ~ 1.0
+            levels = np.linspace(0, 1.0, min(isosurface_levels, 5))
+        else:
+            # 위험 구간: 0 ~ 최대값 (최대 2.0으로 제한)
+            max_level = min(tci_max, 2.0)
+            levels = np.linspace(0, max_level, min(isosurface_levels, 5))
         
         # 3D 그리드 생성 (성능 개선: 해상도 조정)
         grid_resolution = 30  # 50에서 30으로 줄여서 성능 향상
@@ -2497,36 +2522,42 @@ def create_3d_isosurface_figure(stress_data, stress_component, isosurface_levels
         X, Y, Z = np.meshgrid(x_range, y_range, z_range)
         
         # 그리드 데이터 보간 (성능 개선: nearest 방법 사용)
-        grid_stress = griddata(
+        grid_tci = griddata(
             (x_coords, y_coords, z_coords), 
-            stress_values, 
+            tci_values, 
             (X, Y, Z), 
             method='nearest',  # linear에서 nearest로 변경하여 성능 향상
-            fill_value=stress_min
+            fill_value=tci_min
         )
         
         # 등온면 그래프 생성
         fig = go.Figure()
         
-        # 각 레벨별 등온면 추가 (성능 개선: 투명도 조정)
-        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
-        
+        # 각 레벨별 등온면 추가 (TCI 위험도에 따른 색상)
         for i, level in enumerate(levels):
-            color = colors[i % len(colors)]
+            # TCI 위험도에 따른 색상 결정
+            if level <= 0.5:
+                color = '#22c55e'  # 초록색 (안전)
+            elif level <= 0.8:
+                color = '#eab308'  # 노란색 (주의)
+            elif level <= 1.0:
+                color = '#f97316'  # 주황색 (경고)
+            else:
+                color = '#ef4444'  # 빨간색 (위험)
             
             # 등온면 생성
             fig.add_trace(go.Isosurface(
                 x=X.flatten(),
                 y=Y.flatten(),
                 z=Z.flatten(),
-                value=grid_stress.flatten(),
+                value=grid_tci.flatten(),
                 isomin=level,
                 isomax=level,
                 opacity=0.4,  # 투명도 증가
                 surface_count=1,
                 colorscale=[[0, color], [1, color]],
                 showscale=False,
-                name=f'{level:.2f} MPa'
+                name=f'TCI {level:.2f}'
             ))
         
         # 콘크리트 외형 추가 (온도분석 페이지와 동일한 방식)
@@ -2558,19 +2589,31 @@ def create_3d_isosurface_figure(stress_data, stress_component, isosurface_levels
             except Exception as e:
                 print(f"콘크리트 외형 추가 오류: {e}")
         
-        # 레이아웃 설정 (성능 개선)
+        # 레이아웃 설정 (TCI 기반)
         component_names = {
-            "von_mises": "Von Mises 응력",
-            "SXX": "X방향 정응력",
-            "SYY": "Y방향 정응력", 
-            "SZZ": "Z방향 정응력",
-            "SXY": "XY 전단응력",
-            "SYZ": "YZ 전단응력",
-            "SZX": "ZX 전단응력"
+            "tci_von_mises": "TCI-Von Mises",
+            "tci_sxx": "TCI-X방향 정응력",
+            "tci_syy": "TCI-Y방향 정응력", 
+            "tci_szz": "TCI-Z방향 정응력",
+            "tci_sxy": "TCI-XY 전단응력",
+            "tci_syz": "TCI-YZ 전단응력",
+            "tci_szx": "TCI-ZX 전단응력"
         }
         
+        # TCI 위험도 범례 추가
+        legend_items = []
+        if tci_max > 1.0:
+            legend_items.append("🔴 위험 (TCI > 1.0)")
+        if tci_max > 0.8:
+            legend_items.append("🟠 경고 (0.8 < TCI ≤ 1.0)")
+        if tci_max > 0.5:
+            legend_items.append("🟡 주의 (0.5 < TCI ≤ 0.8)")
+        legend_items.append("🟢 안전 (TCI ≤ 0.5)")
+        
+        legend_text = " | ".join(legend_items)
+        
         fig.update_layout(
-            title=f"입체 {component_names.get(stress_component, stress_component)} 등온면",
+            title=f"입체 {component_names.get(stress_component, stress_component)} 등온면<br><sub>{legend_text}</sub>",
             scene=dict(
                 xaxis_title="X (m)",
                 yaxis_title="Y (m)", 
@@ -2583,7 +2626,7 @@ def create_3d_isosurface_figure(stress_data, stress_component, isosurface_levels
             ),
             width=700,  # 크기를 줄여서 성능 향상
             height=350,
-            margin=dict(l=0, r=0, t=30, b=0),
+            margin=dict(l=0, r=0, t=50, b=0),  # 제목 공간 확보
             uirevision='constant'  # 뷰 상태 유지
         )
         
@@ -2598,49 +2641,62 @@ def create_3d_isosurface_figure(stress_data, stress_component, isosurface_levels
         )
 
 def create_stress_range_display(data, stress_component):
-    """응력 범위를 표시하는 텍스트를 생성합니다."""
+    """TCI 범위를 표시하는 텍스트를 생성합니다."""
     if not data or len(data) == 0:
         return "데이터 없음"
     
     try:
-        # 선택된 응력 성분에 따른 컬럼명 결정
-        if stress_component == "von_mises":
-            # von Mises는 모든 응력 컬럼에 동일한 값이 저장되어 있음
-            stress_values = [row["sxx_mpa"] for row in data if row["sxx_mpa"] is not None]
+        # 선택된 TCI 성분에 따른 컬럼명 결정
+        if stress_component == "tci_von_mises":
+            # von Mises TCI는 모든 TCI 컬럼에 동일한 값이 저장되어 있음
+            tci_values = [row["tci_sxx"] for row in data if row["tci_sxx"] is not None]
         else:
-            # 개별 응력 성분
+            # 개별 TCI 성분
             column_map = {
-                "SXX": "sxx_mpa",
-                "SYY": "syy_mpa", 
-                "SZZ": "szz_mpa",
-                "SXY": "sxy_mpa",
-                "SYZ": "syz_mpa",
-                "SZX": "szx_mpa"
+                "tci_sxx": "tci_sxx",
+                "tci_syy": "tci_syy", 
+                "tci_szz": "tci_szz",
+                "tci_sxy": "tci_sxy",
+                "tci_syz": "tci_syz",
+                "tci_szx": "tci_szx"
             }
-            column = column_map.get(stress_component, "sxx_mpa")
-            stress_values = [row[column] for row in data if row[column] is not None]
+            column = column_map.get(stress_component, "tci_sxx")
+            tci_values = [row[column] for row in data if row[column] is not None]
         
-        if not stress_values:
-            return "응력 데이터 없음"
+        if not tci_values:
+            return "TCI 데이터 없음"
         
-        stress_min = min(stress_values)
-        stress_max = max(stress_values)
-        stress_avg = sum(stress_values) / len(stress_values)
+        tci_min = min(tci_values)
+        tci_max = max(tci_values)
+        tci_avg = sum(tci_values) / len(tci_values)
+        
+        # 위험도 레벨 결정
+        def get_risk_level(tci):
+            if tci <= 0.5:
+                return "🟢 안전"
+            elif tci <= 0.8:
+                return "🟡 주의"
+            elif tci <= 1.0:
+                return "🟠 경고"
+            else:
+                return "🔴 위험"
         
         component_names = {
-            "von_mises": "Von Mises",
-            "SXX": "SXX",
-            "SYY": "SYY", 
-            "SZZ": "SZZ",
-            "SXY": "SXY",
-            "SYZ": "SYZ",
-            "SZX": "SZX"
+            "tci_von_mises": "TCI-Von Mises",
+            "tci_sxx": "TCI-SXX",
+            "tci_syy": "TCI-SYY", 
+            "tci_szz": "TCI-SZZ",
+            "tci_sxy": "TCI-SXY",
+            "tci_syz": "TCI-SYZ",
+            "tci_szx": "TCI-SZX"
         }
         
-        return f"{component_names.get(stress_component, stress_component)}: {stress_min:.3f} ~ {stress_max:.3f} MPa (평균: {stress_avg:.3f} MPa)"
+        risk_level = get_risk_level(tci_max)
+        
+        return f"{component_names.get(stress_component, stress_component)}: {tci_min:.3f} ~ {tci_max:.3f} (평균: {tci_avg:.3f}) {risk_level}"
         
     except Exception as e:
-        print(f"응력 범위 표시 오류: {e}")
+        print(f"TCI 범위 표시 오류: {e}")
         return "범위 계산 오류"
 
 # ───────────────────── 버튼 상태 및 액션 콜백 함수들 ─────────────────────
