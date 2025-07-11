@@ -460,7 +460,7 @@ layout = html.Div([
                                     {"label": "CEB-FIB 모델로 자동 계산", "value": "ceb_fib"},
                                     {"label": "직접 입력", "value": "manual"},
                                 ],
-                                value="ceb_fib",
+                                value="ceb_fib",  # 기본값 명시
                                 inline=True,
                                 className="mb-3"
                             ),
@@ -1788,8 +1788,8 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
 @callback(
     Output("modal-age-analysis", "is_open"),
     Output("age-analysis-source", "data"),
-    Input("add-age-analysis", "n_clicks"),
-    Input("edit-age-analysis", "n_clicks"),
+    Input("add-age-analysis", "n_clicks", allow_missing=True),
+    Input("edit-age-analysis", "n_clicks", allow_missing=True),
     Input("age-analysis-close", "n_clicks"),
     Input("age-analysis-apply", "n_clicks"),
     State("modal-age-analysis", "is_open"),
