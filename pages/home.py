@@ -426,7 +426,7 @@ def layout(**kwargs):
                 # 헤더
                 html.Div([
                     html.H2("프로젝트 대시보드", className="mb-2 text-center fw-bold"),
-                    html.P(f"안녕하세요, {user_id}님!", className="text-muted mb-4 text-center")
+                    html.P(f"안녕하세요, {user_info['user_id']}님!", className="text-muted mb-4 text-center")
                 ], className="mb-5"),
                 
                 # 빈 상태
@@ -447,7 +447,7 @@ def layout(**kwargs):
             # 헤더
             html.Div([
                 html.H2("프로젝트 대시보드", className="mb-2 text-center fw-bold"),
-                html.P(f"안녕하세요, {user_id}님! 총 {len(projects)}개의 프로젝트에 접근할 수 있습니다.", 
+                html.P(f"안녕하세요, {user_info['user_id']}님! 총 {len(projects)}개의 프로젝트에 접근할 수 있습니다.", 
                        className="text-muted mb-4 text-center")
             ], className="mb-5"),
             
