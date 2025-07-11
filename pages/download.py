@@ -18,11 +18,27 @@ from dash.exceptions import PreventUpdate
 
 import api_db
 from utils.encryption import parse_project_key_from_url
+from flask import request as flask_request
 
 register_page(__name__, path="/download", title="파일 다운로드")
 
 # 프로젝트 메타데이터 (URL 파라미터 파싱에 사용)
-projects_df = api_db.get_project_data()
+user_id = flask_request.cookies.get("login_user")
+if not user_id:
+    user_id = "admin"  # 또는 적절한 기본값
+result = api_db.get_accessible_projects(user_id, its_num=1)
+if result["result"] == "Success":
+    projects_df = result["projects"]
+    # 필요하다면 컬럼명 변환
+    if not projects_df.empty:
+        projects_df = projects_df.rename(columns={
+            'projectid': 'project_pk',
+            'projectname': 'name',
+            'regdate': 'created_at',
+            'closedate': 'updated_at'
+        })
+else:
+    projects_df = pd.DataFrame()
 
 def parse_filename_datetime(filename):
     """파일명에서 날짜시간 추출 (YYYYMMDD, YYYYMMDDHH, YYYYMMDDHHMM 형식)"""
