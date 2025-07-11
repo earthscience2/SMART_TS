@@ -1308,6 +1308,92 @@ def create_tci_3d_tab_content(concrete_pk):
             "marginBottom": "20px"
         }),
         
+        # 응력 성분 선택 및 등온면 설정
+        html.Div([
+            html.H6("🎯 응력 성분 선택", style={
+                "fontWeight": "600",
+                "color": "#374151",
+                "marginBottom": "16px",
+                "fontSize": "16px"
+            }),
+            dbc.Row([
+                dbc.Col([
+                    html.Label("응력 성분", style={
+                        "fontWeight": "600", "color": "#374151", "fontSize": "13px"
+                    }),
+                    dcc.Dropdown(
+                        id="stress-component-selector",
+                        options=[
+                            {"label": "Von Mises 응력", "value": "von_mises"},
+                            {"label": "SXX (X방향 정응력)", "value": "SXX"},
+                            {"label": "SYY (Y방향 정응력)", "value": "SYY"},
+                            {"label": "SZZ (Z방향 정응력)", "value": "SZZ"},
+                            {"label": "SXY (XY 전단응력)", "value": "SXY"},
+                            {"label": "SYZ (YZ 전단응력)", "value": "SYZ"},
+                            {"label": "SZX (ZX 전단응력)", "value": "SZX"},
+                        ],
+                        value="von_mises",
+                        clearable=False,
+                        style={"borderRadius": "6px"}
+                    )
+                ], md=4),
+                dbc.Col([
+                    html.Label("등온면 레벨 수", style={
+                        "fontWeight": "600", "color": "#374151", "fontSize": "13px"
+                    }),
+                    dcc.Slider(
+                        id="isosurface-levels-slider",
+                        min=3,
+                        max=8,
+                        step=1,
+                        value=5,
+                        marks={i: str(i) for i in range(3, 9)},
+                        tooltip={"placement": "bottom", "always_visible": True}
+                    )
+                ], md=4),
+                dbc.Col([
+                    html.Label("색상 범위", style={
+                        "fontWeight": "600", "color": "#374151", "fontSize": "13px"
+                    }),
+                    html.Div(id="stress-range-display", style={
+                        "padding": "8px",
+                        "backgroundColor": "#f8fafc",
+                        "borderRadius": "4px",
+                        "fontSize": "12px",
+                        "color": "#6b7280"
+                    })
+                ], md=4),
+            ], className="mb-3"),
+        ], style={
+            "padding": "20px",
+            "backgroundColor": "#f9fafb",
+            "borderRadius": "8px",
+            "border": "1px solid #e5e7eb",
+            "marginBottom": "20px"
+        }),
+        
+        # 입체 등온면 그래프
+        html.Div([
+            html.H6("🌊 입체 응력 등온면", style={
+                "fontWeight": "600",
+                "color": "#374151",
+                "marginBottom": "16px",
+                "fontSize": "16px"
+            }),
+            dcc.Graph(
+                id="tci-3d-isosurface",
+                style={"height": "400px", "borderRadius": "8px"},
+                config={"scrollZoom": True, "displayModeBar": True}
+            ),
+        ], style={
+            "backgroundColor": "white",
+            "padding": "20px",
+            "borderRadius": "12px",
+            "border": "1px solid #e5e7eb",
+            "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
+            "marginBottom": "20px"
+        }),
+        
         # TCI 표
         html.Div([
             html.H6("📊 노드별 TCI 분석 결과", style={
@@ -1954,15 +2040,19 @@ def update_crack_probability_graph(active_tab, selected_rows, tbl_data):
 @callback(
     Output('tci-3d-table', 'data'),
     Output('tci-3d-analysis-info', 'children'),
+    Output('tci-3d-isosurface', 'figure'),
+    Output('stress-range-display', 'children'),
     Input('tci-3d-time-slider', 'value'),
     Input('btn-play-tci-3d', 'n_clicks'),
     Input('tabs-main-tci', 'active_tab'),  # 탭 전환 시에도 실행되도록 추가
+    Input('stress-component-selector', 'value'),
+    Input('isosurface-levels-slider', 'value'),
     State('tbl-concrete-tci', 'selected_rows'),
     State('tbl-concrete-tci', 'data'),
     State('tci-formula-params-store', 'data'),
     prevent_initial_call=False
 )
-def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_data, formula_params):
+def update_tci_3d_table(time_idx, play_click, active_tab, stress_component, isosurface_levels, selected_rows, tbl_data, formula_params):
     import numpy as np
     
     print(f"DEBUG: update_tci_3d_table 호출됨")
@@ -1971,18 +2061,28 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
     # 입체 TCI 탭이 활성화되어 있지 않으면 빈 데이터 반환
     if active_tab != "tab-tci-3d":
         print("DEBUG: 입체 TCI 탭이 활성화되지 않음")
-        return [], "입체 TCI 탭이 활성화되지 않음"
+        empty_fig = go.Figure().add_annotation(
+            text="입체 TCI 탭을 선택하세요.",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+        return [], "입체 TCI 탭이 활성화되지 않음", empty_fig, "데이터 없음"
     
     if not selected_rows or not tbl_data:
         print("DEBUG: 선택된 콘크리트가 없음")
         # 더미 데이터로 표 초기화
+        empty_fig = go.Figure().add_annotation(
+            text="콘크리트를 선택하세요.",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
         return [
             {"node": "콘크리트를 선택하세요", "x_coord": None, "y_coord": None, "z_coord": None,
              "sxx_mpa": None, "syy_mpa": None, "szz_mpa": None, 
              "sxy_mpa": None, "syz_mpa": None, "szx_mpa": None,
              "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
              "tci_sxy": None, "tci_syz": None, "tci_szx": None}
-        ], "콘크리트를 선택하세요"
+        ], "콘크리트를 선택하세요", empty_fig, "데이터 없음"
     
     try:
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
@@ -1994,13 +2094,18 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
         
         if not frd_files:
             print("DEBUG: FRD 파일이 없음")
+            empty_fig = go.Figure().add_annotation(
+                text="FRD 파일이 없습니다.",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False
+            )
             return [
                 {"node": "FRD 파일이 없습니다", "x_coord": None, "y_coord": None, "z_coord": None,
                  "sxx_mpa": None, "syy_mpa": None, "szz_mpa": None, 
                  "sxy_mpa": None, "syz_mpa": None, "szx_mpa": None,
                  "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
                  "tci_sxy": None, "tci_syz": None, "tci_szx": None}
-            ], "FRD 파일이 없습니다"
+            ], "FRD 파일이 없습니다", empty_fig, "데이터 없음"
         
         if time_idx is None:
             time_idx = len(frd_files) - 1  # 기본값으로 마지막 파일 사용
@@ -2016,22 +2121,32 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
         stress_data = read_frd_stress_data(frd_file)
         if not stress_data:
             print("DEBUG: 응력 데이터를 읽을 수 없음")
+            empty_fig = go.Figure().add_annotation(
+                text="응력 데이터를 읽을 수 없습니다.",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False
+            )
             return [
                 {"node": "응력 데이터를 읽을 수 없습니다", "x_coord": None, "y_coord": None, "z_coord": None,
                  "sxx_mpa": None, "syy_mpa": None, "szz_mpa": None, 
                  "sxy_mpa": None, "syz_mpa": None, "szx_mpa": None,
                  "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
                  "tci_sxy": None, "tci_syz": None, "tci_szx": None}
-            ], "응력 데이터를 읽을 수 없습니다"
+            ], "응력 데이터를 읽을 수 없습니다", empty_fig, "데이터 없음"
         
         if not stress_data.get('nodes'):
             print("DEBUG: 노드 정보가 없음")
+            empty_fig = go.Figure().add_annotation(
+                text="노드 정보가 없습니다.",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False
+            )
             return [
                 {"node": "노드 정보가 없습니다", "sxx_mpa": None, "syy_mpa": None, "szz_mpa": None, 
                  "sxy_mpa": None, "syz_mpa": None, "szx_mpa": None,
                  "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
                  "tci_sxy": None, "tci_syz": None, "tci_szx": None}
-            ], "노드 정보가 없습니다"
+            ], "노드 정보가 없습니다", empty_fig, "데이터 없음"
         
         print(f"DEBUG: 노드 개수={len(stress_data['nodes'])}")
         
@@ -2144,41 +2259,47 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
             formula_detail = f"fct(t) = {fct28_value} × ({age_days:.1f} / 28)^0.5 = {fct28_value} × {strength_ratio:.4f} = {fct:.3f} MPa"
         
         analysis_info = html.Div([
+            dbc.Row([
+                dbc.Col([
+                    html.Div([
+                        html.Span("📅 ", style={"color": "#3b82f6", "fontSize": "16px"}),
+                        html.Span("분석일자", style={"fontWeight": "600", "color": "#374151", "fontSize": "13px"}),
+                        html.Br(),
+                        html.Span(file_time.strftime("%m/%d %H시") if file_time else "N/A", style={"color": "#6b7280", "fontSize": "12px"})
+                    ], style={"textAlign": "center", "padding": "8px", "backgroundColor": "#f8fafc", "borderRadius": "6px"})
+                ], md=3),
+                dbc.Col([
+                    html.Div([
+                        html.Span("🏗️ ", style={"color": "#059669", "fontSize": "16px"}),
+                        html.Span("타설일", style={"fontWeight": "600", "color": "#374151", "fontSize": "13px"}),
+                        html.Br(),
+                        html.Span(pour_date.strftime("%m/%d") if pour_date else "N/A", style={"color": "#6b7280", "fontSize": "12px"})
+                    ], style={"textAlign": "center", "padding": "8px", "backgroundColor": "#f8fafc", "borderRadius": "6px"})
+                ], md=3),
+                dbc.Col([
+                    html.Div([
+                        html.Span("📊 ", style={"color": "#f59e0b", "fontSize": "16px"}),
+                        html.Span("재령", style={"fontWeight": "600", "color": "#374151", "fontSize": "13px"}),
+                        html.Br(),
+                        html.Span(f"{age_days:.1f}일", style={"color": "#6b7280", "fontSize": "12px"})
+                    ], style={"textAlign": "center", "padding": "8px", "backgroundColor": "#f8fafc", "borderRadius": "6px"})
+                ], md=3),
+                dbc.Col([
+                    html.Div([
+                        html.Span("💪 ", style={"color": "#dc2626", "fontSize": "16px"}),
+                        html.Span("인장강도", style={"fontWeight": "600", "color": "#374151", "fontSize": "13px"}),
+                        html.Br(),
+                        html.Span(f"{fct:.1f} MPa", style={"color": "#059669", "fontWeight": "600", "fontSize": "12px"})
+                    ], style={"textAlign": "center", "padding": "8px", "backgroundColor": "#f8fafc", "borderRadius": "6px"})
+                ], md=3),
+            ], className="mb-3"),
             html.Div([
-                html.Span("📅 분석 일자: ", style={"fontWeight": "600", "color": "#374151"}),
-                html.Span(file_time.strftime("%Y년 %m월 %d일 %H시") if file_time else "N/A", style={"color": "#6b7280"})
-            ], style={"marginBottom": "8px"}),
-            html.Div([
-                html.Span("🏗️ 타설일: ", style={"fontWeight": "600", "color": "#374151"}),
-                html.Span(pour_date.strftime("%Y년 %m월 %d일") if pour_date else "N/A", style={"color": "#6b7280"})
-            ], style={"marginBottom": "8px"}),
-            html.Div([
-                html.Span("📊 재령: ", style={"fontWeight": "600", "color": "#374151"}),
-                html.Span(f"{age_days:.1f}일", style={"color": "#6b7280"})
-            ], style={"marginBottom": "8px"}),
-            html.Div([
-                html.Span("💪 인장강도 fct(t): ", style={"fontWeight": "600", "color": "#374151"}),
-                html.Span(f"{fct:.3f} MPa", style={"color": "#059669", "fontWeight": "600"})
-            ], style={"marginBottom": "8px"}),
-            html.Div([
-                html.Span("📐 사용 공식: ", style={"fontWeight": "600", "color": "#374151"}),
-                html.Span(formula_name, style={"color": "#3b82f6", "fontWeight": "500"})
-            ], style={"marginBottom": "8px"}),
-            html.Div([
-                html.Span("🔢 fct,28: ", style={"fontWeight": "600", "color": "#374151"}),
-                html.Span(f"{fct28_value} MPa", style={"color": "#6b7280"})
-            ], style={"marginBottom": "8px"}),
-            html.Div([
-                html.Span("🧮 계산 과정: ", style={"fontWeight": "600", "color": "#374151"}),
-                html.Span(formula_detail, style={"color": "#6b7280", "fontSize": "13px", "fontFamily": "monospace"})
-            ], style={"marginBottom": "8px"}),
-            html.Div([
-                html.Span("⚙️ 사용 상수: ", style={"fontWeight": "600", "color": "#374151"}),
-                html.Span(
-                    f"a={formula_params.get('a', 1)}, b={formula_params.get('b', 1)}" if formula_params and formula_params.get("formula") == "ceb" else "t/28",
-                    style={"color": "#6b7280", "fontSize": "13px"}
-                )
-            ])
+                html.Span("📐 ", style={"color": "#3b82f6", "fontSize": "14px"}),
+                html.Span(formula_name, style={"fontWeight": "500", "color": "#374151", "fontSize": "13px"}),
+                html.Span(" | ", style={"color": "#d1d5db", "fontSize": "13px"}),
+                html.Span("fct,28: ", style={"fontWeight": "500", "color": "#6b7280", "fontSize": "13px"}),
+                html.Span(f"{fct28_value} MPa", style={"color": "#6b7280", "fontSize": "13px"})
+            ], style={"textAlign": "center", "padding": "6px", "backgroundColor": "#f1f5f9", "borderRadius": "4px", "fontSize": "13px"})
         ])
         
         # 6성분 응력 추출
@@ -2277,19 +2398,224 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
         if data:
             print(f"DEBUG: 첫 번째 데이터 샘플={data[0]}")
         
-        return data, analysis_info
+        # 입체 등온면 그래프 생성
+        isosurface_fig = create_3d_isosurface_figure(stress_data, stress_component, isosurface_levels, fct)
+        
+        # 응력 범위 표시
+        stress_range_text = create_stress_range_display(data, stress_component)
+        
+        return data, analysis_info, isosurface_fig, stress_range_text
         
     except Exception as e:
         print(f"DEBUG: update_tci_3d_table 오류: {e}")
         import traceback
         traceback.print_exc()
+        empty_fig = go.Figure().add_annotation(
+            text=f"오류 발생: {str(e)}",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
         return [
             {"node": f"오류 발생: {str(e)}", "x_coord": None, "y_coord": None, "z_coord": None,
              "sxx_mpa": None, "syy_mpa": None, "szz_mpa": None, 
              "sxy_mpa": None, "syz_mpa": None, "szx_mpa": None,
              "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
              "tci_sxy": None, "tci_syz": None, "tci_szx": None}
-        ], f"오류 발생: {str(e)}"
+        ], f"오류 발생: {str(e)}", empty_fig, "오류 발생"
+
+# ───────────────────── 입체 등온면 그래프 생성 함수들 ─────────────────────
+
+def create_3d_isosurface_figure(stress_data, stress_component, isosurface_levels, fct):
+    """입체 등온면 그래프를 생성합니다."""
+    try:
+        import numpy as np
+        from scipy.interpolate import griddata
+        
+        # 좌표와 응력 데이터 추출
+        coordinates = stress_data.get('coordinates', [])
+        if not coordinates:
+            return go.Figure().add_annotation(
+                text="좌표 데이터가 없습니다.",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False
+            )
+        
+        # 좌표를 numpy 배열로 변환
+        coords = np.array(coordinates)
+        x_coords = coords[:, 0]
+        y_coords = coords[:, 1]
+        z_coords = coords[:, 2]
+        
+        # 선택된 응력 성분에 따른 값 추출
+        if stress_component == "von_mises":
+            # von Mises 응력 사용
+            stress_values = []
+            von_mises_data = stress_data.get('stress_values', [{}])[0] if stress_data.get('stress_values') else {}
+            for node_id in stress_data.get('nodes', []):
+                vm_stress = von_mises_data.get(node_id, 0)
+                stress_values.append(vm_stress / 1e6)  # Pa를 MPa로 변환
+        else:
+            # 개별 응력 성분 사용
+            comps = stress_data.get('stress_components', {})
+            if stress_component not in comps:
+                return go.Figure().add_annotation(
+                    text=f"{stress_component} 응력 데이터가 없습니다.",
+                    xref="paper", yref="paper",
+                    x=0.5, y=0.5, showarrow=False
+                )
+            
+            stress_values = []
+            for node_id in stress_data.get('nodes', []):
+                stress_val = comps[stress_component].get(node_id, 0)
+                stress_values.append(stress_val / 1e6)  # Pa를 MPa로 변환
+        
+        stress_values = np.array(stress_values)
+        
+        # 응력 범위 계산
+        stress_min = np.min(stress_values)
+        stress_max = np.max(stress_values)
+        
+        # 등온면 레벨 생성
+        levels = np.linspace(stress_min, stress_max, isosurface_levels)
+        
+        # 3D 그리드 생성 (간격을 좀 더 조밀하게)
+        x_range = np.linspace(np.min(x_coords), np.max(x_coords), 50)
+        y_range = np.linspace(np.min(y_coords), np.max(y_coords), 50)
+        z_range = np.linspace(np.min(z_coords), np.max(z_coords), 50)
+        
+        X, Y, Z = np.meshgrid(x_range, y_range, z_range)
+        
+        # 그리드 데이터 보간
+        grid_stress = griddata(
+            (x_coords, y_coords, z_coords), 
+            stress_values, 
+            (X, Y, Z), 
+            method='linear',
+            fill_value=stress_min
+        )
+        
+        # 등온면 그래프 생성
+        fig = go.Figure()
+        
+        # 각 레벨별 등온면 추가
+        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f']
+        
+        for i, level in enumerate(levels):
+            color = colors[i % len(colors)]
+            
+            # 등온면 생성
+            fig.add_trace(go.Isosurface(
+                x=X.flatten(),
+                y=Y.flatten(),
+                z=Z.flatten(),
+                value=grid_stress.flatten(),
+                isomin=level,
+                isomax=level,
+                opacity=0.3,
+                surface_count=1,
+                colorscale=[[0, color], [1, color]],
+                showscale=False,
+                name=f'{level:.2f} MPa'
+            ))
+        
+        # 노드 위치 표시 (작은 점들)
+        fig.add_trace(go.Scatter3d(
+            x=x_coords,
+            y=y_coords,
+            z=z_coords,
+            mode='markers',
+            marker=dict(
+                size=2,
+                color=stress_values,
+                colorscale='Viridis',
+                opacity=0.8,
+                colorbar=dict(title=f"{stress_component} (MPa)")
+            ),
+            name='노드',
+            showlegend=False
+        ))
+        
+        # 레이아웃 설정
+        component_names = {
+            "von_mises": "Von Mises 응력",
+            "SXX": "X방향 정응력",
+            "SYY": "Y방향 정응력", 
+            "SZZ": "Z방향 정응력",
+            "SXY": "XY 전단응력",
+            "SYZ": "YZ 전단응력",
+            "SZX": "ZX 전단응력"
+        }
+        
+        fig.update_layout(
+            title=f"입체 {component_names.get(stress_component, stress_component)} 등온면",
+            scene=dict(
+                xaxis_title="X (m)",
+                yaxis_title="Y (m)", 
+                zaxis_title="Z (m)",
+                camera=dict(
+                    eye=dict(x=1.5, y=1.5, z=1.5)
+                )
+            ),
+            width=800,
+            height=400,
+            margin=dict(l=0, r=0, t=30, b=0)
+        )
+        
+        return fig
+        
+    except Exception as e:
+        print(f"등온면 그래프 생성 오류: {e}")
+        return go.Figure().add_annotation(
+            text=f"등온면 그래프 생성 오류: {str(e)}",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+
+def create_stress_range_display(data, stress_component):
+    """응력 범위를 표시하는 텍스트를 생성합니다."""
+    if not data or len(data) == 0:
+        return "데이터 없음"
+    
+    try:
+        # 선택된 응력 성분에 따른 컬럼명 결정
+        if stress_component == "von_mises":
+            # von Mises는 모든 응력 컬럼에 동일한 값이 저장되어 있음
+            stress_values = [row["sxx_mpa"] for row in data if row["sxx_mpa"] is not None]
+        else:
+            # 개별 응력 성분
+            column_map = {
+                "SXX": "sxx_mpa",
+                "SYY": "syy_mpa", 
+                "SZZ": "szz_mpa",
+                "SXY": "sxy_mpa",
+                "SYZ": "syz_mpa",
+                "SZX": "szx_mpa"
+            }
+            column = column_map.get(stress_component, "sxx_mpa")
+            stress_values = [row[column] for row in data if row[column] is not None]
+        
+        if not stress_values:
+            return "응력 데이터 없음"
+        
+        stress_min = min(stress_values)
+        stress_max = max(stress_values)
+        stress_avg = sum(stress_values) / len(stress_values)
+        
+        component_names = {
+            "von_mises": "Von Mises",
+            "SXX": "SXX",
+            "SYY": "SYY", 
+            "SZZ": "SZZ",
+            "SXY": "SXY",
+            "SYZ": "SYZ",
+            "SZX": "SZX"
+        }
+        
+        return f"{component_names.get(stress_component, stress_component)}: {stress_min:.3f} ~ {stress_max:.3f} MPa (평균: {stress_avg:.3f} MPa)"
+        
+    except Exception as e:
+        print(f"응력 범위 표시 오류: {e}")
+        return "범위 계산 오류"
 
 # ───────────────────── 버튼 상태 및 액션 콜백 함수들 ─────────────────────
 
