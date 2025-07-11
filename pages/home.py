@@ -10,19 +10,31 @@ from utils.encryption import create_project_url
 register_page(__name__, path="/", title="프로젝트 목록")
 
 def format_date(value):
+    # None, NaT, NaN 값 처리
+    if value is None or pd.isna(value) or str(value) == 'NaT':
+        return "N/A"
+    
     if isinstance(value, pd.Timestamp):
         return value.strftime("%Y.%m.%d")
+    
     # 그 외(혹시 문자열) 처리
     s = str(value).rstrip("Z")
     try:
         dt = datetime.fromisoformat(s)
     except ValueError:
-        dt = datetime.strptime(s, "%Y-%m-%d")
+        try:
+            dt = datetime.strptime(s, "%Y-%m-%d")
+        except ValueError:
+            return "N/A"
     return dt.strftime("%Y.%m.%d")
 
 
 def calculate_elapsed_time(created_at):
     """생성일로부터 경과 시간을 DD일 HH시간 형식으로 계산"""
+    # None, NaT, NaN 값 처리
+    if created_at is None or pd.isna(created_at) or str(created_at) == 'NaT':
+        return "N/A"
+    
     try:
         if isinstance(created_at, str):
             created_time = datetime.fromisoformat(created_at.replace('Z', ''))
@@ -36,7 +48,7 @@ def calculate_elapsed_time(created_at):
         
         return f"{days}일 {hours}시간"
     except:
-        return "0일 0시간"
+        return "N/A"
 
 
 def check_sensor_data_status(device_id: str, channel: str):
