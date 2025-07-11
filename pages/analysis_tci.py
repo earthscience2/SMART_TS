@@ -1320,6 +1320,9 @@ def create_tci_3d_tab_content(concrete_pk):
                 id="tci-3d-table",
                 columns=[
                     {"name": "node", "id": "node"},
+                    {"name": "X (m)", "id": "x_coord"},
+                    {"name": "Y (m)", "id": "y_coord"},
+                    {"name": "Z (m)", "id": "z_coord"},
                     {"name": "SXX (MPa)", "id": "sxx_mpa"},
                     {"name": "SYY (MPa)", "id": "syy_mpa"},
                     {"name": "SZZ (MPa)", "id": "szz_mpa"},
@@ -1970,15 +1973,16 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
         print("DEBUG: 입체 TCI 탭이 활성화되지 않음")
         return []
     
-    if not selected_rows or not tbl_data:
-        print("DEBUG: 선택된 콘크리트가 없음")
-        # 더미 데이터로 표 초기화
-        return [
-            {"node": "콘크리트를 선택하세요", "sxx_mpa": None, "syy_mpa": None, "szz_mpa": None, 
-             "sxy_mpa": None, "syz_mpa": None, "szx_mpa": None,
-             "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
-             "tci_sxy": None, "tci_syz": None, "tci_szx": None}
-        ], "콘크리트를 선택하세요"
+            if not selected_rows or not tbl_data:
+            print("DEBUG: 선택된 콘크리트가 없음")
+            # 더미 데이터로 표 초기화
+            return [
+                {"node": "콘크리트를 선택하세요", "x_coord": None, "y_coord": None, "z_coord": None,
+                 "sxx_mpa": None, "syy_mpa": None, "szz_mpa": None, 
+                 "sxy_mpa": None, "syz_mpa": None, "szx_mpa": None,
+                 "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
+                 "tci_sxy": None, "tci_syz": None, "tci_szx": None}
+            ], "콘크리트를 선택하세요"
     
     try:
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
@@ -1991,7 +1995,8 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
         if not frd_files:
             print("DEBUG: FRD 파일이 없음")
             return [
-                {"node": "FRD 파일이 없습니다", "sxx_mpa": None, "syy_mpa": None, "szz_mpa": None, 
+                {"node": "FRD 파일이 없습니다", "x_coord": None, "y_coord": None, "z_coord": None,
+                 "sxx_mpa": None, "syy_mpa": None, "szz_mpa": None, 
                  "sxy_mpa": None, "syz_mpa": None, "szx_mpa": None,
                  "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
                  "tci_sxy": None, "tci_syz": None, "tci_szx": None}
@@ -2012,7 +2017,8 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
         if not stress_data:
             print("DEBUG: 응력 데이터를 읽을 수 없음")
             return [
-                {"node": "응력 데이터를 읽을 수 없습니다", "sxx_mpa": None, "syy_mpa": None, "szz_mpa": None, 
+                {"node": "응력 데이터를 읽을 수 없습니다", "x_coord": None, "y_coord": None, "z_coord": None,
+                 "sxx_mpa": None, "syy_mpa": None, "szz_mpa": None, 
                  "sxy_mpa": None, "syz_mpa": None, "szx_mpa": None,
                  "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
                  "tci_sxy": None, "tci_syz": None, "tci_szx": None}
@@ -2178,23 +2184,32 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
         # 6성분 응력 추출
         comps = stress_data.get('stress_components', {})
         node_ids = stress_data.get('nodes', [])
+        coordinates = stress_data.get('coordinates', [])
         
         print(f"DEBUG: 응력 성분 개수={len(comps)}")
         print(f"DEBUG: 사용 가능한 응력 성분={list(comps.keys())}")
+        print(f"DEBUG: 노드 개수={len(node_ids)}, 좌표 개수={len(coordinates)}")
         
         # 응력 성분이 없으면 von Mises 응력 사용
         if not comps:
             print("DEBUG: 6성분 응력이 없어서 von Mises 응력 사용")
             von_mises_data = stress_data.get('stress_values', [{}])[0] if stress_data.get('stress_values') else {}
             data = []
-            for node in node_ids:
+            for i, node in enumerate(node_ids):
                 vm_stress = von_mises_data.get(node, 0)
                 # von Mises 응력을 MPa로 변환 (Pa -> MPa)
                 vm_stress_mpa = vm_stress / 1e6
                 tci_vm = round(abs(vm_stress_mpa) / fct, 3) if fct != 0 else None
                 print(f"DEBUG: 노드 {node} - von Mises: {vm_stress:.2e} Pa = {vm_stress_mpa:.6f} MPa, TCI: {tci_vm}")
+                
+                # 좌표 정보 추가
+                coord = coordinates[i] if i < len(coordinates) else [0, 0, 0]
+                
                 data.append({
                     "node": node,
+                    "x_coord": round(coord[0], 3),
+                    "y_coord": round(coord[1], 3),
+                    "z_coord": round(coord[2], 3),
                     "sxx_mpa": round(vm_stress_mpa, 6),  # von Mises를 모든 응력 컬럼에 표시
                     "syy_mpa": round(vm_stress_mpa, 6),
                     "szz_mpa": round(vm_stress_mpa, 6),
@@ -2210,7 +2225,7 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
                 })
         else:
             data = []
-            for node in node_ids:
+            for i, node in enumerate(node_ids):
                 sxx = comps.get('SXX', {}).get(node, 0)
                 syy = comps.get('SYY', {}).get(node, 0)
                 szz = comps.get('SZZ', {}).get(node, 0)
@@ -2236,8 +2251,14 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
                 
                 print(f"DEBUG: 노드 {node} - SXX: {sxx_mpa:.6f} MPa (TCI: {tci_sxx}), SYY: {syy_mpa:.6f} MPa (TCI: {tci_syy}), SZZ: {szz_mpa:.6f} MPa (TCI: {tci_szz})")
                 
+                # 좌표 정보 추가
+                coord = coordinates[i] if i < len(coordinates) else [0, 0, 0]
+                
                 data.append({
                     "node": node,
+                    "x_coord": round(coord[0], 3),
+                    "y_coord": round(coord[1], 3),
+                    "z_coord": round(coord[2], 3),
                     "sxx_mpa": round(sxx_mpa, 6),
                     "syy_mpa": round(syy_mpa, 6),
                     "szz_mpa": round(szz_mpa, 6),
@@ -2263,7 +2284,8 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
         import traceback
         traceback.print_exc()
         return [
-            {"node": f"오류 발생: {str(e)}", "sxx_mpa": None, "syy_mpa": None, "szz_mpa": None, 
+            {"node": f"오류 발생: {str(e)}", "x_coord": None, "y_coord": None, "z_coord": None,
+             "sxx_mpa": None, "syy_mpa": None, "szz_mpa": None, 
              "sxy_mpa": None, "syz_mpa": None, "szx_mpa": None,
              "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
              "tci_sxy": None, "tci_syz": None, "tci_szx": None}
