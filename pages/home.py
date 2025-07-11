@@ -124,6 +124,11 @@ def layout(**kwargs):
     if not local_projects_df.empty:
         local_projects_df['concrete_count'] = 0
         local_projects_df['sensor_count'] = 0
+        
+        # 수화열 관련 프로젝트만 필터링
+        local_projects_df = local_projects_df[
+            local_projects_df['name'].str.contains('수화열', na=False)
+        ]
 
     projects = []
 
