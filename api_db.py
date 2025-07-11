@@ -200,10 +200,9 @@ def get_concrete_data(concrete_pk: str = None,
     return pd.read_sql(stmt, con=engine, params=params)
 
 # 콘크리트 추가
-def add_concrete_data(structure_id: str, name: str, dims: dict, 
-                     con_unit: float, con_b: float, con_n: float,
-                     con_t: str, con_a: float, con_p: float, con_d: float,
-                     con_e: float, activate: int) -> None:
+def add_concrete_data(project_pk: str, name: str, dims: dict, 
+                     con_unit: float, con_t: str, con_a: float, con_p: float, con_d: float,
+                     activate: int, con_ceb_fib: list = None) -> None:
     # 1) 현재 가장 큰 concrete_pk 가져오기
     max_pk_sql = "SELECT MAX(concrete_pk) as max_pk FROM concrete"
     max_pk_df = pd.read_sql(text(max_pk_sql), con=engine)
@@ -219,24 +218,22 @@ def add_concrete_data(structure_id: str, name: str, dims: dict,
     # 3) INSERT 쿼리 실행
     sql = """
     INSERT INTO concrete 
-    (concrete_pk, structure_id, name, dims, con_unit, con_b, con_n, con_t, con_a, con_p, con_d, con_e, activate, created_at, updated_at) 
+    (concrete_pk, project_pk, name, dims, con_unit, con_t, con_a, con_p, con_d, con_ceb_fib, activate, created_at, updated_at) 
     VALUES 
-    (:concrete_pk, :structure_id, :name, :dims, :con_unit, :con_b, :con_n, :con_t, :con_a, :con_p, :con_d, :con_e, :activate, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    (:concrete_pk, :project_pk, :name, :dims, :con_unit, :con_t, :con_a, :con_p, :con_d, :con_ceb_fib, :activate, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     """
     
     params = {
         "concrete_pk": new_pk,
-        "structure_id": structure_id,
+        "project_pk": project_pk,
         "name": name,
         "dims": json.dumps(dims),
         "con_unit": con_unit,
-        "con_b": con_b,
-        "con_n": con_n,
         "con_t": con_t,
         "con_a": con_a,
         "con_p": con_p,
         "con_d": con_d,
-        "con_e": con_e,
+        "con_ceb_fib": json.dumps(con_ceb_fib) if con_ceb_fib else None,
         "activate": activate
     }
     
@@ -245,10 +242,15 @@ def add_concrete_data(structure_id: str, name: str, dims: dict,
         conn.commit()
         
     # 로그 기록
-    log_concrete_operation("CREATE", new_pk, structure_id, f"name: {name}, con_unit: {con_unit}, activate: {activate}")
+    log_concrete_operation("CREATE", new_pk, project_pk, f"name: {name}, con_unit: {con_unit}, activate: {activate}")
 
 # 콘크리트 업데이트
 def update_concrete_data(concrete_pk: str, **kwargs) -> None:
+    # con_b, con_n, con_e가 kwargs에 있으면 제거 (더 이상 사용하지 않음)
+    kwargs.pop('con_b', None)
+    kwargs.pop('con_n', None)
+    kwargs.pop('con_e', None)
+    
     # 업데이트할 필드와 값만 추출
     update_fields = {k: v for k, v in kwargs.items() if v is not None}
     if not update_fields:

@@ -123,9 +123,8 @@ def delete_project_data_with_log(project_pk: str) -> None:
 
 # 로그 기능이 추가된 콘크리트 함수들
 def add_concrete_data_with_log(project_pk: str, name: str, dims: dict, 
-                     con_unit: float, con_b: float, con_n: float,
-                     con_t: str, con_a: float, con_p: float, con_d: float,
-                     con_e: float, activate: int) -> None:
+                     con_unit: float, con_t: str, con_a: float, con_p: float, con_d: float,
+                     activate: int) -> None:
     """로그 기능이 추가된 콘크리트 추가 함수"""
     # 1) 현재 가장 큰 concrete_pk 가져오기
     max_pk_sql = "SELECT MAX(concrete_pk) as max_pk FROM concrete"
@@ -142,9 +141,9 @@ def add_concrete_data_with_log(project_pk: str, name: str, dims: dict,
     # 3) INSERT 쿼리 실행
     sql = """
     INSERT INTO concrete 
-    (concrete_pk, project_pk, name, dims, con_unit, con_b, con_n, con_t, con_a, con_p, con_d, con_e, activate, created_at, updated_at) 
+    (concrete_pk, project_pk, name, dims, con_unit, con_t, con_a, con_p, con_d, activate, created_at, updated_at) 
     VALUES 
-    (:concrete_pk, :project_pk, :name, :dims, :con_unit, :con_b, :con_n, :con_t, :con_a, :con_p, :con_d, :con_e, :activate, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    (:concrete_pk, :project_pk, :name, :dims, :con_unit, :con_t, :con_a, :con_p, :con_d, :activate, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     """
     
     params = {
@@ -153,13 +152,10 @@ def add_concrete_data_with_log(project_pk: str, name: str, dims: dict,
         "name": name,
         "dims": json.dumps(dims),
         "con_unit": con_unit,
-        "con_b": con_b,
-        "con_n": con_n,
         "con_t": con_t,
         "con_a": con_a,
         "con_p": con_p,
         "con_d": con_d,
-        "con_e": con_e,
         "activate": activate
     }
     
@@ -173,6 +169,11 @@ def add_concrete_data_with_log(project_pk: str, name: str, dims: dict,
 
 def update_concrete_data_with_log(concrete_pk: str, **kwargs) -> None:
     """로그 기능이 추가된 콘크리트 업데이트 함수"""
+    # con_b, con_n, con_e가 kwargs에 있으면 제거 (더 이상 사용하지 않음)
+    kwargs.pop('con_b', None)
+    kwargs.pop('con_n', None)
+    kwargs.pop('con_e', None)
+    
     # 업데이트할 필드와 값만 추출
     update_fields = {k: v for k, v in kwargs.items() if v is not None}
     if not update_fields:

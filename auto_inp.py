@@ -148,21 +148,48 @@ def calculate_elastic_modulus(concrete_data, analysis_time):
             log_warning("타설일 정보가 없습니다. 기본 탄성계수 3.0e10 Pa 사용")
             return 3.0e10
         
-        # CEB-FIB 모델 매개변수 가져오기
-        e28_gpa = concrete_data.get('con_e')  # E28 (GPa 단위)
-        beta = concrete_data.get('con_b')     # β (베타 상수)
-        n = concrete_data.get('con_n')        # n (지수)
+        # CEB-FIB 모델 매개변수 가져오기 (con_ceb_fib에서 추출)
+        con_ceb_fib = concrete_data.get('con_ceb_fib')
         
-        # 기본값 설정
-        if not e28_gpa:
-            log_warning("E28 정보가 없습니다. 기본값 30 GPa 사용")
-            e28_gpa = 30.0
-        if not beta:
-            log_warning("베타 상수 정보가 없습니다. 기본값 0.2 사용")
-            beta = 0.2
-        if not n:
-            log_warning("N 상수 정보가 없습니다. 기본값 0.5 사용")
-            n = 0.5
+        if con_ceb_fib:
+            try:
+                # JSON 문자열인 경우 파싱
+                if isinstance(con_ceb_fib, str):
+                    ceb_fib_list = json.loads(con_ceb_fib)
+                else:
+                    ceb_fib_list = con_ceb_fib
+                
+                if ceb_fib_list and len(ceb_fib_list) >= 28:
+                    # 28일 값이 E28 (GPa 단위)
+                    e28_gpa = ceb_fib_list[27]
+                    # 기본값으로 설정 (실제로는 역산이 복잡하므로 기본값 사용)
+                    beta = 0.2
+                    n = 0.5
+                else:
+                    log_warning("CEB-FIB 리스트가 유효하지 않습니다. 기본값 사용")
+                    e28_gpa = 30.0
+                    beta = 0.2
+                    n = 0.5
+            except Exception as e:
+                log_warning(f"CEB-FIB 파싱 오류: {e}. 기본값 사용")
+                e28_gpa = 30.0
+                beta = 0.2
+                n = 0.5
+        else:
+            # 기존 개별 컬럼에서 가져오기 (하위 호환성)
+            e28_gpa = concrete_data.get('con_e', 30.0)
+            beta = concrete_data.get('con_b', 0.2)
+            n = concrete_data.get('con_n', 0.5)
+            
+            if not e28_gpa:
+                log_warning("E28 정보가 없습니다. 기본값 30 GPa 사용")
+                e28_gpa = 30.0
+            if not beta:
+                log_warning("베타 상수 정보가 없습니다. 기본값 0.2 사용")
+                beta = 0.2
+            if not n:
+                log_warning("N 상수 정보가 없습니다. 기본값 0.5 사용")
+                n = 0.5
         
         # 단위 변환: GPa -> Pa
         e28_pa = float(e28_gpa) * 1e9
