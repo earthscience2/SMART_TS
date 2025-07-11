@@ -295,11 +295,11 @@ layout = html.Div([
                             html.Div([
                                 html.H6("👁️ 3D 미리보기", className="mb-0 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
                                 dbc.Button(
-                                    html.I(className="fas fa-sync-alt"),
+                                    "새로고침",
                                     id="add-refresh-preview-btn",
-                                    color="outline-secondary",
+                                    color="info",
                                     size="sm",
-                                    className="px-2"
+                                    className="px-3"
                                 )
                             ], className="d-flex justify-content-between align-items-center mb-2"),
                             dcc.Graph(id="add-preview", style={"height": "50vh"}, className="rounded", config={'displayModeBar': False}),
@@ -399,7 +399,6 @@ layout = html.Div([
             ]),
             dbc.ModalFooter([
                 dbc.Button("📥 불러오기", id="add-load-btn", color="outline-primary", className="px-3", size="sm"),
-                dbc.Button("콘크리트 모델링", id="add-build", color="info", className="px-3", size="sm"),
                 dbc.Button("저장", id="add-save", color="success", className="px-3 fw-semibold ms-auto", size="sm"),
                 dbc.Button("닫기", id="add-close", color="secondary", className="px-3", size="sm"),
             ], className="border-0 pt-2"),
@@ -454,11 +453,11 @@ layout = html.Div([
                             html.Div([
                                 html.H6("👁️ 3D 미리보기", className="mb-0 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
                                 dbc.Button(
-                                    html.I(className="fas fa-sync-alt"),
+                                    "새로고침",
                                     id="edit-refresh-preview-btn",
-                                    color="outline-secondary",
+                                    color="info",
                                     size="sm",
-                                    className="px-2"
+                                    className="px-3"
                                 )
                             ], className="d-flex justify-content-between align-items-center mb-2"),
                             dcc.Graph(id="edit-preview", style={"height": "50vh"}, className="rounded", config={'displayModeBar': False}),
@@ -557,7 +556,6 @@ layout = html.Div([
                 ], className="mt-3"),
             ]),
             dbc.ModalFooter([
-                dbc.Button("3D 미리보기", id="edit-build", color="info", className="px-3", size="sm"),
                 dbc.Button("저장", id="edit-save", color="success", className="px-3 fw-semibold ms-auto", size="sm"),
                 dbc.Button("닫기", id="edit-close", color="secondary", className="px-3", size="sm"),
             ], className="border-0 pt-2"),
@@ -1225,13 +1223,12 @@ def apply_concrete_load(n_clicks, selected_rows, table_data):
     Output("add-preview", "figure"),
     Output("add-alert",   "children", allow_duplicate=True),
     Output("add-alert",   "is_open",   allow_duplicate=True),
-    Input("add-build", "n_clicks"),
     Input("add-refresh-preview-btn", "n_clicks"),
     State("add-nodes", "value"),
     State("add-h", "value"),
     prevent_initial_call=True
 )
-def add_preview(_, refresh_clicks, nodes_txt, h):
+def add_preview(refresh_clicks, nodes_txt, h):
     if not nodes_txt:
         return dash.no_update, "노드 목록 입력요", True
     try:
@@ -1571,13 +1568,12 @@ def fill_edit(opened: bool, cid):
     Output("edit-preview", "figure", allow_duplicate=True),
     Output("edit-alert", "children"),
     Output("edit-alert", "is_open"),
-    Input("edit-build", "n_clicks"),
     Input("edit-refresh-preview-btn", "n_clicks"),
     State("edit-nodes", "value"),
     State("edit-h", "value"),
     prevent_initial_call=True
 )
-def edit_preview(_, refresh_clicks, nodes_txt, h):
+def edit_preview(refresh_clicks, nodes_txt, h):
     if not nodes_txt:
         return dash.no_update, "노드 입력", True
     try:
