@@ -293,12 +293,12 @@ def update_concrete_data(concrete_pk: str, **kwargs) -> None:
         conn.execute(text(sql), params)
         conn.commit()
         
-    # 로그 기록 - 구조 ID를 찾기 위해 추가 조회
-    structure_query = "SELECT structure_id FROM concrete WHERE concrete_pk = :concrete_pk"
-    structure_df = pd.read_sql(text(structure_query), con=engine, params={"concrete_pk": concrete_pk})
-    structure_id = structure_df.iloc[0]['structure_id'] if not structure_df.empty else "Unknown"
+    # 로그 기록 - project_pk를 찾기 위해 추가 조회
+    project_query = "SELECT project_pk FROM concrete WHERE concrete_pk = :concrete_pk"
+    project_df = pd.read_sql(text(project_query), con=engine, params={"concrete_pk": concrete_pk})
+    project_pk = project_df.iloc[0]['project_pk'] if not project_df.empty else "Unknown"
     update_details = ", ".join([f"{k}: {v}" for k, v in update_fields.items()])
-    log_concrete_operation("UPDATE", concrete_pk, structure_id, f"Updated fields: {update_details}")
+    log_concrete_operation("UPDATE", concrete_pk, project_pk, f"Updated fields: {update_details}")
 
 # 콘크리트 삭제 (관련 센서도 함께 삭제)
 def delete_concrete_data(concrete_pk: str) -> dict:
@@ -308,11 +308,11 @@ def delete_concrete_data(concrete_pk: str) -> dict:
         dict: {"success": bool, "message": str, "deleted_sensors": int}
     """
     with engine.connect() as conn:
-        # 0) 삭제 전에 구조 ID 조회
-        structure_query = "SELECT structure_id FROM concrete WHERE concrete_pk = :concrete_pk"
-        result = conn.execute(text(structure_query), {"concrete_pk": concrete_pk})
-        structure_row = result.fetchone()
-        structure_id = structure_row[0] if structure_row else "Unknown"
+        # 0) 삭제 전에 project_pk 조회
+        project_query = "SELECT project_pk FROM concrete WHERE concrete_pk = :concrete_pk"
+        result = conn.execute(text(project_query), {"concrete_pk": concrete_pk})
+        project_row = result.fetchone()
+        project_pk = project_row[0] if project_row else "Unknown"
         
         # 1) 관련된 센서 개수 확인
         sensor_check_sql = "SELECT COUNT(*) as count FROM sensor WHERE concrete_pk = :concrete_pk"
@@ -331,7 +331,7 @@ def delete_concrete_data(concrete_pk: str) -> dict:
         conn.commit()
         
         # 로그 기록
-        log_concrete_operation("DELETE", concrete_pk, structure_id, f"Concrete deleted with {sensor_count} related sensors")
+        log_concrete_operation("DELETE", concrete_pk, project_pk, f"Concrete deleted with {sensor_count} related sensors")
         
         if sensor_count > 0:
             return {
