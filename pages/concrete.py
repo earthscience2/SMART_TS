@@ -2197,9 +2197,26 @@ def render_add_age_input_area(mode):
             ], className="text-center")
         ])
     else:  # manual
+        # 직접 입력 필드를 여기서 직접 생성
+        input_fields = []
+        for day_num in range(1, 29):
+            input_id = f"add-direct-input-day-{day_num}"
+            field = dbc.Row([
+                dbc.Col(dbc.Label(f"{day_num}일", className="form-label fw-semibold", style={"fontSize": "0.8rem", "width": "60px"}), width=2),
+                dbc.Col(dbc.Input(
+                    id=input_id,
+                    type="number",
+                    step=0.01,
+                    placeholder="30.0",
+                    className="form-control-sm",
+                    style={"fontSize": "0.8rem"}
+                ), width=10),
+            ], className="mb-2 align-items-center")
+            input_fields.append(field)
+        
         return html.Div([
             html.H6("📋 재령일별 탄성계수 직접 입력", className="mb-3 text-secondary fw-bold"),
-            html.Div(id="add-direct-input-fields", className="mb-3"),
+            html.Div(input_fields, style={"maxHeight": "400px", "overflowY": "auto", "paddingRight": "8px"}),
         ])
 
 # ───────────────────── ⑱ 라디오 버튼 선택에 따른 입력 영역 변경 (수정 모달)
@@ -2241,80 +2258,29 @@ def render_edit_age_input_area(mode):
             ], className="text-center")
         ])
     else:  # manual
+        # 직접 입력 필드를 여기서 직접 생성
+        input_fields = []
+        for day_num in range(1, 29):
+            input_id = f"edit-direct-input-day-{day_num}"
+            field = dbc.Row([
+                dbc.Col(dbc.Label(f"{day_num}일", className="form-label fw-semibold", style={"fontSize": "0.8rem", "width": "60px"}), width=2),
+                dbc.Col(dbc.Input(
+                    id=input_id,
+                    type="number",
+                    step=0.01,
+                    placeholder="30.0",
+                    className="form-control-sm",
+                    style={"fontSize": "0.8rem"}
+                ), width=10),
+            ], className="mb-2 align-items-center")
+            input_fields.append(field)
+        
         return html.Div([
             html.H6("📋 재령일별 탄성계수 직접 입력", className="mb-3 text-secondary fw-bold"),
-            html.Div(id="edit-direct-input-fields", className="mb-3"),
+            html.Div(input_fields, style={"maxHeight": "400px", "overflowY": "auto", "paddingRight": "8px"}),
         ])
 
-# ───────────────────── ⑲ 직접 입력 필드 생성 (추가 모달용)
-@callback(
-    Output("add-direct-input-fields", "children"),
-    Input("add-input-mode", "value"),
-    State("add-e", "value"),
-    prevent_initial_call=True
-)
-def generate_add_direct_input_fields(mode, add_e):
-    if mode != "manual":
-        raise PreventUpdate
-    
-    # 기본값 설정 (E28 값 사용)
-    default_value = 30.0
-    if add_e:
-        default_value = float(add_e)
-    
-    # 28일치 입력 필드 생성 (1x28 세로, 스크롤)
-    input_fields = []
-    for day_num in range(1, 29):
-        input_id = f"add-direct-input-day-{day_num}"
-        field = dbc.Row([
-            dbc.Col(dbc.Label(f"{day_num}일", className="form-label fw-semibold", style={"fontSize": "0.8rem", "width": "60px"}), width=2),
-            dbc.Col(dbc.Input(
-                id=input_id,
-                type="number",
-                step=0.01,
-                placeholder=f"{default_value:.1f}",
-                className="form-control-sm",
-                style={"fontSize": "0.8rem"}
-            ), width=10),
-        ], className="mb-2 align-items-center")
-        input_fields.append(field)
-    
-    return html.Div(input_fields, style={"maxHeight": "400px", "overflowY": "auto", "paddingRight": "8px"})
 
-# ───────────────────── ⑳ 직접 입력 필드 생성 (수정 모달용)
-@callback(
-    Output("edit-direct-input-fields", "children"),
-    Input("edit-input-mode", "value"),
-    State("edit-e", "value"),
-    prevent_initial_call=True
-)
-def generate_edit_direct_input_fields(mode, edit_e):
-    if mode != "manual":
-        raise PreventUpdate
-    
-    # 기본값 설정 (E28 값 사용)
-    default_value = 30.0
-    if edit_e:
-        default_value = float(edit_e)
-    
-    # 28일치 입력 필드 생성 (1x28 세로, 스크롤)
-    input_fields = []
-    for day_num in range(1, 29):
-        input_id = f"edit-direct-input-day-{day_num}"
-        field = dbc.Row([
-            dbc.Col(dbc.Label(f"{day_num}일", className="form-label fw-semibold", style={"fontSize": "0.8rem", "width": "60px"}), width=2),
-            dbc.Col(dbc.Input(
-                id=input_id,
-                type="number",
-                step=0.01,
-                placeholder=f"{default_value:.1f}",
-                className="form-control-sm",
-                style={"fontSize": "0.8rem"}
-            ), width=10),
-        ], className="mb-2 align-items-center")
-        input_fields.append(field)
-    
-    return html.Div(input_fields, style={"maxHeight": "400px", "overflowY": "auto", "paddingRight": "8px"})
 
 
 
