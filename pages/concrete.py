@@ -36,7 +36,8 @@ from utils.encryption import parse_project_key_from_url
 register_page(__name__, path="/concrete", title="콘크리트 관리")
 
 # 프로젝트 메타데이터 (URL 파라미터 파싱에 사용)
-projects_df = api_db.get_project_data()
+# 내부 DB 대신 외부 ITS 서버에서 프로젝트 정보를 가져옵니다
+projects_df = pd.DataFrame()  # 빈 DataFrame으로 초기화
 
 # ────────────────────────────── 3-D 헬퍼 ─────────────────────────────
 
