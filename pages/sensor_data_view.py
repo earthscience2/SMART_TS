@@ -314,9 +314,9 @@ layout = html.Div([
 
 @callback(
     Output("sensor-list", "children"),
-    Output("sensor-data-graph", "figure"),
-    Output("selected-sensor-info", "children"),
-    Output("sensor-stats", "children"),
+    Output("sensor-data-graph", "figure", allow_duplicate=True),
+    Output("selected-sensor-info", "children", allow_duplicate=True),
+    Output("sensor-stats", "children", allow_duplicate=True),
     Input("refresh-sensors-btn", "n_clicks"),
     Input("interval-component", "n_intervals"),
     prevent_initial_call=False
@@ -381,9 +381,9 @@ def update_sensor_list(refresh_clicks, n_intervals):
 
 @callback(
     Output("selected-sensor-store", "data"),
-    Output("sensor-data-graph", "figure"),
-    Output("selected-sensor-info", "children"),
-    Output("sensor-stats", "children"),
+    Output("sensor-data-graph", "figure", allow_duplicate=True),
+    Output("selected-sensor-info", "children", allow_duplicate=True),
+    Output("sensor-stats", "children", allow_duplicate=True),
     Input({"type": "sensor-item", "index": ALL}, "n_clicks"),
     prevent_initial_call=True
 )
@@ -726,6 +726,9 @@ def highlight_selected_sensor(selected_sensor):
 
 @callback(
     Output("sensor-data-store", "data", allow_duplicate=True),
+    Output("sensor-data-graph", "figure", allow_duplicate=True),
+    Output("selected-sensor-info", "children", allow_duplicate=True),
+    Output("sensor-stats", "children", allow_duplicate=True),
     Output("data-collection-toast", "is_open"),
     Output("data-collection-toast", "children"),
     Output("data-collection-toast", "icon"),
@@ -755,22 +758,264 @@ def collect_sensor_data(n_clicks, sensor_key):
             )
             
             if not df.empty:
+                # 그래프 생성
+                df['time'] = pd.to_datetime(df['time'])
+                
+                # 서브플롯 생성
+                fig = go.Figure()
+                
+                # 사용 가능한 컬럼들에 따라 그래프 생성
+                if 'temperature' in df.columns:
+                    fig.add_trace(go.Scatter(
+                        x=df['time'],
+                        y=df['temperature'],
+                        mode='lines+markers',
+                        name='온도 (°C)',
+                        line=dict(color='red', width=2),
+                        marker=dict(size=4),
+                        yaxis='y'
+                    ))
+                
+                if 'humidity' in df.columns:
+                    fig.add_trace(go.Scatter(
+                        x=df['time'],
+                        y=df['humidity'],
+                        mode='lines+markers',
+                        name='습도 (%)',
+                        line=dict(color='blue', width=2),
+                        marker=dict(size=4),
+                        yaxis='y2'
+                    ))
+                
+                if 'sv' in df.columns:
+                    fig.add_trace(go.Scatter(
+                        x=df['time'],
+                        y=df['sv'],
+                        mode='lines+markers',
+                        name='SV',
+                        line=dict(color='orange', width=2),
+                        marker=dict(size=4),
+                        yaxis='y3'
+                    ))
+                
+                # 기본 Y축 설정
+                yaxis_config = {
+                    'title': "값",
+                    'side': "left"
+                }
+                
+                # 추가 Y축 설정
+                yaxis2_config = {
+                    'title': "습도 (%)",
+                    'titlefont': dict(color="blue"),
+                    'tickfont': dict(color="blue"),
+                    'anchor': "x",
+                    'overlaying': "y",
+                    'side': "right"
+                }
+                
+                yaxis3_config = {
+                    'title': "SV",
+                    'titlefont': dict(color="orange"),
+                    'tickfont': dict(color="orange"),
+                    'anchor': "x",
+                    'overlaying': "y",
+                    'side': "right",
+                    'position': 0.95
+                }
+                
+                fig.update_layout(
+                    title=f"센서 데이터 시계열 그래프 - {device_id} Ch.{channel}",
+                    xaxis_title="시간",
+                    yaxis=yaxis_config,
+                    yaxis2=yaxis2_config,
+                    yaxis3=yaxis3_config,
+                    hovermode='x unified',
+                    showlegend=True,
+                    template="plotly_white",
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02,
+                        xanchor="right",
+                        x=1
+                    )
+                )
+                
+                # 센서 정보 생성
+                try:
+                    result_info = api_db.get_latest_sensor_data_time(device_id, channel)
+                    
+                    if result_info["status"] == "fail":
+                        sensor_info = html.Div(f"센서 {device_id} Ch.{channel}의 데이터를 찾을 수 없습니다.", className="text-danger")
+                    else:
+                        latest_time = result_info["time"]
+                        sensor_info = dbc.Row([
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardBody([
+                                        html.H6("센서 ID", className="card-title"),
+                                        html.H4(f"{device_id} Ch.{channel}", className="text-primary"),
+                                        html.Small(f"최신 데이터: {latest_time.strftime('%Y-%m-%d %H:%M')}", className="text-muted")
+                                    ])
+                                ])
+                            ], width=4),
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardBody([
+                                        html.H6("센서 상태", className="card-title"),
+                                        html.H4("활성", className="text-success"),
+                                        html.Small("데이터 수집 중", className="text-muted")
+                                    ])
+                                ])
+                            ], width=4),
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardBody([
+                                        html.H6("데이터 타입", className="card-title"),
+                                        html.H4("실시간", className="text-info"),
+                                        html.Small("ITS 시스템", className="text-muted")
+                                    ])
+                                ])
+                            ], width=4)
+                        ])
+                except Exception as e:
+                    sensor_info = html.Div(f"센서 정보를 불러올 수 없습니다: {e}", className="text-danger")
+                
+                # 통계 정보 생성
+                data_period = f"{df['time'].min().strftime('%Y-%m-%d %H:%M')} ~ {df['time'].max().strftime('%Y-%m-%d %H:%M')}"
+                
+                # 사용 가능한 컬럼들에 대한 통계 계산
+                stats_cards = []
+                
+                if 'temperature' in df.columns:
+                    temp_stats = {
+                        '평균': df['temperature'].mean(),
+                        '최대': df['temperature'].max(),
+                        '최소': df['temperature'].min(),
+                        '표준편차': df['temperature'].std(),
+                        '중앙값': df['temperature'].median()
+                    }
+                    
+                    stats_cards.append(
+                        dbc.Col([
+                            dbc.Card([
+                                dbc.CardHeader("온도 통계"),
+                                dbc.CardBody([
+                                    html.P(f"평균: {temp_stats['평균']:.1f}°C"),
+                                    html.P(f"최대: {temp_stats['최대']:.1f}°C"),
+                                    html.P(f"최소: {temp_stats['최소']:.1f}°C"),
+                                    html.P(f"중앙값: {temp_stats['중앙값']:.1f}°C"),
+                                    html.P(f"표준편차: {temp_stats['표준편차']:.2f}°C")
+                                ])
+                            ])
+                        ], width=4)
+                    )
+                
+                if 'humidity' in df.columns:
+                    humidity_stats = {
+                        '평균': df['humidity'].mean(),
+                        '최대': df['humidity'].max(),
+                        '최소': df['humidity'].min(),
+                        '표준편차': df['humidity'].std(),
+                        '중앙값': df['humidity'].median()
+                    }
+                    
+                    stats_cards.append(
+                        dbc.Col([
+                            dbc.Card([
+                                dbc.CardHeader("습도 통계"),
+                                dbc.CardBody([
+                                    html.P(f"평균: {humidity_stats['평균']:.1f}%"),
+                                    html.P(f"최대: {humidity_stats['최대']:.1f}%"),
+                                    html.P(f"최소: {humidity_stats['최소']:.1f}%"),
+                                    html.P(f"중앙값: {humidity_stats['중앙값']:.1f}%"),
+                                    html.P(f"표준편차: {humidity_stats['표준편차']:.2f}%")
+                                ])
+                            ])
+                        ], width=4)
+                    )
+                
+                if 'sv' in df.columns:
+                    sv_stats = {
+                        '평균': df['sv'].mean(),
+                        '최대': df['sv'].max(),
+                        '최소': df['sv'].min(),
+                        '표준편차': df['sv'].std(),
+                        '중앙값': df['sv'].median()
+                    }
+                    
+                    stats_cards.append(
+                        dbc.Col([
+                            dbc.Card([
+                                dbc.CardHeader("SV 통계"),
+                                dbc.CardBody([
+                                    html.P(f"평균: {sv_stats['평균']:.1f}"),
+                                    html.P(f"최대: {sv_stats['최대']:.1f}"),
+                                    html.P(f"최소: {sv_stats['최소']:.1f}"),
+                                    html.P(f"중앙값: {sv_stats['중앙값']:.1f}"),
+                                    html.P(f"표준편차: {sv_stats['표준편차']:.2f}")
+                                ])
+                            ])
+                        ], width=4)
+                    )
+                
+                if not stats_cards:
+                    stats_cards.append(
+                        dbc.Col([
+                            dbc.Card([
+                                dbc.CardHeader("데이터 정보"),
+                                dbc.CardBody([
+                                    html.P(f"총 데이터: {len(df)}개"),
+                                    html.P(f"컬럼: {', '.join(df.columns)}")
+                                ])
+                            ])
+                        ], width=12)
+                    )
+                
+                stats = dbc.Row([
+                    dbc.Col([
+                        html.H6("데이터 기간", className="text-center"),
+                        html.P(data_period, className="text-center text-muted")
+                    ], width=12, className="mb-3"),
+                    *stats_cards
+                ])
+                
                 return (
                     df.to_dict('records'),
+                    fig,
+                    sensor_info,
+                    stats,
                     True,
                     f"✅ {result['count']}개의 데이터를 성공적으로 수집했습니다!",
                     "success"
                 )
             else:
+                empty_graph = go.Figure().add_annotation(
+                    text="데이터가 없습니다",
+                    xref="paper", yref="paper",
+                    x=0.5, y=0.5, showarrow=False
+                )
                 return (
                     None,
+                    empty_graph,
+                    html.Div("데이터를 수집했지만 표시할 수 없습니다.", className="text-warning"),
+                    html.Div("통계 정보를 표시할 수 없습니다.", className="text-muted"),
                     True,
                     f"⚠️ 데이터를 수집했지만 표시할 수 없습니다.",
                     "warning"
                 )
         else:
+            empty_graph = go.Figure().add_annotation(
+                text="데이터가 없습니다",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False
+            )
             return (
                 None,
+                empty_graph,
+                html.Div(f"센서 {device_id} Ch.{channel}의 데이터를 찾을 수 없습니다.", className="text-danger"),
+                html.Div("통계 정보를 표시할 수 없습니다.", className="text-muted"),
                 True,
                 f"❌ 데이터 수집 실패: {result['msg']}",
                 "danger"
@@ -778,8 +1023,16 @@ def collect_sensor_data(n_clicks, sensor_key):
         
     except Exception as e:
         print(f"Error collecting sensor data: {e}")
+        empty_graph = go.Figure().add_annotation(
+            text="오류 발생",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
         return (
             None,
+            empty_graph,
+            html.Div(f"센서 정보를 불러올 수 없습니다: {e}", className="text-danger"),
+            html.Div("통계 정보를 표시할 수 없습니다.", className="text-muted"),
             True,
             f"❌ 데이터 수집 중 오류 발생: {str(e)}",
             "danger"
