@@ -2448,7 +2448,6 @@ def update_tci_3d_table(time_idx, play_click, active_tab, stress_component, form
 def create_3d_isosurface_figure(stress_data, stress_component, fct, concrete_dims=None):
     import numpy as np
     import plotly.graph_objects as go
-    from scipy.interpolate import griddata
     # 좌표 추출
     coordinates = stress_data.get('coordinates', [])
     if not coordinates:
@@ -2483,14 +2482,6 @@ def create_3d_isosurface_figure(stress_data, stress_component, fct, concrete_dim
             x=0.5, y=0.5, showarrow=False
         )
     values = np.array([tci_map[stress_component](i) for i in node_ids])
-    # 볼륨 그리드 보간
-    grid_resolution = 30
-    X, Y, Z = np.meshgrid(
-        np.linspace(np.min(x_coords), np.max(x_coords), grid_resolution),
-        np.linspace(np.min(y_coords), np.max(y_coords), grid_resolution),
-        np.linspace(np.min(z_coords), np.max(z_coords), grid_resolution)
-    )
-    grid_values = griddata((x_coords, y_coords, z_coords), values, (X, Y, Z), method='nearest', fill_value=np.nanmin(values))
     # 컬러바/타이틀
     if stress_component.endswith('_p'):
         cmin, cmax = 0, 100
@@ -2500,9 +2491,9 @@ def create_3d_isosurface_figure(stress_data, stress_component, fct, concrete_dim
         cmin, cmax = float(np.nanmin(values)), float(np.nanmax(values))
         colorbar_title = 'TCI'
         colorscale = [[0, 'green'], [0.5, 'yellow'], [1, 'red']]
-    # 볼륨
+    # 볼륨 (meshgrid 보간 없이 실제 노드만)
     fig = go.Figure(data=go.Volume(
-        x=X.flatten(), y=Y.flatten(), z=Z.flatten(), value=grid_values.flatten(),
+        x=x_coords, y=y_coords, z=z_coords, value=values,
         opacity=0.1, surface_count=15, colorscale=colorscale,
         colorbar=dict(title=colorbar_title, thickness=10),
         cmin=cmin, cmax=cmax, showscale=True
