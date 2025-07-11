@@ -313,19 +313,9 @@ layout = html.Div([
                         html.Div([
                             html.H6("🔬 타설 콘크리트 탄성계수", className="mb-3 text-secondary fw-bold"),
                             
-                            # 라디오 버튼으로 입력 방식 선택
-                            dbc.RadioItems(
-                                id="add-input-mode",
-                                options=[
-                                    {"label": "CEB-FIB 모델로 자동 계산", "value": "ceb_fib"},
-                                    {"label": "직접 입력", "value": "manual"},
-                                ],
-                                value="ceb_fib",
-                                inline=True,
-                                className="mb-3"
-                            ),
+
                             
-                            # 선택된 방식에 따른 입력 영역
+                            # 재령일별 탄성계수 입력 영역
                             html.Div(id="add-age-input-area"),
                         ], className="bg-white p-3 rounded shadow-sm border mb-3"),
                         
@@ -453,19 +443,9 @@ layout = html.Div([
                         html.Div([
                             html.H6("🔬 타설 콘크리트 탄성계수", className="mb-3 text-secondary fw-bold"),
                             
-                            # 라디오 버튼으로 입력 방식 선택
-                            dbc.RadioItems(
-                                id="edit-input-mode",
-                                options=[
-                                    {"label": "CEB-FIB 모델로 자동 계산", "value": "ceb_fib"},
-                                    {"label": "직접 입력", "value": "manual"},
-                                ],
-                                value="ceb_fib",  # 기본값 명시
-                                inline=True,
-                                className="mb-3"
-                            ),
+
                             
-                            # 선택된 방식에 따른 입력 영역
+                            # 재령일별 탄성계수 입력 영역
                             html.Div(id="edit-age-input-area"),
                         ], className="bg-white p-3 rounded shadow-sm border mb-3"),
                         
@@ -712,7 +692,34 @@ layout = html.Div([
         ]),
 
         # CEB-FIB 자동채우기용 모달
-        ceb_fib_modal,
+        dbc.Modal(
+            id="ceb-fib-modal",
+            is_open=False,
+            size="md",
+            children=[
+                dbc.ModalHeader("CEB-FIB 모델로 자동 채우기"),
+                dbc.ModalBody([
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Label("E28 (GPa)"),
+                            dbc.Input(id="ceb-fib-e28", type="number", step=0.1, placeholder="30.0"),
+                        ]),
+                        dbc.Col([
+                            dbc.Label("β (베타)"),
+                            dbc.Input(id="ceb-fib-beta", type="number", step=0.01, placeholder="0.2"),
+                        ]),
+                        dbc.Col([
+                            dbc.Label("n"),
+                            dbc.Input(id="ceb-fib-n", type="number", step=0.01, placeholder="0.5"),
+                        ]),
+                    ], className="g-2 mb-2"),
+                ]),
+                dbc.ModalFooter([
+                    dbc.Button("적용", id="ceb-fib-apply", color="success", className="px-3"),
+                    dbc.Button("닫기", id="ceb-fib-close", color="secondary", className="px-3"),
+                ]),
+            ]
+        ),
 ], style={"backgroundColor": "#f8f9fa", "minHeight": "100vh"})
 
 # ───────────────────── ① URL에서 프로젝트 정보 읽기
@@ -1286,10 +1293,10 @@ def add_preview(refresh_clicks, nodes_txt, h):
     State("add-p",       "value"),
     State("add-d",       "value"),
     State("add-e",       "value"),
-    State("add-input-mode", "value"),
+    *[State(f"add-direct-input-day-{i}", "value") for i in range(1, 29)],
     prevent_initial_call=True
 )
-def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t_date, t_time, a, p, d, e, input_mode):
+def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t_date, t_time, a, p, d, e, *day_values):
     if not n_clicks:
         raise PreventUpdate
 
@@ -2155,133 +2162,45 @@ def apply_direct_input_values(apply_clicks, source, *day_values):
         error_msg = f"❌ 직접 입력 처리 중 오류 발생: {str(e)}"
         return dash.no_update, dash.no_update, error_msg, True, "danger"
 
-# ───────────────────── ⑰ 라디오 버튼 선택에 따른 입력 영역 변경 (추가 모달)
+# ───────────────────── ⑰ 재령일별 탄성계수 입력 영역 (추가 모달)
 @callback(
     Output("add-age-input-area", "children"),
-    Input("add-input-mode", "value"),
+    Input("init", "n_intervals"),
     prevent_initial_call=False
 )
-def render_add_age_input_area(mode):
-    if mode == "ceb_fib":
-        return html.Div([
-            dbc.Row([
-                dbc.Col([
-                    dbc.Label([
-                        "E28(재령 28일 압축 탄성계수) [GPa] ",
-                        html.Small("(1~100)", className="text-muted", style={"fontSize": "0.7rem"})
-                    ], className="form-label fw-semibold"),
-                    dbc.Input(id="add-e", type="number", step=0.1, placeholder="탄성계수", className="form-control")
-                ], width=12),
-            ], className="mb-3"),
-            dbc.Row([
-                dbc.Col([
-                    dbc.Label([
-                        "베타 상수 ",
-                        html.Small("(0.1~1.0)", className="text-muted", style={"fontSize": "0.7rem"})
-                    ], className="form-label fw-semibold"),
-                    dbc.Input(id="add-b", type="number", step=0.1, placeholder="베타 상수", className="form-control")
-                ], width=6),
-                dbc.Col([
-                    dbc.Label([
-                        "N 상수 ",
-                        html.Small("(0.5~0.7)", className="text-muted", style={"fontSize": "0.7rem"})
-                    ], className="form-label fw-semibold"),
-                    dbc.Input(id="add-n", type="number", step=0.1, placeholder="N 상수", className="form-control")
-                ], width=6),
-            ], className="mb-2"),
-            html.Div([
-                dbc.Button("재령분석", id="add-age-analysis", color="warning", className="px-3", size="sm"),
-            ], className="text-center")
-        ])
-    else:  # manual
-        # 직접 입력 필드를 여기서 직접 생성
-        input_fields = []
-        for day_num in range(1, 29):
-            input_id = f"add-direct-input-day-{day_num}"
-            field = dbc.Row([
-                dbc.Col(dbc.Label(f"{day_num}일", className="form-label fw-semibold", style={"fontSize": "0.8rem", "width": "60px"}), width=2),
-                dbc.Col(dbc.Input(
-                    id=input_id,
-                    type="number",
-                    step=0.01,
-                    placeholder="30.0",
-                    className="form-control-sm",
-                    style={"fontSize": "0.8rem"}
-                ), width=10),
-            ], className="mb-2 align-items-center")
-            input_fields.append(field)
-        
-        return html.Div([
-            html.H6("📋 재령일별 탄성계수 직접 입력", className="mb-3 text-secondary fw-bold"),
-            html.Div(input_fields, style={"maxHeight": "400px", "overflowY": "auto", "paddingRight": "8px"}),
-            html.Div([
-                dbc.Button("직접 입력", id="edit-direct-input", color="warning", className="px-3", size="sm"),
-            ], className="text-center mt-2")
-        ])
+def render_add_age_input_area(n):
+    return make_age_input_area("add")
 
-# ───────────────────── ⑱ 라디오 버튼 선택에 따른 입력 영역 변경 (수정 모달)
+# ───────────────────── ⑱ 재령일별 탄성계수 입력 영역 (수정 모달)
 @callback(
     Output("edit-age-input-area", "children"),
-    Input("edit-input-mode", "value"),
-    prevent_initial_call=False
+    Input("modal-edit", "is_open"),
+    State("edit-id", "data"),
+    prevent_initial_call=True
 )
-def render_edit_age_input_area(mode):
-    if mode == "ceb_fib":
-        return html.Div([
-            dbc.Row([
-                dbc.Col([
-                    dbc.Label([
-                        "E28(재령 28일 압축 탄성계수) [GPa] ",
-                        html.Small("(1~100)", className="text-muted", style={"fontSize": "0.7rem"})
-                    ], className="form-label fw-semibold"),
-                    dbc.Input(id="edit-e", type="number", step=0.1, placeholder="탄성계수", className="form-control")
-                ], width=12),
-            ], className="mb-3"),
-            dbc.Row([
-                dbc.Col([
-                    dbc.Label([
-                        "베타 상수 ",
-                        html.Small("(0.1~1.0)", className="text-muted", style={"fontSize": "0.7rem"})
-                    ], className="form-label fw-semibold"),
-                    dbc.Input(id="edit-b", type="number", step=0.1, placeholder="베타 상수", className="form-control")
-                ], width=6),
-                dbc.Col([
-                    dbc.Label([
-                        "N 상수 ",
-                        html.Small("(0.5~0.7)", className="text-muted", style={"fontSize": "0.7rem"})
-                    ], className="form-label fw-semibold"),
-                    dbc.Input(id="edit-n", type="number", step=0.1, placeholder="N 상수", className="form-control")
-                ], width=6),
-            ], className="mb-2"),
-            html.Div([
-                dbc.Button("재령분석", id="edit-age-analysis", color="warning", className="px-3", size="sm"),
-            ], className="text-center")
-        ])
-    else:  # manual
-        # 직접 입력 필드를 여기서 직접 생성
-        input_fields = []
-        for day_num in range(1, 29):
-            input_id = f"edit-direct-input-day-{day_num}"
-            field = dbc.Row([
-                dbc.Col(dbc.Label(f"{day_num}일", className="form-label fw-semibold", style={"fontSize": "0.8rem", "width": "60px"}), width=2),
-                dbc.Col(dbc.Input(
-                    id=input_id,
-                    type="number",
-                    step=0.01,
-                    placeholder="30.0",
-                    className="form-control-sm",
-                    style={"fontSize": "0.8rem"}
-                ), width=10),
-            ], className="mb-2 align-items-center")
-            input_fields.append(field)
-        
-        return html.Div([
-            html.H6("📋 재령일별 탄성계수 직접 입력", className="mb-3 text-secondary fw-bold"),
-            html.Div(input_fields, style={"maxHeight": "400px", "overflowY": "auto", "paddingRight": "8px"}),
-            html.Div([
-                dbc.Button("직접 입력", id="edit-direct-input", color="warning", className="px-3", size="sm"),
-            ], className="text-center mt-2")
-        ])
+def render_edit_age_input_area(is_open, cid):
+    if not is_open or not cid:
+        raise PreventUpdate
+    
+    # 기존 데이터에서 CEB-FIB 값 불러오기
+    df = api_db.get_concrete_data(cid)
+    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
+        return make_age_input_area("edit")
+    
+    row = df.iloc[0].to_dict() if isinstance(df, pd.DataFrame) else df
+    
+    # CEB-FIB 리스트 파싱
+    ceb_fib_list = []
+    if row.get('CEB-FIB'):
+        try:
+            if isinstance(row['CEB-FIB'], str):
+                ceb_fib_list = json.loads(row['CEB-FIB'])
+            else:
+                ceb_fib_list = row['CEB-FIB']
+        except Exception:
+            ceb_fib_list = []
+    
+    return make_age_input_area("edit", ceb_fib_list)
 
 # 1. 추가/수정 모달의 물성치 영역을 다음과 같이 변경
 # (공통화 위해 함수로 분리)
@@ -2321,40 +2240,55 @@ def make_age_input_area(prefix, values=None):
 # (구체적 코드는 파일 전체에 적용, 기존 콜백/레이아웃/입력값 처리 등 일괄 반영)
 # (이후 필요시 추가 안내)
 
-# CEB-FIB 자동채우기용 모달
-ceb_fib_modal = dbc.Modal(
-    id="ceb-fib-modal",
-    is_open=False,
-    size="md",
-    children=[
-        dbc.ModalHeader("CEB-FIB 모델로 자동 채우기"),
-        dbc.ModalBody([
-            dbc.Row([
-                dbc.Col([
-                    dbc.Label("E28 (GPa)"),
-                    dbc.Input(id="ceb-fib-e28", type="number", step=0.1, placeholder="30.0"),
-                ]),
-                dbc.Col([
-                    dbc.Label("β (베타)"),
-                    dbc.Input(id="ceb-fib-beta", type="number", step=0.01, placeholder="0.2"),
-                ]),
-                dbc.Col([
-                    dbc.Label("n"),
-                    dbc.Input(id="ceb-fib-n", type="number", step=0.01, placeholder="0.5"),
-                ]),
-            ], className="g-2 mb-2"),
-        ]),
-        dbc.ModalFooter([
-            dbc.Button("적용", id="ceb-fib-apply", color="success", className="px-3"),
-            dbc.Button("닫기", id="ceb-fib-close", color="secondary", className="px-3"),
-        ]),
-    ]
+# CEB-FIB 자동채우기 모달 토글 콜백
+@callback(
+    Output("ceb-fib-modal", "is_open"),
+    Input("add-ceb-fib-btn", "n_clicks"),
+    Input("edit-ceb-fib-btn", "n_clicks"),
+    Input("ceb-fib-close", "n_clicks"),
+    Input("ceb-fib-apply", "n_clicks"),
+    State("ceb-fib-modal", "is_open"),
+    prevent_initial_call=True
 )
-# 4. 레이아웃에 ceb_fib_modal 추가
-# 5. ceb-fib-btn 클릭 시 ceb-fib-modal 오픈, 적용 시 28개 입력창 자동 채움 콜백 추가
-# 6. 저장/수정 시 28개 입력값을 리스트로 저장, 불러오기 시에도 28개 값 채움
-# 7. 기존 라디오/CEB-FIB/분석 관련 코드, 콜백, State, 변수, 함수 등 모두 제거
-# (구체적 코드 전체에 일괄 반영)
+def toggle_ceb_fib_modal(add_btn, edit_btn, close_btn, apply_btn, is_open):
+    trig = ctx.triggered_id
+    if trig in ("add-ceb-fib-btn", "edit-ceb-fib-btn"):
+        return True
+    elif trig in ("ceb-fib-close", "ceb-fib-apply"):
+        return False
+    return is_open
+
+# CEB-FIB 적용 시 28개 입력창 자동 채움 콜백
+@callback(
+    *[Output(f"add-direct-input-day-{i}", "value", allow_duplicate=True) for i in range(1, 29)],
+    *[Output(f"edit-direct-input-day-{i}", "value", allow_duplicate=True) for i in range(1, 29)],
+    Input("ceb-fib-apply", "n_clicks"),
+    State("ceb-fib-e28", "value"),
+    State("ceb-fib-beta", "value"),
+    State("ceb-fib-n", "value"),
+    State("ceb-fib-modal", "is_open"),
+    prevent_initial_call=True
+)
+def apply_ceb_fib_values(apply_clicks, e28, beta, n, is_open):
+    if not apply_clicks or not is_open:
+        raise PreventUpdate
+    
+    if e28 is None or beta is None or n is None:
+        raise PreventUpdate
+    
+    # CEB-FIB 모델 계산: E(t) = E28 * (t/(t+β))^n
+    days = list(range(1, 29))
+    elasticity_values = []
+    
+    for t in days:
+        e_t = e28 * ((t / (t + beta)) ** n)
+        elasticity_values.append(round(e_t, 2))
+    
+    # add와 edit 모달 모두에 적용
+    add_outputs = elasticity_values
+    edit_outputs = elasticity_values
+    
+    return add_outputs + edit_outputs
 
 
 
