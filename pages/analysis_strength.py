@@ -46,7 +46,7 @@ layout = dbc.Container(
             dcc.Dropdown(id="speed-dropdown-strength"),
             dcc.Interval(id="play-interval-strength", interval=1000, n_intervals=0, disabled=True),
             dbc.Button(id="btn-save-3d-strength-image"),
-            dcc.Loading(id="loading-btn-save-3d-strength-image", type="circle"),
+            dbc.Button(id="btn-save-3d-strength-image", style={"display": "none"}),
             # 속도 버튼들
             dbc.DropdownMenuItem(id="speed-1x-strength"),
             dbc.DropdownMenuItem(id="speed-2x-strength"),
@@ -571,7 +571,8 @@ def on_concrete_select_strength(selected_rows, pathname, tbl_data):
                     max_idx = len(times) - 1
                     slider_min, slider_max = 0, max_idx
                     slider_value = max_idx  # 최신 파일로 초기화
-                    slider_marks = {0: times[0].strftime("%m/%d"), max_idx: times[-1].strftime("%m/%d")}
+                    # 모든 파일의 날짜/시간을 marks에 표시
+                    slider_marks = {i: times[i].strftime("%m/%d %Hh") for i in range(len(times))}
                     
                     # 최신 파일의 시간 정보 표시
                     latest_file = inp_files[max_idx]
