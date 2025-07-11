@@ -1789,18 +1789,15 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
     Output("modal-age-analysis", "is_open"),
     Output("age-analysis-source", "data"),
     Input("add-age-analysis", "n_clicks"),
-    Input("edit-age-analysis", "n_clicks"),
     Input("age-analysis-close", "n_clicks"),
     Input("age-analysis-apply", "n_clicks"),
     State("modal-age-analysis", "is_open"),
     prevent_initial_call=True
 )
-def toggle_age_analysis(add_btn, edit_btn, close_btn, apply_btn, is_open):
+def toggle_age_analysis(add_btn, close_btn, apply_btn, is_open):
     trig = ctx.triggered_id
     if trig == "add-age-analysis" and add_btn:
         return True, "add"
-    elif trig == "edit-age-analysis" and edit_btn:
-        return True, "edit"
     elif trig in ("age-analysis-close", "age-analysis-apply"):
         return False, dash.no_update
     return is_open, dash.no_update
@@ -1810,18 +1807,15 @@ def toggle_age_analysis(add_btn, edit_btn, close_btn, apply_btn, is_open):
     Output("modal-direct-input", "is_open"),
     Output("direct-input-source", "data"),
     Input("add-direct-input", "n_clicks"),
-    Input("edit-direct-input", "n_clicks"),
     Input("direct-input-close", "n_clicks"),
     Input("direct-input-apply", "n_clicks"),
     State("modal-direct-input", "is_open"),
     prevent_initial_call=True
 )
-def toggle_direct_input(add_btn, edit_btn, close_btn, apply_btn, is_open):
+def toggle_direct_input(add_btn, close_btn, apply_btn, is_open):
     trig = ctx.triggered_id
     if trig == "add-direct-input":
         return True, "add"
-    elif trig == "edit-direct-input":
-        return True, "edit"
     elif trig in ("direct-input-close", "direct-input-apply"):
         return False, dash.no_update
     return is_open, dash.no_update
@@ -2162,7 +2156,7 @@ def apply_direct_input_values(apply_clicks, source, *day_values):
 @callback(
     Output("add-age-input-area", "children"),
     Input("add-input-mode", "value"),
-    prevent_initial_call=True
+    prevent_initial_call=False
 )
 def render_add_age_input_area(mode):
     if mode == "ceb_fib":
@@ -2217,13 +2211,16 @@ def render_add_age_input_area(mode):
         return html.Div([
             html.H6("📋 재령일별 탄성계수 직접 입력", className="mb-3 text-secondary fw-bold"),
             html.Div(input_fields, style={"maxHeight": "400px", "overflowY": "auto", "paddingRight": "8px"}),
+            html.Div([
+                dbc.Button("직접 입력", id="edit-direct-input", color="warning", className="px-3", size="sm"),
+            ], className="text-center mt-2")
         ])
 
 # ───────────────────── ⑱ 라디오 버튼 선택에 따른 입력 영역 변경 (수정 모달)
 @callback(
     Output("edit-age-input-area", "children"),
     Input("edit-input-mode", "value"),
-    prevent_initial_call=True
+    prevent_initial_call=False
 )
 def render_edit_age_input_area(mode):
     if mode == "ceb_fib":
@@ -2278,6 +2275,9 @@ def render_edit_age_input_area(mode):
         return html.Div([
             html.H6("📋 재령일별 탄성계수 직접 입력", className="mb-3 text-secondary fw-bold"),
             html.Div(input_fields, style={"maxHeight": "400px", "overflowY": "auto", "paddingRight": "8px"}),
+            html.Div([
+                dbc.Button("직접 입력", id="edit-direct-input", color="warning", className="px-3", size="sm"),
+            ], className="text-center mt-2")
         ])
 
 
