@@ -348,25 +348,47 @@ def update_sensor_list(refresh_clicks, n_intervals):
                 dbc.Row([
                     dbc.Col([
                         html.Div([
-                            html.I(className="fas fa-thermometer-half me-2"),
-                            html.Strong(f"{sensor_info['device_id']} Ch.{sensor_info['channel']}")
+                            html.I(className="fas fa-thermometer-half me-2 text-primary"),
+                            html.Strong(f"{sensor_info['device_id']} Ch.{sensor_info['channel']}", className="text-dark")
                         ]),
-                        html.Small(f"구조: {sensor_info['structure_id']}", className="text-muted")
+                        html.Small([
+                            html.I(className="fas fa-building me-1"),
+                            f"구조: {sensor_info['structure_id']}"
+                        ], className="text-muted")
                     ], width=8),
                     dbc.Col([
-                        dbc.Badge(sensor_info['status'], color=sensor_info['status_color'], className="badge-sm")
+                        dbc.Badge(
+                            sensor_info['status'], 
+                            color=sensor_info['status_color'], 
+                            className="badge-sm"
+                        )
                     ], width=4, className="text-end")
                 ]),
                 html.Div([
-                    html.Small(f"타입: {sensor_data.get('device_type', 'N/A')}", className="text-muted me-2"),
-                    html.Small(f"데이터: {sensor_data.get('data_type', 'N/A')}", className="text-muted me-2"),
-                    html.Small(f"3축: {sensor_data.get('is3axis', 'N')}", className="text-muted")
-                ], className="mt-1")
+                    html.Small([
+                        html.I(className="fas fa-cog me-1"),
+                        f"타입: {sensor_data.get('device_type', 'N/A')}"
+                    ], className="text-muted me-2"),
+                    html.Small([
+                        html.I(className="fas fa-database me-1"),
+                        f"데이터: {sensor_data.get('data_type', 'N/A')}"
+                    ], className="text-muted me-2"),
+                    html.Small([
+                        html.I(className="fas fa-cube me-1"),
+                        f"3축: {sensor_data.get('is3axis', 'N')}"
+                    ], className="text-muted")
+                ], className="mt-2")
             ],
             id={"type": "sensor-item", "index": sensor_info['sensor_key']},
             action=True,
             className="sensor-list-item",
-            style={"cursor": "pointer", "transition": "all 0.2s ease"}
+            style={
+                "cursor": "pointer", 
+                "transition": "all 0.2s ease",
+                "border": "1px solid #e9ecef",
+                "borderRadius": "8px",
+                "marginBottom": "8px"
+            }
             )
         )
     
@@ -407,20 +429,20 @@ def select_sensor_and_load_data(clicks):
         device_id, channel_part = sensor_key.split('_Ch')
         channel = channel_part
         
-        # 먼저 로컬 DB에서 데이터 확인
-        df = api_db.get_sensor_data(
+        # ITS 센서 데이터 조회 (최근 24시간)
+        df = api_db.get_its_sensor_data(
             device_id=device_id, 
             channel=channel, 
-            use_its=False,  # 로컬 DB에서 먼저 확인
-            its_num=1
+            its_num=1,
+            hours=24
         )
         
-        # 로컬 DB에 데이터가 없으면 ITS DB에서 시도
+        # ITS DB에서 데이터가 없으면 로컬 DB에서 확인
         if df.empty:
             df = api_db.get_sensor_data(
                 device_id=device_id, 
                 channel=channel, 
-                use_its=True,  # ITS 데이터베이스에서 직접 조회
+                use_its=False,  # 로컬 DB에서 확인
                 its_num=1
             )
         
@@ -456,9 +478,10 @@ def select_sensor_and_load_data(clicks):
                     y=df['temperature'],
                     mode='lines+markers',
                     name='온도 (°C)',
-                    line=dict(color='red', width=2),
-                    marker=dict(size=4),
-                    yaxis='y'
+                    line=dict(color='#FF6B6B', width=2),
+                    marker=dict(size=6, color='#FF6B6B'),
+                    yaxis='y',
+                    hovertemplate='<b>시간:</b> %{x}<br><b>온도:</b> %{y:.1f}°C<extra></extra>'
                 ))
             
             if 'humidity' in df.columns:
@@ -467,9 +490,10 @@ def select_sensor_and_load_data(clicks):
                     y=df['humidity'],
                     mode='lines+markers',
                     name='습도 (%)',
-                    line=dict(color='blue', width=2),
-                    marker=dict(size=4),
-                    yaxis='y2'
+                    line=dict(color='#4ECDC4', width=2),
+                    marker=dict(size=6, color='#4ECDC4'),
+                    yaxis='y2',
+                    hovertemplate='<b>시간:</b> %{x}<br><b>습도:</b> %{y:.1f}%<extra></extra>'
                 ))
             
             if 'sv' in df.columns:
@@ -478,53 +502,74 @@ def select_sensor_and_load_data(clicks):
                     y=df['sv'],
                     mode='lines+markers',
                     name='SV',
-                    line=dict(color='orange', width=2),
-                    marker=dict(size=4),
-                    yaxis='y3'
+                    line=dict(color='#45B7D1', width=2),
+                    marker=dict(size=6, color='#45B7D1'),
+                    yaxis='y3',
+                    hovertemplate='<b>시간:</b> %{x}<br><b>SV:</b> %{y:.2f}<extra></extra>'
                 ))
             
-            # 기본 Y축 설정
+            # 기본 Y축 설정 (온도)
             yaxis_config = {
-                'title': "값",
-                'side': "left"
+                'title': "온도 (°C)",
+                'titlefont': dict(color="#FF6B6B"),
+                'tickfont': dict(color="#FF6B6B"),
+                'side': "left",
+                'gridcolor': '#f0f0f0'
             }
             
-            # 추가 Y축 설정
+            # 추가 Y축 설정 (습도)
             yaxis2_config = {
                 'title': "습도 (%)",
-                'titlefont': dict(color="blue"),
-                'tickfont': dict(color="blue"),
-                'anchor': "x",
-                'overlaying': "y",
-                'side': "right"
-            }
-            
-            yaxis3_config = {
-                'title': "SV",
-                'titlefont': dict(color="orange"),
-                'tickfont': dict(color="orange"),
+                'titlefont': dict(color="#4ECDC4"),
+                'tickfont': dict(color="#4ECDC4"),
                 'anchor': "x",
                 'overlaying': "y",
                 'side': "right",
-                'position': 0.95
+                'gridcolor': 'rgba(78, 205, 196, 0.1)'
+            }
+            
+            # 추가 Y축 설정 (SV)
+            yaxis3_config = {
+                'title': "SV",
+                'titlefont': dict(color="#45B7D1"),
+                'tickfont': dict(color="#45B7D1"),
+                'anchor': "x",
+                'overlaying': "y",
+                'side': "right",
+                'position': 0.95,
+                'gridcolor': 'rgba(69, 183, 209, 0.1)'
             }
             
             fig.update_layout(
-                title=f"센서 데이터 시계열 그래프 - {device_id} Ch.{channel}",
-                xaxis_title="시간",
+                title=dict(
+                    text=f"센서 데이터 시계열 그래프 - {device_id} Ch.{channel}",
+                    x=0.5,
+                    font=dict(size=16, color='#2C3E50')
+                ),
+                xaxis=dict(
+                    title="시간",
+                    gridcolor='#f0f0f0',
+                    showgrid=True
+                ),
                 yaxis=yaxis_config,
                 yaxis2=yaxis2_config,
                 yaxis3=yaxis3_config,
                 hovermode='x unified',
                 showlegend=True,
                 template="plotly_white",
+                plot_bgcolor='white',
+                paper_bgcolor='white',
                 legend=dict(
                     orientation="h",
                     yanchor="bottom",
                     y=1.02,
                     xanchor="right",
-                    x=1
-                )
+                    x=1,
+                    bgcolor='rgba(255,255,255,0.8)',
+                    bordercolor='#ddd',
+                    borderwidth=1
+                ),
+                margin=dict(l=60, r=60, t=80, b=60)
             )
         else:
             fig = go.Figure().add_annotation(
@@ -538,40 +583,79 @@ def select_sensor_and_load_data(clicks):
             result = api_db.get_latest_sensor_data_time(device_id, channel)
             
             if result["status"] == "fail":
-                sensor_info = html.Div(f"센서 {device_id} Ch.{channel}의 데이터를 찾을 수 없습니다.", className="text-danger")
+                sensor_info = dbc.Alert(
+                    f"센서 {device_id} Ch.{channel}의 데이터를 찾을 수 없습니다.", 
+                    color="warning",
+                    className="mb-3"
+                )
             else:
                 latest_time = result["time"]
+                now = datetime.now()
+                time_diff = (now - latest_time).total_seconds() / 3600  # 시간 단위
+                
+                # 상태 결정
+                if time_diff <= 2:
+                    status = "활성"
+                    status_color = "success"
+                    status_icon = "fas fa-check-circle"
+                else:
+                    status = "비활성"
+                    status_color = "warning"
+                    status_icon = "fas fa-exclamation-triangle"
+                
                 sensor_info = dbc.Row([
                     dbc.Col([
                         dbc.Card([
                             dbc.CardBody([
-                                html.H6("센서 ID", className="card-title"),
-                                html.H4(f"{device_id} Ch.{channel}", className="text-primary"),
-                                html.Small(f"최신 데이터: {latest_time.strftime('%Y-%m-%d %H:%M')}", className="text-muted")
+                                html.Div([
+                                    html.I(className="fas fa-microchip me-2 text-primary"),
+                                    html.H6("센서 ID", className="card-title d-inline")
+                                ]),
+                                html.H4(f"{device_id} Ch.{channel}", className="text-primary mb-2"),
+                                html.Small([
+                                    html.I(className="fas fa-clock me-1"),
+                                    f"최신 데이터: {latest_time.strftime('%Y-%m-%d %H:%M')}"
+                                ], className="text-muted")
                             ])
-                        ])
+                        ], className="h-100")
                     ], width=4),
                     dbc.Col([
                         dbc.Card([
                             dbc.CardBody([
-                                html.H6("센서 상태", className="card-title"),
-                                html.H4("활성", className="text-success"),
-                                html.Small("데이터 수집 중", className="text-muted")
+                                html.Div([
+                                    html.I(className=f"{status_icon} me-2 text-{status_color}"),
+                                    html.H6("센서 상태", className="card-title d-inline")
+                                ]),
+                                html.H4(status, className=f"text-{status_color} mb-2"),
+                                html.Small([
+                                    html.I(className="fas fa-info-circle me-1"),
+                                    f"마지막 업데이트: {time_diff:.1f}시간 전"
+                                ], className="text-muted")
                             ])
-                        ])
+                        ], className="h-100")
                     ], width=4),
                     dbc.Col([
                         dbc.Card([
                             dbc.CardBody([
-                                html.H6("데이터 타입", className="card-title"),
-                                html.H4("실시간", className="text-info"),
-                                html.Small("ITS 시스템", className="text-muted")
+                                html.Div([
+                                    html.I(className="fas fa-database me-2 text-info"),
+                                    html.H6("데이터 정보", className="card-title d-inline")
+                                ]),
+                                html.H4(f"{len(df)}개", className="text-info mb-2"),
+                                html.Small([
+                                    html.I(className="fas fa-chart-line me-1"),
+                                    "24시간 데이터"
+                                ], className="text-muted")
                             ])
-                        ])
+                        ], className="h-100")
                     ], width=4)
                 ])
         except Exception as e:
-            sensor_info = html.Div(f"센서 정보를 불러올 수 없습니다: {e}", className="text-danger")
+            sensor_info = dbc.Alert(
+                f"센서 정보를 불러올 수 없습니다: {e}", 
+                color="danger",
+                className="mb-3"
+            )
         
         # 통계 정보 생성
         if not df.empty:
@@ -595,15 +679,41 @@ def select_sensor_and_load_data(clicks):
                 stats_cards.append(
                     dbc.Col([
                         dbc.Card([
-                            dbc.CardHeader("온도 통계"),
+                            dbc.CardHeader([
+                                html.I(className="fas fa-thermometer-half me-2 text-danger"),
+                                "온도 통계"
+                            ], className="text-danger"),
                             dbc.CardBody([
-                                html.P(f"평균: {temp_stats['평균']:.1f}°C"),
-                                html.P(f"최대: {temp_stats['최대']:.1f}°C"),
-                                html.P(f"최소: {temp_stats['최소']:.1f}°C"),
-                                html.P(f"중앙값: {temp_stats['중앙값']:.1f}°C"),
-                                html.P(f"표준편차: {temp_stats['표준편차']:.2f}°C")
+                                dbc.Row([
+                                    dbc.Col([
+                                        html.Div([
+                                            html.Small("평균", className="text-muted"),
+                                            html.H5(f"{temp_stats['평균']:.1f}°C", className="mb-0")
+                                        ])
+                                    ], width=6),
+                                    dbc.Col([
+                                        html.Div([
+                                            html.Small("최대", className="text-muted"),
+                                            html.H5(f"{temp_stats['최대']:.1f}°C", className="mb-0 text-danger")
+                                        ])
+                                    ], width=6)
+                                ], className="mb-2"),
+                                dbc.Row([
+                                    dbc.Col([
+                                        html.Div([
+                                            html.Small("최소", className="text-muted"),
+                                            html.H5(f"{temp_stats['최소']:.1f}°C", className="mb-0 text-primary")
+                                        ])
+                                    ], width=6),
+                                    dbc.Col([
+                                        html.Div([
+                                            html.Small("중앙값", className="text-muted"),
+                                            html.H5(f"{temp_stats['중앙값']:.1f}°C", className="mb-0")
+                                        ])
+                                    ], width=6)
+                                ])
                             ])
-                        ])
+                        ], className="h-100")
                     ], width=4)
                 )
             
@@ -619,15 +729,41 @@ def select_sensor_and_load_data(clicks):
                 stats_cards.append(
                     dbc.Col([
                         dbc.Card([
-                            dbc.CardHeader("습도 통계"),
+                            dbc.CardHeader([
+                                html.I(className="fas fa-tint me-2 text-info"),
+                                "습도 통계"
+                            ], className="text-info"),
                             dbc.CardBody([
-                                html.P(f"평균: {humidity_stats['평균']:.1f}%"),
-                                html.P(f"최대: {humidity_stats['최대']:.1f}%"),
-                                html.P(f"최소: {humidity_stats['최소']:.1f}%"),
-                                html.P(f"중앙값: {humidity_stats['중앙값']:.1f}%"),
-                                html.P(f"표준편차: {humidity_stats['표준편차']:.2f}%")
+                                dbc.Row([
+                                    dbc.Col([
+                                        html.Div([
+                                            html.Small("평균", className="text-muted"),
+                                            html.H5(f"{humidity_stats['평균']:.1f}%", className="mb-0")
+                                        ])
+                                    ], width=6),
+                                    dbc.Col([
+                                        html.Div([
+                                            html.Small("최대", className="text-muted"),
+                                            html.H5(f"{humidity_stats['최대']:.1f}%", className="mb-0 text-info")
+                                        ])
+                                    ], width=6)
+                                ], className="mb-2"),
+                                dbc.Row([
+                                    dbc.Col([
+                                        html.Div([
+                                            html.Small("최소", className="text-muted"),
+                                            html.H5(f"{humidity_stats['최소']:.1f}%", className="mb-0 text-primary")
+                                        ])
+                                    ], width=6),
+                                    dbc.Col([
+                                        html.Div([
+                                            html.Small("중앙값", className="text-muted"),
+                                            html.H5(f"{humidity_stats['중앙값']:.1f}%", className="mb-0")
+                                        ])
+                                    ], width=6)
+                                ])
                             ])
-                        ])
+                        ], className="h-100")
                     ], width=4)
                 )
             
@@ -643,15 +779,41 @@ def select_sensor_and_load_data(clicks):
                 stats_cards.append(
                     dbc.Col([
                         dbc.Card([
-                            dbc.CardHeader("SV 통계"),
+                            dbc.CardHeader([
+                                html.I(className="fas fa-wave-square me-2 text-warning"),
+                                "SV 통계"
+                            ], className="text-warning"),
                             dbc.CardBody([
-                                html.P(f"평균: {sv_stats['평균']:.1f}"),
-                                html.P(f"최대: {sv_stats['최대']:.1f}"),
-                                html.P(f"최소: {sv_stats['최소']:.1f}"),
-                                html.P(f"중앙값: {sv_stats['중앙값']:.1f}"),
-                                html.P(f"표준편차: {sv_stats['표준편차']:.2f}")
+                                dbc.Row([
+                                    dbc.Col([
+                                        html.Div([
+                                            html.Small("평균", className="text-muted"),
+                                            html.H5(f"{sv_stats['평균']:.2f}", className="mb-0")
+                                        ])
+                                    ], width=6),
+                                    dbc.Col([
+                                        html.Div([
+                                            html.Small("최대", className="text-muted"),
+                                            html.H5(f"{sv_stats['최대']:.2f}", className="mb-0 text-warning")
+                                        ])
+                                    ], width=6)
+                                ], className="mb-2"),
+                                dbc.Row([
+                                    dbc.Col([
+                                        html.Div([
+                                            html.Small("최소", className="text-muted"),
+                                            html.H5(f"{sv_stats['최소']:.2f}", className="mb-0 text-primary")
+                                        ])
+                                    ], width=6),
+                                    dbc.Col([
+                                        html.Div([
+                                            html.Small("중앙값", className="text-muted"),
+                                            html.H5(f"{sv_stats['중앙값']:.2f}", className="mb-0")
+                                        ])
+                                    ], width=6)
+                                ])
                             ])
-                        ])
+                        ], className="h-100")
                     ], width=4)
                 )
             
@@ -670,9 +832,16 @@ def select_sensor_and_load_data(clicks):
             
             stats = dbc.Row([
                 dbc.Col([
-                    html.H6("데이터 기간", className="text-center"),
-                    html.P(data_period, className="text-center text-muted")
-                ], width=12, className="mb-3"),
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.Div([
+                                html.I(className="fas fa-calendar-alt me-2 text-secondary"),
+                                html.H6("데이터 기간", className="d-inline text-secondary")
+                            ], className="text-center mb-2"),
+                            html.P(data_period, className="text-center text-muted mb-0")
+                        ])
+                    ], className="mb-3")
+                ], width=12),
                 *stats_cards
             ])
         else:
@@ -713,13 +882,20 @@ def highlight_selected_sensor(selected_sensor):
                 "cursor": "pointer", 
                 "transition": "all 0.2s ease",
                 "backgroundColor": "#e3f2fd",
-                "borderLeft": "4px solid #2196f3"
+                "borderLeft": "4px solid #2196f3",
+                "border": "1px solid #2196f3",
+                "borderRadius": "8px",
+                "marginBottom": "8px",
+                "boxShadow": "0 2px 4px rgba(33, 150, 243, 0.2)"
             })
         else:
             # 기본 스타일
             styles.append({
                 "cursor": "pointer", 
-                "transition": "all 0.2s ease"
+                "transition": "all 0.2s ease",
+                "border": "1px solid #e9ecef",
+                "borderRadius": "8px",
+                "marginBottom": "8px"
             })
     
     return styles
