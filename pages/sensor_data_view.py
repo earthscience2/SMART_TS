@@ -239,73 +239,223 @@ layout = html.Div([
         ]),
         
         dbc.Row([
-            # ── 왼쪽: 센서 리스트 ──
+            # ── 왼쪽: 센서 목록 ──
             dbc.Col([
-                dbc.Card([
-                    dbc.CardHeader([
-                        html.H5("ITS 센서 목록", className="mb-0"),
-                        dbc.Button(
-                            "새로고침",
-                            id="refresh-sensors-btn",
-                            color="outline-primary",
-                            size="sm",
-                            className="float-end"
-                        )
-                    ]),
-                    dbc.CardBody([
-                        dbc.ListGroup(
-                            id="sensor-list",
-                            flush=True
-                        )
+                html.Div([
+                    # 센서 목록 섹션
+                    html.Div([
+                        html.Div([
+                            # 제목과 새로고침 버튼
+                            html.Div([
+                                html.H6("📡 센서 목록", className="mb-0 text-secondary fw-bold"),
+                                dbc.Button(
+                                    html.I(className="fas fa-sync-alt"),
+                                    id="refresh-sensors-btn",
+                                    color="outline-secondary",
+                                    size="sm",
+                                    className="px-2"
+                                )
+                            ], className="d-flex justify-content-between align-items-center mb-2"),
+                            html.Small("💡 행을 클릭하여 선택", className="text-muted mb-2 d-block"),
+                            html.Div([
+                                dash_table.DataTable(
+                                    id="sensor-table",
+                                    page_size=8,
+                                    row_selectable="single",
+                                    sort_action="native",
+                                    sort_mode="multi",
+                                    style_table={"overflowY": "auto", "height": "calc(100vh - 300px)"},
+                                    style_cell={
+                                        "whiteSpace": "nowrap", 
+                                        "textAlign": "center",
+                                        "fontSize": "0.9rem",
+                                        "padding": "14px 12px",
+                                        "border": "none",
+                                        "borderBottom": "1px solid #f1f1f0",
+                                        "fontFamily": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+                                    },
+                                    style_header={
+                                        "backgroundColor": "#fafafa", 
+                                        "fontWeight": 600,
+                                        "color": "#37352f",
+                                        "border": "none",
+                                        "borderBottom": "1px solid #e9e9e7",
+                                        "fontSize": "0.8rem",
+                                        "textTransform": "uppercase",
+                                        "letterSpacing": "0.5px"
+                                    },
+                                    style_data={
+                                        "backgroundColor": "white",
+                                        "border": "none",
+                                        "color": "#37352f"
+                                    },
+                                    style_data_conditional=[
+                                        {
+                                            'if': {'row_index': 'odd'},
+                                            'backgroundColor': '#fbfbfa'
+                                        },
+                                        {
+                                            'if': {'state': 'selected'},
+                                            'backgroundColor': '#e8f4fd',
+                                            'border': '1px solid #579ddb',
+                                            'borderRadius': '6px',
+                                            'boxShadow': '0 0 0 1px rgba(87, 157, 219, 0.3)',
+                                            'color': '#1d4ed8'
+                                        },
+                                        {
+                                            'if': {
+                                                'filter_query': '{status} = 활성',
+                                                'column_id': 'status'
+                                            },
+                                            'backgroundColor': '#dcfce7',
+                                            'color': '#166534',
+                                            'fontWeight': '600',
+                                            'borderRadius': '4px',
+                                            'textAlign': 'center'
+                                        },
+                                        {
+                                            'if': {
+                                                'filter_query': '{status} = 비활성',
+                                                'column_id': 'status'
+                                            },
+                                            'backgroundColor': '#fef3c7',
+                                            'color': '#d97706',
+                                            'fontWeight': '600',
+                                            'borderRadius': '4px',
+                                            'textAlign': 'center'
+                                        },
+                                        {
+                                            'if': {
+                                                'filter_query': '{status} = 오류',
+                                                'column_id': 'status'
+                                            },
+                                            'backgroundColor': '#fee2e2',
+                                            'color': '#dc2626',
+                                            'fontWeight': '600',
+                                            'borderRadius': '4px',
+                                            'textAlign': 'center'
+                                        },
+                                        {
+                                            'if': {'column_id': 'sensor_id'},
+                                            'fontWeight': '600',
+                                            'color': '#111827',
+                                            'textAlign': 'left',
+                                            'paddingLeft': '16px'
+                                        }
+                                    ],
+                                    css=[
+                                        {
+                                            'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner table',
+                                            'rule': 'border-collapse: separate; border-spacing: 0;'
+                                        },
+                                        {
+                                            'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr:hover',
+                                            'rule': 'background-color: #f8fafc !important; transition: background-color 0.15s ease;'
+                                        },
+                                        {
+                                            'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr.row-selected',
+                                            'rule': '''
+                                                background-color: #eff6ff !important;
+                                                box-shadow: inset 3px 0 0 #3b82f6;
+                                                border-left: 3px solid #3b82f6;
+                                            '''
+                                        },
+                                        {
+                                            'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner td',
+                                            'rule': 'cursor: pointer; transition: all 0.15s ease;'
+                                        }
+                                    ]
+                                ),
+                            ], style={
+                                "borderRadius": "12px", 
+                                "overflow": "hidden", 
+                                "border": "1px solid #e5e5e4",
+                                "boxShadow": "0 1px 3px rgba(0, 0, 0, 0.05)"
+                            }),
+                            
+                            # 액션 버튼들
+                            html.Div([
+                                dbc.Button("데이터 수집", id="collect-data-btn", color="success", size="sm", className="px-3", disabled=True),
+                                dbc.Button("CSV 다운로드", id="download-csv-btn", color="primary", size="sm", className="px-3", disabled=True),
+                                dcc.Download(id="download-csv"),
+                            ], className="d-flex justify-content-center gap-2 mt-2"),
+                        ])
                     ])
-                ])
-            ], width=4),
+                ], style={
+                    "backgroundColor": "white",
+                    "padding": "20px",
+                    "borderRadius": "12px",
+                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
+                    "border": "1px solid #e2e8f0",
+                    "height": "fit-content"
+                })
+            ], md=4),
             
             # ── 오른쪽: 데이터 그래프 및 정보 ──
             dbc.Col([
-                dbc.Card([
-                    dbc.CardHeader([
-                        html.H5("센서 데이터", className="mb-0"),
-                        html.Div([
-                            dbc.Button(
-                                "데이터 수집",
-                                id="collect-data-btn",
-                                color="primary",
-                                size="sm",
-                                className="me-2"
+                html.Div([
+                    # 탭 메뉴 (노션 스타일)
+                    html.Div([
+                        dbc.Tabs([
+                            dbc.Tab(
+                                label="실시간 데이터", 
+                                tab_id="tab-realtime",
+                                tab_style={
+                                    "marginLeft": "2px",
+                                    "marginRight": "2px",
+                                    "border": "none",
+                                    "borderRadius": "6px 6px 0 0",
+                                    "backgroundColor": "#f8fafc",
+                                    "color": "#1f2937",
+                                    "fontWeight": "500"
+                                },
+                                active_tab_style={
+                                    "backgroundColor": "white",
+                                    "border": "1px solid #e2e8f0",
+                                    "borderBottom": "1px solid white",
+                                    "color": "#1f2937",
+                                    "fontWeight": "600"
+                                }
                             ),
-                            dbc.Button(
-                                "CSV 다운로드",
-                                id="download-csv-btn",
-                                color="success",
-                                size="sm",
-                                className="me-2"
-                            ),
-                            dcc.Download(id="download-csv"),
-                            dbc.Button(
-                                "실시간 업데이트",
-                                id="toggle-realtime-btn",
-                                color="info",
-                                size="sm",
-                                outline=True
+                            dbc.Tab(
+                                label="통계 정보", 
+                                tab_id="tab-stats",
+                                tab_style={
+                                    "marginLeft": "2px",
+                                    "marginRight": "2px",
+                                    "border": "none",
+                                    "borderRadius": "6px 6px 0 0",
+                                    "backgroundColor": "#f8fafc",
+                                    "color": "#1f2937",
+                                    "fontWeight": "500"
+                                },
+                                active_tab_style={
+                                    "backgroundColor": "white",
+                                    "border": "1px solid #e2e8f0",
+                                    "borderBottom": "1px solid white",
+                                    "color": "#1f2937",
+                                    "fontWeight": "600"
+                                }
                             )
-                        ], className="float-end")
-                    ]),
-                    dbc.CardBody([
-                        # 선택된 센서 정보
-                        html.Div(id="selected-sensor-info", className="mb-3"),
+                        ], id="sensor-tabs", active_tab="tab-realtime"),
                         
-                        # 데이터 그래프
-                        dcc.Graph(
-                            id="sensor-data-graph",
-                            style={"height": "400px"}
-                        ),
-                        
-                        # 데이터 통계
-                        html.Div(id="sensor-stats", className="mt-3")
+                        # 탭 콘텐츠
+                        html.Div(id="sensor-tab-content", style={
+                            "backgroundColor": "white",
+                            "border": "1px solid #e2e8f0",
+                            "borderTop": "none",
+                            "borderRadius": "0 0 12px 12px",
+                            "padding": "20px",
+                            "minHeight": "calc(100vh - 300px)"
+                        })
                     ])
-                ])
-            ], width=8)
+                ], style={
+                    "backgroundColor": "white",
+                    "borderRadius": "12px",
+                    "boxShadow": "0 1px 3px rgba(0,0,0,0.1)",
+                    "border": "1px solid #e2e8f0"
+                })
+            ], md=8)
         ])
     ], fluid=True)
 ])
@@ -313,119 +463,139 @@ layout = html.Div([
 # ────────────────────────────── 콜백 함수들 ────────────────────────────
 
 @callback(
-    Output("sensor-list", "children"),
-    Output("sensor-data-graph", "figure", allow_duplicate=True),
-    Output("selected-sensor-info", "children", allow_duplicate=True),
-    Output("sensor-stats", "children", allow_duplicate=True),
+    Output("sensor-table", "data"),
+    Output("sensor-table", "columns"),
+    Output("sensor-table", "selected_rows"),
+    Output("collect-data-btn", "disabled"),
+    Output("download-csv-btn", "disabled"),
     Input("refresh-sensors-btn", "n_clicks"),
     Input("interval-component", "n_intervals"),
     prevent_initial_call='initial_duplicate'
 )
-def update_sensor_list(refresh_clicks, n_intervals):
-    """센서 목록을 업데이트하는 콜백"""
+def update_sensor_table(refresh_clicks, n_intervals):
+    """센서 테이블을 업데이트하는 콜백"""
     sensors = get_available_sensors()
     
     if not sensors:
+        return [], [], [], True, True
+    
+    # 테이블 데이터 생성
+    table_data = []
+    for sensor_data in sensors:
+        # 센서 정보 가져오기
+        sensor_info = get_sensor_info(sensor_data)
+        
+        table_data.append({
+            'sensor_id': f"{sensor_info['device_id']} Ch.{sensor_info['channel']}",
+            'structure_id': sensor_info['structure_id'],
+            'device_type': sensor_data.get('device_type', 'N/A'),
+            'data_type': sensor_data.get('data_type', 'N/A'),
+            'is3axis': sensor_data.get('is3axis', 'N'),
+            'status': sensor_info['status'],
+            'latest_time': sensor_info['latest_time'].strftime('%Y-%m-%d %H:%M') if sensor_info['latest_time'] else 'N/A',
+            'sensor_key': sensor_info['sensor_key']  # 내부 사용용
+        })
+    
+    # 컬럼 정의
+    columns = [
+        {"name": "센서 ID", "id": "sensor_id", "type": "text"},
+        {"name": "구조 ID", "id": "structure_id", "type": "text"},
+        {"name": "센서 타입", "id": "device_type", "type": "text"},
+        {"name": "데이터 타입", "id": "data_type", "type": "text"},
+        {"name": "3축", "id": "is3axis", "type": "text"},
+        {"name": "상태", "id": "status", "type": "text"},
+        {"name": "최신 데이터", "id": "latest_time", "type": "text"}
+    ]
+    
+    return table_data, columns, [], True, True
+
+@callback(
+    Output("selected-sensor-store", "data"),
+    Output("collect-data-btn", "disabled", allow_duplicate=True),
+    Output("download-csv-btn", "disabled", allow_duplicate=True),
+    Input("sensor-table", "selected_rows"),
+    State("sensor-table", "data"),
+    prevent_initial_call=True
+)
+def select_sensor(selected_rows, table_data):
+    """센서 선택 콜백"""
+    if not selected_rows or not table_data:
+        return None, True, True
+    
+    selected_row = table_data[selected_rows[0]]
+    sensor_key = selected_row['sensor_key']
+    
+
+
+
+
+
+
+
+
+
+
+@callback(
+    Output("sensor-tab-content", "children"),
+    Input("sensor-tabs", "active_tab"),
+    Input("selected-sensor-store", "data"),
+    prevent_initial_call=True
+)
+def update_sensor_tab_content(active_tab, sensor_key):
+    """센서 탭 콘텐츠를 업데이트하는 콜백"""
+    if not sensor_key:
+        return html.Div([
+            html.Div([
+                html.I(className="fas fa-info-circle me-2 text-muted"),
+                "센서를 선택하세요"
+            ], className="text-center text-muted mt-5")
+        ])
+    
+    try:
+        device_id, channel_part = sensor_key.split('_Ch')
+        channel = channel_part
+        
+        if active_tab == "tab-realtime":
+            # 실시간 데이터 탭
+            return html.Div([
+                # 센서 정보 카드
+                html.Div(id="selected-sensor-info", className="mb-4"),
+                
+                # 데이터 그래프
+                dcc.Graph(
+                    id="sensor-data-graph",
+                    style={"height": "500px"}
+                )
+            ])
+        elif active_tab == "tab-stats":
+            # 통계 정보 탭
+            return html.Div([
+                html.Div(id="sensor-stats")
+            ])
+        else:
+            return html.Div("알 수 없는 탭입니다.", className="text-muted")
+            
+    except Exception as e:
+        return html.Div(f"오류가 발생했습니다: {e}", className="text-danger")
+
+@callback(
+    Output("sensor-data-graph", "figure"),
+    Output("selected-sensor-info", "children"),
+    Output("sensor-stats", "children"),
+    Input("selected-sensor-store", "data"),
+    prevent_initial_call=True
+)
+def load_sensor_data_and_create_graph(sensor_key):
+    """센서 데이터를 로드하고 그래프를 생성하는 콜백"""
+    if not sensor_key:
         empty_graph = go.Figure().add_annotation(
             text="센서를 선택하세요",
             xref="paper", yref="paper",
             x=0.5, y=0.5, showarrow=False
         )
-        return [
-            dbc.ListGroupItem(
-                "접근 가능한 센서가 없습니다.",
-                color="warning"
-            )
-        ], empty_graph, html.Div("센서를 선택하세요.", className="text-muted"), html.Div("통계 정보를 표시할 수 없습니다.", className="text-muted")
+        return empty_graph, html.Div("센서를 선택하세요.", className="text-muted"), html.Div("통계 정보를 표시할 수 없습니다.", className="text-muted")
     
-    sensor_items = []
-    for sensor_data in sensors:
-        # 센서 정보 가져오기
-        sensor_info = get_sensor_info(sensor_data)
-        
-        sensor_items.append(
-            dbc.ListGroupItem([
-                dbc.Row([
-                    dbc.Col([
-                        html.Div([
-                            html.I(className="fas fa-thermometer-half me-2 text-primary"),
-                            html.Strong(f"{sensor_info['device_id']} Ch.{sensor_info['channel']}", className="text-dark")
-                        ]),
-                        html.Small([
-                            html.I(className="fas fa-building me-1"),
-                            f"구조: {sensor_info['structure_id']}"
-                        ], className="text-muted")
-                    ], width=8),
-                    dbc.Col([
-                        dbc.Badge(
-                            sensor_info['status'], 
-                            color=sensor_info['status_color'], 
-                            className="badge-sm"
-                        )
-                    ], width=4, className="text-end")
-                ]),
-                html.Div([
-                    html.Small([
-                        html.I(className="fas fa-cog me-1"),
-                        f"타입: {sensor_data.get('device_type', 'N/A')}"
-                    ], className="text-muted me-2"),
-                    html.Small([
-                        html.I(className="fas fa-database me-1"),
-                        f"데이터: {sensor_data.get('data_type', 'N/A')}"
-                    ], className="text-muted me-2"),
-                    html.Small([
-                        html.I(className="fas fa-cube me-1"),
-                        f"3축: {sensor_data.get('is3axis', 'N')}"
-                    ], className="text-muted")
-                ], className="mt-2")
-            ],
-            id={"type": "sensor-item", "index": sensor_info['sensor_key']},
-            action=True,
-            className="sensor-list-item",
-            style={
-                "cursor": "pointer", 
-                "transition": "all 0.2s ease",
-                "border": "1px solid #e9ecef",
-                "borderRadius": "8px",
-                "marginBottom": "8px"
-            }
-            )
-        )
-    
-    # 초기 그래프와 정보
-    empty_graph = go.Figure().add_annotation(
-        text="센서를 선택하세요",
-        xref="paper", yref="paper",
-        x=0.5, y=0.5, showarrow=False
-    )
-    
-    return sensor_items, empty_graph, html.Div("센서를 선택하세요.", className="text-muted"), html.Div("통계 정보를 표시할 수 없습니다.", className="text-muted")
-
-@callback(
-    Output("selected-sensor-store", "data"),
-    Output("sensor-data-graph", "figure", allow_duplicate=True),
-    Output("selected-sensor-info", "children", allow_duplicate=True),
-    Output("sensor-stats", "children", allow_duplicate=True),
-    Input({"type": "sensor-item", "index": ALL}, "n_clicks"),
-    prevent_initial_call=True
-)
-def select_sensor_and_load_data(clicks):
-    """센서 선택 및 데이터 로드 콜백"""
-    ctx = dash.callback_context
-    if not ctx.triggered:
-        raise PreventUpdate
-    
-    # 클릭된 센서 ID 추출
-    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    if not triggered_id.startswith('{"type":"sensor-item","index":'):
-        raise PreventUpdate
-    
-    # JSON 파싱하여 센서 ID 추출
     try:
-        trigger_data = json.loads(triggered_id)
-        sensor_key = trigger_data['index']
-        
-        # 센서 데이터 로드
         device_id, channel_part = sensor_key.split('_Ch')
         channel = channel_part
         
@@ -847,64 +1017,18 @@ def select_sensor_and_load_data(clicks):
         else:
             stats = html.Div("통계 정보를 표시할 수 없습니다.", className="text-muted")
         
-        return sensor_key, fig, sensor_info, stats
+        return fig, sensor_info, stats
         
     except Exception as e:
-        print(f"Error in select_sensor_and_load_data: {e}")
-        raise PreventUpdate
-
-
-
-
-
-
-
-
+        print(f"Error in load_sensor_data_and_create_graph: {e}")
+        empty_graph = go.Figure().add_annotation(
+            text="오류가 발생했습니다",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+        return empty_graph, html.Div(f"오류가 발생했습니다: {e}", className="text-danger"), html.Div("통계 정보를 표시할 수 없습니다.", className="text-muted")
 
 @callback(
-    Output({"type": "sensor-item", "index": ALL}, "style"),
-    Input("selected-sensor-store", "data"),
-    prevent_initial_call=True
-)
-def highlight_selected_sensor(selected_sensor):
-    """선택된 센서를 하이라이트하는 콜백"""
-    ctx = dash.callback_context
-    if not ctx.outputs_list:
-        raise PreventUpdate
-    
-    # 모든 센서 아이템의 스타일 초기화
-    styles = []
-    for output in ctx.outputs_list:
-        sensor_key = output['id']['index']
-        if selected_sensor and sensor_key == selected_sensor:
-            # 선택된 센서 하이라이트
-            styles.append({
-                "cursor": "pointer", 
-                "transition": "all 0.2s ease",
-                "backgroundColor": "#e3f2fd",
-                "borderLeft": "4px solid #2196f3",
-                "border": "1px solid #2196f3",
-                "borderRadius": "8px",
-                "marginBottom": "8px",
-                "boxShadow": "0 2px 4px rgba(33, 150, 243, 0.2)"
-            })
-        else:
-            # 기본 스타일
-            styles.append({
-                "cursor": "pointer", 
-                "transition": "all 0.2s ease",
-                "border": "1px solid #e9ecef",
-                "borderRadius": "8px",
-                "marginBottom": "8px"
-            })
-    
-    return styles
-
-@callback(
-    Output("sensor-data-store", "data", allow_duplicate=True),
-    Output("sensor-data-graph", "figure", allow_duplicate=True),
-    Output("selected-sensor-info", "children", allow_duplicate=True),
-    Output("sensor-stats", "children", allow_duplicate=True),
     Output("data-collection-toast", "is_open"),
     Output("data-collection-toast", "children"),
     Output("data-collection-toast", "icon"),
@@ -925,294 +1049,13 @@ def collect_sensor_data(n_clicks, sensor_key):
         result = api_db.collect_its_sensor_data(device_id, channel, its_num=1, hours=24)
         
         if result["status"] == "success":
-            # 수집된 데이터를 다시 로드
-            df = api_db.get_sensor_data(
-                device_id=device_id, 
-                channel=channel, 
-                use_its=False,  # 로컬 DB에서 조회
-                its_num=1
-            )
-            
-            if not df.empty:
-                # 그래프 생성
-                df['time'] = pd.to_datetime(df['time'])
-                
-                # 서브플롯 생성
-                fig = go.Figure()
-                
-                # 사용 가능한 컬럼들에 따라 그래프 생성
-                if 'temperature' in df.columns:
-                    fig.add_trace(go.Scatter(
-                        x=df['time'],
-                        y=df['temperature'],
-                        mode='lines+markers',
-                        name='온도 (°C)',
-                        line=dict(color='red', width=2),
-                        marker=dict(size=4),
-                        yaxis='y'
-                    ))
-                
-                if 'humidity' in df.columns:
-                    fig.add_trace(go.Scatter(
-                        x=df['time'],
-                        y=df['humidity'],
-                        mode='lines+markers',
-                        name='습도 (%)',
-                        line=dict(color='blue', width=2),
-                        marker=dict(size=4),
-                        yaxis='y2'
-                    ))
-                
-                if 'sv' in df.columns:
-                    fig.add_trace(go.Scatter(
-                        x=df['time'],
-                        y=df['sv'],
-                        mode='lines+markers',
-                        name='SV',
-                        line=dict(color='orange', width=2),
-                        marker=dict(size=4),
-                        yaxis='y3'
-                    ))
-                
-                # 기본 Y축 설정
-                yaxis_config = {
-                    'title': "값",
-                    'side': "left"
-                }
-                
-                # 추가 Y축 설정
-                yaxis2_config = {
-                    'title': "습도 (%)",
-                    'titlefont': dict(color="blue"),
-                    'tickfont': dict(color="blue"),
-                    'anchor': "x",
-                    'overlaying': "y",
-                    'side': "right"
-                }
-                
-                yaxis3_config = {
-                    'title': "SV",
-                    'titlefont': dict(color="orange"),
-                    'tickfont': dict(color="orange"),
-                    'anchor': "x",
-                    'overlaying': "y",
-                    'side': "right",
-                    'position': 0.95
-                }
-                
-                fig.update_layout(
-                    title=f"센서 데이터 시계열 그래프 - {device_id} Ch.{channel}",
-                    xaxis_title="시간",
-                    yaxis=yaxis_config,
-                    yaxis2=yaxis2_config,
-                    yaxis3=yaxis3_config,
-                    hovermode='x unified',
-                    showlegend=True,
-                    template="plotly_white",
-                    legend=dict(
-                        orientation="h",
-                        yanchor="bottom",
-                        y=1.02,
-                        xanchor="right",
-                        x=1
-                    )
-                )
-                
-                # 센서 정보 생성
-                try:
-                    result_info = api_db.get_latest_sensor_data_time(device_id, channel)
-                    
-                    if result_info["status"] == "fail":
-                        sensor_info = html.Div(f"센서 {device_id} Ch.{channel}의 데이터를 찾을 수 없습니다.", className="text-danger")
-                    else:
-                        latest_time = result_info["time"]
-                        sensor_info = dbc.Row([
-                            dbc.Col([
-                                dbc.Card([
-                                    dbc.CardBody([
-                                        html.H6("센서 ID", className="card-title"),
-                                        html.H4(f"{device_id} Ch.{channel}", className="text-primary"),
-                                        html.Small(f"최신 데이터: {latest_time.strftime('%Y-%m-%d %H:%M')}", className="text-muted")
-                                    ])
-                                ])
-                            ], width=4),
-                            dbc.Col([
-                                dbc.Card([
-                                    dbc.CardBody([
-                                        html.H6("센서 상태", className="card-title"),
-                                        html.H4("활성", className="text-success"),
-                                        html.Small("데이터 수집 중", className="text-muted")
-                                    ])
-                                ])
-                            ], width=4),
-                            dbc.Col([
-                                dbc.Card([
-                                    dbc.CardBody([
-                                        html.H6("데이터 타입", className="card-title"),
-                                        html.H4("실시간", className="text-info"),
-                                        html.Small("ITS 시스템", className="text-muted")
-                                    ])
-                                ])
-                            ], width=4)
-                        ])
-                except Exception as e:
-                    sensor_info = html.Div(f"센서 정보를 불러올 수 없습니다: {e}", className="text-danger")
-                
-                # 통계 정보 생성
-                data_period = f"{df['time'].min().strftime('%Y-%m-%d %H:%M')} ~ {df['time'].max().strftime('%Y-%m-%d %H:%M')}"
-                
-                # 사용 가능한 컬럼들에 대한 통계 계산
-                stats_cards = []
-                
-                if 'temperature' in df.columns:
-                    temp_stats = {
-                        '평균': df['temperature'].mean(),
-                        '최대': df['temperature'].max(),
-                        '최소': df['temperature'].min(),
-                        '표준편차': df['temperature'].std(),
-                        '중앙값': df['temperature'].median()
-                    }
-                    
-                    stats_cards.append(
-                        dbc.Col([
-                            dbc.Card([
-                                dbc.CardHeader("온도 통계"),
-                                dbc.CardBody([
-                                    html.P(f"평균: {temp_stats['평균']:.1f}°C"),
-                                    html.P(f"최대: {temp_stats['최대']:.1f}°C"),
-                                    html.P(f"최소: {temp_stats['최소']:.1f}°C"),
-                                    html.P(f"중앙값: {temp_stats['중앙값']:.1f}°C"),
-                                    html.P(f"표준편차: {temp_stats['표준편차']:.2f}°C")
-                                ])
-                            ])
-                        ], width=4)
-                    )
-                
-                if 'humidity' in df.columns:
-                    humidity_stats = {
-                        '평균': df['humidity'].mean(),
-                        '최대': df['humidity'].max(),
-                        '최소': df['humidity'].min(),
-                        '표준편차': df['humidity'].std(),
-                        '중앙값': df['humidity'].median()
-                    }
-                    
-                    stats_cards.append(
-                        dbc.Col([
-                            dbc.Card([
-                                dbc.CardHeader("습도 통계"),
-                                dbc.CardBody([
-                                    html.P(f"평균: {humidity_stats['평균']:.1f}%"),
-                                    html.P(f"최대: {humidity_stats['최대']:.1f}%"),
-                                    html.P(f"최소: {humidity_stats['최소']:.1f}%"),
-                                    html.P(f"중앙값: {humidity_stats['중앙값']:.1f}%"),
-                                    html.P(f"표준편차: {humidity_stats['표준편차']:.2f}%")
-                                ])
-                            ])
-                        ], width=4)
-                    )
-                
-                if 'sv' in df.columns:
-                    sv_stats = {
-                        '평균': df['sv'].mean(),
-                        '최대': df['sv'].max(),
-                        '최소': df['sv'].min(),
-                        '표준편차': df['sv'].std(),
-                        '중앙값': df['sv'].median()
-                    }
-                    
-                    stats_cards.append(
-                        dbc.Col([
-                            dbc.Card([
-                                dbc.CardHeader("SV 통계"),
-                                dbc.CardBody([
-                                    html.P(f"평균: {sv_stats['평균']:.1f}"),
-                                    html.P(f"최대: {sv_stats['최대']:.1f}"),
-                                    html.P(f"최소: {sv_stats['최소']:.1f}"),
-                                    html.P(f"중앙값: {sv_stats['중앙값']:.1f}"),
-                                    html.P(f"표준편차: {sv_stats['표준편차']:.2f}")
-                                ])
-                            ])
-                        ], width=4)
-                    )
-                
-                if not stats_cards:
-                    stats_cards.append(
-                        dbc.Col([
-                            dbc.Card([
-                                dbc.CardHeader("데이터 정보"),
-                                dbc.CardBody([
-                                    html.P(f"총 데이터: {len(df)}개"),
-                                    html.P(f"컬럼: {', '.join(df.columns)}")
-                                ])
-                            ])
-                        ], width=12)
-                    )
-                
-                stats = dbc.Row([
-                    dbc.Col([
-                        html.H6("데이터 기간", className="text-center"),
-                        html.P(data_period, className="text-center text-muted")
-                    ], width=12, className="mb-3"),
-                    *stats_cards
-                ])
-                
-                return (
-                    df.to_dict('records'),
-                    fig,
-                    sensor_info,
-                    stats,
-                    True,
-                    f"✅ {result['count']}개의 데이터를 성공적으로 수집했습니다!",
-                    "success"
-                )
-            else:
-                empty_graph = go.Figure().add_annotation(
-                    text="데이터가 없습니다",
-                    xref="paper", yref="paper",
-                    x=0.5, y=0.5, showarrow=False
-                )
-                return (
-                    None,
-                    empty_graph,
-                    html.Div("데이터를 수집했지만 표시할 수 없습니다.", className="text-warning"),
-                    html.Div("통계 정보를 표시할 수 없습니다.", className="text-muted"),
-                    True,
-                    f"⚠️ 데이터를 수집했지만 표시할 수 없습니다.",
-                    "warning"
-                )
+            return True, f"✅ {result['count']}개의 데이터를 성공적으로 수집했습니다!", "success"
         else:
-            empty_graph = go.Figure().add_annotation(
-                text="데이터가 없습니다",
-                xref="paper", yref="paper",
-                x=0.5, y=0.5, showarrow=False
-            )
-            return (
-                None,
-                empty_graph,
-                html.Div(f"센서 {device_id} Ch.{channel}의 데이터를 찾을 수 없습니다.", className="text-danger"),
-                html.Div("통계 정보를 표시할 수 없습니다.", className="text-muted"),
-                True,
-                f"❌ 데이터 수집 실패: {result['msg']}",
-                "danger"
-            )
+            return True, f"❌ 데이터 수집 실패: {result['msg']}", "danger"
         
     except Exception as e:
         print(f"Error collecting sensor data: {e}")
-        empty_graph = go.Figure().add_annotation(
-            text="오류 발생",
-            xref="paper", yref="paper",
-            x=0.5, y=0.5, showarrow=False
-        )
-        return (
-            None,
-            empty_graph,
-            html.Div(f"센서 정보를 불러올 수 없습니다: {e}", className="text-danger"),
-            html.Div("통계 정보를 표시할 수 없습니다.", className="text-muted"),
-            True,
-            f"❌ 데이터 수집 중 오류 발생: {str(e)}",
-            "danger"
-        )
+        return True, f"❌ 데이터 수집 중 오류 발생: {str(e)}", "danger"
 
 @callback(
     Output("download-csv", "data"),
@@ -1251,21 +1094,4 @@ def download_csv(n_clicks, sensor_key):
         print(f"Error downloading CSV: {e}")
         raise PreventUpdate
 
-@callback(
-    Output("toggle-realtime-btn", "outline"),
-    Output("interval-component", "interval"),
-    Input("toggle-realtime-btn", "n_clicks"),
-    State("toggle-realtime-btn", "outline"),
-    prevent_initial_call=True
-)
-def toggle_realtime(n_clicks, current_outline):
-    """실시간 업데이트 토글 콜백"""
-    if not n_clicks:
-        raise PreventUpdate
-    
-    if current_outline:
-        # 실시간 업데이트 활성화
-        return False, 30*1000  # 30초
-    else:
-        # 실시간 업데이트 비활성화
-        return True, 24*60*60*1000  # 24시간 (실제로는 업데이트 안함) 
+ 
