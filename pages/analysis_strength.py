@@ -32,6 +32,7 @@ layout = dbc.Container(
         # 시간 슬라이더 관련 Store들
         dcc.Store(id="play-state-strength", data={"playing": False}),
         dcc.Store(id="speed-state-strength", data={"speed": 1}),
+        dcc.Store(id="unified-strength-colorbar-state", data=False),
         
         # ── 다운로드 컴포넌트들
         dcc.Download(id="download-3d-strength-image"),
@@ -44,7 +45,8 @@ layout = dbc.Container(
             dbc.Button(id="btn-play-strength"),
             dbc.Button(id="btn-pause-strength"),
             dcc.Dropdown(id="speed-dropdown-strength"),
-            dcc.Interval(id="play-interval-strength", interval=1000, n_intervals=0, disabled=True),
+            dbc.Button(id="btn-unified-strength-colorbar"),
+            dbc.Interval(id="play-interval-strength", interval=1000, n_intervals=0, disabled=True),
             dbc.Button(id="btn-save-3d-strength-image"),
             dbc.Button(id="btn-save-3d-strength-image", style={"display": "none"}),
             # 속도 버튼들
@@ -844,8 +846,94 @@ def switch_tab_strength(active_tab, selected_rows, pathname, tbl_data):
                 "marginBottom": "20px"
             }),
             
-            # 3D 그래프 영역
-            html.Div(id="strength-3d-content", style={"minHeight": "400px"})
+            # 3D 뷰어 영역 (온도 분석 페이지와 유사한 구조)
+            html.Div([
+                html.Div([
+                    html.H6("🧱 3D 강도 분포", style={
+                        "fontWeight": "600", "color": "#374151", "marginBottom": "0", "fontSize": "16px",
+                        "display": "inline-block", "marginRight": "20px"
+                    }),
+                    html.Div([
+                        html.Label("강도 바 통일", style={
+                            "fontWeight": "500", "color": "#374151", "marginBottom": "8px", "fontSize": "13px",
+                            "display": "inline-block", "marginRight": "8px"
+                        }),
+                        dbc.Switch(id="btn-unified-strength-colorbar", value=False, style={"display": "inline-block"}),
+                    ], style={"display": "inline-block", "verticalAlign": "top", "marginRight": "16px"}),
+                    html.Div([
+                        html.Label("강도 종류", style={
+                            "fontWeight": "500", "color": "#374151", "marginBottom": "8px", "fontSize": "13px",
+                            "display": "inline-block", "marginRight": "8px"
+                        }),
+                        dcc.Dropdown(
+                            options=[
+                                {"label": "압축강도", "value": "compressive"},
+                                {"label": "인장강도", "value": "tensile"},
+                            ],
+                            value="compressive", id="strength-component-selector",
+                            style={"width": "120px", "fontSize": "12px"},
+                            clearable=False, searchable=False
+                        ),
+                    ], style={"display": "inline-block", "verticalAlign": "top"}),
+                ], style={"marginBottom": "16px"}),
+                
+                # 3D 뷰어
+                dcc.Graph(
+                    id="viewer-3d-strength",
+                    style={"height": "600px", "borderRadius": "8px", "border": "1px solid #e2e8f0"},
+                    config={
+                        'displayModeBar': True,
+                        'displaylogo': False,
+                        'modeBarButtonsToRemove': ['pan2d', 'lasso2d', 'select2d'],
+                        'toImageButtonOptions': {
+                            'format': 'png',
+                            'filename': 'strength_3d_view',
+                            'height': 600,
+                            'width': 800,
+                            'scale': 2
+                        }
+                    }
+                ),
+                
+                # 저장 버튼들
+                html.Div([
+                    dcc.Loading(
+                        id="loading-btn-save-3d-strength-image", type="circle",
+                        children=[
+                            dbc.Button(
+                                [html.I(className="fas fa-camera me-1"), "이미지 저장"],
+                                id="btn-save-3d-strength-image", color="primary", size="lg",
+                                style={
+                                    "borderRadius": "8px", "fontWeight": "600", "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                    "fontSize": "15px", "width": "120px", "height": "48px", "marginRight": "16px"
+                                }
+                            )
+                        ]
+                    ),
+                    dcc.Loading(
+                        id="loading-btn-save-current-inp-strength", type="circle",
+                        children=[
+                            dbc.Button(
+                                [html.I(className="fas fa-file-download me-1"), "INP 저장"],
+                                id="btn-save-current-inp-strength", color="secondary", size="lg",
+                                style={
+                                    "borderRadius": "8px", "fontWeight": "600", "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
+                                    "fontSize": "15px", "width": "120px", "height": "48px"
+                                }
+                            )
+                        ]
+                    ),
+                ], style={"display": "flex", "justifyContent": "center", "alignItems": "center", "marginTop": "20px"}),
+                
+                # Store들
+                dcc.Store(id="unified-strength-colorbar-state", data=False),
+            ], style={
+                "padding": "20px",
+                "backgroundColor": "white",
+                "borderRadius": "12px",
+                "border": "1px solid #e2e8f0",
+                "boxShadow": "0 1px 3px rgba(0,0,0,0.1)"
+            })
         ])
     elif active_tab == "tab-strength-table":
         return html.Div([
@@ -1189,21 +1277,23 @@ def calc_elastic_modulus_over_age(age_days, fc_t, ec28, formula="ceb", s=0.2):
 
 # ────────────── 3D 그래프 및 표 콜백 ──────────────
 @callback(
-    Output("strength-3d-content", "children"),
+    Output("viewer-3d-strength", "figure"),
     Output("strength-time-info", "children"),
     Output("current-strength-time-store", "data", allow_duplicate=True),
     Input("tbl-concrete-strength", "selected_rows"),
     Input("strength-formula-params-store", "data"),
     Input("time-slider-strength", "value"),
     Input("tabs-main-strength", "active_tab"),
+    Input("unified-strength-colorbar-state", "data"),
+    Input("strength-component-selector", "value"),
     State("tbl-concrete-strength", "data"),
     State("current-strength-file-title-store", "data"),
     prevent_initial_call=True
 )
-def update_strength_analysis(selected_rows, formula_params, time_idx, active_tab, tbl_data, current_file_title):
-    """콘크리트 선택 시 3D 강도/탄성계수 분석을 수행합니다."""
+def update_strength_3d_viewer(selected_rows, formula_params, time_idx, active_tab, unified_colorbar, strength_type, tbl_data, current_file_title):
+    """콘크리트 선택 시 3D 강도 분석을 수행합니다."""
     if not selected_rows or not tbl_data or not formula_params:
-        return html.Div("콘크리트를 선택하고 입력 파라미터를 설정하세요."), "", None
+        return go.Figure(), "", None
     
     try:
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
@@ -1213,7 +1303,7 @@ def update_strength_analysis(selected_rows, formula_params, time_idx, active_tab
         # 콘크리트 DB에서 타설일 정보 가져오기
         df_conc = api_db.get_concrete_data(concrete_pk=concrete_pk)
         if df_conc.empty:
-            return html.Div("콘크리트 정보를 찾을 수 없습니다."), "", None
+            return go.Figure(), "", None
         
         concrete_info = df_conc.iloc[0]
         pour_date = concrete_info.get("con_t")
@@ -1221,11 +1311,11 @@ def update_strength_analysis(selected_rows, formula_params, time_idx, active_tab
         # INP 파일 찾기
         inp_dir = f"inp/{concrete_pk}"
         if not os.path.exists(inp_dir):
-            return html.Div("INP 파일이 없습니다."), "", None
+            return go.Figure(), "", None
         
         inp_files = glob.glob(f"{inp_dir}/*.inp")
         if not inp_files:
-            return html.Div("INP 파일이 없습니다."), "", None
+            return go.Figure(), "", None
         
         # 파일명에서 시간 정보 추출 (온도 분석 페이지와 동일한 방식)
         times = []
@@ -1238,19 +1328,19 @@ def update_strength_analysis(selected_rows, formula_params, time_idx, active_tab
                 continue
         
         if not times:
-            return html.Div("시간 정보를 읽을 수 없습니다."), "", None
+            return go.Figure(), "", None
         
         # 현재 시간 인덱스에 해당하는 INP 파일 선택
         if 0 <= time_idx < len(times):
             current_time = times[time_idx]
             current_inp_file = inp_files[time_idx]
         else:
-            return html.Div("시간 인덱스가 범위를 벗어났습니다."), "", None
+            return go.Figure(), "", None
         
         # 현재 INP 파일에서 노드와 온도 데이터 추출
         nodes, temperatures, time_stamps = read_inp_nodes_and_temperatures(current_inp_file)
         if not nodes:
-            return html.Div("노드 정보를 읽을 수 없습니다."), "", None
+            return go.Figure(), "", None
         
         # 엘리먼트 정보도 추출 (면 표시용)
         nodes_dict, elements = read_inp_nodes_and_elements(current_inp_file)
@@ -1292,7 +1382,7 @@ def update_strength_analysis(selected_rows, formula_params, time_idx, active_tab
             formula_params.get("tref", 20)
         )
         
-        # 강도/탄성계수 계산
+        # 강도 계산
         fc_t = calc_strength_over_age(
             equivalent_age, 
             formula_params["fcm28"], 
@@ -1301,17 +1391,8 @@ def update_strength_analysis(selected_rows, formula_params, time_idx, active_tab
             formula_params["fc_b"]
         )
         
-        ec_t = calc_elastic_modulus_over_age(
-            equivalent_age,
-            fc_t,
-            formula_params["ec28"],
-            formula_params["ec_formula"],
-            formula_params["ec_s"]
-        )
-        
-        # 노드별 온도에 따른 강도/탄성계수 계산
+        # 노드별 온도에 따른 강도 계산
         strength_values = {}
-        elastic_values = {}
         
         for node in nodes:
             node_id = node["id"]
@@ -1330,93 +1411,190 @@ def update_strength_analysis(selected_rows, formula_params, time_idx, active_tab
                     formula_params.get("tref", 20)
                 )
                 
-                # 노드별 강도/탄성계수 계산
-                node_fc = calc_strength_over_age(
-                    node_equivalent_age,
-                    formula_params["fcm28"],
-                    formula_params["fc_formula"],
-                    formula_params["fc_a"],
-                    formula_params["fc_b"]
-                )
-                node_ec = calc_elastic_modulus_over_age(
-                    node_equivalent_age,
-                    node_fc,
-                    formula_params["ec28"],
-                    formula_params["ec_formula"],
-                    formula_params["ec_s"]
-                )
+                # 노드별 강도 계산
+                if strength_type == "compressive":
+                    node_fc = calc_strength_over_age(
+                        node_equivalent_age,
+                        formula_params["fcm28"],
+                        formula_params["fc_formula"],
+                        formula_params["fc_a"],
+                        formula_params["fc_b"]
+                    )
+                else:  # tensile
+                    # 인장강도는 압축강도의 약 10%로 가정
+                    node_fc = calc_strength_over_age(
+                        node_equivalent_age,
+                        formula_params["fcm28"],
+                        formula_params["fc_formula"],
+                        formula_params["fc_a"],
+                        formula_params["fc_b"]
+                    ) * 0.1
             else:
                 # 온도 데이터가 없으면 평균값 사용
-                node_fc = fc_t
-                node_ec = ec_t
+                if strength_type == "compressive":
+                    node_fc = fc_t
+                else:  # tensile
+                    node_fc = fc_t * 0.1
             
             strength_values[node_id] = node_fc
-            elastic_values[node_id] = node_ec
         
         # 3D 그래프 생성
         if use_mesh and elements:
-            # 면 표시 (Mesh3d)
-            # 엘리먼트별 평균 강도/탄성계수 계산
-            strength_fig = create_mesh3d_figure(nodes_dict, elements, strength_values, 
-                                              f"{concrete_name} - 3D 강도 분포", "강도 (MPa)", "Viridis")
-            elastic_fig = create_mesh3d_figure(nodes_dict, elements, elastic_values, 
-                                             f"{concrete_name} - 3D 탄성계수 분포", "탄성계수 (MPa)", "Plasma")
+            # 면 표시 (Mesh3d) - 온도 분석 페이지와 유사한 방식
+            # 노드 좌표 배열 생성
+            x_coords = []
+            y_coords = []
+            z_coords = []
+            node_ids = list(nodes_dict.keys())
+            node_id_to_index = {node_id: i for i, node_id in enumerate(node_ids)}
+            
+            for node_id in node_ids:
+                node = nodes_dict[node_id]
+                x_coords.append(node["x"])
+                y_coords.append(node["y"])
+                z_coords.append(node["z"])
+            
+            # 엘리먼트 인덱스 배열 생성
+            i_indices = []
+            j_indices = []
+            k_indices = []
+            element_values = []
+            
+            for element in elements:
+                if len(element) >= 3:
+                    # 첫 번째 삼각형
+                    i_indices.append(node_id_to_index[element[0]])
+                    j_indices.append(node_id_to_index[element[1]])
+                    k_indices.append(node_id_to_index[element[2]])
+                    
+                    # 엘리먼트의 평균값 계산
+                    avg_value = sum(strength_values.get(node_id, 0) for node_id in element[:3]) / 3
+                    element_values.append(avg_value)
+                    
+                    # 4개 이상의 노드가 있으면 추가 삼각형 생성
+                    if len(element) >= 4:
+                        # 두 번째 삼각형
+                        i_indices.append(node_id_to_index[element[0]])
+                        j_indices.append(node_id_to_index[element[2]])
+                        k_indices.append(node_id_to_index[element[3]])
+                        
+                        avg_value2 = sum(strength_values.get(node_id, 0) for node_id in [element[0], element[2], element[3]]) / 3
+                        element_values.append(avg_value2)
+            
+            # Mesh3d 그래프 생성
+            fig = go.Figure(data=go.Mesh3d(
+                x=x_coords,
+                y=y_coords,
+                z=z_coords,
+                i=i_indices,
+                j=j_indices,
+                k=k_indices,
+                intensity=element_values,
+                colorscale='Viridis',
+                colorbar=dict(
+                    title=f"{'압축' if strength_type == 'compressive' else '인장'}강도 (MPa)", 
+                    thickness=15,
+                    len=0.8,
+                    x=1.02
+                ),
+                showscale=True,
+                opacity=0.8,
+                hoverinfo='all',
+                hovertemplate='<b>엘리먼트</b><br>' +
+                             f"{'압축' if strength_type == 'compressive' else '인장'}강도: %{{intensity:.2f}} MPa<br>" +
+                             '<extra></extra>'
+            ))
+            
+            fig.update_layout(
+                title=f"{concrete_name} - 3D {'압축' if strength_type == 'compressive' else '인장'}강도 분포",
+                scene=dict(
+                    aspectmode='data',
+                    bgcolor='white',
+                    xaxis=dict(
+                        title='X (m)',
+                        showgrid=True,
+                        gridcolor='lightgray',
+                        zeroline=True,
+                        zerolinecolor='black'
+                    ),
+                    yaxis=dict(
+                        title='Y (m)',
+                        showgrid=True,
+                        gridcolor='lightgray',
+                        zeroline=True,
+                        zerolinecolor='black'
+                    ),
+                    zaxis=dict(
+                        title='Z (m)',
+                        showgrid=True,
+                        gridcolor='lightgray',
+                        zeroline=True,
+                        zerolinecolor='black'
+                    ),
+                    camera=dict(
+                        eye=dict(x=1.5, y=1.5, z=1.5)
+                    )
+                ),
+                margin=dict(l=0, r=0, t=50, b=0),
+                height=600
+            )
         else:
             # 점 표시 (Scatter3d) - fallback
             x_coords = [node["x"] for node in nodes]
             y_coords = [node["y"] for node in nodes]
             z_coords = [node["z"] for node in nodes]
             strength_vals = [strength_values.get(node["id"], fc_t) for node in nodes]
-            elastic_vals = [elastic_values.get(node["id"], ec_t) for node in nodes]
             
-            strength_fig = go.Figure(data=go.Scatter3d(
+            fig = go.Figure(data=go.Scatter3d(
                 x=x_coords, y=y_coords, z=z_coords, 
                 mode='markers',
                 marker=dict(
                     size=5,
                     color=strength_vals,
                     colorscale='Viridis',
-                    colorbar=dict(title='강도 (MPa)', thickness=10),
+                    colorbar=dict(
+                        title=f"{'압축' if strength_type == 'compressive' else '인장'}강도 (MPa)", 
+                        thickness=15,
+                        len=0.8,
+                        x=1.02
+                    ),
                     showscale=True
                 ),
-                text=[f"노드 {node['id']}<br>강도: {val:.2f} MPa" for node, val in zip(nodes, strength_vals)],
+                text=[f"노드 {node['id']}<br>{'압축' if strength_type == 'compressive' else '인장'}강도: {val:.2f} MPa" for node, val in zip(nodes, strength_vals)],
                 hovertemplate='%{text}<extra></extra>'
             ))
-            strength_fig.update_layout(
-                title=f"{concrete_name} - 3D 강도 분포",
+            fig.update_layout(
+                title=f"{concrete_name} - 3D {'압축' if strength_type == 'compressive' else '인장'}강도 분포",
                 scene=dict(
                     aspectmode='data', 
                     bgcolor='white',
-                    xaxis_title='X (m)',
-                    yaxis_title='Y (m)',
-                    zaxis_title='Z (m)'
+                    xaxis=dict(
+                        title='X (m)',
+                        showgrid=True,
+                        gridcolor='lightgray',
+                        zeroline=True,
+                        zerolinecolor='black'
+                    ),
+                    yaxis=dict(
+                        title='Y (m)',
+                        showgrid=True,
+                        gridcolor='lightgray',
+                        zeroline=True,
+                        zerolinecolor='black'
+                    ),
+                    zaxis=dict(
+                        title='Z (m)',
+                        showgrid=True,
+                        gridcolor='lightgray',
+                        zeroline=True,
+                        zerolinecolor='black'
+                    ),
+                    camera=dict(
+                        eye=dict(x=1.5, y=1.5, z=1.5)
+                    )
                 ),
-                margin=dict(l=0, r=0, t=30, b=0)
-            )
-            
-            elastic_fig = go.Figure(data=go.Scatter3d(
-                x=x_coords, y=y_coords, z=z_coords, 
-                mode='markers',
-                marker=dict(
-                    size=5,
-                    color=elastic_vals,
-                    colorscale='Plasma',
-                    colorbar=dict(title='탄성계수 (MPa)', thickness=10),
-                    showscale=True
-                ),
-                text=[f"노드 {node['id']}<br>탄성계수: {val:.0f} MPa" for node, val in zip(nodes, elastic_vals)],
-                hovertemplate='%{text}<extra></extra>'
-            ))
-            elastic_fig.update_layout(
-                title=f"{concrete_name} - 3D 탄성계수 분포",
-                scene=dict(
-                    aspectmode='data', 
-                    bgcolor='white',
-                    xaxis_title='X (m)',
-                    yaxis_title='Y (m)',
-                    zaxis_title='Z (m)'
-                ),
-                margin=dict(l=0, r=0, t=30, b=0)
+                margin=dict(l=0, r=0, t=50, b=0),
+                height=600
             )
         
         # 시간 정보 표시
@@ -1430,28 +1608,13 @@ def update_strength_analysis(selected_rows, formula_params, time_idx, active_tab
                 html.Br(),
                 html.Strong(f"🌡️ 등가재령: {equivalent_age:.1f}일"),
                 html.Br(),
-                html.Strong(f"📊 평균 강도: {fc_t:.2f} MPa"),
-                html.Br(),
-                html.Strong(f"📐 평균 탄성계수: {ec_t:.0f} MPa")
+                html.Strong(f"📊 평균 {'압축' if strength_type == 'compressive' else '인장'}강도: {fc_t:.2f} MPa")
             ], style={"color": "#374151", "fontSize": "14px"})
         
-        # 3D 콘텐츠 반환
-        content = html.Div([
-            html.H5(f"3D 강도/탄성계수 분석 - {concrete_name}", style={"fontWeight": "700", "marginBottom": "18px"}),
-            dbc.Row([
-                dbc.Col([
-                    dcc.Graph(figure=strength_fig, style={"height": "400px"})
-                ], md=6),
-                dbc.Col([
-                    dcc.Graph(figure=elastic_fig, style={"height": "400px"})
-                ], md=6)
-            ])
-        ])
-        
-        return content, time_info, time_idx
+        return fig, time_info, time_idx
             
     except Exception as e:
-        return html.Div(f"분석 중 오류 발생: {str(e)}"), "", None
+        return go.Figure(), f"분석 중 오류 발생: {str(e)}", None
 
 # ────────────── 시간 슬라이더 동기화 콜백 ──────────────
 @callback(
@@ -1750,3 +1913,13 @@ def update_strength_table(selected_rows, formula_params, time_idx, tbl_data):
             
     except Exception as e:
         return html.Div(f"표 생성 중 오류 발생: {str(e)}") 
+
+# ────────────── 통일된 컬러바 상태 관리 콜백 ──────────────
+@callback(
+    Output("unified-strength-colorbar-state", "data"),
+    Input("btn-unified-strength-colorbar", "value"),
+    prevent_initial_call=True,
+)
+def toggle_unified_strength_colorbar(switch_value):
+    """통일된 컬러바 상태를 토글합니다."""
+    return switch_value
