@@ -9,8 +9,10 @@ from dash import html, dcc, Input, Output, State, dash_table, register_page, cal
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
+import api_db
+from utils.encryption import parse_project_key_from_url
 
-register_page(__name__, path="/strength3d", title="강도/탄성계수 3D 분석")
+register_page(__name__, path="/strength", title="강도/탄성계수 3D 분석")
 
 # ────────────── 레이아웃 ──────────────
 layout = dbc.Container(
@@ -18,9 +20,9 @@ layout = dbc.Container(
     className="px-4 py-3",
     style={"backgroundColor": "#f7f9fc", "minHeight": "100vh"},
     children=[
-        dcc.Location(id="project-url-strength3d", refresh=False),
-        dcc.Store(id="project-info-store-strength3d", data=None),
-        dcc.Store(id="strength3d-formula-params-store", data={}),
+        dcc.Location(id="project-url-strength", refresh=False),
+        dcc.Store(id="project-info-store-strength", data=None),
+        dcc.Store(id="strength-formula-params-store", data={}),
         html.H3("🧱 콘크리트 강도/탄성계수 3D 분석", className="mb-4"),
         dbc.Row([
             # 왼쪽: 콘크리트 목록
@@ -30,7 +32,7 @@ layout = dbc.Container(
                     html.Div([
                         html.H6("🧱 콘크리트 목록", className="mb-0 text-secondary fw-bold"),
                         dash_table.DataTable(
-                            id="tbl-concrete-strength3d",
+                            id="tbl-concrete-strength",
                             page_size=5,
                             row_selectable="single",
                             sort_action="native",
@@ -40,7 +42,7 @@ layout = dbc.Container(
                             style_header={"backgroundColor": "#fafafa", "fontWeight": 600},
                         ),
                         html.Div([
-                            dbc.Button("분석 시작", id="btn-concrete-analyze-strength3d", color="success", size="sm", className="px-3", disabled=True),
+                            dbc.Button("분석 시작", id="btn-concrete-analyze-strength", color="success", size="sm", className="px-3", disabled=True),
                         ], className="d-flex justify-content-center gap-2 mt-2"),
                     ], style={"backgroundColor": "white", "padding": "20px", "borderRadius": "12px", "boxShadow": "0 1px 3px rgba(0,0,0,0.1)", "border": "1px solid #e2e8f0", "height": "fit-content"})
                 ])
@@ -49,11 +51,11 @@ layout = dbc.Container(
             dbc.Col([
                 html.Div([
                     dbc.Tabs([
-                        dbc.Tab(label="입력 파라미터", tab_id="tab-strength3d-params"),
-                        dbc.Tab(label="3D 강도/탄성계수", tab_id="tab-strength3d-3d"),
-                        dbc.Tab(label="노드별 표", tab_id="tab-strength3d-table"),
-                    ], id="tabs-main-strength3d", active_tab="tab-strength3d-params", className="mb-0"),
-                    html.Div(id="tab-content-strength3d", style={"backgroundColor": "white", "border": "1px solid #e2e8f0", "borderTop": "none", "borderRadius": "0 0 8px 8px", "padding": "20px", "minHeight": "calc(100vh - 200px)"})
+                        dbc.Tab(label="입력 파라미터", tab_id="tab-strength-params"),
+                        dbc.Tab(label="3D 강도/탄성계수", tab_id="tab-strength-3d"),
+                        dbc.Tab(label="노드별 표", tab_id="tab-strength-table"),
+                    ], id="tabs-main-strength", active_tab="tab-strength-params", className="mb-0"),
+                    html.Div(id="tab-content-strength", style={"backgroundColor": "white", "border": "1px solid #e2e8f0", "borderTop": "none", "borderRadius": "0 0 8px 8px", "padding": "20px", "minHeight": "calc(100vh - 200px)"})
                 ])
             ], md=8)
         ], className="g-4"),
@@ -64,21 +66,19 @@ layout = dbc.Container(
 
 # ────────────── 콘크리트 목록 데이터 로딩 콜백 ──────────────
 @callback(
-    Output("tbl-concrete-strength3d", "data"),
-    Output("tbl-concrete-strength3d", "columns"),
-    Output("tbl-concrete-strength3d", "selected_rows"),
-    Output("project-info-store-strength3d", "data"),
-    Input("project-url-strength3d", "search"),
-    Input("project-url-strength3d", "pathname"),
+    Output("tbl-concrete-strength", "data"),
+    Output("tbl-concrete-strength", "columns"),
+    Output("tbl-concrete-strength", "selected_rows"),
+    Output("project-info-store-strength", "data"),
+    Input("project-url-strength", "search"),
+    Input("project-url-strength", "pathname"),
     prevent_initial_call=True,
 )
-def load_concrete_data_strength3d(search, pathname):
+def load_concrete_data_strength(search, pathname):
     """프로젝트 정보를 로드하고 콘크리트 목록을 표시합니다."""
-    if '/strength3d' not in pathname:
+    if '/strength' not in pathname:
         raise dash.exceptions.PreventUpdate
     # (아래는 TCI 분석 페이지의 load_concrete_data_tci 참고, DB 함수는 api_db.get_project_data, api_db.get_concrete_data 사용)
-    import api_db
-    from utils.encryption import parse_project_key_from_url
     project_pk = None
     if search:
         try:
@@ -114,7 +114,7 @@ def load_concrete_data_strength3d(search, pathname):
     return table_data, columns, [], {"name": proj_name, "pk": project_pk} 
 
 # ────────────── 입력 파라미터 탭 콘텐츠 함수 ──────────────
-def create_strength3d_params_tab_content():
+def create_strength_params_tab_content():
     return html.Div([
         html.H5("강도/탄성계수 공식 및 입력값", style={"fontWeight": "700", "marginBottom": "18px", "color": "#1e293b"}),
         html.Hr(style={"margin": "8px 0 20px 0", "borderColor": "#e5e7eb"}),
@@ -122,7 +122,7 @@ def create_strength3d_params_tab_content():
             dbc.Col([
                 html.Label("강도 공식", style={"fontWeight": "600"}),
                 dcc.Dropdown(
-                    id="strength3d-fc-formula",
+                    id="strength-fc-formula",
                     options=[
                         {"label": "CEB-FIP Model Code 1990", "value": "ceb"},
                         {"label": "ACI 318", "value": "aci"},
@@ -132,16 +132,16 @@ def create_strength3d_params_tab_content():
                 ),
                 html.Br(),
                 html.Label("28일 압축강도 fcm28 (MPa)", style={"fontWeight": "600"}),
-                dbc.Input(id="strength3d-fcm28", type="number", value=30, min=10, max=100),
+                dbc.Input(id="strength-fcm28", type="number", value=30, min=10, max=100),
                 html.Br(),
                 html.Label("(선택) 강도 공식 계수", style={"fontWeight": "600"}),
-                dbc.Input(id="strength3d-fc-coef-a", type="number", value=1, min=0.1, max=2, step=0.01),
-                dbc.Input(id="strength3d-fc-coef-b", type="number", value=1, min=0.1, max=2, step=0.01),
+                dbc.Input(id="strength-fc-coef-a", type="number", value=1, min=0.1, max=2, step=0.01),
+                dbc.Input(id="strength-fc-coef-b", type="number", value=1, min=0.1, max=2, step=0.01),
             ], md=6),
             dbc.Col([
                 html.Label("탄성계수 공식", style={"fontWeight": "600"}),
                 dcc.Dropdown(
-                    id="strength3d-ec-formula",
+                    id="strength-ec-formula",
                     options=[
                         {"label": "CEB-FIP Model Code 1990", "value": "ceb"},
                         {"label": "ACI 318", "value": "aci"},
@@ -151,45 +151,45 @@ def create_strength3d_params_tab_content():
                 ),
                 html.Br(),
                 html.Label("28일 탄성계수 Ec28 (MPa)", style={"fontWeight": "600"}),
-                dbc.Input(id="strength3d-ec28", type="number", value=30000, min=10000, max=50000),
+                dbc.Input(id="strength-ec28", type="number", value=30000, min=10000, max=50000),
                 html.Br(),
                 html.Label("(CEB-FIP) s계수", style={"fontWeight": "600"}),
-                dbc.Input(id="strength3d-ec-s", type="number", value=0.2, min=0.1, max=1, step=0.01),
+                dbc.Input(id="strength-ec-s", type="number", value=0.2, min=0.1, max=1, step=0.01),
             ], md=6),
         ]),
-        html.Div(id="strength3d-formula-preview", className="mt-4"),
+        html.Div(id="strength-formula-preview", className="mt-4"),
     ], style={"maxWidth": "900px", "margin": "0 auto"})
 
 # ────────────── 탭 콘텐츠 스위치 콜백 ──────────────
 @callback(
-    Output("tab-content-strength3d", "children"),
-    Input("tabs-main-strength3d", "active_tab"),
+    Output("tab-content-strength", "children"),
+    Input("tabs-main-strength", "active_tab"),
     prevent_initial_call=False
 )
-def switch_tab_strength3d(active_tab):
-    if active_tab == "tab-strength3d-params":
-        return create_strength3d_params_tab_content()
-    elif active_tab == "tab-strength3d-3d":
+def switch_tab_strength(active_tab):
+    if active_tab == "tab-strength-params":
+        return create_strength_params_tab_content()
+    elif active_tab == "tab-strength-3d":
         return html.Div("3D 강도/탄성계수 그래프 영역 (추후 구현)")
-    elif active_tab == "tab-strength3d-table":
+    elif active_tab == "tab-strength-table":
         return html.Div("노드별 표 영역 (추후 구현)")
     else:
         return html.Div("알 수 없는 탭입니다.")
 
 # ────────────── 입력값 Store 저장 콜백 ──────────────
 @callback(
-    Output("strength3d-formula-params-store", "data"),
-    Output("strength3d-formula-preview", "children"),
-    Input("strength3d-fc-formula", "value"),
-    Input("strength3d-fcm28", "value"),
-    Input("strength3d-fc-coef-a", "value"),
-    Input("strength3d-fc-coef-b", "value"),
-    Input("strength3d-ec-formula", "value"),
-    Input("strength3d-ec28", "value"),
-    Input("strength3d-ec-s", "value"),
+    Output("strength-formula-params-store", "data"),
+    Output("strength-formula-preview", "children"),
+    Input("strength-fc-formula", "value"),
+    Input("strength-fcm28", "value"),
+    Input("strength-fc-coef-a", "value"),
+    Input("strength-fc-coef-b", "value"),
+    Input("strength-ec-formula", "value"),
+    Input("strength-ec28", "value"),
+    Input("strength-ec-s", "value"),
     prevent_initial_call=False
 )
-def update_strength3d_formula_params(fc_formula, fcm28, fc_a, fc_b, ec_formula, ec28, ec_s):
+def update_strength_formula_params(fc_formula, fcm28, fc_a, fc_b, ec_formula, ec28, ec_s):
     params = {
         "fc_formula": fc_formula,
         "fcm28": fcm28,
@@ -275,13 +275,13 @@ def calc_elastic_modulus_over_age(age_days, fc_t, ec28, formula="ceb", s=0.2):
 
 # ────────────── 3D 그래프 및 표 콜백 ──────────────
 @callback(
-    Output("tab-content-strength3d", "children", allow_duplicate=True),
-    Input("tbl-concrete-strength3d", "selected_rows"),
-    Input("strength3d-formula-params-store", "data"),
-    State("tbl-concrete-strength3d", "data"),
+    Output("tab-content-strength", "children", allow_duplicate=True),
+    Input("tbl-concrete-strength", "selected_rows"),
+    Input("strength-formula-params-store", "data"),
+    State("tbl-concrete-strength", "data"),
     prevent_initial_call=True
 )
-def update_strength3d_analysis(selected_rows, formula_params, tbl_data):
+def update_strength_analysis(selected_rows, formula_params, tbl_data):
     """콘크리트 선택 시 3D 강도/탄성계수 분석을 수행합니다."""
     if not selected_rows or not tbl_data or not formula_params:
         return html.Div("콘크리트를 선택하고 입력 파라미터를 설정하세요.")
@@ -374,12 +374,12 @@ def update_strength3d_analysis(selected_rows, formula_params, tbl_data):
             })
         
         # 3D 탭 콘텐츠
-        if dash.callback_context.triggered[0]['prop_id'] == 'tbl-concrete-strength3d.selected_rows':
-            active_tab = "tab-strength3d-3d"
+        if dash.callback_context.triggered[0]['prop_id'] == 'tbl-concrete-strength.selected_rows':
+            active_tab = "tab-strength-3d"
         else:
-            active_tab = dash.callback_context.inputs.get('tabs-main-strength3d.active_tab', 'tab-strength3d-params')
+            active_tab = dash.callback_context.inputs.get('tabs-main-strength.active_tab', 'tab-strength-params')
         
-        if active_tab == "tab-strength3d-3d":
+        if active_tab == "tab-strength-3d":
             return html.Div([
                 html.H5(f"3D 강도/탄성계수 분석 - {concrete_name}", style={"fontWeight": "700", "marginBottom": "18px"}),
                 dbc.Row([
@@ -397,7 +397,7 @@ def update_strength3d_analysis(selected_rows, formula_params, tbl_data):
                     html.P(f"평균 탄성계수: {ec_t:.0f} MPa")
                 ])
             ])
-        elif active_tab == "tab-strength3d-table":
+        elif active_tab == "tab-strength-table":
             return html.Div([
                 html.H5(f"노드별 강도/탄성계수 표 - {concrete_name}", style={"fontWeight": "700", "marginBottom": "18px"}),
                 dash_table.DataTable(
@@ -410,7 +410,7 @@ def update_strength3d_analysis(selected_rows, formula_params, tbl_data):
                 )
             ])
         else:
-            return create_strength3d_params_tab_content()
+            return create_strength_params_tab_content()
             
     except Exception as e:
         return html.Div(f"분석 중 오류 발생: {str(e)}") 
