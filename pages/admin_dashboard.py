@@ -1,7 +1,7 @@
 from dash import html, dcc, register_page, callback, Input, Output
 import dash_bootstrap_components as dbc
 from flask import request as flask_request
-from api_db import get_project_data_with_stats
+from api_db import get_accessible_projects
 import pandas as pd
 from datetime import datetime, timedelta
 import plotly.graph_objs as go
@@ -15,12 +15,27 @@ def get_system_stats():
         import os
         import re
         
-        # 프로젝트 데이터 조회
-        projects_df = get_project_data_with_stats()
-        active_projects = len(projects_df) if not projects_df.empty else 0
-        
-        # 센서 수는 프로젝트 데이터에서 집계
-        total_sensors = projects_df['sensor_count'].sum() if not projects_df.empty else 0
+        # 프로젝트 데이터 조회 (ITS 서버에서)
+        try:
+            # 현재 로그인된 사용자 정보 가져오기 (관리자로 가정)
+            user_id = flask_request.cookies.get("login_user")
+            if not user_id:
+                user_id = "admin"  # 기본값
+            
+            accessible_projects_result = get_accessible_projects(user_id, its_num=1)
+            if accessible_projects_result["result"] == "Success":
+                projects_df = accessible_projects_result["projects"]
+                active_projects = len(projects_df) if not projects_df.empty else 0
+                total_sensors = 0  # 센서 수는 별도 계산 필요
+            else:
+                projects_df = pd.DataFrame()
+                active_projects = 0
+                total_sensors = 0
+        except Exception as e:
+            print(f"프로젝트 데이터 조회 오류: {e}")
+            projects_df = pd.DataFrame()
+            active_projects = 0
+            total_sensors = 0
         
         # ITS 엔진으로 더 상세한 통계 수집
         eng = _get_its_engine(1)

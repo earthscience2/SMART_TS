@@ -1,7 +1,7 @@
 from dash import html, dcc, register_page, callback, Input, Output, State, ALL
 import dash_bootstrap_components as dbc
 from flask import request as flask_request
-from api_db import get_project_data_with_stats, get_all_sensor_structures
+from api_db import get_accessible_projects, get_all_sensor_structures
 from api_db_logger import add_project_data_with_log as add_project_data, update_project_data_with_log as update_project_data, delete_project_data_with_log as delete_project_data
 import json
 import dash
@@ -151,8 +151,30 @@ def format_project_data(df):
 def load_projects_data(pathname):
     """프로젝트 데이터를 로드합니다."""
     try:
-        df = get_project_data_with_stats()
-        return format_project_data(df)
+        # 현재 로그인된 사용자 정보 가져오기
+        user_id = flask_request.cookies.get("login_user")
+        if not user_id:
+            user_id = "admin"  # 기본값
+        
+        accessible_projects_result = get_accessible_projects(user_id, its_num=1)
+        if accessible_projects_result["result"] == "Success":
+            df = accessible_projects_result["projects"]
+            # ITS 프로젝트 데이터를 로컬 형식으로 변환
+            if not df.empty:
+                df = df.rename(columns={
+                    'projectid': 'project_pk',
+                    'projectname': 'name',
+                    'regdate': 'created_at',
+                    'closedate': 'updated_at'
+                })
+                # 기본값 추가
+                df['concrete_count'] = 0
+                df['sensor_count'] = 0
+                df['s_code'] = df['project_pk']  # 임시로 project_pk를 s_code로 사용
+            return format_project_data(df)
+        else:
+            print(f"Error getting accessible projects: {accessible_projects_result['msg']}")
+            return []
     except Exception as e:
         print(f"Error loading projects: {e}")
         return []
@@ -335,8 +357,30 @@ def handle_edit_modal(save_clicks, cancel_clicks, project_id, project_name, proj
             )
             
             # 데이터 다시 로드
-            df = get_project_data_with_stats()
-            new_data = format_project_data(df)
+            try:
+                user_id = flask_request.cookies.get("login_user")
+                if not user_id:
+                    user_id = "admin"
+                
+                accessible_projects_result = get_accessible_projects(user_id, its_num=1)
+                if accessible_projects_result["result"] == "Success":
+                    df = accessible_projects_result["projects"]
+                    if not df.empty:
+                        df = df.rename(columns={
+                            'projectid': 'project_pk',
+                            'projectname': 'name',
+                            'regdate': 'created_at',
+                            'closedate': 'updated_at'
+                        })
+                        df['concrete_count'] = 0
+                        df['sensor_count'] = 0
+                        df['s_code'] = df['project_pk']
+                    new_data = format_project_data(df)
+                else:
+                    new_data = []
+            except Exception as e:
+                print(f"Error reloading projects: {e}")
+                new_data = []
             
             return False, False, "", "danger", True, "프로젝트가 성공적으로 수정되었습니다.", new_data
         except Exception as e:
@@ -404,8 +448,30 @@ def handle_delete_modal(confirm_clicks, cancel_clicks, project_info, projects_da
             delete_project_data(project_pk=project_id)
             
             # 데이터 다시 로드
-            df = get_project_data_with_stats()
-            new_data = format_project_data(df)
+            try:
+                user_id = flask_request.cookies.get("login_user")
+                if not user_id:
+                    user_id = "admin"
+                
+                accessible_projects_result = get_accessible_projects(user_id, its_num=1)
+                if accessible_projects_result["result"] == "Success":
+                    df = accessible_projects_result["projects"]
+                    if not df.empty:
+                        df = df.rename(columns={
+                            'projectid': 'project_pk',
+                            'projectname': 'name',
+                            'regdate': 'created_at',
+                            'closedate': 'updated_at'
+                        })
+                        df['concrete_count'] = 0
+                        df['sensor_count'] = 0
+                        df['s_code'] = df['project_pk']
+                    new_data = format_project_data(df)
+                else:
+                    new_data = []
+            except Exception as e:
+                print(f"Error reloading projects: {e}")
+                new_data = []
             
             return False, True, "프로젝트가 성공적으로 삭제되었습니다.", new_data
         except Exception as e:
@@ -544,8 +610,30 @@ def handle_add_modal(save_clicks, cancel_clicks, project_name, selected_structur
             )
             
             # 데이터 다시 로드
-            df = get_project_data_with_stats()
-            new_data = format_project_data(df)
+            try:
+                user_id = flask_request.cookies.get("login_user")
+                if not user_id:
+                    user_id = "admin"
+                
+                accessible_projects_result = get_accessible_projects(user_id, its_num=1)
+                if accessible_projects_result["result"] == "Success":
+                    df = accessible_projects_result["projects"]
+                    if not df.empty:
+                        df = df.rename(columns={
+                            'projectid': 'project_pk',
+                            'projectname': 'name',
+                            'regdate': 'created_at',
+                            'closedate': 'updated_at'
+                        })
+                        df['concrete_count'] = 0
+                        df['sensor_count'] = 0
+                        df['s_code'] = df['project_pk']
+                    new_data = format_project_data(df)
+                else:
+                    new_data = []
+            except Exception as e:
+                print(f"Error reloading projects: {e}")
+                new_data = []
             
             structure_info = f"구조 ID: {selected_structure.get('structure_id', '')}, 구조명: {selected_structure.get('structure_name', '')}"
             success_message = f"프로젝트 '{project_name.strip()}'이(가) 성공적으로 생성되었습니다. ({structure_info})"
