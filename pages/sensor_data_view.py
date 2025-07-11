@@ -319,7 +319,7 @@ layout = html.Div([
     Output("sensor-stats", "children", allow_duplicate=True),
     Input("refresh-sensors-btn", "n_clicks"),
     Input("interval-component", "n_intervals"),
-    prevent_initial_call=False
+    prevent_initial_call='initial_duplicate'
 )
 def update_sensor_list(refresh_clicks, n_intervals):
     """센서 목록을 업데이트하는 콜백"""
