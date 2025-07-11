@@ -18,6 +18,7 @@ def get_system_stats():
         # 프로젝트 데이터 조회 (ITS 서버에서)
         try:
             # 현재 로그인된 사용자 정보 가져오기 (관리자로 가정)
+            # 콜백 내부에서 호출되므로 flask_request 사용 가능
             user_id = flask_request.cookies.get("login_user")
             if not user_id:
                 user_id = "admin"  # 기본값

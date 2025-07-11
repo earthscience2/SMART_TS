@@ -22,23 +22,7 @@ from flask import request as flask_request
 
 register_page(__name__, path="/download", title="파일 다운로드")
 
-# 프로젝트 메타데이터 (URL 파라미터 파싱에 사용)
-user_id = flask_request.cookies.get("login_user")
-if not user_id:
-    user_id = "admin"  # 또는 적절한 기본값
-result = api_db.get_accessible_projects(user_id, its_num=1)
-if result["result"] == "Success":
-    projects_df = result["projects"]
-    # 필요하다면 컬럼명 변환
-    if not projects_df.empty:
-        projects_df = projects_df.rename(columns={
-            'projectid': 'project_pk',
-            'projectname': 'name',
-            'regdate': 'created_at',
-            'closedate': 'updated_at'
-        })
-else:
-    projects_df = pd.DataFrame()
+# 프로젝트 메타데이터는 콜백에서 동적으로 가져옵니다
 
 def parse_filename_datetime(filename):
     """파일명에서 날짜시간 추출 (YYYYMMDD, YYYYMMDDHH, YYYYMMDDHHMM 형식)"""
@@ -402,15 +386,42 @@ def parse_url_project(search):
                 html.A("홈으로 돌아가기", href="/", className="alert-link")
             ]
         
+        # 사용자 정보 가져오기
+        user_id = flask_request.cookies.get("login_user")
+        user_its = flask_request.cookies.get("user_its", "1")
+        
+        if not user_id:
+            return None, [
+                "로그인이 필요합니다. ",
+                html.A("로그인 페이지로 이동", href="/login", className="alert-link")
+            ]
+        
+        # 접근 가능한 프로젝트 목록 조회
+        its_num = int(user_its) if user_its else 1
+        result = api_db.get_accessible_projects(user_id, its_num=its_num)
+        
+        if result["result"] != "Success":
+            return None, [
+                f"프로젝트 목록을 가져올 수 없습니다: {result['msg']} ",
+                html.A("홈으로 돌아가기", href="/", className="alert-link")
+            ]
+        
+        projects_df = result["projects"]
+        if projects_df.empty:
+            return None, [
+                "접근 가능한 프로젝트가 없습니다. ",
+                html.A("홈으로 돌아가기", href="/", className="alert-link")
+            ]
+        
         # 프로젝트 정보 조회 (project_pk가 문자열일 수 있음)
-        project_info = projects_df[projects_df["project_pk"] == project_pk]
+        project_info = projects_df[projects_df["projectid"] == project_pk]
         if project_info.empty:
             return None, [
                 f"프로젝트 ID {project_pk}를 찾을 수 없습니다. ",
                 html.A("홈으로 돌아가기", href="/", className="alert-link")
             ]
         
-        project_name = project_info.iloc[0]["name"]
+        project_name = project_info.iloc[0]["projectname"]
         return project_pk, f"📁 현재 프로젝트: {project_name}"
         
     except Exception as e:
