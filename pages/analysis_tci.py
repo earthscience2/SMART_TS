@@ -1971,18 +1971,18 @@ def update_tci_3d_table(time_idx, play_click, active_tab, selected_rows, tbl_dat
     # 입체 TCI 탭이 활성화되어 있지 않으면 빈 데이터 반환
     if active_tab != "tab-tci-3d":
         print("DEBUG: 입체 TCI 탭이 활성화되지 않음")
-        return []
+        return [], "입체 TCI 탭이 활성화되지 않음"
     
-            if not selected_rows or not tbl_data:
-            print("DEBUG: 선택된 콘크리트가 없음")
-            # 더미 데이터로 표 초기화
-            return [
-                {"node": "콘크리트를 선택하세요", "x_coord": None, "y_coord": None, "z_coord": None,
-                 "sxx_mpa": None, "syy_mpa": None, "szz_mpa": None, 
-                 "sxy_mpa": None, "syz_mpa": None, "szx_mpa": None,
-                 "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
-                 "tci_sxy": None, "tci_syz": None, "tci_szx": None}
-            ], "콘크리트를 선택하세요"
+    if not selected_rows or not tbl_data:
+        print("DEBUG: 선택된 콘크리트가 없음")
+        # 더미 데이터로 표 초기화
+        return [
+            {"node": "콘크리트를 선택하세요", "x_coord": None, "y_coord": None, "z_coord": None,
+             "sxx_mpa": None, "syy_mpa": None, "szz_mpa": None, 
+             "sxy_mpa": None, "syz_mpa": None, "szx_mpa": None,
+             "tci_sxx": None, "tci_syy": None, "tci_szz": None, 
+             "tci_sxy": None, "tci_syz": None, "tci_szx": None}
+        ], "콘크리트를 선택하세요"
     
     try:
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
