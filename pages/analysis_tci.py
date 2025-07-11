@@ -318,6 +318,26 @@ layout = dbc.Container(
                                     "color": "#1f2937",
                                     "fontWeight": "600"
                                 }
+                            ),
+                            dbc.Tab(
+                                label="확률 근사식 안내",
+                                tab_id="tab-tci-prob-approx",
+                                tab_style={
+                                    "marginLeft": "2px",
+                                    "marginRight": "2px",
+                                    "border": "none",
+                                    "borderRadius": "6px 6px 0 0",
+                                    "backgroundColor": "#f8fafc",
+                                    "color": "#1f2937",
+                                    "fontWeight": "500"
+                                },
+                                active_tab_style={
+                                    "backgroundColor": "white",
+                                    "border": "1px solid #e2e8f0",
+                                    "borderBottom": "1px solid white",
+                                    "color": "#1f2937",
+                                    "fontWeight": "600"
+                                }
                             )
                         ], id="tabs-main-tci", active_tab="tab-tci-formula", className="mb-0")
                     ], style={
@@ -394,28 +414,12 @@ def calculate_tci(stress_mpa, tensile_strength_mpa):
 
 def calculate_crack_probability(tci):
     """
-    TCI 값에 따른 균열 발생 확률을 계산합니다.
-    
-    Parameters:
-    - tci: TCI 값
-    
-    Returns:
-    - probability: 균열 발생 확률 (0~1)
+    TCI 값에 따른 균열 발생 확률을 근사식으로 계산합니다.
+    이미지 기반으로 아래와 같은 시그모이드 근사식을 사용합니다.
+    P(TCI) = 100 / (1 + exp(4.5 * (TCI - 1.0)))
     """
-    if tci <= 0.5:
-        return 0.0
-    elif tci <= 0.8:
-        # 낮은 위험 구간 (0.5~0.8)
-        return 0.1 * (tci - 0.5) / 0.3
-    elif tci <= 1.0:
-        # 중간 위험 구간 (0.8~1.0)
-        return 0.1 + 0.4 * (tci - 0.8) / 0.2
-    elif tci <= 1.5:
-        # 높은 위험 구간 (1.0~1.5)
-        return 0.5 + 0.4 * (tci - 1.0) / 0.5
-    else:
-        # 매우 높은 위험 구간 (1.5 이상)
-        return min(0.9 + 0.1 * (tci - 1.5) / 0.5, 1.0)
+    import numpy as np
+    return 100.0 / (1.0 + np.exp(4.5 * (tci - 1.0)))
 
 def get_risk_level(tci):
     """TCI 값에 따른 위험도 레벨을 반환합니다."""
@@ -856,6 +860,8 @@ def switch_tab_tci(active_tab, selected_rows, pathname, tbl_data):
         return create_crack_probability_tab_content(concrete_pk, concrete_name)
     elif active_tab == "tab-tci-3d":
         return create_tci_3d_tab_content(concrete_pk)  # concrete_pk 전달
+    elif active_tab == "tab-tci-prob-approx":
+        return create_tci_prob_approx_tab_content()
     else:
         return html.Div("알 수 없는 탭입니다.", className="text-center text-muted mt-5")
 
@@ -1416,11 +1422,17 @@ def create_tci_3d_tab_content(concrete_pk):
                     {"name": "SYZ (MPa)", "id": "syz_mpa"},
                     {"name": "SZX (MPa)", "id": "szx_mpa"},
                     {"name": "TCI-SXX", "id": "tci_sxx"},
+                    {"name": "TCI-SXX-P(%)", "id": "tci_sxx_p"},
                     {"name": "TCI-SYY", "id": "tci_syy"},
+                    {"name": "TCI-SYY-P(%)", "id": "tci_syy_p"},
                     {"name": "TCI-SZZ", "id": "tci_szz"},
+                    {"name": "TCI-SZZ-P(%)", "id": "tci_szz_p"},
                     {"name": "TCI-SXY", "id": "tci_sxy"},
+                    {"name": "TCI-SXY-P(%)", "id": "tci_sxy_p"},
                     {"name": "TCI-SYZ", "id": "tci_syz"},
+                    {"name": "TCI-SYZ-P(%)", "id": "tci_syz_p"},
                     {"name": "TCI-SZX", "id": "tci_szx"},
+                    {"name": "TCI-SZX-P(%)", "id": "tci_szx_p"},
                 ],
                 data=[],
                 page_size=10,
@@ -2387,11 +2399,17 @@ def update_tci_3d_table(time_idx, play_click, active_tab, stress_component, isos
                     "syz_mpa": round(syz_mpa, 6),
                     "szx_mpa": round(szx_mpa, 6),
                     "tci_sxx": tci_sxx,
+                    "tci_sxx_p": round(calculate_crack_probability(tci_sxx), 1) if tci_sxx is not None else None,
                     "tci_syy": tci_syy,
+                    "tci_syy_p": round(calculate_crack_probability(tci_syy), 1) if tci_syy is not None else None,
                     "tci_szz": tci_szz,
+                    "tci_szz_p": round(calculate_crack_probability(tci_szz), 1) if tci_szz is not None else None,
                     "tci_sxy": tci_sxy,
+                    "tci_sxy_p": round(calculate_crack_probability(tci_sxy), 1) if tci_sxy is not None else None,
                     "tci_syz": tci_syz,
+                    "tci_syz_p": round(calculate_crack_probability(tci_syz), 1) if tci_syz is not None else None,
                     "tci_szx": tci_szx,
+                    "tci_szx_p": round(calculate_crack_probability(tci_szx), 1) if tci_szx is not None else None,
                 })
         
         print(f"DEBUG: 생성된 데이터 개수={len(data)}")
@@ -3033,3 +3051,21 @@ def save_tci_data_csv(n_clicks, selected_rows, tbl_data):
     except Exception as e:
         print(f"CSV 저장 오류: {e}")
         return None, "저장 실패", False
+
+def create_tci_prob_approx_tab_content():
+    import plotly.graph_objs as go
+    import numpy as np
+    tci_range = np.linspace(0, 2.5, 200)
+    prob = 100.0 / (1.0 + np.exp(4.5 * (tci_range - 1.0)))
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=tci_range, y=prob, mode='lines', name='근사 확률', line=dict(color='#222')))
+    fig.update_layout(title='TCI에 따른 균열발생확률 근사식', xaxis_title='TCI (온도균열지수)', yaxis_title='균열발생확률 (%)', template='simple_white', height=350)
+    return html.Div([
+        html.H4("TCI → 균열발생확률 근사식 안내", style={"fontWeight": "700", "marginBottom": "18px", "color": "#1e293b"}),
+        html.Hr(style={"margin": "8px 0 20px 0", "borderColor": "#e5e7eb"}),
+        html.P("이미지 기반으로 아래와 같은 시그모이드 근사식을 사용합니다.", style={"color": "#374151", "fontSize": "15px"}),
+        html.Code("P(TCI) = 100 / (1 + exp(4.5 * (TCI - 1.0)))", style={"fontSize": "16px", "background": "#f3f4f6", "padding": "6px 12px", "borderRadius": "6px"}),
+        html.P("- TCI=0.5: 약 100%\n- TCI=1.0: 약 50%\n- TCI=1.5: 약 10%\n- TCI=2.0: 0%에 가까움", style={"color": "#64748b", "fontSize": "14px", "marginTop": "8px"}),
+        dcc.Graph(figure=fig, style={"marginTop": "18px"}),
+        html.P("이 근사식은 실제 실험/해석 결과와 다를 수 있으니 참고용으로만 활용하세요.", style={"color": "#ef4444", "fontSize": "13px", "marginTop": "12px"})
+    ], style={"maxWidth": "600px", "margin": "0 auto"})
