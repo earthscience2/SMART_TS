@@ -37,16 +37,12 @@ def setup_logger(log_name: str, log_file: str):
     logger.addHandler(file_handler)
     return logger
 
-def log_project_operation(operation: str, project_pk: str, details: str):
-    """프로젝트 관련 작업을 로그에 기록"""
-    logger = setup_logger('project_logger', 'project.log')
-    log_message = f"PROJECT_{operation.upper()} | Project: {project_pk} | Details: {details}"
-    logger.info(log_message)
 
-def log_concrete_operation(operation: str, concrete_pk: str, project_pk: str, details: str):
+
+def log_concrete_operation(operation: str, concrete_pk: str, structure_id: str, details: str):
     """콘크리트 관련 작업을 로그에 기록"""
     logger = setup_logger('concrete_logger', 'concrete.log')
-    log_message = f"CONCRETE_{operation.upper()} | Concrete: {concrete_pk} | Project: {project_pk} | Details: {details}"
+    log_message = f"CONCRETE_{operation.upper()} | Concrete: {concrete_pk} | Structure: {structure_id} | Details: {details}"
     logger.info(log_message)
 
 def log_sensor_operation(operation: str, sensor_pk: str, concrete_pk: str, details: str):
@@ -173,98 +169,7 @@ def get_project_structure_list(its_num: int, allow_list: list[str] | None, grade
     df = pd.read_sql(text(sql), _get_its_engine(its_num), params=params)
     return df
 
-# --------------------------------------------------
-# 프로젝트 DB
-# --------------------------------------------------
 
-# 프로젝트 조회
-def get_project_data(project_pk: str = None,
-                     user_company_pk: str = None) -> pd.DataFrame:
-    sql = "SELECT * FROM project"
-    conditions = []
-    params = {}
-
-    if project_pk:
-        conditions.append("project_pk = :project_pk")
-        params["project_pk"] = project_pk
-    if user_company_pk:
-        conditions.append("user_company_pk = :user_company_pk")
-        params["user_company_pk"] = user_company_pk
-    if conditions:
-        sql += " WHERE " + " AND ".join(conditions)
-
-    stmt = text(sql)
-    return pd.read_sql(stmt, con=engine, params=params)
-
-# 프로젝트 추가 
-def add_project_data(s_code: str, name: str) -> None:
-    # 1) 현재 가장 큰 project_pk 가져오기
-    max_pk_sql = "SELECT MAX(project_pk) as max_pk FROM project"
-    max_pk_df = pd.read_sql(text(max_pk_sql), con=engine)
-    max_pk = max_pk_df.iloc[0]['max_pk']
-    
-    # 2) 새로운 project_pk 생성 (P000001 형식)
-    if max_pk is None:
-        new_pk = 'P000001'
-    else:
-        num = int(max_pk[1:]) + 1
-        new_pk = f'P{num:06d}'
-    
-    # 3) INSERT 쿼리 실행
-    sql = """
-    INSERT INTO project 
-    (project_pk, s_code, name, created_at, updated_at) 
-    VALUES 
-    (:project_pk, :s_code, :name, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    """
-    params = {
-        "project_pk": new_pk,
-        "s_code": s_code,
-        "name": name
-    }
-    with engine.connect() as conn:
-        conn.execute(text(sql), params)
-        conn.commit()
-        
-    # 로그 기록
-    log_project_operation("CREATE", new_pk, f"s_code: {s_code}, name: {name}")
-
-# 프로젝트 업데이트
-def update_project_data(project_pk: str, **kwargs) -> None:
-    # 업데이트할 필드와 값만 추출
-    update_fields = {k: v for k, v in kwargs.items() if v is not None}
-    if not update_fields:
-        return None  # 업데이트할 필드가 없으면 종료
-
-    # SQL 쿼리 동적 생성
-    set_clause = ", ".join([f"{k} = :{k}" for k in update_fields.keys()])
-    sql = f"""
-    UPDATE project 
-    SET {set_clause}, updated_at = CURRENT_TIMESTAMP 
-    WHERE project_pk = :project_pk
-    """
-    
-    # 파라미터 설정
-    params = {"project_pk": project_pk, **update_fields}
-
-    with engine.connect() as conn:
-        conn.execute(text(sql), params)
-        conn.commit()
-        
-    # 로그 기록
-    update_details = ", ".join([f"{k}: {v}" for k, v in update_fields.items()])
-    log_project_operation("UPDATE", project_pk, f"Updated fields: {update_details}")
-
-# 프로젝트 삭제
-def delete_project_data(project_pk: str) -> None:
-    sql = "DELETE FROM project WHERE project_pk = :project_pk"
-    params = {"project_pk": project_pk}
-    with engine.connect() as conn:
-        conn.execute(text(sql), params)
-        conn.commit()
-        
-    # 로그 기록
-    log_project_operation("DELETE", project_pk, "Project deleted")
 
 
 # --------------------------------------------------
@@ -273,7 +178,7 @@ def delete_project_data(project_pk: str) -> None:
 
 # 콘크리트 조회
 def get_concrete_data(concrete_pk: str = None,
-                      project_pk: str = None,
+                      structure_id: str = None,
                       activate: int = None) -> pd.DataFrame:
     sql = "SELECT * FROM concrete"
     conditions = []
@@ -282,9 +187,9 @@ def get_concrete_data(concrete_pk: str = None,
     if concrete_pk:
         conditions.append("concrete_pk = :concrete_pk")
         params["concrete_pk"] = concrete_pk
-    if project_pk:
-        conditions.append("project_pk = :project_pk")
-        params["project_pk"] = project_pk
+    if structure_id:
+        conditions.append("structure_id = :structure_id")
+        params["structure_id"] = structure_id
     if activate is not None:
         conditions.append("activate = :activate")
         params["activate"] = activate
@@ -295,7 +200,7 @@ def get_concrete_data(concrete_pk: str = None,
     return pd.read_sql(stmt, con=engine, params=params)
 
 # 콘크리트 추가
-def add_concrete_data(project_pk: str, name: str, dims: dict, 
+def add_concrete_data(structure_id: str, name: str, dims: dict, 
                      con_unit: float, con_b: float, con_n: float,
                      con_t: str, con_a: float, con_p: float, con_d: float,
                      con_e: float, activate: int) -> None:
@@ -314,14 +219,14 @@ def add_concrete_data(project_pk: str, name: str, dims: dict,
     # 3) INSERT 쿼리 실행
     sql = """
     INSERT INTO concrete 
-    (concrete_pk, project_pk, name, dims, con_unit, con_b, con_n, con_t, con_a, con_p, con_d, con_e, activate, created_at, updated_at) 
+    (concrete_pk, structure_id, name, dims, con_unit, con_b, con_n, con_t, con_a, con_p, con_d, con_e, activate, created_at, updated_at) 
     VALUES 
-    (:concrete_pk, :project_pk, :name, :dims, :con_unit, :con_b, :con_n, :con_t, :con_a, :con_p, :con_d, :con_e, :activate, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    (:concrete_pk, :structure_id, :name, :dims, :con_unit, :con_b, :con_n, :con_t, :con_a, :con_p, :con_d, :con_e, :activate, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     """
     
     params = {
         "concrete_pk": new_pk,
-        "project_pk": project_pk,
+        "structure_id": structure_id,
         "name": name,
         "dims": json.dumps(dims),
         "con_unit": con_unit,
@@ -340,7 +245,7 @@ def add_concrete_data(project_pk: str, name: str, dims: dict,
         conn.commit()
         
     # 로그 기록
-    log_concrete_operation("CREATE", new_pk, project_pk, f"name: {name}, con_unit: {con_unit}, activate: {activate}")
+    log_concrete_operation("CREATE", new_pk, structure_id, f"name: {name}, con_unit: {con_unit}, activate: {activate}")
 
 # 콘크리트 업데이트
 def update_concrete_data(concrete_pk: str, **kwargs) -> None:
@@ -368,12 +273,12 @@ def update_concrete_data(concrete_pk: str, **kwargs) -> None:
         conn.execute(text(sql), params)
         conn.commit()
         
-    # 로그 기록 - 프로젝트 PK를 찾기 위해 추가 조회
-    project_query = "SELECT project_pk FROM concrete WHERE concrete_pk = :concrete_pk"
-    project_df = pd.read_sql(text(project_query), con=engine, params={"concrete_pk": concrete_pk})
-    project_pk = project_df.iloc[0]['project_pk'] if not project_df.empty else "Unknown"
+    # 로그 기록 - 구조 ID를 찾기 위해 추가 조회
+    structure_query = "SELECT structure_id FROM concrete WHERE concrete_pk = :concrete_pk"
+    structure_df = pd.read_sql(text(structure_query), con=engine, params={"concrete_pk": concrete_pk})
+    structure_id = structure_df.iloc[0]['structure_id'] if not structure_df.empty else "Unknown"
     update_details = ", ".join([f"{k}: {v}" for k, v in update_fields.items()])
-    log_concrete_operation("UPDATE", concrete_pk, project_pk, f"Updated fields: {update_details}")
+    log_concrete_operation("UPDATE", concrete_pk, structure_id, f"Updated fields: {update_details}")
 
 # 콘크리트 삭제 (관련 센서도 함께 삭제)
 def delete_concrete_data(concrete_pk: str) -> dict:
@@ -383,11 +288,11 @@ def delete_concrete_data(concrete_pk: str) -> dict:
         dict: {"success": bool, "message": str, "deleted_sensors": int}
     """
     with engine.connect() as conn:
-        # 0) 삭제 전에 프로젝트 PK 조회
-        project_query = "SELECT project_pk FROM concrete WHERE concrete_pk = :concrete_pk"
-        result = conn.execute(text(project_query), {"concrete_pk": concrete_pk})
-        project_row = result.fetchone()
-        project_pk = project_row[0] if project_row else "Unknown"
+        # 0) 삭제 전에 구조 ID 조회
+        structure_query = "SELECT structure_id FROM concrete WHERE concrete_pk = :concrete_pk"
+        result = conn.execute(text(structure_query), {"concrete_pk": concrete_pk})
+        structure_row = result.fetchone()
+        structure_id = structure_row[0] if structure_row else "Unknown"
         
         # 1) 관련된 센서 개수 확인
         sensor_check_sql = "SELECT COUNT(*) as count FROM sensor WHERE concrete_pk = :concrete_pk"
@@ -406,7 +311,7 @@ def delete_concrete_data(concrete_pk: str) -> dict:
         conn.commit()
         
         # 로그 기록
-        log_concrete_operation("DELETE", concrete_pk, project_pk, f"Concrete deleted with {sensor_count} related sensors")
+        log_concrete_operation("DELETE", concrete_pk, structure_id, f"Concrete deleted with {sensor_count} related sensors")
         
         if sensor_count > 0:
             return {
@@ -877,80 +782,7 @@ def get_accessible_projects(user_id: str, its_num: int = 1):
         return {"result": "Fail", "projects": None, "msg": f"오류 발생: {str(exc)}"}
 
 
-# 프로젝트별 콘크리트 수와 센서 수 조회
-def get_project_statistics() -> pd.DataFrame:
-    """프로젝트별 콘크리트 수와 센서 수를 조회합니다."""
-    sql = """
-    SELECT 
-        p.project_pk,
-        p.name as project_name,
-        COUNT(DISTINCT c.concrete_pk) as concrete_count,
-        COUNT(DISTINCT s.sensor_pk) as sensor_count
-    FROM project p
-    LEFT JOIN concrete c ON p.project_pk = c.project_pk
-    LEFT JOIN sensor s ON c.concrete_pk = s.concrete_pk
-    GROUP BY p.project_pk, p.name
-    ORDER BY p.project_pk
-    """
-    
-    return pd.read_sql(text(sql), con=engine)
 
-# 프로젝트 조회 (통계 정보 포함)
-def get_project_data_with_stats(project_pk: str = None,
-                               user_company_pk: str = None) -> pd.DataFrame:
-    """프로젝트 데이터와 함께 콘크리트 수, 센서 수 통계, 구조명을 포함하여 조회합니다."""
-    # 기본 프로젝트 데이터 조회
-    df_projects = get_project_data(project_pk, user_company_pk)
-    
-    if df_projects.empty:
-        return df_projects
-    
-    # 통계 데이터 조회
-    df_stats = get_project_statistics()
-    
-    # 프로젝트 데이터와 통계 데이터 병합
-    df_merged = df_projects.merge(
-        df_stats[['project_pk', 'concrete_count', 'sensor_count']], 
-        on='project_pk', 
-        how='left'
-    )
-    
-    # NaN 값을 0으로 채우기
-    df_merged['concrete_count'] = df_merged['concrete_count'].fillna(0).astype(int)
-    df_merged['sensor_count'] = df_merged['sensor_count'].fillna(0).astype(int)
-    
-    # 구조명 정보 추가
-    try:
-        # ITS1 데이터베이스에서 구조 정보 조회
-        eng = _get_its_engine(1)
-        structure_query = text("""
-            SELECT DISTINCT st.stid AS structure_id, st.stname AS structure_name
-            FROM tb_structure st
-            JOIN tb_group g ON g.groupid = st.groupid 
-            JOIN tb_project p ON p.projectid = g.projectid 
-            WHERE p.projectid = 'P_000078'
-            ORDER BY st.stid
-        """)
-        df_structures = pd.read_sql(structure_query, eng)
-        
-        # s_code와 구조명 매핑
-        if not df_structures.empty:
-            df_merged = df_merged.merge(
-                df_structures.rename(columns={'structure_id': 's_code', 'structure_name': 'structure_name'}),
-                on='s_code',
-                how='left'
-            )
-        else:
-            df_merged['structure_name'] = "구조명 없음"
-            
-    except Exception as e:
-        print(f"Error getting structure names: {e}")
-        df_merged['structure_name'] = "구조명 조회 실패"
-    
-    # structure_name이 없는 경우 기본값 설정
-    df_merged['structure_name'] = df_merged['structure_name'].fillna("구조명 없음")
-    
-    return df_merged
 
 def get_user_data(its_num: int = 1) -> pd.DataFrame:
     """ITS 데이터베이스에서 사용자 정보를 조회합니다.
