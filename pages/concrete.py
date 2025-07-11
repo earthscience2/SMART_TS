@@ -1788,8 +1788,8 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
 @callback(
     Output("modal-age-analysis", "is_open"),
     Output("age-analysis-source", "data"),
-    Input("add-age-analysis", "n_clicks", allow_missing=True),
-    Input("edit-age-analysis", "n_clicks", allow_missing=True),
+    Input("add-age-analysis", "n_clicks"),
+    Input("edit-age-analysis", "n_clicks"),
     Input("age-analysis-close", "n_clicks"),
     Input("age-analysis-apply", "n_clicks"),
     State("modal-age-analysis", "is_open"),
@@ -1797,9 +1797,9 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
 )
 def toggle_age_analysis(add_btn, edit_btn, close_btn, apply_btn, is_open):
     trig = ctx.triggered_id
-    if trig == "add-age-analysis":
+    if trig == "add-age-analysis" and add_btn:
         return True, "add"
-    elif trig == "edit-age-analysis":
+    elif trig == "edit-age-analysis" and edit_btn:
         return True, "edit"
     elif trig in ("age-analysis-close", "age-analysis-apply"):
         return False, dash.no_update
