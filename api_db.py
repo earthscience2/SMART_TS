@@ -268,13 +268,19 @@ def update_concrete_data(concrete_pk: str, **kwargs) -> None:
     if 'CEB-FIB' in update_fields:
         update_fields['CEB-FIB'] = json.dumps(update_fields['CEB-FIB'])
 
-    # 하이픈이 포함된 컬럼명을 백틱으로 감싸기
+    # 하이픈이 포함된 컬럼명을 백틱으로 감싸고 별도 파라미터명 사용
     set_clause_parts = []
-    for k in update_fields.keys():
+    params = {"concrete_pk": concrete_pk}
+    
+    for k, v in update_fields.items():
         if '-' in k:
-            set_clause_parts.append(f"`{k}` = :{k}")
+            # 하이픈이 포함된 컬럼명은 별도 파라미터명 사용
+            param_name = k.replace('-', '_')
+            set_clause_parts.append(f"`{k}` = :{param_name}")
+            params[param_name] = v
         else:
             set_clause_parts.append(f"{k} = :{k}")
+            params[k] = v
     
     set_clause = ", ".join(set_clause_parts)
     sql = f"""
@@ -282,9 +288,6 @@ def update_concrete_data(concrete_pk: str, **kwargs) -> None:
     SET {set_clause}, updated_at = CURRENT_TIMESTAMP 
     WHERE concrete_pk = :concrete_pk
     """
-    
-    # 파라미터 설정
-    params = {"concrete_pk": concrete_pk, **update_fields}
     
     with engine.connect() as conn:
         conn.execute(text(sql), params)
