@@ -537,25 +537,54 @@ def on_concrete_select_strength(selected_rows, pathname, tbl_data):
         row = pd.DataFrame(tbl_data).iloc[selected_rows[0]]
         concrete_pk = row["concrete_pk"]
         concrete_name = row["name"]
+        is_active = row["activate"] == "활성"
         
-        # INP 파일에서 시간 정보 추출
-        inp_dir = f"inp/{concrete_pk}"
-        if os.path.exists(inp_dir):
-            inp_files = glob.glob(f"{inp_dir}/*.inp")
+        # 버튼 상태 결정
+        if not is_active:  # 분석중
+            analyze_disabled = True
+            delete_disabled = False
+        else:  # 설정중
+            analyze_disabled = False
+            delete_disabled = True
+        
+        # 초기값 설정
+        current_file_title = concrete_name
+        slider_min, slider_max, slider_value = 0, 5, 0
+        slider_marks = {}
+        
+        # 분석중 상태일 때 INP 파일에서 시간 정보 추출 (온도 분석 페이지와 동일한 방식)
+        if not is_active:
+            inp_dir = f"inp/{concrete_pk}"
+            inp_files = sorted(glob.glob(f"{inp_dir}/*.inp"))
             if inp_files:
-                # 첫 번째 INP 파일에서 시간 정보 추출
-                nodes, temperatures, time_stamps = read_inp_nodes_and_temperatures(inp_files[0])
+                # 파일명에서 시간 정보 추출 (YYYYMMDDHH 형식)
+                times = []
+                for f in inp_files:
+                    try:
+                        time_str = os.path.basename(f).split(".")[0]
+                        dt = datetime.strptime(time_str, "%Y%m%d%H")
+                        times.append(dt)
+                    except:
+                        continue
                 
-                if time_stamps:
-                    # 시간 슬라이더 설정
-                    min_idx = 0
-                    max_idx = len(time_stamps) - 1
-                    marks = {i: time_stamps[i].strftime('%m/%d %Hh') for i in range(len(time_stamps))}
+                if times:
+                    max_idx = len(times) - 1
+                    slider_min, slider_max = 0, max_idx
+                    slider_value = max_idx  # 최신 파일로 초기화
+                    slider_marks = {0: times[0].strftime("%m/%d"), max_idx: times[-1].strftime("%m/%d")}
                     
-                    return False, False, concrete_name, min_idx, max_idx, min_idx, marks
+                    # 최신 파일의 시간 정보 표시
+                    latest_file = inp_files[max_idx]
+                    try:
+                        time_str = os.path.basename(latest_file).split(".")[0]
+                        dt = datetime.strptime(time_str, "%Y%m%d%H")
+                        formatted_time = dt.strftime("%Y년 %m월 %d일 %H시")
+                        current_file_title = f"{concrete_name} - {formatted_time}"
+                    except Exception as e:
+                        print(f"시간 파싱 오류: {e}")
+                        current_file_title = f"{concrete_name} - {os.path.basename(latest_file)}"
         
-        # INP 파일이 없거나 시간 정보가 없는 경우
-        return False, False, concrete_name, 0, 5, 0, {}
+        return analyze_disabled, delete_disabled, current_file_title, slider_min, slider_max, slider_value, slider_marks
         
     except Exception as e:
         print(f"콘크리트 선택 오류: {e}")
@@ -1070,17 +1099,35 @@ def update_strength_analysis(selected_rows, formula_params, time_idx, active_tab
         if not inp_files:
             return html.Div("INP 파일이 없습니다."), "", None
         
-        # 첫 번째 INP 파일에서 노드와 온도 데이터 추출
-        inp_file = inp_files[0]
-        nodes, temperatures, time_stamps = read_inp_nodes_and_temperatures(inp_file)
+        # 파일명에서 시간 정보 추출 (온도 분석 페이지와 동일한 방식)
+        times = []
+        for f in inp_files:
+            try:
+                time_str = os.path.basename(f).split(".")[0]
+                dt = datetime.strptime(time_str, "%Y%m%d%H")
+                times.append(dt)
+            except:
+                continue
+        
+        if not times:
+            return html.Div("시간 정보를 읽을 수 없습니다."), "", None
+        
+        # 현재 시간 인덱스에 해당하는 INP 파일 선택
+        if 0 <= time_idx < len(times):
+            current_time = times[time_idx]
+            current_inp_file = inp_files[time_idx]
+        else:
+            return html.Div("시간 인덱스가 범위를 벗어났습니다."), "", None
+        
+        # 현재 INP 파일에서 노드와 온도 데이터 추출
+        nodes, temperatures, time_stamps = read_inp_nodes_and_temperatures(current_inp_file)
         if not nodes:
             return html.Div("노드 정보를 읽을 수 없습니다."), "", None
         
-        # 현재 시간 인덱스에 해당하는 온도 데이터 필터링
+        # 현재 시간에 해당하는 온도 데이터 필터링
         current_temps = []
-        if time_stamps and 0 <= time_idx < len(time_stamps):
-            current_time = time_stamps[time_idx]
-            current_temps = [t for t in temperatures if t["time"] == current_time]
+        if temperatures:
+            current_temps = temperatures  # 모든 온도 데이터 사용 (시간별로 이미 분리되어 있음)
         
         # 경과일 계산
         chronological_age = 0
@@ -1096,8 +1143,7 @@ def update_strength_analysis(selected_rows, formula_params, time_idx, active_tab
                 else:
                     pour_dt = None
                 
-                if pour_dt and time_stamps and 0 <= time_idx < len(time_stamps):
-                    current_time = time_stamps[time_idx]
+                if pour_dt:
                     chronological_age = (current_time - pour_dt).total_seconds() / (24 * 3600)  # 일 단위
             except Exception as e:
                 print(f"경과일 계산 오류: {e}")
@@ -1424,8 +1470,7 @@ def update_strength_table(selected_rows, formula_params, time_idx, tbl_data):
                 else:
                     pour_dt = None
                 
-                if pour_dt and time_stamps and 0 <= time_idx < len(time_stamps):
-                    current_time = time_stamps[time_idx]
+                if pour_dt:
                     chronological_age = (current_time - pour_dt).total_seconds() / (24 * 3600)  # 일 단위
             except Exception as e:
                 print(f"경과일 계산 오류: {e}")
