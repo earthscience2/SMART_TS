@@ -102,7 +102,6 @@ def do_login():
 
     user_id = request.form.get("user_id", "").strip()
     user_pw = request.form.get("user_pw", "")
-    its = int(request.form.get("its", "1"))  # hidden 필드로 받아오거나 기본 1
 
     # 입력값 검증
     if not user_id or not user_pw:
@@ -110,27 +109,28 @@ def do_login():
         resp = make_response(redirect("/login?error=" + quote_plus("아이디와 비밀번호를 입력하세요")))
         resp.delete_cookie("login_user")
         resp.delete_cookie("user_grade")
-        resp.delete_cookie("user_its")
         return resp
 
-    auth = authenticate_user(user_id, user_pw, its_num=its)
+    # ITS1과 ITS2 모두에서 인증 시도
+    auth = authenticate_user(user_id, user_pw, its_num=1)
     if auth["result"] != "Success":
-        log_login_attempt(user_id, False, auth['msg'])
-        resp = make_response(redirect(f"/login?error={quote_plus(auth['msg'])}"))
-        # 실패한 로그인 시 기존 쿠키 삭제 (이전 세션 무효화)
-        resp.delete_cookie("login_user")
-        resp.delete_cookie("user_grade")
-        resp.delete_cookie("user_its")
-        return resp
+        # ITS1에서 실패하면 ITS2에서 시도
+        auth = authenticate_user(user_id, user_pw, its_num=2)
+        if auth["result"] != "Success":
+            log_login_attempt(user_id, False, auth['msg'])
+            resp = make_response(redirect(f"/login?error={quote_plus(auth['msg'])}"))
+            # 실패한 로그인 시 기존 쿠키 삭제 (이전 세션 무효화)
+            resp.delete_cookie("login_user")
+            resp.delete_cookie("user_grade")
+            return resp
 
     # 로그인 성공 로그
     log_login_attempt(user_id, True, "로그인 성공")
     
-    # 사용자 정보를 쿠키에 저장
+    # 사용자 정보를 쿠키에 저장 (ITS 정보는 저장하지 않음)
     resp = make_response(redirect("/"))
     resp.set_cookie("login_user", user_id, max_age=60 * 60 * 6, httponly=True)
     resp.set_cookie("user_grade", auth["grade"], max_age=60 * 60 * 6, httponly=True)
-    resp.set_cookie("user_its", str(its), max_age=60 * 60 * 6, httponly=True)
     return resp
 
 @server.route("/do_admin_login", methods=["GET", "POST"])
@@ -183,7 +183,6 @@ def logout():
     resp = make_response(redirect("/login"))
     resp.delete_cookie("login_user")
     resp.delete_cookie("user_grade")
-    resp.delete_cookie("user_its")
     resp.delete_cookie("admin_user")  # 관리자 쿠키도 삭제
     return resp
 

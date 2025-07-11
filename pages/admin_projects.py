@@ -156,7 +156,13 @@ def load_projects_data(pathname):
         if not user_id:
             user_id = "admin"  # 기본값
         
+        # ITS1과 ITS2 모두에서 프로젝트 조회
         accessible_projects_result = get_accessible_projects(user_id, its_num=1)
+        
+        # ITS1에서 실패하면 ITS2에서 시도
+        if accessible_projects_result["result"] != "Success":
+            accessible_projects_result = get_accessible_projects(user_id, its_num=2)
+            
         if accessible_projects_result["result"] == "Success":
             df = accessible_projects_result["projects"]
             # ITS 프로젝트 데이터를 로컬 형식으로 변환
@@ -186,8 +192,12 @@ def load_projects_data(pathname):
 def load_sensor_structures_data(pathname):
     """센서 구조 데이터를 로드합니다."""
     try:
-        # get_all_sensor_structures 함수를 사용하여 모든 센서 구조 조회
+        # get_all_sensor_structures 함수를 사용하여 모든 센서 구조 조회 (ITS1과 ITS2 모두에서)
         df = get_all_sensor_structures(its_num=1)
+        
+        # ITS1에서 데이터가 없으면 ITS2에서 시도
+        if df.empty:
+            df = get_all_sensor_structures(its_num=2)
         
         if not df.empty:
             return df.to_dict('records')

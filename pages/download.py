@@ -388,7 +388,6 @@ def parse_url_project(search):
         
         # 사용자 정보 가져오기
         user_id = flask_request.cookies.get("login_user")
-        user_its = flask_request.cookies.get("user_its", "1")
         
         if not user_id:
             return None, [
@@ -396,9 +395,12 @@ def parse_url_project(search):
                 html.A("로그인 페이지로 이동", href="/login", className="alert-link")
             ]
         
-        # 접근 가능한 프로젝트 목록 조회
-        its_num = int(user_its) if user_its else 1
-        result = api_db.get_accessible_projects(user_id, its_num=its_num)
+        # 접근 가능한 프로젝트 목록 조회 (ITS1과 ITS2 모두에서)
+        result = api_db.get_accessible_projects(user_id, its_num=1)
+        
+        # ITS1에서 실패하면 ITS2에서 시도
+        if result["result"] != "Success":
+            result = api_db.get_accessible_projects(user_id, its_num=2)
         
         if result["result"] != "Success":
             return None, [

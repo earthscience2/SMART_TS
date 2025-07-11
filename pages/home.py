@@ -96,9 +96,14 @@ def layout(**kwargs):
     if not user_info['is_logged_in']:
         return dcc.Location(pathname="/login", id="redirect-login")
 
-    # get_accessible_projects 함수를 사용하여 접근 가능한 프로젝트 조회
+    # get_accessible_projects 함수를 사용하여 접근 가능한 프로젝트 조회 (ITS1과 ITS2 모두에서)
     try:
-        accessible_projects_result = api_db.get_accessible_projects(user_info['user_id'], its_num=user_info['user_its'])
+        # ITS1에서 먼저 시도
+        accessible_projects_result = api_db.get_accessible_projects(user_info['user_id'], its_num=1)
+        
+        # ITS1에서 실패하면 ITS2에서 시도
+        if accessible_projects_result["result"] != "Success":
+            accessible_projects_result = api_db.get_accessible_projects(user_info['user_id'], its_num=2)
         
         if accessible_projects_result["result"] == "Success":
             its_projects_df = accessible_projects_result["projects"]
@@ -141,8 +146,12 @@ def layout(**kwargs):
             proj_pk = row["project_pk"]
             s_code = row["s_code"]
             
-            # 해당 프로젝트의 ITS 센서 리스트 조회 (구조ID 기반)
-            its_sensors_df = api_db.get_sensor_list_for_structure(s_code, its_num=user_info['user_its'])
+            # 해당 프로젝트의 ITS 센서 리스트 조회 (구조ID 기반) - ITS1에서 먼저 시도
+            its_sensors_df = api_db.get_sensor_list_for_structure(s_code, its_num=1)
+            
+            # ITS1에서 센서가 없으면 ITS2에서 시도
+            if its_sensors_df.empty:
+                its_sensors_df = api_db.get_sensor_list_for_structure(s_code, its_num=2)
 
             # 콘크리트 리스트는 내부 DB를 사용하지 않으므로 빈 리스트
             concrete_data = []
@@ -155,8 +164,12 @@ def layout(**kwargs):
                     device_id = sensor["deviceid"]
                     channel = sensor["channel"]
                     
-                    # 실제 센서 데이터 수집 상태 확인
-                    status_text, badge_color = check_sensor_data_status(device_id, channel, user_info['user_its'])
+                    # 실제 센서 데이터 수집 상태 확인 (ITS1에서 먼저 시도)
+                    status_text, badge_color = check_sensor_data_status(device_id, channel, 1)
+                    
+                    # ITS1에서 데이터가 없으면 ITS2에서 시도
+                    if status_text == "데이터없음":
+                        status_text, badge_color = check_sensor_data_status(device_id, channel, 2)
                     
                     sensor_data.append({
                         "device_id": device_id,

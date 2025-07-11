@@ -23,7 +23,12 @@ def get_system_stats():
             if not user_id:
                 user_id = "admin"  # 기본값
             
+            # ITS1과 ITS2 모두에서 프로젝트 조회
             accessible_projects_result = get_accessible_projects(user_id, its_num=1)
+            
+            # ITS1에서 실패하면 ITS2에서 시도
+            if accessible_projects_result["result"] != "Success":
+                accessible_projects_result = get_accessible_projects(user_id, its_num=2)
             if accessible_projects_result["result"] == "Success":
                 projects_df = accessible_projects_result["projects"]
                 active_projects = len(projects_df) if not projects_df.empty else 0
