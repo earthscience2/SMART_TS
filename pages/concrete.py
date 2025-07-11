@@ -313,7 +313,11 @@ layout = html.Div([
                         html.Div([
                             html.H6("🔬 타설 콘크리트 탄성계수", className="mb-3 text-secondary fw-bold"),
                             
-
+                            # 재령분석 및 직접 입력 버튼
+                            html.Div([
+                                dbc.Button("재령분석", id="add-age-analysis", color="outline-info", className="px-3 mb-2", size="sm"),
+                                dbc.Button("직접 입력", id="add-direct-input", color="outline-secondary", className="px-3 mb-2 ms-2", size="sm"),
+                            ], className="text-center"),
                             
                             # 재령일별 탄성계수 입력 영역
                             html.Div(id="add-age-input-area"),
@@ -341,16 +345,14 @@ layout = html.Div([
                                         html.Small("(0.1~10.0)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="add-a", type="number", step=0.1, placeholder="열팽창계수", className="form-control")
-                                ], width=12),
-                            ], className="mb-3"),
-                            dbc.Row([
+                                ], width=6),
                                 dbc.Col([
                                     dbc.Label([
                                         "포아송비 ",
                                         html.Small("(0.01~1.00)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="add-p", type="number", step=0.01, placeholder="포아송비", className="form-control")
-                                ], width=12),
+                                ], width=6),
                             ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
@@ -359,7 +361,30 @@ layout = html.Div([
                                         html.Small("(500~5000)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="add-d", type="number", step=10, placeholder="밀도", className="form-control")
-                                ], width=12),
+                                ], width=6),
+                                dbc.Col([
+                                    dbc.Label([
+                                        "탄성계수 [GPa] ",
+                                        html.Small("(1~100)", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold"),
+                                    dbc.Input(id="add-e", type="number", step=0.1, placeholder="탄성계수", className="form-control")
+                                ], width=6),
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label([
+                                        "베타 상수 ",
+                                        html.Small("(0.1~1.0)", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold"),
+                                    dbc.Input(id="add-b", type="number", step=0.1, placeholder="베타", className="form-control")
+                                ], width=6),
+                                dbc.Col([
+                                    dbc.Label([
+                                        "N 상수 ",
+                                        html.Small("(0.5~0.7)", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold"),
+                                    dbc.Input(id="add-n", type="number", step=0.01, placeholder="N", className="form-control")
+                                ], width=6),
                             ], className="mb-3"),
                         ], className="bg-white p-3 rounded shadow-sm border"),
                     ], md=6),
@@ -443,7 +468,11 @@ layout = html.Div([
                         html.Div([
                             html.H6("🔬 타설 콘크리트 탄성계수", className="mb-3 text-secondary fw-bold"),
                             
-
+                            # 재령분석 및 직접 입력 버튼
+                            html.Div([
+                                dbc.Button("재령분석", id="edit-age-analysis", color="outline-info", className="px-3 mb-2", size="sm"),
+                                dbc.Button("직접 입력", id="edit-direct-input", color="outline-secondary", className="px-3 mb-2 ms-2", size="sm"),
+                            ], className="text-center"),
                             
                             # 재령일별 탄성계수 입력 영역
                             html.Div(id="edit-age-input-area"),
@@ -471,16 +500,14 @@ layout = html.Div([
                                         html.Small("(0.1~10.0)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="edit-a", type="number", step=0.1, placeholder="열팽창계수", className="form-control")
-                                ], width=12),
-                            ], className="mb-3"),
-                            dbc.Row([
+                                ], width=6),
                                 dbc.Col([
                                     dbc.Label([
                                         "포아송비 ",
                                         html.Small("(0.01~1.00)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="edit-p", type="number", step=0.01, placeholder="포아송비", className="form-control")
-                                ], width=12),
+                                ], width=6),
                             ], className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
@@ -489,7 +516,30 @@ layout = html.Div([
                                         html.Small("(500~5000)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="edit-d", type="number", step=10, placeholder="밀도", className="form-control")
-                                ], width=12),
+                                ], width=6),
+                                dbc.Col([
+                                    dbc.Label([
+                                        "탄성계수 [GPa] ",
+                                        html.Small("(1~100)", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold"),
+                                    dbc.Input(id="edit-e", type="number", step=0.1, placeholder="탄성계수", className="form-control")
+                                ], width=6),
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label([
+                                        "베타 상수 ",
+                                        html.Small("(0.1~1.0)", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold"),
+                                    dbc.Input(id="edit-b", type="number", step=0.1, placeholder="베타", className="form-control")
+                                ], width=6),
+                                dbc.Col([
+                                    dbc.Label([
+                                        "N 상수 ",
+                                        html.Small("(0.5~0.7)", className="text-muted", style={"fontSize": "0.7rem"})
+                                    ], className="form-label fw-semibold"),
+                                    dbc.Input(id="edit-n", type="number", step=0.01, placeholder="N", className="form-control")
+                                ], width=6),
                             ], className="mb-3"),
                         ], className="bg-white p-3 rounded shadow-sm border"),
                     ], md=6),
@@ -1399,13 +1449,22 @@ def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t_date, t_tim
             False
         )
 
-    # 3) CEB-FIB 모델로 1일~28일 탄성계수 계산
-    days = list(range(1, 29))  # 1일부터 28일까지
+    # 3) 탄성계수 값 결정 (직접 입력값이 있으면 사용, 없으면 CEB-FIB 모델 계산)
     elasticity_values = []
     
-    for t_day in days:
-        e_t = float(e) * ((t_day / (t_day + float(b))) ** float(n))
-        elasticity_values.append(round(e_t, 2))  # 소수점 2자리까지 반올림
+    # 직접 입력값이 모두 있는지 확인
+    direct_input_complete = all(v is not None and v != "" for v in day_values)
+    
+    if direct_input_complete:
+        # 직접 입력값 사용
+        elasticity_values = [float(v) for v in day_values]
+    else:
+        # CEB-FIB 모델로 1일~28일 탄성계수 계산
+        days = list(range(1, 29))  # 1일부터 28일까지
+        
+        for t_day in days:
+            e_t = float(e) * ((t_day / (t_day + float(b))) ** float(n))
+            elasticity_values.append(round(e_t, 2))  # 소수점 2자리까지 반올림
     
     # 4) DB 저장 (activate=1 고정)
     dims = {"nodes": nodes, "h": float(h)}
@@ -1659,9 +1718,10 @@ def edit_preview(refresh_clicks, nodes_txt, h):
     State("edit-p",       "value"),
     State("edit-d",       "value"),
     State("edit-e",       "value"),
+    *[State(f"edit-direct-input-day-{i}", "value") for i in range(1, 29)],
     prevent_initial_call=True
 )
-def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, p, d, e):
+def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, p, d, e, *day_values):
     if not n_clicks:
         raise PreventUpdate
 
@@ -1760,13 +1820,22 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
             "", "", False
         )
 
-    # 3) CEB-FIB 모델로 1일~28일 탄성계수 계산
-    days = list(range(1, 29))  # 1일부터 28일까지
+    # 3) 탄성계수 값 결정 (직접 입력값이 있으면 사용, 없으면 CEB-FIB 모델 계산)
     elasticity_values = []
     
-    for t_day in days:
-        e_t = float(e) * ((t_day / (t_day + float(b))) ** float(n))
-        elasticity_values.append(round(e_t, 2))  # 소수점 2자리까지 반올림
+    # 직접 입력값이 모두 있는지 확인
+    direct_input_complete = all(v is not None and v != "" for v in day_values)
+    
+    if direct_input_complete:
+        # 직접 입력값 사용
+        elasticity_values = [float(v) for v in day_values]
+    else:
+        # CEB-FIB 모델로 1일~28일 탄성계수 계산
+        days = list(range(1, 29))  # 1일부터 28일까지
+        
+        for t_day in days:
+            e_t = float(e) * ((t_day / (t_day + float(b))) ** float(n))
+            elasticity_values.append(round(e_t, 2))  # 소수점 2자리까지 반올림
     
     # 4) DB 업데이트
     dims = {"nodes": nodes, "h": float(h)}
@@ -1799,15 +1868,18 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, b, n, t_date, t_time, a, 
     Output("modal-age-analysis", "is_open"),
     Output("age-analysis-source", "data"),
     Input("add-age-analysis", "n_clicks"),
+    Input("edit-age-analysis", "n_clicks"),
     Input("age-analysis-close", "n_clicks"),
     Input("age-analysis-apply", "n_clicks"),
     State("modal-age-analysis", "is_open"),
     prevent_initial_call=True
 )
-def toggle_age_analysis(add_btn, close_btn, apply_btn, is_open):
+def toggle_age_analysis(add_btn, edit_btn, close_btn, apply_btn, is_open):
     trig = ctx.triggered_id
     if trig == "add-age-analysis" and add_btn:
         return True, "add"
+    elif trig == "edit-age-analysis" and edit_btn:
+        return True, "edit"
     elif trig in ("age-analysis-close", "age-analysis-apply"):
         return False, dash.no_update
     return is_open, dash.no_update
@@ -1817,15 +1889,18 @@ def toggle_age_analysis(add_btn, close_btn, apply_btn, is_open):
     Output("modal-direct-input", "is_open"),
     Output("direct-input-source", "data"),
     Input("add-direct-input", "n_clicks"),
+    Input("edit-direct-input", "n_clicks"),
     Input("direct-input-close", "n_clicks"),
     Input("direct-input-apply", "n_clicks"),
     State("modal-direct-input", "is_open"),
     prevent_initial_call=True
 )
-def toggle_direct_input(add_btn, close_btn, apply_btn, is_open):
+def toggle_direct_input(add_btn, edit_btn, close_btn, apply_btn, is_open):
     trig = ctx.triggered_id
     if trig == "add-direct-input":
         return True, "add"
+    elif trig == "edit-direct-input":
+        return True, "edit"
     elif trig in ("direct-input-close", "direct-input-apply"):
         return False, dash.no_update
     return is_open, dash.no_update
@@ -2223,10 +2298,15 @@ def make_age_input_area(prefix, values=None):
             ), width=10),
         ], className="mb-2 align-items-center")
         input_fields.append(field)
+    
+    # CEB-FIB 버튼과 직접 입력 버튼 추가
+    button_row = html.Div([
+        dbc.Button("CEB-FIB로 자동 채우기", id=f"{prefix}-ceb-fib-btn", color="info", className="px-3 mb-2", size="sm"),
+        dbc.Button("직접 입력", id=f"{prefix}-direct-input", color="outline-secondary", className="px-3 mb-2 ms-2", size="sm"),
+    ], className="text-center")
+    
     return html.Div([
-        html.Div([
-            dbc.Button("CEB-FIB로 자동 채우기", id=f"{prefix}-ceb-fib-btn", color="info", className="px-3 mb-2", size="sm"),
-        ], className="text-center"),
+        button_row,
         html.H6("📋 재령일별 탄성계수 입력", className="mb-3 text-secondary fw-bold"),
         html.Div(input_fields, style={"maxHeight": "400px", "overflowY": "auto", "paddingRight": "8px"}),
     ])
@@ -2284,11 +2364,8 @@ def apply_ceb_fib_values(apply_clicks, e28, beta, n, is_open):
         e_t = e28 * ((t / (t + beta)) ** n)
         elasticity_values.append(round(e_t, 2))
     
-    # add와 edit 모달 모두에 적용
-    add_outputs = elasticity_values
-    edit_outputs = elasticity_values
-    
-    return add_outputs + edit_outputs
+    # add와 edit 모달 모두에 적용 (총 56개 출력)
+    return elasticity_values + elasticity_values
 
 
 
