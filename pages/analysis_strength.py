@@ -46,7 +46,7 @@ layout = dbc.Container(
             dbc.Button(id="btn-pause-strength"),
             dcc.Dropdown(id="speed-dropdown-strength"),
             dbc.Button(id="btn-unified-strength-colorbar"),
-            dbc.Interval(id="play-interval-strength", interval=1000, n_intervals=0, disabled=True),
+            dcc.Interval(id="play-interval-strength", interval=1000, n_intervals=0, disabled=True),
             dbc.Button(id="btn-save-3d-strength-image"),
             dbc.Button(id="btn-save-3d-strength-image", style={"display": "none"}),
             # 속도 버튼들
