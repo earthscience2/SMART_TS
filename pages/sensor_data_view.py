@@ -222,7 +222,7 @@ def update_sensor_list(refresh_clicks, n_intervals):
                         html.Small(f"데이터: {sensor_info['data_count']}개", className="text-muted")
                     ], width=8),
                     dbc.Col([
-                        dbc.Badge(status_text, color=status_color, size="sm")
+                        dbc.Badge(status_text, color=status_color, className="badge-sm")
                     ], width=4, className="text-end")
                 ]),
                 html.Div([
