@@ -88,16 +88,16 @@ def layout(**kwargs):
         if accessible_projects_result["result"] == "Success":
             its_projects_df = accessible_projects_result["projects"]
             
-            # ITS 프로젝트를 로컬 프로젝트 형식으로 변환
+            # ITS 프로젝트 데이터를 로컬 형식으로 변환
             if not its_projects_df.empty:
-                # 로컬 프로젝트 데이터 가져오기
-                local_projects_df = api_db.get_project_data()
-                
-                # ITS 프로젝트 ID와 매칭되는 로컬 프로젝트만 필터링
-                its_project_ids = its_projects_df['projectid'].tolist()
-                local_projects_df = local_projects_df[
-                    local_projects_df['project_pk'].isin(its_project_ids)
-                ]
+                # ITS 프로젝트 데이터를 로컬 프로젝트 형식으로 변환
+                local_projects_df = pd.DataFrame({
+                    'project_pk': its_projects_df['projectid'],
+                    'name': its_projects_df['projectname'],
+                    'created_at': its_projects_df['regdate'],
+                    'updated_at': its_projects_df['closedate'],
+                    's_code': its_projects_df['projectid']  # 임시로 projectid를 s_code로 사용
+                })
             else:
                 local_projects_df = pd.DataFrame()
         else:
@@ -108,61 +108,24 @@ def layout(**kwargs):
         print(f"Error getting accessible projects: {e}")
         local_projects_df = pd.DataFrame()
 
-    # 프로젝트 통계 정보 가져오기
-    try:
-        projects_with_stats = api_db.get_project_data_with_stats()
-        # 로컬 프로젝트와 통계 정보 병합
-        if not local_projects_df.empty and not projects_with_stats.empty:
-            local_projects_df = local_projects_df.merge(
-                projects_with_stats[['project_pk', 'concrete_count', 'sensor_count']], 
-                on='project_pk', 
-                how='left'
-            )
-            # NaN 값을 0으로 채우기
-            local_projects_df['concrete_count'] = local_projects_df['concrete_count'].fillna(0).astype(int)
-            local_projects_df['sensor_count'] = local_projects_df['sensor_count'].fillna(0).astype(int)
-    except Exception as e:
-        print(f"Error loading project statistics: {e}")
-        # 통계 정보 로드 실패 시 기본값 설정
+    # 프로젝트 통계 정보는 내부 DB를 사용하지 않으므로 기본값 설정
+    if not local_projects_df.empty:
         local_projects_df['concrete_count'] = 0
         local_projects_df['sensor_count'] = 0
 
     projects = []
 
-    # 로컬 프로젝트 생성
+    # ITS 프로젝트 생성
     if not local_projects_df.empty:
-        # 콘크리트 및 센서 메타데이터 로드
-        df_concrete = api_db.get_concrete_data()
-        df_sensors = api_db.get_sensors_data()
-
         for _, row in local_projects_df.iterrows():
             proj_pk = row["project_pk"]
             s_code = row["s_code"]
             
-            # 해당 프로젝트의 콘크리트 데이터
-            project_concretes = df_concrete[df_concrete["project_pk"] == str(proj_pk)]
-            
-            # P_000078 프로젝트에서 해당 구조의 ITS 센서 리스트 조회
+            # 해당 프로젝트의 ITS 센서 리스트 조회
             its_sensors_df = api_db.get_sensor_list_for_structure(s_code)
 
-            # 콘크리트 리스트 생성 (DataTable용 데이터)
+            # 콘크리트 리스트는 내부 DB를 사용하지 않으므로 빈 리스트
             concrete_data = []
-            
-            if not project_concretes.empty:
-                for _, concrete in project_concretes.iterrows():
-                    concrete_pk = concrete["concrete_pk"]
-                    concrete_sensors = df_sensors[df_sensors["concrete_pk"] == concrete_pk]
-                    sensor_count = len(concrete_sensors)
-                    
-                    analysis_status = "분석중" if concrete["activate"] == 0 else "설정중"
-                    
-                    concrete_data.append({
-                        "name": concrete["name"],
-                        "created_at": format_date(concrete["created_at"]),
-                        "elapsed_time": calculate_elapsed_time(concrete["created_at"]),
-                        "sensor_count": f"{sensor_count}개",
-                        "status": analysis_status
-                    })
 
             # ITS 센서 리스트 생성 (DataTable용 데이터)
             sensor_data = []
