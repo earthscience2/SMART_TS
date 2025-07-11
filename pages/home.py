@@ -6,6 +6,7 @@ from datetime import datetime
 
 import api_db
 from utils.encryption import create_project_url
+from utils import get_user_info
 
 register_page(__name__, path="/", title="프로젝트 목록")
 
@@ -51,12 +52,13 @@ def calculate_elapsed_time(created_at):
         return "N/A"
 
 
-def check_sensor_data_status(device_id: str, channel: str):
+def check_sensor_data_status(device_id: str, channel: str, its_num: int = 1):
     """센서 데이터 수집 상태를 확인합니다.
     
     Args:
         device_id: 디바이스 ID
         channel: 채널 번호
+        its_num: ITS 번호 (1 또는 2)
     
     Returns:
         tuple: (status_text, badge_color)
@@ -89,13 +91,14 @@ def check_sensor_data_status(device_id: str, channel: str):
 
 def layout(**kwargs):
     # 로그인된 사용자 정보 가져오기
-    user_id = request.cookies.get("login_user")
-    if not user_id:
+    user_info = get_user_info()
+    
+    if not user_info['is_logged_in']:
         return dcc.Location(pathname="/login", id="redirect-login")
 
     # get_accessible_projects 함수를 사용하여 접근 가능한 프로젝트 조회
     try:
-        accessible_projects_result = api_db.get_accessible_projects(user_id, its_num=1)
+        accessible_projects_result = api_db.get_accessible_projects(user_info['user_id'], its_num=user_info['user_its'])
         
         if accessible_projects_result["result"] == "Success":
             its_projects_df = accessible_projects_result["projects"]
@@ -139,7 +142,7 @@ def layout(**kwargs):
             s_code = row["s_code"]
             
             # 해당 프로젝트의 ITS 센서 리스트 조회 (구조ID 기반)
-            its_sensors_df = api_db.get_sensor_list_for_structure(s_code)
+            its_sensors_df = api_db.get_sensor_list_for_structure(s_code, its_num=user_info['user_its'])
 
             # 콘크리트 리스트는 내부 DB를 사용하지 않으므로 빈 리스트
             concrete_data = []
@@ -153,7 +156,7 @@ def layout(**kwargs):
                     channel = sensor["channel"]
                     
                     # 실제 센서 데이터 수집 상태 확인
-                    status_text, badge_color = check_sensor_data_status(device_id, channel)
+                    status_text, badge_color = check_sensor_data_status(device_id, channel, user_info['user_its'])
                     
                     sensor_data.append({
                         "device_id": device_id,

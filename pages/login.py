@@ -28,7 +28,17 @@ def layout(error: str | None = None, **kwargs):
                         method="post",
                         children=[
                             dbc.Input(name="user_id", placeholder="아이디", className="mb-3"),
-                            dbc.Input(name="user_pw", placeholder="비밀번호", type="password", className="mb-4"),
+                            dbc.Input(name="user_pw", placeholder="비밀번호", type="password", className="mb-3"),
+                            dbc.Select(
+                                id="its-select",
+                                name="its",
+                                options=[
+                                    {"label": "ITS1", "value": "1"},
+                                    {"label": "ITS2", "value": "2"}
+                                ],
+                                value="1",
+                                className="mb-4"
+                            ),
                             dbc.Button("로그인", type="submit", color="primary", className="w-100"),
                         ],
                     ),

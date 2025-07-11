@@ -109,6 +109,8 @@ def do_login():
         log_login_attempt(user_id, False, "아이디와 비밀번호를 입력하세요")
         resp = make_response(redirect("/login?error=" + quote_plus("아이디와 비밀번호를 입력하세요")))
         resp.delete_cookie("login_user")
+        resp.delete_cookie("user_grade")
+        resp.delete_cookie("user_its")
         return resp
 
     auth = authenticate_user(user_id, user_pw, its_num=its)
@@ -117,14 +119,18 @@ def do_login():
         resp = make_response(redirect(f"/login?error={quote_plus(auth['msg'])}"))
         # 실패한 로그인 시 기존 쿠키 삭제 (이전 세션 무효화)
         resp.delete_cookie("login_user")
+        resp.delete_cookie("user_grade")
+        resp.delete_cookie("user_its")
         return resp
 
     # 로그인 성공 로그
     log_login_attempt(user_id, True, "로그인 성공")
     
-    # 간단하게 쿠키에 user_id 저장 (실 서비스라면 JWT 등 사용)
+    # 사용자 정보를 쿠키에 저장
     resp = make_response(redirect("/"))
     resp.set_cookie("login_user", user_id, max_age=60 * 60 * 6, httponly=True)
+    resp.set_cookie("user_grade", auth["grade"], max_age=60 * 60 * 6, httponly=True)
+    resp.set_cookie("user_its", str(its), max_age=60 * 60 * 6, httponly=True)
     return resp
 
 @server.route("/do_admin_login", methods=["GET", "POST"])
@@ -176,6 +182,8 @@ def logout():
     
     resp = make_response(redirect("/login"))
     resp.delete_cookie("login_user")
+    resp.delete_cookie("user_grade")
+    resp.delete_cookie("user_its")
     resp.delete_cookie("admin_user")  # 관리자 쿠키도 삭제
     return resp
 
