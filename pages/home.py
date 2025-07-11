@@ -452,7 +452,7 @@ def layout(**kwargs):
                                 html.Div([
                                     dcc.Link(
                                         "센서 데이터 확인",
-                                        href=create_project_url("/sensor", proj_pk),
+                                        href="/sensor_data_view",
                                         className="btn btn-danger btn-sm mt-2",
                                         style={
                                             "fontSize": "12px",
