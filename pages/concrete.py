@@ -353,30 +353,7 @@ layout = html.Div([
                                         html.Small("(500~5000)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="add-d", type="number", step=10, placeholder="밀도", className="form-control")
-                                ], width=6),
-                                dbc.Col([
-                                    dbc.Label([
-                                        "탄성계수 [GPa] ",
-                                        html.Small("(1~100)", className="text-muted", style={"fontSize": "0.7rem"})
-                                    ], className="form-label fw-semibold"),
-                                    dbc.Input(id="add-e", type="number", step=0.1, placeholder="탄성계수", className="form-control")
-                                ], width=6),
-                            ], className="mb-3"),
-                            dbc.Row([
-                                dbc.Col([
-                                    dbc.Label([
-                                        "베타 상수 ",
-                                        html.Small("(0.1~1.0)", className="text-muted", style={"fontSize": "0.7rem"})
-                                    ], className="form-label fw-semibold"),
-                                    dbc.Input(id="add-b", type="number", step=0.1, placeholder="베타", className="form-control")
-                                ], width=6),
-                                dbc.Col([
-                                    dbc.Label([
-                                        "N 상수 ",
-                                        html.Small("(0.5~0.7)", className="text-muted", style={"fontSize": "0.7rem"})
-                                    ], className="form-label fw-semibold"),
-                                    dbc.Input(id="add-n", type="number", step=0.01, placeholder="N", className="form-control")
-                                ], width=6),
+                                ], width=12),
                             ], className="mb-3"),
                         ], className="bg-white p-3 rounded shadow-sm border"),
                     ], md=6),
@@ -505,30 +482,7 @@ layout = html.Div([
                                         html.Small("(500~5000)", className="text-muted", style={"fontSize": "0.7rem"})
                                     ], className="form-label fw-semibold"),
                                     dbc.Input(id="edit-d", type="number", step=10, placeholder="밀도", className="form-control")
-                                ], width=6),
-                                dbc.Col([
-                                    dbc.Label([
-                                        "탄성계수 [GPa] ",
-                                        html.Small("(1~100)", className="text-muted", style={"fontSize": "0.7rem"})
-                                    ], className="form-label fw-semibold"),
-                                    dbc.Input(id="edit-e", type="number", step=0.1, placeholder="탄성계수", className="form-control")
-                                ], width=6),
-                            ], className="mb-3"),
-                            dbc.Row([
-                                dbc.Col([
-                                    dbc.Label([
-                                        "베타 상수 ",
-                                        html.Small("(0.1~1.0)", className="text-muted", style={"fontSize": "0.7rem"})
-                                    ], className="form-label fw-semibold"),
-                                    dbc.Input(id="edit-b", type="number", step=0.1, placeholder="베타", className="form-control")
-                                ], width=6),
-                                dbc.Col([
-                                    dbc.Label([
-                                        "N 상수 ",
-                                        html.Small("(0.5~0.7)", className="text-muted", style={"fontSize": "0.7rem"})
-                                    ], className="form-label fw-semibold"),
-                                    dbc.Input(id="edit-n", type="number", step=0.01, placeholder="N", className="form-control")
-                                ], width=6),
+                                ], width=12),
                             ], className="mb-3"),
                         ], className="bg-white p-3 rounded shadow-sm border"),
                     ], md=6),
@@ -1266,18 +1220,15 @@ def add_preview(refresh_clicks, nodes_txt, h):
     State("add-nodes",   "value"),
     State("add-h",       "value"),
     State("add-unit",    "value"),
-    State("add-b",       "value"),
-    State("add-n",       "value"),
     State("add-t-date",  "value"),
     State("add-t-time",  "value"),
     State("add-a",       "value"),
     State("add-p",       "value"),
     State("add-d",       "value"),
-    State("add-e",       "value"),
     *[State(f"add-direct-input-day-{i}", "value") for i in range(1, 29)],
     prevent_initial_call=True
 )
-def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, b, n, t_date, t_time, a, p, d, e, *day_values):
+def add_save(n_clicks, project_pk, name, nodes_txt, h, unit, t_date, t_time, a, p, d, *day_values):
     if not n_clicks:
         raise PreventUpdate
 
