@@ -2518,22 +2518,7 @@ def create_3d_isosurface_figure(stress_data, stress_component, isosurface_levels
                 name=f'{level:.2f} MPa'
             ))
         
-        # 노드 위치 표시 (작은 점들)
-        fig.add_trace(go.Scatter3d(
-            x=x_coords,
-            y=y_coords,
-            z=z_coords,
-            mode='markers',
-            marker=dict(
-                size=2,
-                color=stress_values,
-                colorscale='Viridis',
-                opacity=0.8,
-                colorbar=dict(title=f"{stress_component} (MPa)")
-            ),
-            name='노드',
-            showlegend=False
-        ))
+        # 노드 점 제거 - 면만 표시
         
         # 레이아웃 설정
         component_names = {
