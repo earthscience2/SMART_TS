@@ -525,14 +525,8 @@ def select_sensor(selected_rows, table_data):
     selected_row = table_data[selected_rows[0]]
     sensor_key = selected_row['sensor_key']
     
-
-
-
-
-
-
-
-
+    # 센서가 선택되면 버튼들을 활성화
+    return sensor_key, False, False
 
 
 @callback(
