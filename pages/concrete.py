@@ -1756,26 +1756,23 @@ def toggle_age_analysis(add_btn, edit_btn, close_btn, apply_btn, is_open):
     Output("analysis-n", "value"),
     Input("modal-age-analysis", "is_open"),
     State("age-analysis-source", "data"),
-    State("add-e", "value"),
-    State("add-b", "value"),
-    State("add-n", "value"),
     State("edit-e", "value"),
     State("edit-b", "value"),
     State("edit-n", "value"),
     prevent_initial_call=True
 )
-def fill_analysis_inputs(is_open, source, add_e, add_b, add_n, edit_e, edit_b, edit_n):
+def fill_analysis_inputs(is_open, source, edit_e, edit_b, edit_n):
     if not is_open:
         raise PreventUpdate
     
     # 소스에 따라 적절한 값 사용
     if source == "add":
-        return add_e, add_b, add_n
+        return None, None, None
     elif source == "edit":
         return edit_e, edit_b, edit_n
     else:
-        # 기본값으로 add 사용
-        return add_e, add_b, add_n
+        # 기본값으로 None 사용
+        return None, None, None
 
 
 
