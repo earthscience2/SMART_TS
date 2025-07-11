@@ -1539,10 +1539,9 @@ def edit_preview(refresh_clicks, nodes_txt, h):
     State("edit-a",       "value"),
     State("edit-p",       "value"),
     State("edit-d",       "value"),
-    *[State(f"edit-direct-input-day-{i}", "value") for i in range(1, 29)],
     prevent_initial_call=True
 )
-def save_edit(n_clicks, cid, name, nodes_txt, h, unit, t_date, t_time, a, p, d, *day_values):
+def save_edit(n_clicks, cid, name, nodes_txt, h, unit, t_date, t_time, a, p, d):
     if not n_clicks:
         raise PreventUpdate
 
@@ -1592,15 +1591,6 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, t_date, t_time, a, p, d, 
         missing.append("밀도")
     elif d < 500 or d > 5000:
         range_errors.append("밀도(500~5000)")
-    
-    # 28일 탄성계수 값들 검증
-    if not day_values or any(v is None for v in day_values):
-        missing.append("재령일별 탄성계수")
-    else:
-        # 값 범위 검증 (1~100 GPa)
-        for i, val in enumerate(day_values):
-            if val < 1 or val > 100:
-                range_errors.append(f"{i+1}일 탄성계수(1~100)")
 
     if missing:
         return (
@@ -1635,8 +1625,23 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, t_date, t_time, a, p, d, 
             "", "", False
         )
 
-    # 3) 28일 탄성계수 값들을 리스트로 변환
-    elasticity_values = [float(val) for val in day_values]
+    # 3) 기존 CEB-FIB 값 유지 (수정 시에는 기존 값 사용)
+    # 기존 데이터에서 CEB-FIB 값 가져오기
+    df = api_db.get_concrete_data(cid)
+    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
+        elasticity_values = []
+    else:
+        row = df.iloc[0].to_dict() if isinstance(df, pd.DataFrame) else df
+        if row.get('CEB-FIB'):
+            try:
+                if isinstance(row['CEB-FIB'], str):
+                    elasticity_values = json.loads(row['CEB-FIB'])
+                else:
+                    elasticity_values = row['CEB-FIB']
+            except Exception:
+                elasticity_values = []
+        else:
+            elasticity_values = []
     
     # 4) DB 업데이트
     dims = {"nodes": nodes, "h": float(h)}
@@ -1649,7 +1654,7 @@ def save_edit(n_clicks, cid, name, nodes_txt, h, unit, t_date, t_time, a, p, d, 
         con_a=float(a),
         con_p=float(p),
         con_d=float(d),
-        ceb_fib=elasticity_values,  # 1일~28일 탄성계수 리스트 저장
+        ceb_fib=elasticity_values,  # 기존 CEB-FIB 값 유지
         activate=1
     )
 
@@ -1859,7 +1864,6 @@ def calculate_age_analysis(e28, beta, n, is_open):
 # ───────────────────── ⑮ 재령분석 결과 적용
 @callback(
     *[Output(f"add-direct-input-day-{i}", "value", allow_duplicate=True) for i in range(1, 29)],
-    *[Output(f"edit-direct-input-day-{i}", "value", allow_duplicate=True) for i in range(1, 29)],
     Output("age-analysis-alert", "children", allow_duplicate=True),
     Output("age-analysis-alert", "is_open", allow_duplicate=True),
     Output("age-analysis-alert", "color", allow_duplicate=True),
@@ -1886,17 +1890,17 @@ def apply_age_analysis_values(apply_clicks, source, e28, beta, n):
         # 소스에 따라 적절한 모달에 값 적용
         if source == "add":
             # add 모달에만 적용 (28개 입력창)
-            return *elasticity_values, *([dash.no_update] * 28), f"✅ 1일~28일 탄성계수 값이 계산되었습니다. (예시: 1일={elasticity_values[0]}GPa, 7일={elasticity_values[6]}GPa, 28일={elasticity_values[27]}GPa)", True, "success"
+            return *elasticity_values, f"✅ 1일~28일 탄성계수 값이 계산되었습니다. (예시: 1일={elasticity_values[0]}GPa, 7일={elasticity_values[6]}GPa, 28일={elasticity_values[27]}GPa)", True, "success"
         elif source == "edit":
-            # edit 모달에만 적용 (28개 입력창)
-            return *([dash.no_update] * 28), *elasticity_values, f"✅ 1일~28일 탄성계수 값이 계산되었습니다. (예시: 1일={elasticity_values[0]}GPa, 7일={elasticity_values[6]}GPa, 28일={elasticity_values[27]}GPa)", True, "success"
+            # edit 모달에만 적용 (28개 입력창) - 현재는 add 모달만 지원
+            return *([dash.no_update] * 28), f"✅ 1일~28일 탄성계수 값이 계산되었습니다. (예시: 1일={elasticity_values[0]}GPa, 7일={elasticity_values[6]}GPa, 28일={elasticity_values[27]}GPa)", True, "success"
         else:
             # 소스가 명확하지 않으면 아무것도 하지 않음
-            return *([dash.no_update] * 56), "❌ 적용할 모달을 찾을 수 없습니다.", True, "danger"
+            return *([dash.no_update] * 28), "❌ 적용할 모달을 찾을 수 없습니다.", True, "danger"
             
     except Exception as e:
         error_msg = f"❌ 탄성계수 계산 중 오류 발생: {str(e)}"
-        return *([dash.no_update] * 56), error_msg, True, "danger"
+        return *([dash.no_update] * 28), error_msg, True, "danger"
 
 
 
