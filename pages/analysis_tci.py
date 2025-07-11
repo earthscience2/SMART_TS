@@ -1344,10 +1344,10 @@ def create_tci_3d_tab_content(concrete_pk):
                     dcc.Slider(
                         id="isosurface-levels-slider",
                         min=3,
-                        max=8,
+                        max=5,  # 최대값을 5로 줄여서 성능 향상
                         step=1,
-                        value=5,
-                        marks={i: str(i) for i in range(3, 9)},
+                        value=3,  # 기본값을 3으로 줄여서 성능 향상
+                        marks={i: str(i) for i in range(3, 6)},
                         tooltip={"placement": "bottom", "always_visible": True}
                     )
                 ], md=4),
@@ -1382,7 +1382,7 @@ def create_tci_3d_tab_content(concrete_pk):
             }),
             dcc.Graph(
                 id="tci-3d-isosurface",
-                style={"height": "400px", "borderRadius": "8px"},
+                style={"height": "350px", "borderRadius": "8px"},  # 높이를 줄여서 성능 향상
                 config={"scrollZoom": True, "displayModeBar": True}
             ),
         ], style={
@@ -2050,7 +2050,7 @@ def update_crack_probability_graph(active_tab, selected_rows, tbl_data):
     State('tbl-concrete-tci', 'selected_rows'),
     State('tbl-concrete-tci', 'data'),
     State('tci-formula-params-store', 'data'),
-    prevent_initial_call=False
+    prevent_initial_call=True  # 성능 개선: 초기 호출 방지
 )
 def update_tci_3d_table(time_idx, play_click, active_tab, stress_component, isosurface_levels, selected_rows, tbl_data, formula_params):
     import numpy as np
@@ -2398,8 +2398,18 @@ def update_tci_3d_table(time_idx, play_click, active_tab, stress_component, isos
         if data:
             print(f"DEBUG: 첫 번째 데이터 샘플={data[0]}")
         
+        # 콘크리트 차원 정보 가져오기
+        concrete_dims = None
+        try:
+            concrete_data = api_db.get_concrete_data(concrete_pk=concrete_pk)
+            if not concrete_data.empty:
+                concrete_row = concrete_data.iloc[0]
+                concrete_dims = concrete_row.get("dims")
+        except Exception as e:
+            print(f"콘크리트 차원 정보 가져오기 오류: {e}")
+        
         # 입체 등온면 그래프 생성
-        isosurface_fig = create_3d_isosurface_figure(stress_data, stress_component, isosurface_levels, fct)
+        isosurface_fig = create_3d_isosurface_figure(stress_data, stress_component, isosurface_levels, fct, concrete_dims)
         
         # 응력 범위 표시
         stress_range_text = create_stress_range_display(data, stress_component)
@@ -2425,7 +2435,7 @@ def update_tci_3d_table(time_idx, play_click, active_tab, stress_component, isos
 
 # ───────────────────── 입체 등온면 그래프 생성 함수들 ─────────────────────
 
-def create_3d_isosurface_figure(stress_data, stress_component, isosurface_levels, fct):
+def create_3d_isosurface_figure(stress_data, stress_component, isosurface_levels, fct, concrete_dims=None):
     """입체 등온면 그래프를 생성합니다."""
     try:
         import numpy as np
@@ -2475,30 +2485,31 @@ def create_3d_isosurface_figure(stress_data, stress_component, isosurface_levels
         stress_min = np.min(stress_values)
         stress_max = np.max(stress_values)
         
-        # 등온면 레벨 생성
-        levels = np.linspace(stress_min, stress_max, isosurface_levels)
+        # 등온면 레벨 생성 (성능 개선: 레벨 수 제한)
+        levels = np.linspace(stress_min, stress_max, min(isosurface_levels, 5))
         
-        # 3D 그리드 생성 (간격을 좀 더 조밀하게)
-        x_range = np.linspace(np.min(x_coords), np.max(x_coords), 50)
-        y_range = np.linspace(np.min(y_coords), np.max(y_coords), 50)
-        z_range = np.linspace(np.min(z_coords), np.max(z_coords), 50)
+        # 3D 그리드 생성 (성능 개선: 해상도 조정)
+        grid_resolution = 30  # 50에서 30으로 줄여서 성능 향상
+        x_range = np.linspace(np.min(x_coords), np.max(x_coords), grid_resolution)
+        y_range = np.linspace(np.min(y_coords), np.max(y_coords), grid_resolution)
+        z_range = np.linspace(np.min(z_coords), np.max(z_coords), grid_resolution)
         
         X, Y, Z = np.meshgrid(x_range, y_range, z_range)
         
-        # 그리드 데이터 보간
+        # 그리드 데이터 보간 (성능 개선: nearest 방법 사용)
         grid_stress = griddata(
             (x_coords, y_coords, z_coords), 
             stress_values, 
             (X, Y, Z), 
-            method='linear',
+            method='nearest',  # linear에서 nearest로 변경하여 성능 향상
             fill_value=stress_min
         )
         
         # 등온면 그래프 생성
         fig = go.Figure()
         
-        # 각 레벨별 등온면 추가
-        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f']
+        # 각 레벨별 등온면 추가 (성능 개선: 투명도 조정)
+        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
         
         for i, level in enumerate(levels):
             color = colors[i % len(colors)]
@@ -2511,16 +2522,43 @@ def create_3d_isosurface_figure(stress_data, stress_component, isosurface_levels
                 value=grid_stress.flatten(),
                 isomin=level,
                 isomax=level,
-                opacity=0.3,
+                opacity=0.4,  # 투명도 증가
                 surface_count=1,
                 colorscale=[[0, color], [1, color]],
                 showscale=False,
                 name=f'{level:.2f} MPa'
             ))
         
-        # 노드 점 제거 - 면만 표시
+        # 콘크리트 외형 추가 (온도분석 페이지와 동일한 방식)
+        if concrete_dims:
+            try:
+                import ast
+                dims = ast.literal_eval(concrete_dims) if isinstance(concrete_dims, str) else concrete_dims
+                poly_nodes = np.array(dims["nodes"])
+                poly_h = float(dims["h"])
+                n = len(poly_nodes)
+                x0s, y0s = poly_nodes[:,0], poly_nodes[:,1]
+                z0s = np.zeros(n)
+                x1s, y1s = x0s, y0s
+                z1s = np.full(n, poly_h)
+                
+                # 아래면
+                fig.add_trace(go.Scatter3d(
+                    x=np.append(x0s, x0s[0]), y=np.append(y0s, y0s[0]), z=np.append(z0s, z0s[0]),
+                    mode='lines', line=dict(width=3, color='black'), showlegend=False, hoverinfo='skip'))
+                # 윗면
+                fig.add_trace(go.Scatter3d(
+                    x=np.append(x1s, x1s[0]), y=np.append(y1s, y1s[0]), z=np.append(z1s, z1s[0]),
+                    mode='lines', line=dict(width=3, color='black'), showlegend=False, hoverinfo='skip'))
+                # 기둥
+                for i in range(n):
+                    fig.add_trace(go.Scatter3d(
+                        x=[x0s[i], x1s[i]], y=[y0s[i], y1s[i]], z=[z0s[i], z1s[i]],
+                        mode='lines', line=dict(width=3, color='black'), showlegend=False, hoverinfo='skip'))
+            except Exception as e:
+                print(f"콘크리트 외형 추가 오류: {e}")
         
-        # 레이아웃 설정
+        # 레이아웃 설정 (성능 개선)
         component_names = {
             "von_mises": "Von Mises 응력",
             "SXX": "X방향 정응력",
@@ -2539,11 +2577,14 @@ def create_3d_isosurface_figure(stress_data, stress_component, isosurface_levels
                 zaxis_title="Z (m)",
                 camera=dict(
                     eye=dict(x=1.5, y=1.5, z=1.5)
-                )
+                ),
+                aspectmode='data',  # 데이터 비율 유지
+                bgcolor='white'
             ),
-            width=800,
-            height=400,
-            margin=dict(l=0, r=0, t=30, b=0)
+            width=700,  # 크기를 줄여서 성능 향상
+            height=350,
+            margin=dict(l=0, r=0, t=30, b=0),
+            uirevision='constant'  # 뷰 상태 유지
         )
         
         return fig
