@@ -72,44 +72,7 @@ def check_sensor_data_status(device_id: str, channel: str):
 
 
 
-def filter_local_projects(grade: str, auth_list: list) -> pd.DataFrame:
-    """사용자 권한에 따라 로컬 프로젝트를 필터링합니다.
-    
-    Args:
-        grade: 사용자 권한 (AD, CM, CT, US 등)
-        auth_list: 사용자가 접근 가능한 권한 목록
-    
-    Returns:
-        필터링된 프로젝트 DataFrame
-    """
-    # 모든 프로젝트 가져오기
-    all_projects_df = api_db.get_project_data()
-    
-    # 1. AD 권한이면 모든 프로젝트 반환
-    if grade == "AD":
-        return all_projects_df
-    
-    # 2. CM 또는 CT 권한인 경우
-    if grade in ["CM", "CT"]:
-        # 접근 가능한 프로젝트 ID 추출
-        project_ids = [auth_id for auth_id in auth_list if auth_id.startswith('P_')]
-        
-        # P_000078에 접근 가능하면 모든 프로젝트 반환
-        if "P_000078" in project_ids:
-            return all_projects_df
-        
-        # 접근 가능한 구조 ID 추출
-        structure_ids = [auth_id for auth_id in auth_list if auth_id.startswith('S_')]
-        
-        if structure_ids:
-            # s_code가 구조 ID와 매칭되는 프로젝트만 필터링
-            filtered_projects = all_projects_df[
-                all_projects_df['s_code'].isin(structure_ids)
-            ]
-            return filtered_projects
-    
-    # 3. 기타 권한 (US 등)의 경우 빈 DataFrame 반환
-    return pd.DataFrame()
+
 
 
 def layout(**kwargs):
@@ -118,33 +81,32 @@ def layout(**kwargs):
     if not user_id:
         return dcc.Location(pathname="/login", id="redirect-login")
 
-    # 사용자 권한 정보 조회 (로컬 프로젝트 필터링용)
+    # get_accessible_projects 함수를 사용하여 접근 가능한 프로젝트 조회
     try:
-        from api_db import _get_its_engine, text
+        accessible_projects_result = api_db.get_accessible_projects(user_id, its_num=1)
         
-        eng = _get_its_engine(1)
-        user_query = text("SELECT userid, grade FROM tb_user WHERE userid = :uid LIMIT 1")
-        df_user = pd.read_sql(user_query, eng, params={"uid": user_id})
-        
-        if df_user.empty:
-            grade = "AD"  # 기본값으로 관리자 권한
-            auth_list = []
-        else:
-            grade = df_user.iloc[0]["grade"]
-            if grade == "AD":
-                auth_list = []
+        if accessible_projects_result["result"] == "Success":
+            its_projects_df = accessible_projects_result["projects"]
+            
+            # ITS 프로젝트를 로컬 프로젝트 형식으로 변환
+            if not its_projects_df.empty:
+                # 로컬 프로젝트 데이터 가져오기
+                local_projects_df = api_db.get_project_data()
+                
+                # ITS 프로젝트 ID와 매칭되는 로컬 프로젝트만 필터링
+                its_project_ids = its_projects_df['projectid'].tolist()
+                local_projects_df = local_projects_df[
+                    local_projects_df['project_pk'].isin(its_project_ids)
+                ]
             else:
-                auth_query = text("SELECT id FROM tb_sensor_auth_mapping WHERE userid = :uid")
-                df_auth = pd.read_sql(auth_query, eng, params={"uid": user_id})
-                auth_list = df_auth["id"].tolist() if not df_auth.empty else []
-        
+                local_projects_df = pd.DataFrame()
+        else:
+            print(f"Error getting accessible projects: {accessible_projects_result['msg']}")
+            local_projects_df = pd.DataFrame()
+            
     except Exception as e:
-        print(f"Error getting user info: {e}")
-        grade = "AD"
-        auth_list = []
-    
-    # 로컬 프로젝트 필터링 로직
-    local_projects_df = filter_local_projects(grade, auth_list)
+        print(f"Error getting accessible projects: {e}")
+        local_projects_df = pd.DataFrame()
 
     # 프로젝트 통계 정보 가져오기
     try:
