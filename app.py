@@ -317,7 +317,7 @@ def _build_home_navbar(pathname=None, search=None):
         project_pk = parse_project_key_from_url(search)
 
     nav_links = [
-        dbc.NavItem(dcc.Link(dbc.Button("Logout", color="danger", size="md", className="text-center"), href="/logout", className="text-decoration-none", id="nav-logout")),
+        dbc.NavItem(html.A(dbc.Button("Logout", color="danger", size="md", className="text-center"), href="/logout", className="text-decoration-none", id="nav-logout")),
     ]
 
     # 브랜드(좌측) - 사용자 이름 부분을 강조색으로
@@ -384,7 +384,7 @@ def _build_concrete_sensor_navbar(pathname=None, search=None):
     ]
     
     logout_nav = [
-        dbc.NavItem(dcc.Link(dbc.Button("Logout", color="danger", size="md", className="text-center"), href="/logout", className="text-decoration-none", id="nav-logout")),
+        dbc.NavItem(html.A(dbc.Button("Logout", color="danger", size="md", className="text-center"), href="/logout", className="text-decoration-none", id="nav-logout")),
     ]
 
     if admin_user:
@@ -465,7 +465,7 @@ def _build_analysis_navbar(pathname=None, search=None):
     ]
     
     logout_nav = [
-        dbc.NavItem(dcc.Link(dbc.Button("Logout", color="danger", size="md", className="text-center"), href="/logout", className="text-decoration-none", id="nav-logout")),
+        dbc.NavItem(html.A(dbc.Button("Logout", color="danger", size="md", className="text-center"), href="/logout", className="text-decoration-none", id="nav-logout")),
     ]
 
     if admin_user:
@@ -528,7 +528,7 @@ def _build_sensor_data_navbar(pathname=None, search=None):
     ]
     
     logout_nav = [
-        dbc.NavItem(dcc.Link(dbc.Button("Logout", color="danger", size="md", className="text-center"), href="/logout", className="text-decoration-none", id="nav-logout")),
+        dbc.NavItem(html.A(dbc.Button("Logout", color="danger", size="md", className="text-center"), href="/logout", className="text-decoration-none", id="nav-logout")),
     ]
 
     if admin_user:
@@ -571,7 +571,7 @@ def _build_admin_navbar():
         dbc.NavItem(dcc.Link("Projects", href="/admin_projects", className="nav-link", id="admin-nav-projects")),
         dbc.NavItem(dcc.Link("Logs", href="/admin_logs", className="nav-link", id="admin-nav-logs")),
         dbc.NavItem(dcc.Link("Automation", href="/admin_automation", className="nav-link", id="admin-nav-automation")),
-        dbc.NavItem(dcc.Link(dbc.Button("Logout", color="danger", size="md", className="text-center"), href="/logout", className="text-decoration-none")),
+        dbc.NavItem(html.A(dbc.Button("Logout", color="danger", size="md", className="text-center"), href="/logout", className="text-decoration-none")),
     ]
 
     # 브랜드(좌측) - 관리자 이름 부분을 강조색으로
@@ -615,6 +615,10 @@ app.layout = serve_layout
 )
 def handle_url_redirects(pathname):
     """모든 URL 리다이렉트 로직을 처리합니다."""
+    
+    # 로그아웃 경로는 Flask 서버에서 처리되므로 Dash에서 가로채지 않음
+    if pathname == "/logout":
+        return no_update
     
     # 관리자 페이지에서 일반 페이지 접근 차단
     admin_user = flask_request.cookies.get("admin_user")
