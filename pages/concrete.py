@@ -292,7 +292,16 @@ layout = html.Div([
                         
                         # 미리보기 섹션
                         html.Div([
-                            html.H6("👁️ 3D 미리보기", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                            html.Div([
+                                html.H6("👁️ 3D 미리보기", className="mb-0 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                                dbc.Button(
+                                    html.I(className="fas fa-sync-alt"),
+                                    id="add-refresh-preview-btn",
+                                    color="outline-secondary",
+                                    size="sm",
+                                    className="px-2"
+                                )
+                            ], className="d-flex justify-content-between align-items-center mb-2"),
                             dcc.Graph(id="add-preview", style={"height": "50vh"}, className="rounded", config={'displayModeBar': False}),
                         ], className="bg-light p-2 rounded"),
                     ], md=6),
@@ -442,7 +451,16 @@ layout = html.Div([
                         
                         # 미리보기 섹션
                         html.Div([
-                            html.H6("👁️ 3D 미리보기", className="mb-2 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                            html.Div([
+                                html.H6("👁️ 3D 미리보기", className="mb-0 text-secondary fw-bold", style={"fontSize": "0.9rem"}),
+                                dbc.Button(
+                                    html.I(className="fas fa-sync-alt"),
+                                    id="edit-refresh-preview-btn",
+                                    color="outline-secondary",
+                                    size="sm",
+                                    className="px-2"
+                                )
+                            ], className="d-flex justify-content-between align-items-center mb-2"),
                             dcc.Graph(id="edit-preview", style={"height": "50vh"}, className="rounded", config={'displayModeBar': False}),
                         ], className="bg-light p-2 rounded"),
                     ], md=6),
@@ -1208,11 +1226,12 @@ def apply_concrete_load(n_clicks, selected_rows, table_data):
     Output("add-alert",   "children", allow_duplicate=True),
     Output("add-alert",   "is_open",   allow_duplicate=True),
     Input("add-build", "n_clicks"),
+    Input("add-refresh-preview-btn", "n_clicks"),
     State("add-nodes", "value"),
     State("add-h", "value"),
     prevent_initial_call=True
 )
-def add_preview(_, nodes_txt, h):
+def add_preview(_, refresh_clicks, nodes_txt, h):
     if not nodes_txt:
         return dash.no_update, "노드 목록 입력요", True
     try:
@@ -1553,11 +1572,12 @@ def fill_edit(opened: bool, cid):
     Output("edit-alert", "children"),
     Output("edit-alert", "is_open"),
     Input("edit-build", "n_clicks"),
+    Input("edit-refresh-preview-btn", "n_clicks"),
     State("edit-nodes", "value"),
     State("edit-h", "value"),
     prevent_initial_call=True
 )
-def edit_preview(_, nodes_txt, h):
+def edit_preview(_, refresh_clicks, nodes_txt, h):
     if not nodes_txt:
         return dash.no_update, "노드 입력", True
     try:
