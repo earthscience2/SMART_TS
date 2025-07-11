@@ -1481,7 +1481,7 @@ def update_strength_3d_viewer(selected_rows, formula_params, time_idx, active_ta
                         avg_value2 = sum(strength_values.get(node_id, 0) for node_id in [element[0], element[2], element[3]]) / 3
                         element_values.append(avg_value2)
             
-            # Mesh3d 그래프 생성
+            # Mesh3d 그래프 생성 (강도 데이터)
             fig = go.Figure(data=go.Mesh3d(
                 x=x_coords,
                 y=y_coords,
@@ -1504,6 +1504,63 @@ def update_strength_3d_viewer(selected_rows, formula_params, time_idx, active_ta
                              f"{'압축' if strength_type == 'compressive' else '인장'}강도: %{{intensity:.2f}} MPa<br>" +
                              '<extra></extra>'
             ))
+            
+            # 콘크리트 외곽선 추가 (온도/응력 분석 페이지와 동일한 방식)
+            try:
+                import ast
+                dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
+                poly_nodes = np.array(dims["nodes"])
+                poly_h = float(dims["h"])
+                n = len(poly_nodes)
+                x0s, y0s = poly_nodes[:,0], poly_nodes[:,1]
+                z0s = np.zeros(n)
+                x1s, y1s = x0s, y0s
+                z1s = np.full(n, poly_h)
+                verts_x = np.concatenate([x0s, x1s])
+                verts_y = np.concatenate([y0s, y1s])
+                verts_z = np.concatenate([z0s, z1s])
+                faces = []
+                # 바닥면 삼각형
+                for i in range(1, n-1): 
+                    faces.append((0, i, i+1))
+                # 상단면 삼각형 (정점 순서를 역순으로)
+                for i in range(1, n-1): 
+                    faces.append((n, n+i+1, n+i))
+                # 측면 삼각형
+                for i in range(n):
+                    nxt = (i+1)%n
+                    faces.append((i, nxt, n+nxt))
+                    faces.append((i, n+nxt, n+i))
+                i0, i1, i2 = zip(*faces)
+                
+                # 외곽 바디 Mesh3d 추가 (연한 회색)
+                fig.add_trace(go.Mesh3d(
+                    x=verts_x, y=verts_y, z=verts_z,
+                    i=i0, j=i1, k=i2,
+                    color="lightgray", opacity=0.35, showscale=False
+                ))
+                
+                # Edge(검은선) 추가
+                edges = []
+                # 바닥면 엣지
+                for i in range(n):
+                    edges.append((x0s[i], y0s[i], 0))
+                    edges.append((x0s[(i+1)%n], y0s[(i+1)%n], 0))
+                # 상단면 엣지
+                for i in range(n):
+                    edges.append((x1s[i], y1s[i], poly_h))
+                    edges.append((x1s[(i+1)%n], y1s[(i+1)%n], poly_h))
+                # 세로 엣지
+                for i in range(n):
+                    edges.append((x0s[i], y0s[i], 0))
+                    edges.append((x1s[i], y1s[i], poly_h))
+                
+                fig.add_trace(go.Scatter3d(
+                    x=[e[0] for e in edges], y=[e[1] for e in edges], z=[e[2] for e in edges],
+                    mode="lines", line=dict(width=4, color="dimgray"), hoverinfo="skip", showlegend=False
+                ))
+            except Exception as e:
+                print(f"외곽선 추가 오류: {e}")
             
             fig.update_layout(
                 title=f"{concrete_name} - 3D {'압축' if strength_type == 'compressive' else '인장'}강도 분포",
@@ -1563,6 +1620,35 @@ def update_strength_3d_viewer(selected_rows, formula_params, time_idx, active_ta
                 text=[f"노드 {node['id']}<br>{'압축' if strength_type == 'compressive' else '인장'}강도: {val:.2f} MPa" for node, val in zip(nodes, strength_vals)],
                 hovertemplate='%{text}<extra></extra>'
             ))
+            
+            # 콘크리트 외곽선 추가 (점 표시에서도)
+            try:
+                import ast
+                dims = ast.literal_eval(row["dims"]) if isinstance(row["dims"], str) else row["dims"]
+                poly_nodes = np.array(dims["nodes"])
+                poly_h = float(dims["h"])
+                n = len(poly_nodes)
+                x0s, y0s = poly_nodes[:,0], poly_nodes[:,1]
+                z0s = np.zeros(n)
+                x1s, y1s = x0s, y0s
+                z1s = np.full(n, poly_h)
+                
+                # 바닥면
+                fig.add_trace(go.Scatter3d(
+                    x=np.append(x0s, x0s[0]), y=np.append(y0s, y0s[0]), z=np.append(z0s, z0s[0]),
+                    mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
+                # 윗면
+                fig.add_trace(go.Scatter3d(
+                    x=np.append(x1s, x1s[0]), y=np.append(y1s, y1s[0]), z=np.append(z1s, z1s[0]),
+                    mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
+                # 기둥
+                for i in range(n):
+                    fig.add_trace(go.Scatter3d(
+                        x=[x0s[i], x1s[i]], y=[y0s[i], y1s[i]], z=[z0s[i], z1s[i]],
+                        mode='lines', line=dict(width=2, color='black'), showlegend=False, hoverinfo='skip'))
+            except Exception as e:
+                print(f"외곽선 추가 오류: {e}")
+            
             fig.update_layout(
                 title=f"{concrete_name} - 3D {'압축' if strength_type == 'compressive' else '인장'}강도 분포",
                 scene=dict(
