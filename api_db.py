@@ -767,6 +767,46 @@ def get_sensor_list_for_structure(s_code: str, its_num: int = 1) -> pd.DataFrame
         return pd.DataFrame()
 
 
+def get_sensor_list_for_project(project_id: str, its_num: int = 1) -> pd.DataFrame:
+    """특정 프로젝트의 모든 센서 리스트를 조회합니다.
+    
+    Args:
+        project_id: 프로젝트 ID (P_000xxx 형식)
+        its_num: ITS 번호 (1 또는 2)
+    
+    Returns:
+        센서 리스트 DataFrame
+    """
+    try:
+        eng = _get_its_engine(its_num)
+        
+        # 해당 프로젝트의 모든 센서 리스트 조회
+        sensor_query = text("""
+            SELECT s.deviceid, CAST(IFNULL(s.channel,1) AS CHAR) AS channel,
+                   d.devicetype AS device_type, tddt.data_type,
+                   IF(tdc.modelname IS NOT NULL,'Y','N') AS is3axis,
+                   st.stid AS structure_id, st.stname AS structure_name
+            FROM tb_sensor s 
+            JOIN tb_device d ON d.deviceid = s.deviceid 
+            JOIN tb_structure st ON st.stid = d.stid 
+            JOIN tb_group g ON g.groupid = st.groupid 
+            JOIN tb_project p ON p.projectid = g.projectid 
+            LEFT JOIN tb_device_data_type tddt ON d.devicetype = tddt.device_type 
+            LEFT JOIN tb_device_catalog tdc ON tdc.idx = d.modelidx 
+                AND tdc.modelname IN ('SSC-320HR(2.0g)','SSC-320HR(5.0g)','SSC-320(3.0g)') 
+            WHERE p.projectid = :project_id
+                AND d.manageyn = 'Y' AND s.manageyn = 'Y' 
+            ORDER BY st.stid, s.deviceid, s.channel
+        """)
+        
+        df_sensors = pd.read_sql(sensor_query, eng, params={"project_id": project_id})
+        return df_sensors
+        
+    except Exception as e:
+        print(f"Error getting sensor list for project {project_id}: {e}")
+        return pd.DataFrame()
+
+
 def get_accessible_projects(user_id: str, its_num: int = 1):
     """사용자가 접근 가능한 프로젝트 목록을 반환합니다.
     
